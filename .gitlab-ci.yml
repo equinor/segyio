@@ -1,0 +1,12 @@
+before_script:
+    - source /project/res/SDP_bashrc
+    - mkdir build
+    - cd build
+
+build:
+  script:
+    - cmake -D CMAKE_C_COMPILER=/opt/rh/devtoolset-3/root/usr/bin/gcc ..
+    - make -j4
+    - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PWD
+    - ctest -j4
+
