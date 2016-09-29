@@ -1,0 +1,20 @@
+language: c
+
+matrix:
+  include:
+    - os: linux
+      compiler: gcc
+
+addons:
+  apt:
+    packages:
+      - valgrind
+      - python-numpy
+
+script:
+    - mkdir build
+    - cd build
+    - cmake ..
+    - make -j2
+    - export LD_LIBRARY_PATH=$PWD
+    - ctest -j2 --output-on-failure
