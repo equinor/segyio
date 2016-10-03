@@ -171,6 +171,27 @@ class _line:
         for i in self.lines:
             yield self.__getitem__(i, buf)
 
+
+class _DepthPlane:
+
+    def __init__(self, samples, sorting, read_fn):
+
+        self.samples = samples
+        self.sorting = sorting
+        self.read_fn = read_fn
+
+    def __getitem__(self, depth):
+        if isinstance(depth, int):
+            return self.read_fn(self.sorting, depth)
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __iter__(self):
+        for i in range(self.samples):
+            yield self.__getitem__(i)
+
+
 class _header:
     def __init__(self, segy):
         self.segy = segy
@@ -1036,6 +1057,31 @@ class file(BaseCClass):
     def xline(self, value):
         self.xline[:] = value
 
+    @property
+    def depth_plane(self):
+
+        def depth_plane(sorting, depth):
+            il_len = self._iline_length
+            xl_len = self._xline_length
+
+            dim = None
+            if sorting == 1:
+                dim = (xl_len, il_len)
+            if sorting == 2:
+                dim = (il_len, xl_len)
+
+            if not dim:
+                raise Exception("TODO")
+
+            plane = np.empty(shape=dim[0] * dim[1], dtype=np.float32)
+
+            for i, t in enumerate(self.trace):
+                plane[i] = t[depth]
+
+            return plane.reshape(dim)
+
+        return _DepthPlane(self.samples, self.sorting, depth_plane)
+
     def _readh(self, index, buf = None):
         errc = self._read_header(index, buf, self._tr0, self._bsz)
         err = _error(errc)
@@ -1300,3 +1346,4 @@ class spec:
         self.format         = None
         self.sorting        = None
         self.t0             = 1111.0
+        self.depth_plane    = None
