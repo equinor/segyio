@@ -42,11 +42,13 @@ install(TARGETS segyinspect DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 
 if (BUILD_MEX)
     add_subdirectory(mex)
+    option(BUILD_MEX_TESTS            "Build matlab mex tests" ON)
 else (BUILD_MEX)
     unset(MATLAB_MCC CACHE)
     unset(MATLAB_MEX CACHE)
     unset(MATLAB_MEXEXT CACHE)
     unset(MATLAB_ROOT CACHE)
+    unset(BUILD_MEX_TESTS CACHE)
 endif()
 
 add_subdirectory(python)
