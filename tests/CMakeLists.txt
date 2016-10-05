@@ -7,8 +7,10 @@ add_segyio_test(segy test_segy.c)
 add_segyio_test(segyspec test_segyspec.c)
 
 if(BUILD_MEX)
-    add_matlab_test(matlab.segyspec test_segyspec_mex.m test_segyspec_mex)
-    add_matlab_test(matlab.segy test_segy_mex.m test_segy_mex)
+    if(BUILD_MEX_TESTS)
+        add_matlab_test(matlab.segyspec test_segyspec_mex.m test_segyspec_mex)
+        add_matlab_test(matlab.segy test_segy_mex.m test_segy_mex)
+    endif()
 endif()
 
 add_python_test(python.segy test_segy.py)
