@@ -1,8 +1,3 @@
-from PyQt4.QtGui import QAction
-
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
-
 import segyio
 
 from pylab import *
@@ -11,17 +6,16 @@ from PyQt4 import QtGui, QtCore
 
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-
 import matplotlib.patches as patches
 
 
-class LineSelectionMonitor(QObject):
-    ilineChanged = pyqtSignal(int)
-    xlineChanged = pyqtSignal(int)
-    depthChanged = pyqtSignal(int)
+class LineSelectionMonitor(QtCore.QObject):
+    ilineChanged = QtCore.pyqtSignal(int)
+    xlineChanged = QtCore.pyqtSignal(int)
+    depthChanged = QtCore.pyqtSignal(int)
 
     def __init__(self, parent=None):
-        QObject.__init__(self, parent)
+        QtCore.QObject.__init__(self, parent)
 
     def ilineUpdated(self, new_index):
         print("iline:{0} updated", new_index)
@@ -35,12 +29,11 @@ class LineSelectionMonitor(QObject):
         print("depth:{0} updated", new_index)
         self.depthChanged.emit(new_index)
 
-
-class ColorMapMonitor(QObject):
-    cmap_changed = pyqtSignal(str)
+class ColorMapMonitor(QtCore.QObject):
+    cmap_changed = QtCore.pyqtSignal(str)
 
     def __init__(self, parent=None):
-        QObject.__init__(self, parent)
+        QtCore.QObject.__init__(self, parent)
 
     def colormapUpdated(self, value):
         self.cmap_changed.emit(str(value))
@@ -50,8 +43,7 @@ class PlotCanvas(FigureCanvas):
     """
     Generic plot canvas for all plane views
     """
-
-    indexChanged = pyqtSignal(int)
+    indexChanged = QtCore.pyqtSignal(int)
 
     def __init__(self, planes, indexes, dataset_title, cmap, display_horizontal_indicator=False,
                  display_vertical_indicator=False, parent=None, width=800, height=100, dpi=20):
@@ -67,16 +59,12 @@ class PlotCanvas(FigureCanvas):
         self.setParent(parent)
 
         self.axes = self.fig.add_subplot(111)
-        # self.axes.set_title(self.dataset_title, fontsize=50)
         self.axes.set_xticks(indexes)
         self.axes.tick_params(axis='both', labelsize=30)
 
         # the default colormap
         self.cmap = cmap
         self.im = self.axes.imshow(planes[indexes[0]].T, interpolation="nearest", aspect="auto", cmap=self.cmap)
-
-        # initialize plot and indicator_rect
-        # self.plot_image(self.planes[self.indexes[0]])
 
         self.current_index = 0
 
@@ -102,9 +90,9 @@ class PlotCanvas(FigureCanvas):
         if display_horizontal_indicator:
             self.horizontal_indicator_rect = self.axes.add_patch(
                 patches.Rectangle(
-                    (-0.5, 0),  # (x,y)
-                    len(self.planes[self.indexes[0]][0]),  # width - bredde er pr dot ikke pixel...
-                    1,  # height / depth
+                    (-0.5, 0),
+                    len(self.planes[self.indexes[0]][0]),
+                    1,
                     fill=False,
                     alpha=1,
                     color='black',
@@ -116,22 +104,20 @@ class PlotCanvas(FigureCanvas):
         self.disabled_overlay = self.axes.add_patch(
             patches.Rectangle(
                 (-0.5, 0),  # (x,y)
-                len(self.planes[self.indexes[0]][0]),  # width - bredde er pr dot ikke pixel...
-                len(self.planes[self.indexes[0]][0]),  # height / depth
+                len(self.planes[self.indexes[0]][0]),
+                len(self.planes[self.indexes[0]][0]),
                 alpha=0.5,
                 color='gray',
                 visible=False
             )
         )
 
-        # initialize plot
-        print(self.dataset_title, self.cmap)
-
-        # self.plot_image(planes[indexes[0]])
 
     def mouse_left(self, evt):
-        pass
+        # for now do nothing
         # self.set_vertical_line_indicator(self.current_index)
+        pass
+
 
     def mouse_clicked(self, evt):
         if evt.inaxes:
@@ -139,7 +125,7 @@ class PlotCanvas(FigureCanvas):
             self.indexChanged.emit(self.indexes[int(evt.xdata)])
 
     def mouse_moved(self, evt):
-        # do nothing
+
         # if evt.inaxes:
         #   self.set_vertical_line_indicator(int(evt.xdata))
         pass
@@ -177,8 +163,6 @@ class PlotWidget(QtGui.QWidget):
     Main widget holding the figure and slider
     """
 
-    # indexChanged = pyqtSignal(int)
-
     def __init__(self, planes, indexes, dataset_title, default_cmap='seismic',
                  show_h_indicator=False, show_v_indicator=False):
         super(PlotWidget, self).__init__()
@@ -191,7 +175,7 @@ class PlotWidget(QtGui.QWidget):
         self.show_v_indicator = show_v_indicator
         self.setAutoFillBackground(True)
         p = self.palette()
-        p.setColor(self.backgroundRole(), Qt.white)
+        p.setColor(self.backgroundRole(), QtCore.Qt.white)
         self.setPalette(p)
 
         self.plotCanvas = PlotCanvas(self.planes, self.indexes, self.dataset_title, self.default_cmap,
@@ -213,9 +197,9 @@ class PlotWidget(QtGui.QWidget):
         self.plotCanvas.set_horizontal_line_indicator(line)
 
 
-class TopMenu(QMenuBar):
+class TopMenu(QtGui.QMenuBar):
     def __init__(self, parent, colormap_monitor):
-        super(QMenuBar, self).__init__(parent)
+        super(QtGui.QMenuBar, self).__init__(parent)
 
         self.fileMenu = self.addMenu('&File')
         exitAction = QtGui.QAction('&Exit', self)
@@ -231,7 +215,6 @@ class TopMenu(QMenuBar):
         def colormapChanger(color_map_name):
             def performColorMapChange():
                 self.colormap_monitor.colormapUpdated(color_map_name)
-
             return performColorMapChange
 
         for item in ['seismic', 'spectral', 'RdGy', 'hot', 'jet', 'gray']:
@@ -245,7 +228,7 @@ class TopMenu(QMenuBar):
 
 
 class LineSelector(QtGui.QWidget):
-    indexChanged = pyqtSignal(int)
+    indexChanged = QtCore.pyqtSignal(int)
 
     def __init__(self, parent, label, indexes, monitor_func):
         super(QtGui.QWidget, self).__init__(parent)
@@ -253,8 +236,8 @@ class LineSelector(QtGui.QWidget):
         self.indexes = indexes
         self.monitor_func = monitor_func
 
-        self.layout = QHBoxLayout()
-        self.slabel = QLabel(self.label)
+        self.layout = QtGui.QHBoxLayout()
+        self.slabel = QtGui.QLabel(self.label)
         self.sbox = QtGui.QSpinBox(self)
         self.sbox.setRange(self.indexes[0], self.indexes[-1])
         self.sbox.valueChanged.connect(self.monitor_func)
@@ -269,7 +252,7 @@ class LineSelector(QtGui.QWidget):
         self.sbox.setValue(val)
 
 
-class ToolBar(QToolBar):
+class ToolBar(QtGui.QToolBar):
     def __init__(self, xline_indexes, iline_indexes, depth_indexes, line_selection_monitor):
         super(ToolBar, self).__init__("")
         self.xline_indexes = xline_indexes
@@ -308,6 +291,7 @@ class AppWindow(QtGui.QMainWindow):
         self.addToolBar(ToolBar(s.xlines, s.ilines, range(s.samples), line_monitor))
         self.statusBar()
 
+        ''' read all samples into memory'''
         # depth = s.samples
         # depth_plane = []  # [ : for s.xline[:,depth] in s.xline]
         # all_traces = np.empty(shape=((len(s.ilines) * len(s.xlines)), s.samples), dtype=np.float32)
@@ -347,22 +331,22 @@ class AppWindow(QtGui.QMainWindow):
         colormap_monitor.cmap_changed.connect(depth_plane_canvas.set_cmap)
 
         # layout
-        xdock = QDockWidget("x-lines")
+        xdock = QtGui.QDockWidget("x-lines")
         xdock.setFeatures(QtGui.QDockWidget.DockWidgetFloatable | QtGui.QDockWidget.DockWidgetMovable)
         xdock.setWidget(x_plane_canvas)
 
-        idock = QDockWidget("i-lines")
+        idock = QtGui.QDockWidget("i-lines")
         idock.setFeatures(QtGui.QDockWidget.DockWidgetFloatable | QtGui.QDockWidget.DockWidgetMovable)
         idock.setWidget(i_plane_canvas)
 
-        ddock = QDockWidget("depth plane")
+        ddock = QtGui.QDockWidget("depth plane")
         ddock.setFeatures(QtGui.QDockWidget.DockWidgetFloatable | QtGui.QDockWidget.DockWidgetMovable)
         ddock.setWidget(depth_plane_canvas)
 
-        self.setDockOptions(QMainWindow.AllowNestedDocks)
-        self.addDockWidget(Qt.TopDockWidgetArea, xdock)
-        self.addDockWidget(Qt.BottomDockWidgetArea, idock)
-        self.addDockWidget(Qt.BottomDockWidgetArea, ddock)
+        self.setDockOptions(QtGui.QMainWindow.AllowNestedDocks)
+        self.addDockWidget(QtCore.Qt.TopDockWidgetArea, xdock)
+        self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, idock)
+        self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, ddock)
 
         self.main_widget.setFocus()
         self.setCentralWidget(self.main_widget)
