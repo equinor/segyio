@@ -3,9 +3,7 @@
 import segyio
 
 from pylab import *
-
 from PyQt4 import QtGui, QtCore
-
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import matplotlib.patches as patches
@@ -44,28 +42,51 @@ class PlaneCanvas(FigureCanvas):
     """
     indexChanged = QtCore.pyqtSignal(int)
 
-    def __init__(self, planes, indexes, axis_indexes, dataset_title, cmap, display_horizontal_indicator=False,
+    def __init__(self, planes, indexes, dataset_title, cmap, x_axis_indexes=None, y_axis_indexes=None, display_horizontal_indicator=False,
                  display_vertical_indicator=False, parent=None, width=800, height=100, dpi=20, v_min_max=None):
-
-        self.planes = planes
-        self.indexes = indexes
-        self.x_axis_indexes, self.y_axis_indexes = axis_indexes[0], axis_indexes[1]
-
-        self.dataset_title = dataset_title
 
         self.fig = Figure(figsize=(width, height), dpi=dpi, facecolor='white')
         FigureCanvas.__init__(self, self.fig)
 
+        self.planes = planes
+        self.indexes = indexes
+        self.x_axis_indexes = x_axis_indexes
+        self.y_axis_indexes = y_axis_indexes
+
+        self.plane_height = len(self.planes[self.indexes[0]][0])
+        self.plane_width = len(self.planes[self.indexes[0]][:])
+
+        self.dataset_title = dataset_title
+
         self.setParent(parent)
 
         self.axes = self.fig.add_subplot(111)
+        self.axes.tick_params(axis='both', labelsize=30)
 
-        self.axes.tick_params(labelsize=30)
+        if self.x_axis_indexes:
+            def x_axis_label_formatter(val, position):
+                if val >= 0 and val < len(self.x_axis_indexes):
+                    return self.x_axis_indexes[int(val)]
+                return ''
+
+            self.axes.get_xaxis().set_major_formatter(FuncFormatter(x_axis_label_formatter))
+            self.axes.get_xaxis().set_major_locator(MaxNLocator(20))
+
+
+        if self.y_axis_indexes:
+            def y_axis_label_formatter(val, position):
+                if val >= 0 and val < len(y_axis_indexes):
+                    return self.y_axis_indexes[int(val)]
+                return ''
+            self.axes.get_yaxis().set_major_formatter(FuncFormatter(y_axis_label_formatter))
+            self.axes.get_yaxis().set_major_locator(MaxNLocator(20))
+
 
         # the default colormap
         self.cmap = cmap
 
-        self.im = self.axes.imshow(planes[indexes[0]].T, interpolation="nearest", aspect="auto", cmap=self.cmap, vmin=v_min_max[0], vmax=v_min_max[1])
+        self.im = self.axes.imshow(planes[indexes[0]].T, interpolation="nearest", aspect="auto", cmap=self.cmap,
+                                   vmin=v_min_max[0], vmax=v_min_max[1])
 
         self.current_index = 0
 
@@ -77,9 +98,9 @@ class PlaneCanvas(FigureCanvas):
         if display_vertical_indicator:
             self.verdical_indicator_rect = self.axes.add_patch(
                 patches.Rectangle(
-                    (-0.5, 0),  # (x,y)
-                    1,  # width - bredde er pr dot ikke pixel...
-                    len(self.planes[self.indexes[0]][0]),  # height / depth
+                    (-0.5, -0.5),  # (x,y)
+                    1,
+                    self.plane_height-0.5,
                     fill=False,
                     alpha=1,
                     color='black',
@@ -91,8 +112,8 @@ class PlaneCanvas(FigureCanvas):
         if display_horizontal_indicator:
             self.horizontal_indicator_rect = self.axes.add_patch(
                 patches.Rectangle(
-                    (-0.5, 0),
-                    len(self.planes[self.indexes[0]][0]),
+                    (-0.5, -0.5),
+                    self.plane_width,
                     1,
                     fill=False,
                     alpha=1,
@@ -104,7 +125,7 @@ class PlaneCanvas(FigureCanvas):
 
         self.disabled_overlay = self.axes.add_patch(
             patches.Rectangle(
-                (-0.5, 0),  # (x,y)
+                (-0.5, -0.5),  # (x,y)
                 len(self.planes[self.indexes[0]][0]),
                 len(self.planes[self.indexes[0]][0]),
                 alpha=0.5,
@@ -142,13 +163,10 @@ class PlaneCanvas(FigureCanvas):
 
     def set_vertical_line_indicator(self, line_index):
         self.verdical_indicator_rect.set_x(self.x_axis_indexes.index(line_index) - 0.5)
-        self.verdical_indicator_rect.set_y(0)
         self.draw()
 
     def set_horizontal_line_indicator(self, line_index):
-        self.horizontal_indicator_rect.set_x(-0.5)
-
-        self.horizontal_indicator_rect.set_y(self.y_axis_indexes.index(line_index))
+        self.horizontal_indicator_rect.set_y(self.y_axis_indexes.index(line_index)-0.5)
         self.draw()
 
     def enable_overlay(self):
@@ -165,7 +183,8 @@ class PlotWidget(QtGui.QWidget):
     Main widget holding the figure and slider
     """
 
-    def __init__(self, planes, indexes, axis_indexes, dataset_title, default_cmap='seismic',
+    def __init__(self, planes, indexes, dataset_title, default_cmap='seismic',
+                 x_axis_indexes=None, y_axis_indexes=None,
                  show_h_indicator=False, show_v_indicator=False, v_min_max=None):
         super(PlotWidget, self).__init__()
 
@@ -181,7 +200,8 @@ class PlotWidget(QtGui.QWidget):
         self.setPalette(p)
 
 
-        self.plotCanvas = PlaneCanvas(self.planes, self.indexes, axis_indexes, self.dataset_title, self.default_cmap,
+        self.plotCanvas = PlaneCanvas(self.planes, self.indexes, self.dataset_title, self.default_cmap,
+                                      x_axis_indexes=x_axis_indexes, y_axis_indexes=y_axis_indexes,
                                       display_horizontal_indicator=self.show_h_indicator,
                                       display_vertical_indicator=self.show_v_indicator, v_min_max=v_min_max)
 
@@ -296,9 +316,9 @@ class AppWindow(QtGui.QMainWindow):
         depth_planes, min_max = read_traces_to_memory(s)
 
         # initialize
-        x_plane_canvas = PlotWidget(s.xline, s.xlines, (s.ilines, 0), "xlines", show_v_indicator=True, v_min_max=min_max)
-        i_plane_canvas = PlotWidget(s.iline, s.ilines, (s.xlines, 0), "ilines", show_v_indicator=True, v_min_max=min_max)
-        depth_plane_canvas = PlotWidget(depth_planes, range(s.samples), (s.xlines, s.ilines), "depth",
+        x_plane_canvas = PlotWidget(s.xline, s.xlines, "xlines", x_axis_indexes=s.ilines, show_v_indicator=True, v_min_max=min_max)
+        i_plane_canvas = PlotWidget(s.iline, s.ilines, "ilines", x_axis_indexes=s.xlines, show_v_indicator=True, v_min_max=min_max)
+        depth_plane_canvas = PlotWidget(depth_planes, range(s.samples), "depth", x_axis_indexes=s.xlines, y_axis_indexes=s.ilines,
                                         show_v_indicator=True, show_h_indicator=True, v_min_max=min_max)
 
         # attach signals
