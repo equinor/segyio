@@ -83,14 +83,6 @@ contribution is to either make an
 [issue](https://github.com/Statoil/SegyIO/issues) on github or by forking the
 project on github and making a pull request.
 
-The current version supports:
-
-* Reading EBCDIC Textual Header
-* Reading Binary Header and selected fields.
-* Read individual traces
-* Inspect a SEGY file and identify crossline, inline and sample indexes
-
-
 ## Reproducing the test data ##
 
 Small SEG Y formatted files are included in the repository for test purposes.
