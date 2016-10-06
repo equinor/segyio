@@ -14,8 +14,15 @@ def main():
 
     with segyio.open(segyfile) as f:
         for trace in f.trace:
-            min_value = min(np.amin(trace), min_value)
-            max_value = max(np.amin(trace), max_value)
+
+            local_min = np.nanmin(trace)
+            local_max = np.nanmax(trace)
+
+            if np.isfinite(local_min):
+                min_value = min(local_min, min_value)
+
+            if np.isfinite(local_max):
+                max_value = max(local_max, max_value)
 
     print "min: {}".format(min_value)
     print "max: {}".format(max_value)
