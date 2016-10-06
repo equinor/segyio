@@ -14,19 +14,16 @@ class LineSelectionMonitor(QtCore.QObject):
     xlineChanged = QtCore.pyqtSignal(int)
     depthChanged = QtCore.pyqtSignal(int)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent):
         QtCore.QObject.__init__(self, parent)
 
     def ilineUpdated(self, new_index):
-        print("iline:{0} updated", new_index)
         self.ilineChanged.emit(new_index)
 
     def xlineUpdated(self, new_index):
-        print("xline:{0} updated", new_index)
         self.xlineChanged.emit(new_index)
 
     def depthUpdated(self, new_index):
-        print("depth:{0} updated", new_index)
         self.depthChanged.emit(new_index)
 
 class ColorMapMonitor(QtCore.QObject):
@@ -39,17 +36,18 @@ class ColorMapMonitor(QtCore.QObject):
         self.cmap_changed.emit(str(value))
 
 
-class PlotCanvas(FigureCanvas):
+class PlaneCanvas(FigureCanvas):
     """
     Generic plot canvas for all plane views
     """
     indexChanged = QtCore.pyqtSignal(int)
 
-    def __init__(self, planes, indexes, dataset_title, cmap, display_horizontal_indicator=False,
-                 display_vertical_indicator=False, parent=None, width=800, height=100, dpi=20):
+    def __init__(self, planes, indexes, axis_indexes, dataset_title, cmap, display_horizontal_indicator=False,
+                 display_vertical_indicator=False, parent=None, width=800, height=100, dpi=20, v_min_max=None):
 
         self.planes = planes
         self.indexes = indexes
+        self.x_axis_indexes, self.y_axis_indexes = axis_indexes[0], axis_indexes[1]
 
         self.dataset_title = dataset_title
 
@@ -59,12 +57,13 @@ class PlotCanvas(FigureCanvas):
         self.setParent(parent)
 
         self.axes = self.fig.add_subplot(111)
-        self.axes.set_xticks(indexes)
-        self.axes.tick_params(axis='both', labelsize=30)
+
+        self.axes.tick_params(labelsize=30)
 
         # the default colormap
         self.cmap = cmap
-        self.im = self.axes.imshow(planes[indexes[0]].T, interpolation="nearest", aspect="auto", cmap=self.cmap)
+
+        self.im = self.axes.imshow(planes[indexes[0]].T, interpolation="nearest", aspect="auto", cmap=self.cmap, vmin=v_min_max[0], vmax=v_min_max[1])
 
         self.current_index = 0
 
@@ -122,7 +121,7 @@ class PlotCanvas(FigureCanvas):
     def mouse_clicked(self, evt):
         if evt.inaxes:
             self.current_index = int(evt.xdata)
-            self.indexChanged.emit(self.indexes[int(evt.xdata)])
+            self.indexChanged.emit(self.x_axis_indexes[int(evt.xdata)])
 
     def mouse_moved(self, evt):
 
@@ -140,13 +139,14 @@ class PlotCanvas(FigureCanvas):
         self.draw()
 
     def set_vertical_line_indicator(self, line_index):
-        self.verdical_indicator_rect.set_x(line_index - 0.5)
+        self.verdical_indicator_rect.set_x(self.x_axis_indexes.index(line_index) - 0.5)
         self.verdical_indicator_rect.set_y(0)
         self.draw()
 
     def set_horizontal_line_indicator(self, line_index):
         self.horizontal_indicator_rect.set_x(-0.5)
-        self.horizontal_indicator_rect.set_y(line_index)
+
+        self.horizontal_indicator_rect.set_y(self.y_axis_indexes.index(line_index))
         self.draw()
 
     def enable_overlay(self):
@@ -163,8 +163,8 @@ class PlotWidget(QtGui.QWidget):
     Main widget holding the figure and slider
     """
 
-    def __init__(self, planes, indexes, dataset_title, default_cmap='seismic',
-                 show_h_indicator=False, show_v_indicator=False):
+    def __init__(self, planes, indexes, axis_indexes, dataset_title, default_cmap='seismic',
+                 show_h_indicator=False, show_v_indicator=False, v_min_max=None):
         super(PlotWidget, self).__init__()
 
         self.planes = planes
@@ -178,9 +178,10 @@ class PlotWidget(QtGui.QWidget):
         p.setColor(self.backgroundRole(), QtCore.Qt.white)
         self.setPalette(p)
 
-        self.plotCanvas = PlotCanvas(self.planes, self.indexes, self.dataset_title, self.default_cmap,
-                                     display_horizontal_indicator=self.show_h_indicator,
-                                     display_vertical_indicator=self.show_v_indicator)
+
+        self.plotCanvas = PlaneCanvas(self.planes, self.indexes, axis_indexes, self.dataset_title, self.default_cmap,
+                                      display_horizontal_indicator=self.show_h_indicator,
+                                      display_vertical_indicator=self.show_v_indicator, v_min_max=v_min_max)
 
         self.layout = QtGui.QVBoxLayout(self)
         self.layout.addWidget(self.plotCanvas)
@@ -189,11 +190,9 @@ class PlotWidget(QtGui.QWidget):
         self.plotCanvas.set_colormap(str(action))
 
     def set_vertical_line_indicator(self, line):
-        print("set vertical line ind:", line)
         self.plotCanvas.set_vertical_line_indicator(line)
 
     def set_horizontal_line_indicator(self, line):
-        print("set horizontal line ind:", line)
         self.plotCanvas.set_horizontal_line_indicator(line)
 
 
@@ -246,10 +245,12 @@ class LineSelector(QtGui.QWidget):
         self.setLayout(self.layout)
 
     def index_changed(self, val):
-        self.indexChanged.emit(self.indexes[val])
+        self.indexChanged.emit(val)
 
     def set_index(self, val):
+        self.sbox.blockSignals(True)
         self.sbox.setValue(val)
+        self.sbox.blockSignals(False)
 
 
 class ToolBar(QtGui.QToolBar):
@@ -271,7 +272,6 @@ class ToolBar(QtGui.QToolBar):
         self.addWidget(self.iline_selector)
 
         # iline
-
         self.depth_selector = LineSelector(self, "depth", self.depth_indexes, self.line_selection_monitor.depthUpdated)
         self.addWidget(self.depth_selector)
 
@@ -291,25 +291,13 @@ class AppWindow(QtGui.QMainWindow):
         self.addToolBar(ToolBar(s.xlines, s.ilines, range(s.samples), line_monitor))
         self.statusBar()
 
-        ''' read all samples into memory'''
-        # depth = s.samples
-        # depth_plane = []  # [ : for s.xline[:,depth] in s.xline]
-        # all_traces = np.empty(shape=((len(s.ilines) * len(s.xlines)), s.samples), dtype=np.float32)
-        #
-        # for i, t in enumerate(s.trace):
-        #     all_traces[i] = t
-        #
-        # all_traces2 = all_traces.reshape(len(s.ilines), len(s.xlines), s.samples)
-        #
-        # all_traces3 = all_traces2.transpose(2, 0, 1)
-
-
+        depth_planes, min_max = read_traces_to_memory(s)
 
         # initialize
-        x_plane_canvas = PlotWidget(s.xline, s.xlines, "xlines", show_v_indicator=True)
-        i_plane_canvas = PlotWidget(s.iline, s.ilines, "ilines", show_v_indicator=True)
-        depth_plane_canvas = PlotWidget(s.depth_plane, range(s.samples), "depth",
-                                        show_v_indicator=True, show_h_indicator=True)
+        x_plane_canvas = PlotWidget(s.xline, s.xlines, (s.ilines, 0), "xlines", show_v_indicator=True, v_min_max=min_max)
+        i_plane_canvas = PlotWidget(s.iline, s.ilines, (s.xlines, 0), "ilines", show_v_indicator=True, v_min_max=min_max)
+        depth_plane_canvas = PlotWidget(depth_planes, range(s.samples), (s.xlines, s.ilines), "depth",
+                                        show_v_indicator=True, show_h_indicator=True, v_min_max=min_max)
 
         # attach signals
         x_plane_canvas.plotCanvas.indexChanged.connect(line_monitor.ilineUpdated)
@@ -353,13 +341,41 @@ class AppWindow(QtGui.QMainWindow):
         self.main_widget.hide()
 
 
+def read_traces_to_memory(segy):
+    ''' read all samples into memory and identify min and max'''
+
+    all_traces = np.empty(shape=((len(segy.ilines) * len(segy.xlines)), segy.samples), dtype=np.float32)
+
+    min_value = sys.float_info.max
+    max_value = sys.float_info.min
+
+    for i, t in enumerate(segy.trace):
+        all_traces[i] = t
+
+        local_min = np.nanmin(t)
+        local_max = np.nanmax(t)
+
+        if np.isfinite(local_min):
+            min_value = min(local_min, min_value)
+
+        if np.isfinite(local_max):
+            max_value = max(local_max, max_value)
+
+    all_traces2 = all_traces.reshape(len(segy.ilines), len(segy.xlines), segy.samples)
+
+    transposed_traces = all_traces2.transpose(2, 0, 1)
+
+    return transposed_traces, (min_value,max_value)
+
+
+
+
 def main():
     if len(sys.argv) < 2:
         sys.exit("Usage: segyviewer.py [file]")
 
     filename = sys.argv[1]
 
-    # read the file given by cmd arg
     with segyio.open(filename, "r") as s:
         qApp = QtGui.QApplication(sys.argv)
         aw = AppWindow(s)
