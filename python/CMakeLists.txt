@@ -31,3 +31,4 @@ if (PYTHONLIBS_FOUND)
 endif ()
 
 add_subdirectory(segyio)
+add_subdirectory(segyview)
