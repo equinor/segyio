@@ -26,6 +26,7 @@ class LineSelectionMonitor(QtCore.QObject):
     def depthUpdated(self, new_index):
         self.depthChanged.emit(new_index)
 
+
 class ColorMapMonitor(QtCore.QObject):
     cmap_changed = QtCore.pyqtSignal(str)
 
@@ -42,7 +43,7 @@ class PlaneCanvas(FigureCanvas):
     """
     indexChanged = QtCore.pyqtSignal(int)
 
-    def __init__(self, planes, indexes, dataset_title, cmap, x_axis_indexes=None, y_axis_indexes=None,
+    def __init__(self, planes, indexes, dataset_title=None, cmap='seismic', x_axis_indexes=None, y_axis_indexes=None,
                  display_horizontal_indicator=False,
                  display_vertical_indicator=False, parent=None, width=800, height=100, dpi=20, v_min_max=None):
 
@@ -51,22 +52,15 @@ class PlaneCanvas(FigureCanvas):
 
         self.planes = planes
         self.indexes = indexes
-
-        if x_axis_indexes:
-            self.x_axis_name, self.x_axis_indexes = x_axis_indexes
-        else:
-            self.x_axis_indexes = None
-
-        if y_axis_indexes:
-            self.y_axis_name, self.y_axis_indexes = y_axis_indexes
-        else:
-            self.y_axis_indexes = None
-
+        self.cmap = cmap
 
         self.plane_height = len(self.planes[self.indexes[0]][0])
         self.plane_width = len(self.planes[self.indexes[0]][:])
 
-        self.dataset_title = dataset_title
+        self.x_axis_name, self.x_axis_indexes = x_axis_indexes or (None, None)
+        self.y_axis_name, self.y_axis_indexes = y_axis_indexes or (None, None)
+
+        self.current_index = 0
 
         self.setParent(parent)
 
@@ -78,10 +72,10 @@ class PlaneCanvas(FigureCanvas):
                 if val >= 0 and val < len(self.x_axis_indexes):
                     return self.x_axis_indexes[int(val)]
                 return ''
-            self.axes.set_xlabel(self.x_axis_name, fontsize=30)
-            self.axes.get_xaxis().set_major_formatter(FuncFormatter(x_axis_label_formatter))
-            self.axes.get_xaxis().set_major_locator(MaxNLocator(20))    # max 20 ticks are shown
 
+            self.axes.set_xlabel(self.x_axis_name, fontsize=40)
+            self.axes.get_xaxis().set_major_formatter(FuncFormatter(x_axis_label_formatter))
+            self.axes.get_xaxis().set_major_locator(MaxNLocator(20))  # max 20 ticks are shown
 
         if self.y_axis_indexes:
             def y_axis_label_formatter(val, position):
@@ -89,11 +83,9 @@ class PlaneCanvas(FigureCanvas):
                     return self.y_axis_indexes[int(val)]
                 return ''
 
-            self.axes.set_ylabel(self.y_axis_name, fontsize=30)
+            self.axes.set_ylabel(self.y_axis_name, fontsize=40)
             self.axes.get_yaxis().set_major_formatter(FuncFormatter(y_axis_label_formatter))
-            self.axes.get_yaxis().set_major_locator(MaxNLocator(20))    # max 20 ticks are shown
-
-        self.cmap = cmap
+            self.axes.get_yaxis().set_major_locator(MaxNLocator(20))  # max 20 ticks are shown
 
         self.im = self.axes.imshow(planes[indexes[0]].T,
                                    interpolation="nearest",
@@ -101,8 +93,6 @@ class PlaneCanvas(FigureCanvas):
                                    cmap=self.cmap,
                                    vmin=v_min_max[0],
                                    vmax=v_min_max[1])
-
-        self.current_index = 0
 
         # connecting matplotlib mouse signals
         self.mpl_connect('motion_notify_event', self.mouse_moved)
@@ -148,12 +138,10 @@ class PlaneCanvas(FigureCanvas):
             )
         )
 
-
     def mouse_left(self, evt):
         # for now do nothing
         # self.set_vertical_line_indicator(self.current_index)
         pass
-
 
     def mouse_clicked(self, evt):
         if evt.inaxes:
@@ -180,7 +168,7 @@ class PlaneCanvas(FigureCanvas):
         self.draw()
 
     def set_horizontal_line_indicator(self, line_index):
-        self.horizontal_indicator_rect.set_y(self.y_axis_indexes.index(line_index)-0.5)
+        self.horizontal_indicator_rect.set_y(self.y_axis_indexes.index(line_index) - 0.5)
         self.draw()
 
     def enable_overlay(self):
@@ -197,14 +185,14 @@ class PlotWidget(QtGui.QWidget):
     Main widget holding the figure and slider
     """
 
-    def __init__(self, planes, indexes, dataset_title, default_cmap='seismic',
+    def __init__(self, planes, indexes, dataset_title=None, default_cmap='seismic',
                  x_axis_indexes=None, y_axis_indexes=None,
                  show_h_indicator=False, show_v_indicator=False, v_min_max=None):
         super(PlotWidget, self).__init__()
 
         self.planes = planes
         self.indexes = indexes
-        self.dataset_title = dataset_title
+
         self.default_cmap = default_cmap
         self.show_h_indicator = show_h_indicator
         self.show_v_indicator = show_v_indicator
@@ -213,7 +201,7 @@ class PlotWidget(QtGui.QWidget):
         p.setColor(self.backgroundRole(), QtCore.Qt.white)
         self.setPalette(p)
 
-        self.plotCanvas = PlaneCanvas(self.planes, self.indexes, self.dataset_title, self.default_cmap,
+        self.plotCanvas = PlaneCanvas(self.planes, self.indexes, dataset_title, self.default_cmap,
                                       x_axis_indexes=x_axis_indexes, y_axis_indexes=y_axis_indexes,
                                       display_horizontal_indicator=self.show_h_indicator,
                                       display_vertical_indicator=self.show_v_indicator, v_min_max=v_min_max)
@@ -249,6 +237,7 @@ class TopMenu(QtGui.QMenuBar):
         def colormapChanger(color_map_name):
             def performColorMapChange():
                 self.colormap_monitor.colormapUpdated(color_map_name)
+
             return performColorMapChange
 
         for item in ['seismic', 'spectral', 'RdGy', 'hot', 'jet', 'gray']:
@@ -297,12 +286,12 @@ class ToolBar(QtGui.QToolBar):
         self.line_selection_monitor = line_selection_monitor
 
         # xline
-        self.xline_selector = LineSelector(self, "xline", self.xline_indexes, self.line_selection_monitor.xlineUpdated)
+        self.xline_selector = LineSelector(self, "x-line", self.xline_indexes, self.line_selection_monitor.xlineUpdated)
         self.line_selection_monitor.xlineChanged.connect(self.xline_selector.set_index)
         self.addWidget(self.xline_selector)
 
         # iline
-        self.iline_selector = LineSelector(self, "iline", self.iline_indexes, self.line_selection_monitor.ilineUpdated)
+        self.iline_selector = LineSelector(self, "i-line", self.iline_indexes, self.line_selection_monitor.ilineUpdated)
         self.line_selection_monitor.ilineChanged.connect(self.iline_selector.set_index)
         self.addWidget(self.iline_selector)
 
@@ -329,13 +318,22 @@ class AppWindow(QtGui.QMainWindow):
         depth_planes, min_max = read_traces_to_memory(s)
 
         # initialize
-        x_plane_canvas = PlotWidget(s.xline, s.xlines, "x-lines", x_axis_indexes=('i-lines', s.ilines),
-                                    show_v_indicator=True, v_min_max=min_max)
-        i_plane_canvas = PlotWidget(s.iline, s.ilines, "i-lines", x_axis_indexes=('x-lines', s.xlines),
-                                    show_v_indicator=True, v_min_max=min_max)
-        depth_plane_canvas = PlotWidget(depth_planes, range(s.samples), "depth", x_axis_indexes=('i-lines', s.ilines),
+        x_plane_canvas = PlotWidget(s.xline, s.xlines,
+                                    x_axis_indexes=('i-lines', s.ilines),
+                                    y_axis_indexes=('depth', range(s.samples)),
+                                    show_v_indicator=True,
+                                    v_min_max=min_max)
+        i_plane_canvas = PlotWidget(s.iline, s.ilines,
+                                    x_axis_indexes=('x-lines', s.xlines),
+                                    y_axis_indexes=('depth', range(s.samples)),
+                                    show_v_indicator=True,
+                                    v_min_max=min_max)
+        depth_plane_canvas = PlotWidget(depth_planes, range(s.samples),
+                                        x_axis_indexes=('i-lines', s.ilines),
                                         y_axis_indexes=('x-lines', s.xlines),
-                                        show_v_indicator=True, show_h_indicator=True, v_min_max=min_max)
+                                        show_v_indicator=True,
+                                        show_h_indicator=True,
+                                        v_min_max=min_max)
 
         # attach signals
         x_plane_canvas.plotCanvas.indexChanged.connect(line_monitor.ilineUpdated)
@@ -357,11 +355,11 @@ class AppWindow(QtGui.QMainWindow):
         colormap_monitor.cmap_changed.connect(depth_plane_canvas.set_cmap)
 
         # layout
-        xdock = QtGui.QDockWidget("x-lines")
+        xdock = QtGui.QDockWidget("x-line")
         xdock.setFeatures(QtGui.QDockWidget.DockWidgetFloatable | QtGui.QDockWidget.DockWidgetMovable)
         xdock.setWidget(x_plane_canvas)
 
-        idock = QtGui.QDockWidget("i-lines")
+        idock = QtGui.QDockWidget("i-line")
         idock.setFeatures(QtGui.QDockWidget.DockWidgetFloatable | QtGui.QDockWidget.DockWidgetMovable)
         idock.setWidget(i_plane_canvas)
 
@@ -403,8 +401,6 @@ def read_traces_to_memory(segy):
     transposed_traces = all_traces2.transpose(2, 0, 1)
 
     return transposed_traces, (min_value, max_value)
-
-
 
 
 def main():
