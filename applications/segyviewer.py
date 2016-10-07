@@ -53,10 +53,16 @@ class PlaneCanvas(FigureCanvas):
         self.x_axis_indexes = x_axis_indexes
         self.y_axis_indexes = y_axis_indexes
 
+
+
         self.plane_height = len(self.planes[self.indexes[0]][0])
         self.plane_width = len(self.planes[self.indexes[0]][:])
 
         self.dataset_title = dataset_title
+        print("{0} - height:{1}, width:{2}".format(self.dataset_title, self.plane_height, self.plane_width))
+
+        if self.y_axis_indexes and self.x_axis_indexes:
+            print("{0} - y-axis:{1}, x-axis:{2}".format(self.dataset_title, len(self.y_axis_indexes), len(self.x_axis_indexes)))
 
         self.setParent(parent)
 
@@ -318,7 +324,7 @@ class AppWindow(QtGui.QMainWindow):
         # initialize
         x_plane_canvas = PlotWidget(s.xline, s.xlines, "xlines", x_axis_indexes=s.ilines, show_v_indicator=True, v_min_max=min_max)
         i_plane_canvas = PlotWidget(s.iline, s.ilines, "ilines", x_axis_indexes=s.xlines, show_v_indicator=True, v_min_max=min_max)
-        depth_plane_canvas = PlotWidget(depth_planes, range(s.samples), "depth", x_axis_indexes=s.xlines, y_axis_indexes=s.ilines,
+        depth_plane_canvas = PlotWidget(depth_planes, range(s.samples), "depth", x_axis_indexes=s.ilines, y_axis_indexes=s.xlines,
                                         show_v_indicator=True, show_h_indicator=True, v_min_max=min_max)
 
         # attach signals
@@ -326,11 +332,11 @@ class AppWindow(QtGui.QMainWindow):
         i_plane_canvas.plotCanvas.indexChanged.connect(line_monitor.xlineUpdated)
 
         line_monitor.ilineChanged.connect(x_plane_canvas.set_vertical_line_indicator)
-        line_monitor.ilineChanged.connect(depth_plane_canvas.set_horizontal_line_indicator)
+        line_monitor.ilineChanged.connect(depth_plane_canvas.set_vertical_line_indicator)
         line_monitor.ilineChanged.connect(i_plane_canvas.plotCanvas.update_image)
 
         line_monitor.xlineChanged.connect(i_plane_canvas.set_vertical_line_indicator)
-        line_monitor.xlineChanged.connect(depth_plane_canvas.set_vertical_line_indicator)
+        line_monitor.xlineChanged.connect(depth_plane_canvas.set_horizontal_line_indicator)
         line_monitor.xlineChanged.connect(x_plane_canvas.plotCanvas.update_image)
 
         line_monitor.depthChanged.connect(depth_plane_canvas.plotCanvas.update_image)
