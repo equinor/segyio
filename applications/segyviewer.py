@@ -42,7 +42,8 @@ class PlaneCanvas(FigureCanvas):
     """
     indexChanged = QtCore.pyqtSignal(int)
 
-    def __init__(self, planes, indexes, dataset_title, cmap, x_axis_indexes=None, y_axis_indexes=None, display_horizontal_indicator=False,
+    def __init__(self, planes, indexes, dataset_title, cmap, x_axis_indexes=None, y_axis_indexes=None,
+                 display_horizontal_indicator=False,
                  display_vertical_indicator=False, parent=None, width=800, height=100, dpi=20, v_min_max=None):
 
         self.fig = Figure(figsize=(width, height), dpi=dpi, facecolor='white')
@@ -50,19 +51,22 @@ class PlaneCanvas(FigureCanvas):
 
         self.planes = planes
         self.indexes = indexes
-        self.x_axis_indexes = x_axis_indexes
-        self.y_axis_indexes = y_axis_indexes
 
+        if x_axis_indexes:
+            self.x_axis_name, self.x_axis_indexes = x_axis_indexes
+        else:
+            self.x_axis_indexes = None
+
+        if y_axis_indexes:
+            self.y_axis_name, self.y_axis_indexes = y_axis_indexes
+        else:
+            self.y_axis_indexes = None
 
 
         self.plane_height = len(self.planes[self.indexes[0]][0])
         self.plane_width = len(self.planes[self.indexes[0]][:])
 
         self.dataset_title = dataset_title
-        print("{0} - height:{1}, width:{2}".format(self.dataset_title, self.plane_height, self.plane_width))
-
-        if self.y_axis_indexes and self.x_axis_indexes:
-            print("{0} - y-axis:{1}, x-axis:{2}".format(self.dataset_title, len(self.y_axis_indexes), len(self.x_axis_indexes)))
 
         self.setParent(parent)
 
@@ -74,25 +78,29 @@ class PlaneCanvas(FigureCanvas):
                 if val >= 0 and val < len(self.x_axis_indexes):
                     return self.x_axis_indexes[int(val)]
                 return ''
-
+            self.axes.set_xlabel(self.x_axis_name, fontsize=30)
             self.axes.get_xaxis().set_major_formatter(FuncFormatter(x_axis_label_formatter))
-            self.axes.get_xaxis().set_major_locator(MaxNLocator(20))
+            self.axes.get_xaxis().set_major_locator(MaxNLocator(20))    # max 20 ticks are shown
 
 
         if self.y_axis_indexes:
             def y_axis_label_formatter(val, position):
-                if val >= 0 and val < len(y_axis_indexes):
+                if val >= 0 and val < len(self.y_axis_indexes):
                     return self.y_axis_indexes[int(val)]
                 return ''
+
+            self.axes.set_ylabel(self.y_axis_name, fontsize=30)
             self.axes.get_yaxis().set_major_formatter(FuncFormatter(y_axis_label_formatter))
-            self.axes.get_yaxis().set_major_locator(MaxNLocator(20))
+            self.axes.get_yaxis().set_major_locator(MaxNLocator(20))    # max 20 ticks are shown
 
-
-        # the default colormap
         self.cmap = cmap
 
-        self.im = self.axes.imshow(planes[indexes[0]].T, interpolation="nearest", aspect="auto", cmap=self.cmap,
-                                   vmin=v_min_max[0], vmax=v_min_max[1])
+        self.im = self.axes.imshow(planes[indexes[0]].T,
+                                   interpolation="nearest",
+                                   aspect="auto",
+                                   cmap=self.cmap,
+                                   vmin=v_min_max[0],
+                                   vmax=v_min_max[1])
 
         self.current_index = 0
 
@@ -104,9 +112,9 @@ class PlaneCanvas(FigureCanvas):
         if display_vertical_indicator:
             self.verdical_indicator_rect = self.axes.add_patch(
                 patches.Rectangle(
-                    (-0.5, -0.5),  # (x,y)
+                    (-0.5, -0.5),
                     1,
-                    self.plane_height-0.5,
+                    self.plane_height,
                     fill=False,
                     alpha=1,
                     color='black',
@@ -153,7 +161,7 @@ class PlaneCanvas(FigureCanvas):
             self.indexChanged.emit(self.x_axis_indexes[int(evt.xdata)])
 
     def mouse_moved(self, evt):
-
+        # for now do nothing
         # if evt.inaxes:
         #   self.set_vertical_line_indicator(int(evt.xdata))
         pass
@@ -204,7 +212,6 @@ class PlotWidget(QtGui.QWidget):
         p = self.palette()
         p.setColor(self.backgroundRole(), QtCore.Qt.white)
         self.setPalette(p)
-
 
         self.plotCanvas = PlaneCanvas(self.planes, self.indexes, self.dataset_title, self.default_cmap,
                                       x_axis_indexes=x_axis_indexes, y_axis_indexes=y_axis_indexes,
@@ -322,9 +329,12 @@ class AppWindow(QtGui.QMainWindow):
         depth_planes, min_max = read_traces_to_memory(s)
 
         # initialize
-        x_plane_canvas = PlotWidget(s.xline, s.xlines, "xlines", x_axis_indexes=s.ilines, show_v_indicator=True, v_min_max=min_max)
-        i_plane_canvas = PlotWidget(s.iline, s.ilines, "ilines", x_axis_indexes=s.xlines, show_v_indicator=True, v_min_max=min_max)
-        depth_plane_canvas = PlotWidget(depth_planes, range(s.samples), "depth", x_axis_indexes=s.ilines, y_axis_indexes=s.xlines,
+        x_plane_canvas = PlotWidget(s.xline, s.xlines, "x-lines", x_axis_indexes=('i-lines', s.ilines),
+                                    show_v_indicator=True, v_min_max=min_max)
+        i_plane_canvas = PlotWidget(s.iline, s.ilines, "i-lines", x_axis_indexes=('x-lines', s.xlines),
+                                    show_v_indicator=True, v_min_max=min_max)
+        depth_plane_canvas = PlotWidget(depth_planes, range(s.samples), "depth", x_axis_indexes=('i-lines', s.ilines),
+                                        y_axis_indexes=('x-lines', s.xlines),
                                         show_v_indicator=True, show_h_indicator=True, v_min_max=min_max)
 
         # attach signals
@@ -371,7 +381,6 @@ class AppWindow(QtGui.QMainWindow):
 
 def read_traces_to_memory(segy):
     ''' read all samples into memory and identify min and max'''
-
     all_traces = np.empty(shape=((len(segy.ilines) * len(segy.xlines)), segy.samples), dtype=np.float32)
 
     min_value = sys.float_info.max
@@ -393,7 +402,7 @@ def read_traces_to_memory(segy):
 
     transposed_traces = all_traces2.transpose(2, 0, 1)
 
-    return transposed_traces, (min_value,max_value)
+    return transposed_traces, (min_value, max_value)
 
 
 
