@@ -442,7 +442,7 @@ void test_text_header() {
     FILE* fp = fopen( file, "r" );
 
     char ascii[ SEGY_TEXT_HEADER_SIZE + 1 ] = { 0 };
-    int err = segy_textheader( fp, ascii );
+    int err = segy_read_textheader(fp, ascii);
     assertTrue( err == 0, "Could not read text header" );
     assertTrue( strcmp(expected_textheader, ascii) == 0, "Text headers did not match" );
 
@@ -519,7 +519,7 @@ void test_file_error_codes() {
     err = segy_get_field( header, DayOfYear, &field );
     assertTrue( err == SEGY_OK, "Reading failed at valid byte offset." );
 
-    err = segy_textheader( fp, NULL );
+    err = segy_read_textheader(fp, NULL);
     assertTrue( err == SEGY_FSEEK_ERROR, "Could seek in invalid file." );
 
     size_t traces;

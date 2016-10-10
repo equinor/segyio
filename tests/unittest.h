@@ -11,7 +11,7 @@
 void testAssertionFailed(const char *message, const char *file, int line) {
     fprintf(stderr, "Assertion failed in file: %s on line: %d\n", file, line);
     if (strlen(message) > 0) {
-        fprintf(stderr, message);
+        fprintf(stderr, "%s", message);
     }
     exit(1);
 }
@@ -20,7 +20,7 @@ void testAssertionFailed(const char *message, const char *file, int line) {
 
 void _testAssertTrue(bool value, const char *message, const char *file, int line) {
     if (!value) {
-        if (strlen(message) == 0) {
+        if (message && strlen(message) == 0) {
             message = "The expression did not evaluate to true!";
         }
         testAssertionFailed(message, file, line);

@@ -50,8 +50,8 @@ void ebcdic2ascii( const char* ebcdic, char* ascii ) {
 }
 
 void ascii2ebcdic( const char* ascii, char* ebcdic ) {
-    while( *ascii != '\0' )
-        *ebcdic++ = a2e[ (unsigned char)*ascii++ ];
+    while (*ascii != '\0')
+        *ebcdic++ = a2e[(unsigned char) *ascii++];
 
     *ebcdic = '\0';
 }
@@ -415,6 +415,10 @@ int segy_set_bfield( char* binheader, int field, int val ) {
 }
 
 int segy_binheader( FILE* fp, char* buf ) {
+    if(fp == NULL) {
+        return SEGY_INVALID_ARGS;
+    }
+
     const int err = fseek( fp, SEGY_TEXT_HEADER_SIZE, SEEK_SET );
     if( err != 0 ) return SEGY_FSEEK_ERROR;
 
@@ -426,12 +430,16 @@ int segy_binheader( FILE* fp, char* buf ) {
 }
 
 int segy_write_binheader( FILE* fp, const char* buf ) {
+    if(fp == NULL) {
+        return SEGY_INVALID_ARGS;
+    }
+
     const int err = fseek( fp, SEGY_TEXT_HEADER_SIZE, SEEK_SET );
     if( err != 0 ) return SEGY_FSEEK_ERROR;
 
     const size_t writec = fwrite( buf, 1, SEGY_BINARY_HEADER_SIZE, fp);
     if( writec != SEGY_BINARY_HEADER_SIZE )
-        return SEGY_FREAD_ERROR;
+        return SEGY_FWRITE_ERROR;
 
     return SEGY_OK;
 }
@@ -445,7 +453,7 @@ int segy_format( const char* buf ) {
 unsigned int segy_samples( const char* buf ) {
     int samples;
     segy_get_bfield( buf, BIN_Samples, &samples );
-    return samples;
+    return (unsigned int) samples;
 }
 
 unsigned int segy_trace_bsize( unsigned int samples ) {
@@ -636,6 +644,12 @@ int segy_sorting( FILE* fp,
     err = segy_traceheader( fp, 0, traceheader, trace0, trace_bsize );
     if( err != SEGY_OK ) return err;
 
+    if( il < 0 || il >= SEGY_TRACE_HEADER_SIZE )
+        return SEGY_INVALID_FIELD;
+
+    if( xl < 0 || xl >= SEGY_TRACE_HEADER_SIZE )
+        return SEGY_INVALID_FIELD;
+
     /* make sure field is valid, so we don't have to check errors later */
     if( field_size[ il ] == 0 || field_size[ xl ] == 0 )
         return SEGY_INVALID_FIELD;
@@ -658,6 +672,7 @@ int segy_sorting( FILE* fp,
         ++traceno;
     } while( off0 != off1 );
 
+    // todo: Should expect at least xline, inline or offset to change by one?
     if     ( il0 == il1 ) *sorting = INLINE_SORTING;
     else if( xl0 == xl1 ) *sorting = CROSSLINE_SORTING;
     else return SEGY_INVALID_SORTING;
@@ -1089,7 +1104,10 @@ int segy_crossline_stride( int sorting,
     }
 }
 
-int segy_textheader( FILE* fp, char* buf ) {
+int segy_read_textheader(FILE *fp, char *buf) { //todo: Missing position/index support
+    if(fp == NULL) {
+        return SEGY_FSEEK_ERROR;
+    }
     rewind( fp );
 
     const size_t read = fread( buf, 1, SEGY_TEXT_HEADER_SIZE, fp );

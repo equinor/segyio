@@ -1,5 +1,5 @@
 import datetime
-import ctypes as ct
+import numpy
 import segyio
 
 def default_text_header(iline, xline, offset):
@@ -91,38 +91,35 @@ def create(filename, spec):
             ...         dst.bin = src.bin
             ...         dst.header = src.header
             ...         dst.trace = src.trace
+    :rtype: segyio.SegyFile
     """
-    f = segyio.file(filename, "w+")
+    f = segyio.SegyFile(filename, "w+")
 
-    f.samples       = spec.samples
-    f.ext_headers   = spec.ext_headers
-    f._bsz          = segyio.file._trace_bsize(f.samples)
-    f._tr0          = -1 + segyio.file._textsize() + \
-                      segyio.file._binheader_size() + \
-                      (spec.ext_headers * segyio.file._textsize())
-    f.sorting       = spec.sorting
+    f._samples       = spec.samples
+    f._ext_headers   = spec.ext_headers
+    f._bsz          = segyio._segyio.trace_bsize(f.samples)
+
+    txt_hdr_sz = segyio._segyio.textheader_size()
+    bin_hdr_sz = segyio._segyio.binheader_size()
+    f._tr0          = -1 + txt_hdr_sz + bin_hdr_sz + (spec.ext_headers * (txt_hdr_sz - 1))
+    f._sorting       = spec.sorting
     f._fmt          = spec.format
-    f.offsets       = spec.offsets
-    f.tracecount    = len(spec.ilines) * len(spec.xlines) * spec.offsets
+    f._offsets       = spec.offsets
+    f._tracecount    = len(spec.ilines) * len(spec.xlines) * spec.offsets
 
     f._il           = int(spec.iline)
-    f.ilines        = spec.ilines
-    f._raw_ilines   = (ct.c_uint * len(f.ilines))()
-    for i, x in enumerate(f.ilines):
-        f._raw_ilines[i] = x
+    f._ilines        = numpy.copy(numpy.asarray(spec.ilines, dtype=numpy.uintc))
 
     f._xl           = int(spec.xline)
-    f.xlines        = spec.xlines
-    f._raw_xlines   = (ct.c_uint * len(f.xlines))()
-    for i, x in enumerate(f.xlines):
-        f._raw_xlines[i] = x
+    f._xlines        = numpy.copy(numpy.asarray(spec.xlines, dtype=numpy.uintc))
 
+    line_metrics = segyio._segyio.init_line_metrics(f.sorting, f.tracecount, len(f.ilines), len(f.xlines), f.offsets)
 
-    f._iline_length = f._init_iline_length(len(f.xlines))
-    f._iline_stride = f._init_iline_stride(len(f.ilines))
+    f._iline_length = line_metrics['iline_length']
+    f._iline_stride = line_metrics['iline_stride']
 
-    f._xline_length = f._init_xline_length(len(f.ilines))
-    f._xline_stride = f._init_xline_stride(len(f.xlines))
+    f._xline_length = line_metrics['xline_length']
+    f._xline_stride = line_metrics['xline_stride']
 
     f.text[0] = default_text_header(f._il, f._xl, segyio.TraceField.offset)
     f.bin     = {   3213: f.tracecount,
