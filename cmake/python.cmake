@@ -1,15 +1,18 @@
 configure_file(cmake/test_runner.py tests/test_runner.py COPYONLY)
 
-if("${CMAKE_HOST_SYSTEM}" MATCHES ".*Windows.*")
+if(WINDOWS)
     set(SEP "\\;")
 else() # e.g. Linux
     set(SEP ":")
 endif()
 
 function(add_memcheck_test NAME BINARY)
-    set(memcheck_command "valgrind --trace-children=yes --leak-check=full --error-exitcode=31415")
-    separate_arguments(memcheck_command)
-    add_test(memcheck_${NAME} ${memcheck_command} ./${BINARY})
+    # Valgrind on MacOS is experimental
+    if(LINUX AND (${CMAKE_BUILD_TYPE} MATCHES "DEBUG"))
+        set(memcheck_command "valgrind --trace-children=yes --leak-check=full --error-exitcode=31415")
+        separate_arguments(memcheck_command)
+        add_test(memcheck_${NAME} ${memcheck_command} ./${BINARY})
+    endif()
 endfunction(add_memcheck_test)
 
 function(add_python_package PACKAGE_NAME PACKAGE_PATH PYTHON_FILES)

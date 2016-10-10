@@ -1,20 +1,46 @@
-language: c
+language: generic
+
+env:
+  - BUILD_TYPE=RELEASE
+  - BUILD_TYPE=DEBUG
+
+os:
+  - linux
+  - osx
+
+compiler:
+  - gcc
+  - clang
 
 matrix:
-  include:
-    - os: linux
-      compiler: gcc
+    exclude:
+        - os: osx
+          compiler: gcc
+        - os: linux
+          compiler: clang
 
 addons:
-  apt:
-    packages:
-      - valgrind
-      - python-numpy
+    apt:
+      sources:
+        - george-edison55-precise-backports
+      packages:
+        - cmake
+        - cmake-data
+        - valgrind
+        - python-numpy
 
-script:
-    - mkdir build
-    - cd build
-    - cmake ..
-    - make -j2
-    - export LD_LIBRARY_PATH=$PWD
-    - ctest -j2 --output-on-failure
+before_script:
+  # Valgrind is experimental(ish) on MacOS with false positives on among others printf
+  #- if [[ "$TRAVIS_OS_NAME" == "osx" && "$BUILD_TYPE" == "DEBUG" ]]; then
+  #    brew update;
+  #    brew install --HEAD valgrind;
+  #  fi
+
+  - cmake --version
+  - mkdir build
+  - cd build
+  - cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
+  - make
+  - export LD_LIBRARY_PATH=$PWD
+
+script: make && ctest --output-on-failure

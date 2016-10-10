@@ -88,7 +88,7 @@ void testIBMFloat() {
         check(f1, &epsm);
         check(-f1, &epsm);
     }
-    printf("Max eps: %g\n", epsm);
+    assertClose(4.17233e-07, epsm, 1e-06);
 }
 
 int to_int16( const char* );
