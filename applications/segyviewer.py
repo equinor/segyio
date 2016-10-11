@@ -142,9 +142,15 @@ class SegyViewer(QtGui.QMainWindow):
 
 
 def read_traces_to_memory(segy):
-    ''' read all samples into memory and identify min and max. A temporary utility method to handle the
-    challenge of navigating  up and down in depth slices. As each depth slice consist of samples from all traces in
-    the file '''
+    """ Read all traces into memory and identify global min and max values.
+
+    Utility method to handle the challenge of navigating up and down in depth slices,
+    as each depth slice consist of samples from all traces in the segy file.
+
+    The cube returned is transposed in aspect of the depth plane. Where each slice of the returned array
+    consists of all samples for the given depth, oriented by [iline, xline]
+    """
+
     all_traces = np.empty(shape=((len(segy.ilines) * len(segy.xlines)), segy.samples), dtype=np.float32)
 
     min_value = sys.float_info.max
@@ -162,9 +168,9 @@ def read_traces_to_memory(segy):
         if np.isfinite(local_max):
             max_value = max(local_max, max_value)
 
-    all_traces2 = all_traces.reshape(len(segy.ilines), len(segy.xlines), segy.samples)
+    reshaped_traces = all_traces.reshape(len(segy.ilines), len(segy.xlines), segy.samples)
 
-    transposed_traces = all_traces2.transpose(2, 0, 1)
+    transposed_traces = reshaped_traces.transpose(2, 0, 1)
 
     return transposed_traces, (min_value, max_value)
 
