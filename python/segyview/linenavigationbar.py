@@ -27,6 +27,7 @@ class LineSelector(QtGui.QWidget):
         self.sbox.setValue(val)
         self.sbox.blockSignals(False)
 
+
 class LineNavigationBar(QtGui.QToolBar):
     def __init__(self, xline_indexes, iline_indexes, depth_indexes, line_selection_monitor):
         super(LineNavigationBar, self).__init__("")
@@ -36,15 +37,15 @@ class LineNavigationBar(QtGui.QToolBar):
         self.line_selection_monitor = line_selection_monitor
 
         # xline
-        self.xline_selector = LineSelector(self, "x-line", self.xline_indexes, self.line_selection_monitor.xlineUpdated)
-        self.line_selection_monitor.xlineChanged.connect(self.xline_selector.set_index)
+        self.xline_selector = LineSelector(self, "x-line", self.xline_indexes, self.line_selection_monitor.xline_updated)
+        self.line_selection_monitor.xline_changed.connect(self.xline_selector.set_index)
         self.addWidget(self.xline_selector)
 
         # iline
-        self.iline_selector = LineSelector(self, "i-line", self.iline_indexes, self.line_selection_monitor.ilineUpdated)
-        self.line_selection_monitor.ilineChanged.connect(self.iline_selector.set_index)
+        self.iline_selector = LineSelector(self, "i-line", self.iline_indexes, self.line_selection_monitor.iline_updated)
+        self.line_selection_monitor.iline_changed.connect(self.iline_selector.set_index)
         self.addWidget(self.iline_selector)
 
         # depth
-        self.depth_selector = LineSelector(self, "depth", self.depth_indexes, self.line_selection_monitor.depthUpdated)
+        self.depth_selector = LineSelector(self, "depth", self.depth_indexes, self.line_selection_monitor.depth_updated)
         self.addWidget(self.depth_selector)

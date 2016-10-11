@@ -2,14 +2,14 @@ from PyQt4 import QtGui, QtCore
 
 from segyplot import SegyPlot
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import  Figure
+from matplotlib.figure import Figure
 
 
 class SliceWidget(QtGui.QWidget):
     """
     Main widget holding the slice matplotlib Figure wrapped in FigureCanvasQTAgg.
     """
-    indexChanged = QtCore.pyqtSignal(int)
+    index_changed = QtCore.pyqtSignal(int)
 
     def __init__(self, slices, indexes, dataset_title=None, default_cmap='seismic',
                  x_axis_indexes=None, y_axis_indexes=None,
@@ -36,10 +36,15 @@ class SliceWidget(QtGui.QWidget):
 
         self.axes = self.figure.add_subplot(111)
 
-        self.segy_plot = SegyPlot(self.slices, self.indexes, self.axes, self.default_cmap,
-                                        x_axis_indexes=x_axis_indexes, y_axis_indexes=y_axis_indexes,
-                                        display_horizontal_indicator=self.show_h_indicator,
-                                        display_vertical_indicator=self.show_v_indicator, v_min_max=v_min_max)
+        self.segy_plot = SegyPlot(self.slices,
+                                  self.indexes,
+                                  self.axes,
+                                  self.default_cmap,
+                                  x_axis_indexes=x_axis_indexes,
+                                  y_axis_indexes=y_axis_indexes,
+                                  display_horizontal_indicator=self.show_h_indicator,
+                                  display_vertical_indicator=self.show_v_indicator,
+                                  v_min_max=v_min_max)
 
         self.figure_canvas = FigureCanvas(self.figure)
         self.figure_canvas.setParent(self)

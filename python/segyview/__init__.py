@@ -1,4 +1,5 @@
 from .segyplot import SegyPlot
+import util
 
 try:
     from .linenavigationbar import LineNavigationBar
