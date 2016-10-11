@@ -17,7 +17,7 @@ endif ()
 option(BUILD_MEX    "Build Matlab mex files"    OFF)
 option(BUILD_PYTHON "Build Python wrappers"     ON)
 
-include(cmake/python.cmake)
+include(cmake/segyio_testing.cmake)
 enable_testing()
 
 set(CMAKE_C_FLAGS "-std=c99 ${CMAKE_C_FLAGS}")
@@ -71,6 +71,7 @@ else (BUILD_MEX)
 endif ()
 
 if (BUILD_PYTHON)
+    include(cmake/python.cmake)
     add_subdirectory(python)
 endif ()
 

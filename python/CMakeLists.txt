@@ -1,5 +1,14 @@
-find_package(PythonInterp)
-find_package(PythonLibs REQUIRED)
+if (NOT DEFINED PYTHON_EXECUTABLE)
+    message("Python interpreter not found - Python wrappers not enabled")
+    return()
+endif()
+
+
+python_module(numpy 1.6)
+if (NOT DEFINED PY_numpy)
+    message("numpy module not found - Python wrappers not enabled")
+    return()
+endif()
 
 if (PYTHONLIBS_FOUND)
     include_directories(${PYTHON_INCLUDE_DIRS})
@@ -12,7 +21,7 @@ if (PYTHONLIBS_FOUND)
     endif ()
 
     set_target_properties(_segyio PROPERTIES PREFIX "" SUFFIX ".so")
-    install(TARGETS _segyio DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python2.7/site-packages/segyio)
+    install(TARGETS _segyio DESTINATION ${CMAKE_INSTALL_PREFIX}/${PYTHON_INSTALL_PREFIX}/segyio)
 
     add_custom_command(TARGET _segyio POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy
