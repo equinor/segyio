@@ -1,6 +1,6 @@
 from unittest import TestCase
 import segyio
-from segyview import util
+import segyview.util as util
 import itertools
 from test_segy import TestSegy
 

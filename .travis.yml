@@ -10,6 +10,7 @@ addons:
     packages:
       - valgrind
       - python-numpy
+      - matplotlib
 
 script:
     - mkdir build
