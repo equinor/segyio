@@ -14,4 +14,4 @@ if(BUILD_MEX)
 endif()
 
 add_python_test(python.segy test_segy.py)
-add_python_test(python.segy test_segyviewer.py)
+add_python_test(python.segyview test_segyview.py)
