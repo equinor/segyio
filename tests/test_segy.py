@@ -156,8 +156,8 @@ class TestSegy(TestCase):
             for i, plane in enumerate(f.depth_plane):
                 for ilno, xlno in itertools.product(range(len(f.ilines)), range(len(f.xlines))):
                     self.assertEqual(self.depth_sample(plane[xlno, ilno]), i,
-                                     "plane[{0},{1}] == {2}, should be 0".format(
-                                         ilno, xlno, self.depth_sample(plane[xlno, ilno])))
+                                     "plane[{0},{1}] == {2}, should be {3}".format(
+                                         ilno, xlno, self.depth_sample(plane[xlno, ilno]),i))
 
     def test_iline_slicing(self):
         with segyio.open(self.filename, "r") as f:
