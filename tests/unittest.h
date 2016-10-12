@@ -29,9 +29,9 @@ void _testAssertTrue(bool value, const char *message, const char *file, int line
 
 #define assertClose(expected, actual, eps) _testAssertClose((expected), (actual), (eps), __FILE__, __LINE__)
 
-void _testAssertClose(float expected, float actual, float eps, const char *file, int line) {
-    float diff = fabsf(expected-actual);
-    if (!(diff <= eps)) {
+void _testAssertClose(double expected, double actual, double eps, const char *file, int line) {
+    double diff = fabs(expected-actual);
+    if (diff > eps) {
         char message[1000];
         sprintf(message, "Expected: %f, Actual: %f, diff: %f, eps: %f\n", expected, actual, diff, eps);
         testAssertionFailed(message, file, line);

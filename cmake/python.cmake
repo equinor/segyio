@@ -1,16 +1,17 @@
+include(cmake/find_python_module.cmake)
+include(cmake/python_module_version.cmake)
+
+find_package(PythonInterp)
+find_package(PythonLibs REQUIRED)
+
 configure_file(cmake/test_runner.py tests/test_runner.py COPYONLY)
 
-if("${CMAKE_HOST_SYSTEM}" MATCHES ".*Windows.*")
-    set(SEP "\\;")
-else() # e.g. Linux
-    set(SEP ":")
+if (EXISTS "/etc/debian_version")
+    set( PYTHON_PACKAGE_PATH "dist-packages")
+else()
+    set( PYTHON_PACKAGE_PATH "site-packages")
 endif()
-
-function(add_memcheck_test NAME BINARY)
-    set(memcheck_command "valgrind --trace-children=yes --leak-check=full --error-exitcode=31415")
-    separate_arguments(memcheck_command)
-    add_test(memcheck_${NAME} ${memcheck_command} ./${BINARY})
-endfunction(add_memcheck_test)
+set(PYTHON_INSTALL_PREFIX "lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/${PYTHON_PACKAGE_PATH}" CACHE STRING "Subdirectory to install Python modules in")
 
 function(add_python_package PACKAGE_NAME PACKAGE_PATH PYTHON_FILES)
     add_custom_target(package_${PACKAGE_NAME} ALL)
@@ -21,7 +22,7 @@ function(add_python_package PACKAGE_NAME PACKAGE_PATH PYTHON_FILES)
                 COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/${file} ${CMAKE_BINARY_DIR}/python/${PACKAGE_PATH}
                 )
     endforeach ()
-    install(FILES ${PYTHON_FILES} DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python2.7/site-packages/${PACKAGE_PATH})
+    install(FILES ${PYTHON_FILES} DESTINATION ${CMAKE_INSTALL_PREFIX}/${PYTHON_INSTALL_PREFIX}/${PACKAGE_PATH})
 endfunction()
 
 function(add_python_test TESTNAME PYTHON_TEST_FILE)
@@ -31,9 +32,9 @@ function(add_python_test TESTNAME PYTHON_TEST_FILE)
             WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/tests
             COMMAND python test_runner.py ${PYTHON_TEST_FILE}
             )
-    set_tests_properties(${TESTNAME} PROPERTIES ENVIRONMENT
-                        "PYTHONPATH=${CMAKE_BINARY_DIR}/python${SEP}$ENV{PYTHONPATH}"
-                        )
+
+    to_path_list(pythonpath "${CMAKE_BINARY_DIR}/python" "$ENV{PYTHONPATH}")
+    set_tests_properties(${TESTNAME} PROPERTIES ENVIRONMENT "PYTHONPATH=${pythonpath}")
 endfunction()
 
 function(add_python_example TESTNAME PYTHON_TEST_FILE)
@@ -43,15 +44,6 @@ function(add_python_example TESTNAME PYTHON_TEST_FILE)
             WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/examples
             COMMAND python ${PYTHON_TEST_FILE} ${ARGN}
             )
-    set_tests_properties(${TESTNAME} PROPERTIES ENVIRONMENT
-                        "PYTHONPATH=${CMAKE_BINARY_DIR}/python${SEP}$ENV{PYTHONPATH}"
-                        )
-endfunction()
-
-function(add_segyio_test TESTNAME TEST_SOURCES)
-    add_executable(test_${TESTNAME} unittest.h "${TEST_SOURCES}")
-    target_link_libraries(test_${TESTNAME} segyio-static m)
-    add_dependencies(test_${TESTNAME} segyio-static)
-    add_test(NAME ${TESTNAME} COMMAND ${EXECUTABLE_OUTPUT_PATH}/test_${TESTNAME})
-    add_memcheck_test(${TESTNAME} ${EXECUTABLE_OUTPUT_PATH}/test_${TESTNAME})
+    to_path_list(pythonpath "${CMAKE_BINARY_DIR}/python" "$ENV{PYTHONPATH}")
+    set_tests_properties(${TESTNAME} PROPERTIES ENVIRONMENT "PYTHONPATH=${pythonpath}")
 endfunction()

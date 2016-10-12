@@ -44,7 +44,7 @@ interpreter and type `help(segyio)` to get started.
 
 To build and use Segyio you need:
  * A C99 compatible C compiler (tested mostly on gcc and clang)
- * [CMake](https://cmake.org/) version 2.8 or greater
+ * [CMake](https://cmake.org/) version 2.8.8 or greater
  * [Python](https://www.python.org/) 2.7. We're working on 3.x support, help
    appreciated!
 
