@@ -5,7 +5,7 @@ import matplotlib.patches as patches
 class SegyPlot(object):
 
     """
-    SegyPlot plots a segy slice and line indicators on the provided axes.
+    Plots a segy slice and line indicators on the provided axes.
     """
 
     def __init__(self, slices, indexes, axes, cmap='seismic', x_axis_indexes=None, y_axis_indexes=None,

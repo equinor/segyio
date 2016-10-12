@@ -1,6 +1,7 @@
 import sys
 import numpy as np
 
+
 def read_traces_to_memory(segy):
     """ Read all traces into memory and identify global min and max values.
 
