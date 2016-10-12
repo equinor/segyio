@@ -31,7 +31,47 @@ map to segy operations are written to behave similarly. That means that
 sequences of data support list lookup, slicing (`f.trace[0:10:2]`), `for x in`
 etc. Please refer to the individual mode's documentation for a more exhaustive
 list with examples.
+
+For all slicing operations that segyio provides the underlying buffer is reused,
+so if you want to keep the data between iterations it is necessary to manually
+copy the data. Please refer to the examples. (e.g. numpy.copy())
 """
+
+
+class Enum(object):
+    def __init__(self, enum_value):
+        super(Enum, self).__init__()
+        self._value = int(enum_value)
+
+    def __int__(self):
+        return int(self._value)
+
+    def __str__(self):
+        for k, v in self.__class__.__dict__.items():
+            if isinstance(v, int) and self._value == v:
+                return k
+        return "Unknown Enum"
+
+    def __hash__(self):
+        return hash(self._value)
+
+    def __eq__(self, other):
+        try:
+            o = int(other)
+        except ValueError:
+            return super(Enum, self).__eq__(other)
+        else:
+            return self._value == o
+
+    @classmethod
+    def enums(cls):
+        result = []
+        for k, v in cls.__dict__.items():
+            if isinstance(v, int):
+                result.append(cls(v))
+
+        return sorted(result, key=int)
+
 
 from .segysampleformat import SegySampleFormat
 from .tracesortingformat import TraceSortingFormat
@@ -39,4 +79,4 @@ from .tracefield import TraceField
 from .binfield import BinField
 from .open import open
 from .create import create
-from .segy import file, spec
+from .segy import SegyFile, spec

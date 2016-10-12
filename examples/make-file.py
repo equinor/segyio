@@ -33,7 +33,7 @@ def main():
         trace = np.arange(start = start,
                           stop  = start + step * spec.samples,
                           step  = step,
-                          dtype = np.float32)
+                          dtype = np.single)
 
         # one inline is N traces concatenated. We fill in the xline number
         line = np.concatenate([trace + (xl / 100.0) for xl in spec.xlines])

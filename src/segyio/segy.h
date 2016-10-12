@@ -53,7 +53,7 @@ int segy_traces( FILE*, size_t*, long trace0, unsigned int trace_bsize );
 int segy_sample_indexes(FILE* fp, double* buf, double t0, size_t count);
 
 /* text header operations */
-int segy_textheader( FILE*, char* buf );
+int segy_read_textheader(FILE *, char *buf);
 unsigned int segy_textheader_size();
 int segy_write_textheader( FILE*, unsigned int pos, const char* buf );
 
@@ -320,7 +320,7 @@ typedef enum {
     SourceMeasurementUnit = 231,
     UnassignedInt1 = 233,
     UnassignedInt2 = 237
-    
+
 } SEGY_FIELD;
 
 typedef enum {
@@ -387,6 +387,7 @@ typedef enum {
     SEGY_MISSING_LINE_INDEX,
     SEGY_INVALID_OFFSETS,
     SEGY_TRACE_SIZE_MISMATCH,
+    SEGY_INVALID_ARGS
 } SEGY_ERROR;
 
 

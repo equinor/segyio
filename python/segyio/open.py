@@ -1,6 +1,9 @@
+import numpy
+
 import segyio
 
-def open(filename, mode = "r", iline = 189, xline = 193):
+
+def open(filename, mode="r", iline=189, xline=193):
     """Open a segy file.
 
     Opens a segy file and tries to figure out its sorting, inline numbers,
@@ -40,35 +43,41 @@ def open(filename, mode = "r", iline = 189, xline = 193):
             >>> with segyio.open(path) as src, segyio.open(path, "r+") as dst:
             ...     dst.trace = src.trace # copy all traces from src to dst
             ...
+    :rtype: segyio.SegyFile
     """
-    f = segyio.file(filename, mode, iline, xline)
+    f = segyio.SegyFile(filename, mode, iline, xline)
 
     try:
         header = f.bin.buf
+        metrics = segyio._segyio.init_metrics(f.xfd, header, iline, xline)
 
-        f.samples = f._get_samples(header)
-        f._tr0 = f._trace0(header)
-        f._fmt = f._format(header)
-        f._bsz = f._trace_bsize(f.samples)
-        f.ext_headers   = (f._tr0 - 3600) / 3200 # should probably be from C
+        f._samples = metrics['sample_count']
+        f._tr0 = metrics['trace0']
+        f._fmt = metrics['format']
+        f._bsz = metrics['trace_bsize']
+        f._ext_headers = (f._tr0 - 3600) / 3200  # should probably be from C
 
-        f.tracecount = f._init_traces()
-        f.sorting    = f._init_sorting()
-        f.offsets    = f._init_offsets()
+        f._tracecount = metrics['trace_count']
 
-        iline_count, xline_count = f._init_line_count()
+        f._sorting = metrics['sorting']
+        f._offsets = metrics['offset_count']
 
-        f.ilines, f._raw_ilines = f._init_ilines(iline_count, xline_count)
-        f._iline_length = f._init_iline_length(xline_count)
-        f._iline_stride = f._init_iline_stride(iline_count)
+        iline_count, xline_count = metrics['iline_count'], metrics['xline_count']
 
-        f.xlines, f._raw_xlines = f._init_xlines(iline_count, xline_count)
-        f._xline_length = f._init_xline_length(iline_count)
-        f._xline_stride = f._init_xline_stride(xline_count)
+        line_metrics = segyio._segyio.init_line_metrics(f.sorting, f.tracecount, iline_count, xline_count, f.offsets)
+
+        f._ilines = numpy.zeros(iline_count, dtype=numpy.uintc)
+        f._xlines = numpy.zeros(xline_count, dtype=numpy.uintc)
+        segyio._segyio.init_line_indices(f.xfd, metrics, f.ilines, f.xlines)
+
+        f._iline_length = line_metrics['iline_length']
+        f._iline_stride = line_metrics['iline_stride']
+
+        f._xline_length = line_metrics['xline_length']
+        f._xline_stride = line_metrics['xline_stride']
 
     except:
         f.close()
         raise
 
     return f
-
