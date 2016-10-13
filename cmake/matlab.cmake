@@ -220,38 +220,21 @@ endmacro()
 
 # this isn't meant to be run directly; use matlab_add_test or
 # matlab_add_example instead
-function(matlab_test TYPE TESTNAME MCC_SOURCE_FILE MCC_TARGET_NAME)
-    set(RESULT_FILE ${CMAKE_CURRENT_BINARY_DIR}/${MCC_TARGET_NAME})
-
-    add_custom_command(OUTPUT ${RESULT_FILE}
-            COMMAND
-                ${MATLAB_MCC}
-                -I ${CMAKE_BINARY_DIR}/mex
-                -m ${MCC_TARGET_NAME}
-                -d ${CMAKE_CURRENT_BINARY_DIR}
-            DEPENDS
-                ${CMAKE_CURRENT_LIST_DIR}/${MCC_SOURCE_FILE}
-                ${segyspec_mex_FILE}
-                ${segyheaders_mex_FILE}
-                ${CMAKE_SOURCE_DIR}/mex/SegySpec.m
-            WORKING_DIRECTORY
-                ${CMAKE_CURRENT_SOURCE_DIR}
-            )
-
-    add_custom_target(${MCC_TARGET_NAME} ALL DEPENDS ${RESULT_FILE} ${segyspec_mex_TARGET} ${segyheaders_mex_TARGET})
+function(matlab_test TYPE TESTNAME MCC_SOURCE_FILE)
+    configure_file(${MCC_SOURCE_FILE} ${MCC_SOURCE_FILE} COPYONLY)
 
     add_test(NAME ${TESTNAME}
-            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/${TYPE}
-            COMMAND run_${MCC_TARGET_NAME}.sh ${MATLAB_ROOT} ${ARGN}
+            COMMAND ${MATLAB_ROOT}/bin/matlab -nodisplay -nosplash -nodesktop -r
+            "try, addpath('../mex'), run('test_segy_mex.m'), catch, exit(-1), end, exit(0);"
             )
 endfunction()
 
-function(add_matlab_test TESTNAME MCC_SOURCE_FILE MCC_TARGET_NAME)
-    matlab_test(tests ${TESTNAME} ${MCC_SOURCE_FILE} ${MCC_TARGET_NAME})
+function(add_matlab_test TESTNAME MCC_SOURCE_FILE)
+    matlab_test(tests ${TESTNAME} ${MCC_SOURCE_FILE})
 endfunction()
 
 # add_matlab_example takes an arbitrary number of arguments which it will
 # forward to the example program
-function(add_matlab_example TESTNAME MCC_SOURCE_FILE MCC_TARGET_NAME)
-    matlab_test(examples ${TESTNAME} ${MCC_SOURCE_FILE} ${MCC_TARGET_NAME} ${ARGN})
+function(add_matlab_example TESTNAME MCC_SOURCE_FILE)
+    matlab_test(examples ${TESTNAME} ${MCC_SOURCE_FILE})
 endfunction()
