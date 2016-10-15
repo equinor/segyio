@@ -1,0 +1,3 @@
+include License.md
+include README.md
+recursive-include src *.h
