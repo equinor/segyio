@@ -1,5 +1,6 @@
 if (NOT DEFINED PYTHON_EXECUTABLE)
     message("Python interpreter not found - Python wrappers not enabled")
+    unset(BUILD_PYTHON)
     return()
 endif()
 
@@ -7,6 +8,7 @@ endif()
 python_module(numpy 1.6)
 if (NOT DEFINED PY_numpy)
     message("numpy module not found - Python wrappers not enabled")
+    unset(BUILD_PYTHON)
     return()
 endif()
 
