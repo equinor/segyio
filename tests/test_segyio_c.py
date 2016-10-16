@@ -423,3 +423,15 @@ class _segyioTests(TestCase):
         self.assertAlmostEqual(sum(sum(buf)), 305.061146736, places=6)
 
         _segyio.close(f)
+
+    def test_fread_trace0_for_depth(self):
+        elements = list(range(25))
+        indices = numpy.asarray(elements, dtype=numpy.uintc)
+
+        for index in indices:
+            d = _segyio.fread_trace0(index, 1, 1, indices, "depth")
+            self.assertEqual(d, index)
+
+        with self.assertRaises(KeyError):
+            d = _segyio.fread_trace0(25, 1, 1, indices, "depth")
+
