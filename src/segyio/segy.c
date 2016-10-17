@@ -6,6 +6,7 @@
 #include <winsock2.h>
 #endif
 
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -150,17 +151,6 @@ void ieee2ibm(void* to, const void* from, int len) {
         /* put the pieces back together and return it */
         fr = (fr >> 8) | (exp << 24) | (sgn << 31);
         *(unsigned*) to = htonl(fr);
-    }
-}
-
-static void flipEndianness32(char* data, unsigned int count) {
-    for( unsigned int i = 0; i < count; i += 4) {
-        char a = data[i];
-        char b = data[i + 1];
-        data[i] = data[i + 3];
-        data[i + 1] = data[i + 2];
-        data[i + 2] = b;
-        data[i + 3] = a;
     }
 }
 
@@ -900,8 +890,16 @@ int segy_to_native( int format,
                     unsigned int size,
                     float* buf ) {
 
-    if( format == IEEE_FLOAT_4_BYTE )
-        flipEndianness32( (char*)buf, size * sizeof( float ) );
+    assert( sizeof( float ) == sizeof( uint32_t ) );
+
+    if( format == IEEE_FLOAT_4_BYTE ) {
+        uint32_t u;
+        while( size-- ) {
+            memcpy( &u, buf, sizeof( float ) );
+            u = ntohl( u );
+            memcpy( buf++, &u, sizeof( float ) );
+        }
+    }
     else
         ibm2ieee( buf, buf, size );
 
@@ -912,8 +910,16 @@ int segy_from_native( int format,
                       unsigned int size,
                       float* buf ) {
 
-    if( format == IEEE_FLOAT_4_BYTE )
-        flipEndianness32( (char*)buf, size * sizeof( float ) );
+    assert( sizeof( float ) == sizeof( uint32_t ) );
+
+    if( format == IEEE_FLOAT_4_BYTE ) {
+        uint32_t u;
+        while( size-- ) {
+            memcpy( &u, buf, sizeof( float ) );
+            u = htonl( u );
+            memcpy( buf++, &u, sizeof( float ) );
+        }
+    }
     else
         ieee2ibm( buf, buf, size );
 
