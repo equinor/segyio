@@ -36,5 +36,6 @@ install(FILES
         Segy.m
         SegySampleFormat.m
         TraceSortingFormat.m
+        TraceField.m
         DESTINATION
         ${CMAKE_INSTALL_PREFIX}/matlab)
