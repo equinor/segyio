@@ -8,7 +8,6 @@ from segyio import TraceField, BinField
 import shutil
 import filecmp
 
-from segyio._depth_plane import DepthPlane
 from segyio._field import Field
 from segyio._line import Line
 from segyio._header import Header
@@ -42,61 +41,6 @@ def mklines(fname):
 
         for xl in spec.xlines:
             dst.header.xline[xl] = { TraceField.CROSSLINE_3D: xl }
-
-
-def make_file(filename, samples, first_iline, last_iline, first_xline, last_xline):
-
-    spec = segyio.spec()
-    # to create a file from nothing, we need to tell segyio about the structure of
-    # the file, i.e. its inline numbers, crossline numbers, etc. You can also add
-    # more structural information, but offsets etc. have sensible defaults. This is
-    # the absolute minimal specification for a N-by-M volume
-    spec.sorting = 2
-    spec.format = 1
-    spec.samples = samples
-    spec.ilines = range(*map(int, [first_iline, last_iline]))
-    spec.xlines = range(*map(int, [first_xline, last_xline]))
-
-    with segyio.create(filename, spec) as f:
-        start = 0.0
-        step = 0.00001
-        # fill a trace with predictable values: left-of-comma is the inline
-        # number. Immediately right of comma is the crossline number
-        # the rightmost digits is the index of the sample in that trace meaning
-        # looking up an inline's i's jth crosslines' k should be roughly equal
-        # to i.j0k
-        trace = np.arange(start = start,
-                          stop  = start + step * spec.samples,
-                          step  = step,
-                          dtype = np.float32)
-
-        # one inline is N traces concatenated. We fill in the xline number
-        line = np.concatenate([trace + (xl / 100.0) for xl in spec.xlines])
-
-        # write the line itself to the file
-        # write the inline number in all this line's headers
-        for ilno in spec.ilines:
-            f.iline[ilno] = (line + ilno)
-            f.header.iline[ilno] = { segyio.TraceField.INLINE_3D: ilno,
-                                     segyio.TraceField.offset: 1
-                                     }
-
-        # then do the same for xlines
-        for xlno in spec.xlines:
-            f.header.xline[xlno] = { segyio.TraceField.CROSSLINE_3D: xlno }
-
-
-def il_sample(s):
-    return int(s)
-
-
-def xl_sample(s):
-    return int(round((s-int(s))*100))
-
-
-def depth_sample(s):
-    return int(round((s - il_sample(s) - xl_sample(s)/100.0)*10e2,2)*100)
-
 
 
 class TestSegy(TestCase):
@@ -166,36 +110,6 @@ class TestSegy(TestCase):
             self.assertAlmostEqual(5.22024, data[last_line, f.samples/2-1], places = 6)
             # last sample
             self.assertAlmostEqual(5.22049, data[last_line, f.samples-1], places = 6)
-
-    def test_make_file(self):
-        filename = "test.segy"
-        samples = 10
-        make_file(filename, samples, 0, 2, 10, 13)
-
-        with segyio.open(filename, "r") as f:
-            for xlno, xl in itertools.izip(f.xlines, f.xline):
-                for ilno, trace in itertools.izip(f.ilines, xl):
-                    for sample_index, sample in itertools.izip(range(samples), trace):
-                        self.assertEqual(il_sample(sample), ilno,
-                                         ("sample: {0}, ilno {1}".format(il_sample(sample), ilno)))
-                        self.assertEqual(xl_sample(sample), xlno,
-                                         ("sample: {0}, xlno {1}, sample {2}".format(
-                                             xl_sample(sample), xlno, sample)))
-                        self.assertEqual(depth_sample(sample), sample_index,
-                                         ("sample: {0}, sample_index {1}, real_sample {2}".format(
-                                             depth_sample(sample), sample_index, sample)))
-
-    def test_read_all_depth_planes(self):
-        filename = "test.segy"
-        samples = 10
-        make_file(filename, samples, 0, 2, 10, 13)
-
-        with segyio.open(filename, "r") as f:
-            for i, plane in enumerate(f.depth_plane):
-                for ilno, xlno in itertools.product(range(len(f.ilines)), range(len(f.xlines))):
-                    self.assertEqual(depth_sample(plane[xlno, ilno]), i,
-                                     "plane[{0},{1}] == {2}, should be 0".format(
-                                         ilno, xlno, depth_sample(plane[xlno, ilno])))
 
     def test_iline_slicing(self):
         with segyio.open(self.filename, "r") as f:
@@ -557,8 +471,9 @@ class TestSegy(TestCase):
             self.assertIsInstance(f.tracecount, int)
             self.assertIsInstance(f.samples, int)
 
-            self.assertIsInstance(f.depth_plane, DepthPlane)
-            self.assertIsInstance(f.depth_plane[1], np.ndarray)
+            self.assertIsInstance(f.depth_slice, Line)
+            self.assertIsInstance(f.depth_slice[1], np.ndarray)
+            self.assertIsInstance(f.depth_slice[1:23], GeneratorType)
 
             self.assertIsInstance(f.ilines, np.ndarray)
             self.assertIsInstance(f.iline, Line)
@@ -590,4 +505,48 @@ class TestSegy(TestCase):
             self.assertIsInstance(f.trace[0], np.ndarray)
 
             self.assertIsInstance(f.bin, Field)
-            self.assertIsInstance(f.text, object) # inner TextHeader instance
+            self.assertIsInstance(f.text, object)  # inner TextHeader instance
+
+    def test_depth_slice_reading(self):
+        with segyio.open(self.filename, "r") as f:
+            self.assertEqual(len(f.depth_slice), f.samples)
+
+            for depth_sample in xrange(f.samples):
+                depth_slice = f.depth_slice[depth_sample]
+                self.assertIsInstance(depth_slice, np.ndarray)
+                self.assertEqual(depth_slice.shape, (5, 5))
+
+                for x, y in itertools.product(f.ilines, f.xlines):
+                    i, j = x - f.ilines[0], y - f.xlines[0]
+                    self.assertAlmostEqual(depth_slice[i][j], f.iline[x][j][depth_sample], places=6)
+
+            for index, depth_slice in enumerate(f.depth_slice):
+                self.assertIsInstance(depth_slice, np.ndarray)
+                self.assertEqual(depth_slice.shape, (5, 5))
+
+                for x, y in itertools.product(f.ilines, f.xlines):
+                    i, j = x - f.ilines[0], y - f.xlines[0]
+                    self.assertAlmostEqual(depth_slice[i][j], f.iline[x][j][index], places=6)
+
+        with self.assertRaises(KeyError):
+            slice = f.depth_slice[f.samples]
+
+    def test_depth_slice_writing(self):
+        fname = self.filename.replace("small", "small-depth")
+        shutil.copyfile(self.filename, fname)
+
+        buf = np.empty(shape=(5, 5), dtype=np.single)
+
+        def value(x, y):
+            return x + (1.0 / 5) * y
+
+        for x, y in itertools.product(range(5), range(5)):
+            buf[x][y] = value(x, y)
+
+        with segyio.open(fname, "r+") as f:
+            f.depth_slice[7] = buf * 3.14 # assign to depth 7
+            self.assertTrue(np.allclose(f.depth_slice[7], buf * 3.14))
+
+            f.depth_slice = [buf * i for i in xrange(len(f.depth_slice))]  # assign to all depths
+            for index, depth_slice in enumerate(f.depth_slice):
+                self.assertTrue(np.allclose(depth_slice, buf * index))

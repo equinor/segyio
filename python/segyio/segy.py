@@ -21,7 +21,6 @@ from segyio._header import Header
 from segyio._line import Line
 from segyio._trace import Trace
 from segyio._field import Field
-from segyio._depth_plane import DepthPlane
 import segyio._segyio as _segyio
 
 from segyio.tracesortingformat import TraceSortingFormat
@@ -312,29 +311,25 @@ class SegyFile(object):
         for i, v in itertools.izip(xrange(len(tr)), val):
             tr[i] = v
 
-    def _line_buffer(self, length, buf=None):
-        shape = (length, self.samples)
-
+    def _shape_buffer(self, shape, buf):
         if buf is None:
             return np.empty(shape=shape, dtype=np.single)
-
         if not isinstance(buf, np.ndarray):
             return buf
-
         if buf.dtype != np.single:
             return np.empty(shape=shape, dtype=np.single)
-
         if buf.shape[0] == shape[0]:
             return buf
-
         if buf.shape != shape and buf.size == np.prod(shape):
             return buf.reshape(shape)
-
         return buf
+
+    def _line_buffer(self, length, buf=None):
+        shape = (length, self.samples)
+        return self._shape_buffer(shape, buf)
 
     def _fread_line(self, trace0, length, stride, buf):
         return _segyio.read_line(self.xfd, trace0, length, stride, buf, self._tr0, self._bsz, self._fmt, self.samples)
-
 
     @property
     def ilines(self):
@@ -497,28 +492,102 @@ class SegyFile(object):
     def xline(self, value):
         self.xline[:] = value
 
+    def _depth_buffer(self, buf=None):
+        il_len = self._iline_length
+        xl_len = self._xline_length
+
+        if self.sorting == TraceSortingFormat.CROSSLINE_SORTING:
+            shape = (xl_len, il_len)
+        elif self.sorting == TraceSortingFormat.INLINE_SORTING:
+            shape = (il_len, xl_len)
+        else:
+            raise RuntimeError("Unexpected sorting type")
+
+        return self._shape_buffer(shape, buf)
+
     @property
-    def depth_plane(self):
+    def depth_slice(self):
+        """ Interact with segy in depth slice mode.
 
-        def readfn(sorting, depth):
-            il_len = self._iline_length
-            xl_len = self._xline_length
+        This mode gives access to reading and writing functionality for depth slices.
+        The primary data type is the numpy ndarray. Depth slices can be accessed
+        individually or with python slices, and writing is done via assignment.
+        Note that each slice is returned as a numpy array, meaning
+        accessing the values of the slice is 0-indexed.
 
-            if sorting == TraceSortingFormat.CROSSLINE_SORTING:
-                dim = (xl_len, il_len)
-            elif sorting == TraceSortingFormat.INLINE_SORTING:
-                dim = (il_len, xl_len)
-            else:
-                raise RuntimeError("Unexpected sorting type")
+        Examples:
+            Read a depth slice:
+                >>> il = f.depth_slice[199]
 
-            plane = np.empty(shape=dim[0] * dim[1], dtype=np.single)
+            Copy every depth slice into a list::
+                >>> l = [np.copy(x) for x in f.depth_slice]
 
-            for i, t in enumerate(self.trace):
-                plane[i] = t[depth]
+            The number of depth slices in a file::
+                >>> len(f.depth_slice)
 
-            return plane.reshape(dim)
+            Numpy operations on every third depth slice::
+                >>> for depth_slice in f.depth_slice[::3]:
+                ...     depth_slice = depth_slice * 6
+                ...     avg = np.average(depth_slice)
+                ...     print(avg)
+                ...
 
-        return DepthPlane(self.samples, self.sorting, readfn)
+            Read depth_slices up to 250::
+                >>> for depth_slice in f.depth_slice[:250]:
+                ...     print(np.average(depth_slice))
+                ...
+
+            Copy a line from file g to f::
+                >>> f.depth_slice[4] = g.depth_slice[19]
+
+            Copy lines from the first line in g to f, starting at 10,
+            ending at 49 in f::
+                >>> f.depth_slice[10:50] = g.depth_slice
+
+
+            Convenient way for setting depth slices, from left-to-right as the depth slices
+            numbers are specified in the file.depth_slice property, from an iterable
+            set on the right-hand-side.
+
+            If the right-hand-side depth slices are exhausted before all the destination
+            file depth slices the writing will stop, i.e. not all all depth slices in the
+            destination file will be written.
+
+            Copy depth slices from file f to file g::
+                >>> f.depth_slice = g.depth_slice.
+
+            Copy first half of the depth slices from g to f::
+                >>> f.depth_slice = g.depth_slice[:g.samples/2]]
+
+            Copy every other depth slices from a different file::
+                >>> f.depth_slice = g.depth_slice[::2]
+        """
+        indices = np.asarray(list(range(self.samples)), dtype=np.uintc)
+        other_indices = np.asarray([0], dtype=np.uintc)
+        buffn = self._depth_buffer
+
+        def readfn(depth, length, stride, buf):
+            buf_view = buf.reshape(self._iline_length * self._xline_length)
+
+            for i, trace_buf in enumerate(self.trace):
+                buf_view[i] = trace_buf[depth]
+
+            return buf
+
+        def writefn(depth, length, stride, val):
+            val = buffn(val)
+
+            buf_view = val.reshape(self._iline_length * self._xline_length)
+
+            for i, trace_buf in enumerate(self.trace):
+                trace_buf[depth] = buf_view[i]
+                self.trace[i] = trace_buf
+
+        return Line(self, self.samples, 1, indices, other_indices, buffn, readfn, writefn, "Depth")
+
+    @depth_slice.setter
+    def depth_slice(self, value):
+        self.depth_slice[:] = value
 
     @property
     def text(self):
