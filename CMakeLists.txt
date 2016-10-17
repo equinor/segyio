@@ -19,6 +19,7 @@ option(BUILD_PYTHON "Build Python wrappers"     ON)
 
 include(cmake/segyio_testing.cmake)
 enable_testing()
+include(cmake/check_includes.cmake)
 
 set(CMAKE_C_FLAGS "-std=c99 ${CMAKE_C_FLAGS}")
 

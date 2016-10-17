@@ -1,4 +1,11 @@
+#ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
+#elif HAVE_ARPA_INET_H
+#include <arpa/inet.h>
+#elif HAVE_WINSOCK2_H
+#include <winsock2.h>
+#endif
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -298,59 +305,24 @@ static int bfield_size[] = {
     [- HEADER_SIZE + BIN_Unassigned2]           =  0,
 };
 
-/*
- * to/from_int32 are to be considered internal functions, but have external
- * linkage so that tests can hook into them. They're not declared in the header
- * files, and use of this internal interface is at user's own risk, i.e. it may
- * change without notice.
- */
-int to_int32( const char* buf ) {
-    int32_t value;
-    memcpy( &value, buf, sizeof( value ) );
-    return ((value >> 24) & 0xff)
-         | ((value << 8)  & 0xff0000)
-         | ((value >> 8)  & 0xff00)
-         | ((value << 24) & 0xff000000);
-}
-
-int to_int16( const char* buf ) {
-    int16_t value;
-    memcpy( &value, buf, sizeof( value ) );
-    return ((value >> 8) & 0x00ff)
-         | ((value << 8) & 0xff00);
-}
-
-/* from native int to segy int. fixed-width ints used as byte buffers */
-int32_t from_int32( int32_t buf ) {
-    int32_t value = 0;
-    memcpy( &value, &buf, sizeof( value ) );
-    return ((value >> 24) & 0xff)
-         | ((value << 8)  & 0xff0000)
-         | ((value >> 8)  & 0xff00)
-         | ((value << 24) & 0xff000000);
-}
-
-int16_t from_int16( int16_t buf ) {
-    int16_t value = 0;
-    memcpy( &value, &buf, sizeof( value ) );
-    return ((value >> 8) & 0x00ff)
-         | ((value << 8) & 0xff00);
-}
-
 static int get_field( const char* header,
                       const int* table,
                       int field,
-                      int* f ) {
+                      int32_t* f ) {
 
     const int bsize = table[ field ];
+    uint32_t buf32 = 0;
+    uint16_t buf16 = 0;
 
     switch( bsize ) {
         case 4:
-            *f = to_int32( header + (field - 1) );
+            memcpy( &buf32, header + (field - 1), 4 );
+            *f = (int32_t)ntohl( buf32 );
             return SEGY_OK;
 
         case 2:
-            *f = to_int16( header + (field - 1) );
+            memcpy( &buf16, header + (field - 1), 2 );
+            *f = (int32_t)ntohs( buf16 );
             return SEGY_OK;
 
         case 0:
@@ -366,7 +338,7 @@ int segy_get_field( const char* traceheader, int field, int* f ) {
     return get_field( traceheader, field_size, field, f );
 }
 
-int segy_get_bfield( const char* binheader, int field, int* f ) {
+int segy_get_bfield( const char* binheader, int field, int32_t* f ) {
     field -= SEGY_TEXT_HEADER_SIZE;
 
     if( field < 0 || field >= SEGY_BINARY_HEADER_SIZE )
@@ -375,20 +347,20 @@ int segy_get_bfield( const char* binheader, int field, int* f ) {
     return get_field( binheader, bfield_size, field, f );
 }
 
-static int set_field( char* header, const int* table, int field, int val ) {
+static int set_field( char* header, const int* table, int field, int32_t val ) {
     const int bsize = table[ field ];
 
-    int32_t buf32;
-    int16_t buf16;
+    uint32_t buf32;
+    uint16_t buf16;
 
     switch( bsize ) {
         case 4:
-            buf32 = from_int32( val );
+            buf32 = htonl( val );
             memcpy( header + (field - 1), &buf32, sizeof( buf32 ) );
             return SEGY_OK;
 
         case 2:
-            buf16 = from_int16( val );
+            buf16 = htons( val );
             memcpy( header + (field - 1), &buf16, sizeof( buf16 ) );
             return SEGY_OK;
 
@@ -451,7 +423,7 @@ int segy_format( const char* buf ) {
 }
 
 unsigned int segy_samples( const char* buf ) {
-    int samples;
+    int32_t samples;
     segy_get_bfield( buf, BIN_Samples, &samples );
     return (unsigned int) samples;
 }

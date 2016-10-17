@@ -349,8 +349,6 @@ void testReadCrossLine_22(){
     fclose(fp);
 }
 
-int32_t from_int32( int32_t );
-
 void test_modify_trace_header() {
     const char *file = "test-data/small-traceheader.sgy";
 
