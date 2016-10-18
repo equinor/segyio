@@ -7,10 +7,10 @@ void ebcdic2ascii( const char*, char* );
 void ascii2ebcdic( const char*, char* );
 
 void testEbcdicConversion() {
-    char* expected = (char*) "Hello there!";
+    char expected[] = "Hello there!";
     char str[] = "\xc8\x85\x93\x93\x96\x40\xa3\x88\x85\x99\x85\x4f";
 
-    char result[strlen(expected)];
+    char result[ sizeof( expected ) ];
 
     ebcdic2ascii(str, result);
     assertTrue(strcmp(result, expected) == 0, "Converted string did not match the expected result!");
@@ -41,7 +41,7 @@ void testConversionAllocation() {
     char* expected = (char*) "Hello there!";
     char str[] = "\xc8\x85\x93\x93\x96\x40\xa3\x88\x85\x99\x85\x4f";
 
-    char result[strlen(str) + 1];
+    char result[ sizeof( str ) ];
     ebcdic2ascii(str, result);
     assertTrue(strcmp(result, expected) == 0, "Converted string did not match the expected result!");
 

@@ -21,7 +21,14 @@ include(cmake/segyio_testing.cmake)
 enable_testing()
 include(cmake/check_includes.cmake)
 
-set(CMAKE_C_FLAGS "-std=c99 ${CMAKE_C_FLAGS}")
+if (MSVC)
+    add_definitions("/W3 /wd4996")
+else() # assuming gcc-style options
+    set(C_WARNINGS "-Wall -Wextra -pedantic -Wformat-nonliteral -Wcast-align -Wpointer-arith -Wmissing-declarations -Wcast-qual -Wshadow -Wwrite-strings -Wchar-subscripts -Wredundant-decls")
+    set(CMAKE_C_FLAGS "-std=c99 ${CMAKE_C_FLAGS}")
+    set(CMAKE_C_FLAGS_DEBUG "${C_WARNINGS} ${CMAKE_C_FLAGS_DEBUG}")
+    set(CMAKE_C_FLAGS_RELWITHDEBINFO "${C_WARNINGS} ${CMAKE_C_FLAGS_RELWITHDEBINFO}")
+endif (MSVC)
 
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Default install path" FORCE)
@@ -41,10 +48,12 @@ install(FILES src/segyio/segy.h DESTINATION ${CMAKE_INSTALL_PREFIX}/include/segy
 add_library(segyio-object OBJECT ${SOURCE_FILES})
 
 add_library(segyio-static STATIC $<TARGET_OBJECTS:segyio-object>)
+target_link_libraries(segyio-static ${SEGYIO_LIBRARIES})
 set_target_properties(segyio-static PROPERTIES OUTPUT_NAME segyio CLEAN_DIRECT_OUTPUT 1)
 set_target_properties(segyio-static PROPERTIES COMPILE_FLAGS "-fPIC")
 
 add_library(segyio-shared SHARED $<TARGET_OBJECTS:segyio-object>)
+target_link_libraries(segyio-shared ${SEGYIO_LIBRARIES} ${SEGYIO_LIBRARIES})
 set_target_properties(segyio-shared PROPERTIES OUTPUT_NAME segyio CLEAN_DIRECT_OUTPUT 1)
 
 install(TARGETS segyio-static segyio-shared DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)

@@ -17,11 +17,11 @@ static void printSegyTraceInfo( const char* buf ) {
     printf("Inline3D:          %d\n", il );
 }
 
-static inline int min( int x, int y ) {
+static inline int minimum( int x, int y ) {
     return x < y ? x : y;
 }
 
-static inline int max( int x, int y ) {
+static inline int maximum( int x, int y ) {
     return x > y ? x : y;
 }
 
@@ -113,8 +113,8 @@ int main(int argc, char* argv[]) {
             exit( err );
         }
 
-        min_sample_count = min( samples, min_sample_count );
-        max_sample_count = max( samples, max_sample_count );
+        min_sample_count = minimum( samples, min_sample_count );
+        max_sample_count = maximum( samples, max_sample_count );
     }
 
     puts("");
