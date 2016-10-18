@@ -33,7 +33,7 @@ int main(int argc, char* argv[]) {
         exit(1);
     }
 
-    FILE* fp = fopen( argv[ 1 ], "r" );
+    FILE* fp = fopen( argv[ 1 ], "rb" );
     if( !fp ) {
         perror( "fopen():" );
         exit( 3 );

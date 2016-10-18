@@ -1,6 +1,14 @@
-#include <Python.h>
+#if defined(_DEBUG) && defined(_MSC_VER)
+#  define _CRT_NOFORCE_MAINFEST 1
+#  undef _DEBUG
+#  include <Python.h>
+#  define _DEBUG 1
+#else
+#  include <Python.h>
+#endif
 #include "segyio/segy.h"
 #include <assert.h>
+#include <string.h>
 
 // ---------------  FILE Handling ------------
 static FILE *get_FILE_pointer_from_capsule(PyObject *capsule) {
@@ -33,9 +41,31 @@ static void *py_FILE_destructor(PyObject *capsule) {
 static PyObject *py_FILE_open(PyObject *self, PyObject *args) {
     char *filename = NULL;
     char *mode = NULL;
-    PyArg_ParseTuple(args, "ss", &filename, &mode);
+    int mode_len = 0;
+    PyArg_ParseTuple(args, "ss#", &filename, &mode, &mode_len);
 
-    FILE *p_FILE = fopen(filename, mode);
+    if( mode_len == 0 ) {
+        PyErr_SetString(PyExc_IOError, "Mode string must be non-empty");
+        return NULL;
+    }
+
+    // append a 'b' if it is not passed by the user; not a problem on unix, but
+    // windows and other platforms fail without it
+    // the heap alloc is expensive, but avoids the risk of local stack
+    // smashing and is C++ compatible
+    char* binary_mode = strcpy( calloc( mode_len + 2, sizeof( char ) ), mode );
+    if( binary_mode[ mode_len - 1 ] != 'b' ) binary_mode[ mode_len ] = 'b';
+
+     // Account for invalid mode. On unix this is fine, but windows crashes the
+     // process if mode is invalid
+    if( !strstr( "rb" "wb" "ab" "r+b" "w+b" "a+b", binary_mode ) ) {
+        PyErr_Format( PyExc_IOError, "Invalid mode string '%s'", binary_mode );
+        free( binary_mode );
+        return NULL;
+    }
+
+    FILE *p_FILE = fopen( filename, binary_mode );
+    free( binary_mode );
 
     if (p_FILE == NULL) {
         return PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);

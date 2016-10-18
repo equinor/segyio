@@ -22,7 +22,7 @@ void test_interpret_file() {
     const int il = INLINE_3D;
     const int xl = CROSSLINE_3D;
 
-    FILE* fp = fopen( file, "r" );
+    FILE* fp = fopen( file, "rb" );
 
     assertTrue( fp != NULL, "Could not open file." );
     err = segy_binheader( fp, header );
@@ -211,7 +211,7 @@ void testReadInLine_4(){
 
     char header[ SEGY_BINARY_HEADER_SIZE ];
 
-    FILE* fp = fopen( file, "r" );
+    FILE* fp = fopen( file, "rb" );
     assertTrue( 0 == segy_binheader( fp, header ), "Could not read header" );
     const long trace0 = segy_trace0( header );
     const unsigned int samples = segy_samples( header );
@@ -286,7 +286,7 @@ void testReadCrossLine_22(){
 
     char header[ SEGY_BINARY_HEADER_SIZE ];
 
-    FILE* fp = fopen( file, "r" );
+    FILE* fp = fopen( file, "rb" );
     assertTrue( 0 == segy_binheader( fp, header ), "Could not read header" );
     const long trace0 = segy_trace0( header );
     const unsigned int samples = segy_samples( header );
@@ -355,7 +355,7 @@ void test_modify_trace_header() {
     int err;
     char bheader[ SEGY_BINARY_HEADER_SIZE ];
 
-    FILE* fp = fopen( file, "r+" );
+    FILE* fp = fopen( file, "r+b" );
     err = segy_binheader( fp, bheader );
     assertTrue( err == 0, "Could not read header" );
     const long trace0 = segy_trace0( bheader );
@@ -439,7 +439,7 @@ static const char* expected_textheader =
 
 void test_text_header() {
     const char *file = "test-data/text.sgy";
-    FILE* fp = fopen( file, "r" );
+    FILE* fp = fopen( file, "rb" );
 
     char ascii[ SEGY_TEXT_HEADER_SIZE + 1 ] = { 0 };
     int err = segy_read_textheader(fp, ascii);
@@ -451,7 +451,7 @@ void test_text_header() {
 
 void test_trace_header_errors() {
     const char *file = "test-data/small.sgy";
-    FILE* fp = fopen( file, "r" );
+    FILE* fp = fopen( file, "rb" );
     int err;
 
     char binheader[ SEGY_BINARY_HEADER_SIZE ];
@@ -486,7 +486,7 @@ void test_trace_header_errors() {
 
 void test_file_error_codes() {
     const char *file = "test-data/small.sgy";
-    FILE* fp = fopen( file, "r" );
+    FILE* fp = fopen( file, "rb" );
     fclose( fp );
 
     int err;

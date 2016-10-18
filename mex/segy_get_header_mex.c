@@ -16,7 +16,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
     int err;
 
     const char* filename = mxArrayToString( prhs[ 0 ] );
-    FILE* fp = segyfopen( prhs[ 0 ], "r" );
+    FILE* fp = segyfopen( prhs[ 0 ], "rb" );
 
     int field = mxGetScalar( prhs[ 1 ] );
 

@@ -14,7 +14,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
     char* msg2;
     int err;
 
-    FILE* fp = segyfopen( prhs[ 0 ], "r" );
+    FILE* fp = segyfopen( prhs[ 0 ], "rb" );
     char* textheader = mxMalloc( segy_textheader_size() );
     err = segy_read_textheader( fp, textheader );
     

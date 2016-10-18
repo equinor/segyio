@@ -52,7 +52,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
     }
 
     if (read) {
-        fp = fopen( spec.filename, "r" );
+        fp = fopen( spec.filename, "rb" );
         if (fp == NULL) {
             goto CLEANUP;
         }
@@ -71,7 +71,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
         }
     }
     else {
-        fp = fopen( spec.filename, "r+" );
+        fp = fopen( spec.filename, "r+b" );
         if (fp == NULL) {
             goto CLEANUP;
         }

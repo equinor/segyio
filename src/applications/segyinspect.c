@@ -54,7 +54,7 @@ int main(int argc, char* argv[]) {
 
     clock_t start = clock();
 
-    FILE* fp = fopen( argv[ 1 ], "r" );
+    FILE* fp = fopen( argv[ 1 ], "rb" );
     if( !fp ) {
         perror( "fopen()" );
         exit( SEGY_FOPEN_ERROR );
