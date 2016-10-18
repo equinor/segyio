@@ -448,7 +448,9 @@ static PyObject *py_init_line_metrics(PyObject *self, PyObject *args) {
     unsigned int xline_length = segy_crossline_length(inline_count);
 
     unsigned int iline_stride;
-    segy_inline_stride(sorting, inline_count, &iline_stride);
+    int error = segy_inline_stride(sorting, inline_count, &iline_stride);
+    //Only check first call since the only error that can occur is SEGY_INVALID_SORTING
+    if( error ) { return py_handle_segy_error( error, errno ); }
 
     unsigned int xline_stride;
     segy_crossline_stride(sorting, crossline_count, &xline_stride);
