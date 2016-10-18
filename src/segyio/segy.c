@@ -816,42 +816,12 @@ int segy_count_lines( FILE* fp,
     return SEGY_OK;
 }
 
-int segy_inline_length( int sorting,
-                        unsigned int traces,
-                        unsigned int crossline_count,
-                        unsigned int offsets,
-                        unsigned int* line_length ) {
-
-    if( sorting == INLINE_SORTING ) {
-        *line_length = crossline_count;
-        return SEGY_OK;
-    }
-
-    if( sorting == CROSSLINE_SORTING ) {
-        *line_length = traces / (crossline_count * offsets);
-        return SEGY_OK;
-    }
-
-    return SEGY_INVALID_SORTING;
+unsigned int segy_inline_length(unsigned int crossline_count) {
+    return crossline_count;
 }
 
-int segy_crossline_length( int sorting,
-                           unsigned int traces,
-                           unsigned int inline_count,
-                           unsigned int offsets,
-                           unsigned int* line_length ) {
-
-    if( sorting == INLINE_SORTING ) {
-        *line_length = inline_count;
-        return SEGY_OK;
-    }
-
-    if( sorting == CROSSLINE_SORTING ) {
-        *line_length = traces / (inline_count * offsets);
-        return SEGY_OK;
-    }
-
-    return SEGY_INVALID_SORTING;
+unsigned int segy_crossline_length(unsigned int inline_count) {
+    return inline_count;
 }
 
 int segy_inline_indices( FILE* fp,

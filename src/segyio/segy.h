@@ -158,23 +158,14 @@ int segy_count_lines( FILE*,
                       unsigned int trace_bsize );
 /*
  * Find the `line_length` for the inlines. Assumes all inlines, crosslines and
- * traces don't vary in length. `offsets` can be found with `segy_offsets`, and
- * `traces` can be found with `segy_traces`.
- *
+ * traces don't vary in length.
+ * *
  * `inline_count` and `crossline_count` are the two values obtained with
  * `segy_count_lines`.
  */
-int segy_inline_length( int sorting,
-                        unsigned int traces,
-                        unsigned int crossline_count,
-                        unsigned int offsets,
-                        unsigned int* line_length );
+unsigned int segy_inline_length(unsigned int crossline_count);
 
-int segy_crossline_length( int sorting,
-                           unsigned int traces,
-                           unsigned int inline_count,
-                           unsigned int offsets,
-                           unsigned int* line_length );
+unsigned int segy_crossline_length(unsigned int inline_count);
 
 /*
  * Find the indices of the inlines and write to `buf`. `offsets` are the number

@@ -76,8 +76,7 @@ void test_interpret_file() {
     assertTrue( err == 0, "Could not determine 2484's trace0." );
     assertTrue( line_trace0 == 15, "Line 4 should start at traceno 15." );
 
-    err = segy_inline_length( sorting, traces, inlines_sz, offsets, &line_length );
-    assertTrue( err == 0, "Could not determine line length." );
+    line_length = segy_inline_length( crosslines_sz);
     assertTrue( line_length == 5, "Inline length should be 5." );
 
     /* Crossline-specific information */
@@ -96,8 +95,7 @@ void test_interpret_file() {
     assertTrue( err == 0, "Could not determine 22's trace0." );
     assertTrue( line_trace0 == 2, "Line 22 should start at traceno 2." );
 
-    err = segy_crossline_length( sorting, traces, inlines_sz, offsets, &line_length );
-    assertTrue( err == 0, "Failure finding length" );
+    line_length = segy_crossline_length( inlines_sz );
     assertTrue( line_length == 5, "Crossline length should be 5." );
 
     fclose( fp );
@@ -231,9 +229,11 @@ void testReadInLine_4(){
       && !segy_count_lines( fp, xl, offsets, &inlines_sz, &crosslines_sz, trace0, trace_bsize )
       && !segy_inline_indices( fp, il, sorting, inlines_sz, crosslines_sz, offsets, inline_indices, trace0, trace_bsize )
       && !segy_inline_stride( sorting, inlines_sz, &stride )
-      && !segy_line_trace0( 4, crosslines_sz, stride, inline_indices, inlines_sz, &line_trace0 )
-      && !segy_inline_length( sorting, traces, inlines_sz, offsets, &line_length )
-      && !segy_read_line( fp, line_trace0, line_length, stride, data, trace0, trace_bsize )
+      && !segy_line_trace0( 4, crosslines_sz, stride, inline_indices, inlines_sz, &line_trace0 );
+
+    line_length = segy_inline_length(crosslines_sz);
+
+      ok = ok && !segy_read_line( fp, line_trace0, line_length, stride, data, trace0, trace_bsize )
       && !segy_to_native( format, inline_length * samples, data );
 
     assertTrue( ok, "Error in setup. "
@@ -304,9 +304,11 @@ void testReadCrossLine_22(){
       && !segy_count_lines( fp, xl, offsets, &inlines_sz, &crosslines_sz, trace0, trace_bsize )
       && !segy_crossline_indices( fp, xl, sorting, inlines_sz, crosslines_sz, offsets, crossline_indices, trace0, trace_bsize )
       && !segy_crossline_stride( sorting, crosslines_sz, &stride )
-      && !segy_line_trace0( 22, crosslines_sz, stride, crossline_indices, inlines_sz, &line_trace0 )
-      && !segy_crossline_length( sorting, traces, inlines_sz, offsets, &line_length )
-      && !segy_read_line( fp, line_trace0, line_length, stride, data, trace0, trace_bsize )
+      && !segy_line_trace0( 22, crosslines_sz, stride, crossline_indices, inlines_sz, &line_trace0 );
+
+    line_length = segy_crossline_length(inlines_sz);
+
+    ok = ok && !segy_read_line( fp, line_trace0, line_length, stride, data, trace0, trace_bsize )
       && !segy_to_native( format, crossline_length * samples, data );
 
     assertTrue( ok, "Error in setup. "
@@ -557,15 +559,6 @@ void test_error_codes_sans_file() {
     err = segy_crossline_stride( INLINE_SORTING + 3, 10, &stride );
     assertTrue( err == SEGY_INVALID_SORTING,
                 "Expected sorting to be invalid." );
-
-    err = segy_inline_length( INLINE_SORTING + 3, 10, 10, 10, NULL );
-    assertTrue( err == SEGY_INVALID_SORTING,
-                "Expected sorting to be invalid." );
-
-    err = segy_crossline_length( INLINE_SORTING + 3, 10, 10, 10, NULL );
-    assertTrue( err == SEGY_INVALID_SORTING,
-                "Expected sorting to be invalid." );
-
 }
 
 

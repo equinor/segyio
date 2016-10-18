@@ -155,15 +155,28 @@ class _segyioTests(TestCase):
         crossline_count = metrics['xline_count']
         offset_count = metrics['offset_count']
 
-        with self.assertRaises(RuntimeError):
-            metrics = _segyio.init_line_metrics(0, trace_count, inline_count, crossline_count, offset_count)
-
         metrics = _segyio.init_line_metrics(sorting, trace_count, inline_count, crossline_count, offset_count)
 
         self.assertEqual(metrics['xline_length'], 5)
         self.assertEqual(metrics['xline_stride'], 5)
         self.assertEqual(metrics['iline_length'], 5)
         self.assertEqual(metrics['iline_stride'], 1)
+
+        # (sorting, trace_count, inline_count, crossline_count, offset_count)
+        metrics = _segyio.init_line_metrics(1, 15, 3, 5, 1)
+
+        self.assertEqual(metrics['xline_length'], 3)
+        self.assertEqual(metrics['xline_stride'], 1)
+        self.assertEqual(metrics['iline_length'], 5)
+        self.assertEqual(metrics['iline_stride'], 3)
+
+        metrics = _segyio.init_line_metrics(2, 15, 3, 5, 1)
+
+        self.assertEqual(metrics['xline_length'], 3)
+        self.assertEqual(metrics['xline_stride'], 5)
+        self.assertEqual(metrics['iline_length'], 5)
+        self.assertEqual(metrics['iline_stride'], 1)
+
 
     def test_metrics(self):
         f = _segyio.open(self.filename, "r")
