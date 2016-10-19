@@ -36,7 +36,7 @@ static void testEbcdicTable() {
 }
 
 static void testConversionAllocation() {
-    char* expected = (char*) "Hello there!";
+    char expected[] = "Hello there!";
     char str[] = "\xc8\x85\x93\x93\x96\x40\xa3\x88\x85\x99\x85\x4f";
 
     char result[ sizeof( str ) ];
