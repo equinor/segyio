@@ -342,8 +342,8 @@ void testReadCrossLine_22(){
     assertClose(5.22049f, data[samples*last_line+samples-1], 0.0001);
 
     for( float* ptr = data; ptr < data + (samples * line_length); ++ptr ) {
-        float xl = *ptr - floorf(*ptr);
-        assertTrue( 0.219f <= xl && xl <= 0.231f, "Sample value not in range" );
+        float x = *ptr - floorf(*ptr);
+        assertTrue( 0.219f <= x && x <= 0.231f, "Sample value not in range" );
     }
 
     free(data);

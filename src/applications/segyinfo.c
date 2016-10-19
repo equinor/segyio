@@ -105,16 +105,16 @@ int main(int argc, char* argv[]) {
             exit( err );
         }
 
-        int samples;
-        err = segy_get_field( traceh, TRACE_SAMPLE_COUNT, &samples );
+        int sample_count;
+        err = segy_get_field( traceh, TRACE_SAMPLE_COUNT, &sample_count );
 
         if( err != 0 ) {
             fprintf( stderr, "Invalid trace header field: %d\n", TRACE_SAMPLE_COUNT );
             exit( err );
         }
 
-        min_sample_count = minimum( samples, min_sample_count );
-        max_sample_count = maximum( samples, max_sample_count );
+        min_sample_count = minimum( sample_count, min_sample_count );
+        max_sample_count = maximum( sample_count, max_sample_count );
     }
 
     puts("");
