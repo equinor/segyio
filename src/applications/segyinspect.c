@@ -27,7 +27,7 @@ static const char* getSampleFormatName( int format ) {
     }
 }
 
-static char* getFastestDirectionName( int sorting ) {
+static const char* getFastestDirectionName( int sorting ) {
     if ( sorting == CROSSLINE_SORTING) {
         return "CROSSLINE";
     } else {
