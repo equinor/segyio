@@ -70,9 +70,9 @@ void ibm2ieee(void* to, const void* from, int len) {
     register int exp; /* exponent */
     register int sgn; /* sign */
 
-    for (; len-- > 0; to = (char*) to + 4, from = (char*) from + 4) {
+    for (; len-- > 0; to = (char*) to + 4, from = (const char*) from + 4) {
         /* split into sign, exponent, and fraction */
-        fr = ntohl(*(int32_t*) from); /* pick up value */
+        fr = ntohl(*(const int32_t*) from); /* pick up value */
         sgn = fr >> 31; /* save sign */
         fr <<= 1; /* shift sign out */
         exp = fr >> 25; /* save exponent */
@@ -118,9 +118,9 @@ void ieee2ibm(void* to, const void* from, int len) {
     register int exp; /* exponent */
     register int sgn; /* sign */
 
-    for (; len-- > 0; to = (char*) to + 4, from = (char*) from + 4) {
+    for (; len-- > 0; to = (char*) to + 4, from = (const char*) from + 4) {
         /* split into sign, exponent, and fraction */
-        fr = *(unsigned*) from; /* pick up value */
+        fr = *(const unsigned*) from; /* pick up value */
         sgn = fr >> 31; /* save sign */
         fr <<= 1; /* shift sign out */
         exp = fr >> 24; /* save exponent */
