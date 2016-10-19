@@ -6,7 +6,7 @@
 
 #include "unittest.h"
 
-void test_interpret_file() {
+static void test_interpret_file() {
     /*
      * test all structural properties of a file, i.e. traces, samples, sorting
      * etc, but don't actually read any data
@@ -198,7 +198,7 @@ void test_interpret_file_prestack() {
 
 */
 
-void testReadInLine_4(){
+static void testReadInLine_4(){
     const char *file = "test-data/small.sgy";
 
     int sorting;
@@ -273,7 +273,7 @@ void testReadInLine_4(){
     fclose(fp);
 }
 
-void testReadCrossLine_22(){
+static void testReadCrossLine_22(){
     const char *file = "test-data/small.sgy";
 
     int sorting;
@@ -350,7 +350,7 @@ void testReadCrossLine_22(){
     fclose(fp);
 }
 
-void test_modify_trace_header() {
+static void test_modify_trace_header() {
     const char *file = "test-data/small-traceheader.sgy";
 
     int err;
@@ -438,7 +438,7 @@ static const char* expected_textheader =
     "C39                                                                             "
     "C40                                                                            \x80";
 
-void test_text_header() {
+static void test_text_header() {
     const char *file = "test-data/text.sgy";
     FILE* fp = fopen( file, "rb" );
 
@@ -450,7 +450,7 @@ void test_text_header() {
     fclose( fp );
 }
 
-void test_trace_header_errors() {
+static void test_trace_header_errors() {
     const char *file = "test-data/small.sgy";
     FILE* fp = fopen( file, "rb" );
     int err;
@@ -485,7 +485,7 @@ void test_trace_header_errors() {
     fclose( fp );
 }
 
-void test_file_error_codes() {
+static void test_file_error_codes() {
     const char *file = "test-data/small.sgy";
     FILE* fp = fopen( file, "rb" );
     fclose( fp );
@@ -542,7 +542,7 @@ void test_file_error_codes() {
     assertTrue( err == SEGY_FSEEK_ERROR, "Could seek in invalid file." );
 }
 
-void test_error_codes_sans_file() {
+static void test_error_codes_sans_file() {
     int err;
 
     unsigned int linenos[] = { 0, 1, 2 };
@@ -560,7 +560,7 @@ void test_error_codes_sans_file() {
                 "Expected sorting to be invalid." );
 }
 
-void test_file_size_above_4GB(){
+static void test_file_size_above_4GB(){
     FILE* fp = tmpfile();
 
     unsigned int trace = 5e6;

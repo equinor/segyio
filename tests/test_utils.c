@@ -4,7 +4,7 @@
 #include <segyio/util.h>
 #include "unittest.h"
 
-void testEbcdicConversion() {
+static void testEbcdicConversion() {
     char expected[] = "Hello there!";
     char str[] = "\xc8\x85\x93\x93\x96\x40\xa3\x88\x85\x99\x85\x4f";
 
@@ -17,7 +17,7 @@ void testEbcdicConversion() {
     assertTrue(strcmp(result, str) == 0, "Converted string did not match the expected result!");
 }
 
-void testEbcdicTable() {
+static void testEbcdicTable() {
     char ascii[256];
     for (unsigned char i = 0; i < 255; i++) {
         ascii[i] = (char) (i + 1);
@@ -35,7 +35,7 @@ void testEbcdicTable() {
     }
 }
 
-void testConversionAllocation() {
+static void testConversionAllocation() {
     char* expected = (char*) "Hello there!";
     char str[] = "\xc8\x85\x93\x93\x96\x40\xa3\x88\x85\x99\x85\x4f";
 
@@ -73,7 +73,7 @@ static void check(float f1, double * epsm) {
     //printf("Error: %.8g != %.8g\n", f1, f2);
 }
 
-void testIBMFloat() {
+static void testIBMFloat() {
     int i;
     float f1;
 

@@ -7,7 +7,7 @@
 #include <segyio/segy.h>
 
 
-void testSegyInspection() {
+static void testSegyInspection() {
     const char *path = "test-data/small.sgy";
     double t0 = 1111.0;
 
@@ -54,7 +54,7 @@ void testSegyInspection() {
 
 }
 
-void testAlloc(){
+static void testAlloc(){
     const char *path = "test-data/small.sgy";
     double t0 = 1111.0;
     SegySpec spec;
