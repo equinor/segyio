@@ -1,10 +1,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <segyio/segy.h>
+#include <segyio/util.h>
 #include "unittest.h"
-
-void ebcdic2ascii( const char*, char* );
-void ascii2ebcdic( const char*, char* );
 
 void testEbcdicConversion() {
     char expected[] = "Hello there!";
@@ -51,9 +49,6 @@ void testConversionAllocation() {
 
 #define MAX 1000000 /* number of iterations */
 #define IBM_EPS 4.7683738e-7 /* worst case error */
-
-void ibm2ieee(void* to, const void* from, int len);
-void ieee2ibm(void* to, const void* from, int len);
 
 static void check(float f1, double * epsm) {
     int exp;

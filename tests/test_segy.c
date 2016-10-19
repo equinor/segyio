@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include <segyio/segy.h>
+#include <segyio/util.h>
 
 #include "unittest.h"
 
@@ -558,13 +559,6 @@ void test_error_codes_sans_file() {
     assertTrue( err == SEGY_INVALID_SORTING,
                 "Expected sorting to be invalid." );
 }
-
-
-/*
- * segy_seek is private to the implementation, but we need external linkage for
- * this test.
- */
-int segy_seek( FILE*, unsigned int, long, unsigned int );
 
 void test_file_size_above_4GB(){
     FILE* fp = tmpfile();

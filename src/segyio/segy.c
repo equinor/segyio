@@ -10,7 +10,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "segy.h"
+#include <segyio/segy.h>
+#include <segyio/util.h>
 
 static unsigned char a2e[256] = {
     0,  1,  2,  3,  55, 45, 46, 47, 22, 5,  37, 11, 12, 13, 14, 15,
