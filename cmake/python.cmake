@@ -1,10 +1,10 @@
-include(cmake/find_python_module.cmake)
-include(cmake/python_module_version.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/find_python_module.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/python_module_version.cmake)
 
 find_package(PythonInterp)
 find_package(PythonLibs REQUIRED)
 
-configure_file(cmake/test_runner.py tests/test_runner.py COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/cmake/test_runner.py ${CMAKE_BINARY_DIR}/tests/test_runner.py COPYONLY)
 
 if (EXISTS "/etc/debian_version")
     set( PYTHON_PACKAGE_PATH "dist-packages")

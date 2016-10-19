@@ -1,4 +1,15 @@
-include(../cmake/matlab.cmake REQUIRED)
+if (NOT BUILD_MEX)
+    unset(MATLAB_MCC CACHE)
+    unset(MATLAB_MEX CACHE)
+    unset(MATLAB_MEXEXT CACHE)
+    unset(MATLAB_ROOT CACHE)
+    unset(BUILD_MEX_TESTS CACHE)
+    return()
+endif()
+
+include(${CMAKE_SOURCE_DIR}/cmake/matlab.cmake REQUIRED)
+
+option(BUILD_MEX_TESTS "Build matlab mex tests" ON)
 
 configure_file(Segy.m Segy.m)
 configure_file(SegySpec.m SegySpec.m)

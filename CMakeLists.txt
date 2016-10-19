@@ -17,18 +17,14 @@ endif ()
 option(BUILD_MEX    "Build Matlab mex files"    OFF)
 option(BUILD_PYTHON "Build Python wrappers"     ON)
 
+include(cmake/check_includes.cmake)
+include(cmake/default_warnings.cmake)
 include(cmake/segyio_testing.cmake)
 enable_testing()
-include(cmake/check_includes.cmake)
 
-if (MSVC)
-    add_definitions("/W3 /wd4996")
-else() # assuming gcc-style options
-    set(C_WARNINGS "-Wall -Wextra -pedantic -Wformat-nonliteral -Wcast-align -Wpointer-arith -Wmissing-declarations -Wcast-qual -Wshadow -Wwrite-strings -Wchar-subscripts -Wredundant-decls")
+if (NOT MSVC)
     set(CMAKE_C_FLAGS "-std=c99 ${CMAKE_C_FLAGS}")
-    set(CMAKE_C_FLAGS_DEBUG "${C_WARNINGS} ${CMAKE_C_FLAGS_DEBUG}")
-    set(CMAKE_C_FLAGS_RELWITHDEBINFO "${C_WARNINGS} ${CMAKE_C_FLAGS_RELWITHDEBINFO}")
-endif (MSVC)
+endif()
 
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Default install path" FORCE)
@@ -39,10 +35,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif(NOT CMAKE_BUILD_TYPE)
 
 include_directories(src)
-
 set(SOURCE_FILES src/segyio/segy.c src/spec/segyspec.c)
-
-install(FILES src/segyio/segy.h DESTINATION ${CMAKE_INSTALL_PREFIX}/include/segyio)
 
 # The object library type is a reusable component for later builds: shared, static and python
 add_library(segyio-object OBJECT ${SOURCE_FILES})
@@ -56,35 +49,14 @@ add_library(segyio-shared SHARED $<TARGET_OBJECTS:segyio-object>)
 target_link_libraries(segyio-shared ${SEGYIO_LIBRARIES} ${SEGYIO_LIBRARIES})
 set_target_properties(segyio-shared PROPERTIES OUTPUT_NAME segyio CLEAN_DIRECT_OUTPUT 1)
 
-install(TARGETS segyio-static segyio-shared DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+# language bindings
+add_subdirectory(mex)
+add_subdirectory(python)
 
-add_executable(segyinfo src/applications/segyinfo.c)
-target_link_libraries(segyinfo segyio-static)
-add_dependencies(segyinfo segyio-static)
-
-add_executable(segyinspect src/applications/segyinspect.c)
-target_link_libraries(segyinspect segyio-static)
-add_dependencies(segyinspect segyio-static)
-
-install(TARGETS segyinfo DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
-install(TARGETS segyinspect DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
-
-if (BUILD_MEX)
-    add_subdirectory(mex)
-    option(BUILD_MEX_TESTS "Build matlab mex tests" ON)
-else (BUILD_MEX)
-    unset(MATLAB_MCC CACHE)
-    unset(MATLAB_MEX CACHE)
-    unset(MATLAB_MEXEXT CACHE)
-    unset(MATLAB_ROOT CACHE)
-    unset(BUILD_MEX_TESTS CACHE)
-endif ()
-
-if (BUILD_PYTHON)
-    include(cmake/python.cmake)
-    add_subdirectory(python)
-endif ()
-
-add_subdirectory(tests)
-add_subdirectory(examples)
 add_subdirectory(applications)
+add_subdirectory(examples)
+add_subdirectory(tests)
+
+# install the library
+install(FILES src/segyio/segy.h DESTINATION ${CMAKE_INSTALL_PREFIX}/include/segyio)
+install(TARGETS segyio-static segyio-shared DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)

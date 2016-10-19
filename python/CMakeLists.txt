@@ -1,3 +1,9 @@
+if (NOT BUILD_PYTHON)
+    return()
+endif()
+
+include(${CMAKE_SOURCE_DIR}/cmake/python.cmake)
+
 if (NOT DEFINED PYTHON_EXECUTABLE)
     message("Python interpreter not found - Python wrappers not enabled")
     unset(BUILD_PYTHON)
