@@ -593,7 +593,8 @@ static Py_buffer check_and_get_buffer(PyObject *object, const char *name, unsign
         return buffer;
     }
 
-    if (buffer.len < expected * sizeof(unsigned int)) {
+    size_t buffer_len = buffer.len;
+    if (buffer_len < expected * sizeof(unsigned int)) {
         PyErr_Format(PyExc_ValueError, "The destination for %s is too small. ", name);
         PyBuffer_Release(&buffer);
         return buffer;
