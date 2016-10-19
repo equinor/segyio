@@ -689,14 +689,14 @@ int segy_offsets( FILE* fp,
     return SEGY_OK;
 }
 
-int segy_line_indices( FILE* fp,
-                       int field,
-                       unsigned int traceno,
-                       unsigned int stride,
-                       unsigned int num_indices,
-                       unsigned int* buf,
-                       long trace0,
-                       unsigned int trace_bsize ) {
+static int segy_line_indices( FILE* fp,
+                              int field,
+                              unsigned int traceno,
+                              unsigned int stride,
+                              unsigned int num_indices,
+                              unsigned int* buf,
+                              long trace0,
+                              unsigned int trace_bsize ) {
 
     if( field_size[ field ] == 0 )
         return SEGY_INVALID_FIELD;
