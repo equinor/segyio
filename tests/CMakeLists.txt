@@ -13,8 +13,10 @@ if(BUILD_MEX)
     endif()
 endif()
 
+
 if(BUILD_PYTHON)
     add_python_test(python.segy test_segy.py)
     add_python_test(python.h.segy test_segyio_c.py)
-    add_python_test(enum.segy test_enum.py)
+    add_python_test(python.enum.segy test_enum.py)
+    add_python_test(python.segyview test_segyview.py)
 endif()
