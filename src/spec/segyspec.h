@@ -19,7 +19,7 @@ typedef struct {
     double* sample_indexes;
     unsigned int sample_count;
 
-    unsigned int trace_sorting_format;
+    int trace_sorting_format;
 
     unsigned int il_stride;
     unsigned int xl_stride;
