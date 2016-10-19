@@ -579,7 +579,8 @@ static PyObject *py_init_metrics(PyObject *self, PyObject *args) {
 }
 
 static Py_buffer check_and_get_buffer(PyObject *object, const char *name, unsigned int expected) {
-    Py_buffer buffer;
+    static const Py_buffer zero_buffer;
+    Py_buffer buffer = zero_buffer;
     if (!PyObject_CheckBuffer(object)) {
         PyErr_Format(PyExc_TypeError, "The destination for %s is not a buffer object", name);
         return buffer;
