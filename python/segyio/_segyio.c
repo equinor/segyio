@@ -192,7 +192,7 @@ static PyObject *py_handle_segy_error_with_index_and_name(int error, int errno_e
 // ------------ Text Header -------------
 
 static PyObject *py_textheader_size(PyObject *self) {
-    return Py_BuildValue("i", segy_textheader_size());
+    return Py_BuildValue("i", SEGY_TEXT_HEADER_SIZE);
 }
 
 static PyObject *py_read_texthdr(PyObject *self, PyObject *args) {
@@ -227,7 +227,7 @@ static PyObject *py_write_texthdr(PyObject *self, PyObject *args) {
 
     PyArg_ParseTuple(args, "Ois#", &file_capsule, &index, &buffer, &size);
 
-    if (size < segy_textheader_size() - 1) {
+    if (size < SEGY_TEXT_HEADER_SIZE) {
         return PyErr_Format(PyExc_ValueError, "String must have at least 3200 characters. Received count: %d", size);
     }
 
