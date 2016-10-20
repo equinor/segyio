@@ -313,7 +313,7 @@ static int get_field( const char* header,
 
         case 2:
             memcpy( &buf16, header + (field - 1), 2 );
-            *f = (int32_t)ntohs( buf16 );
+            *f = (int16_t)ntohs( buf16 );
             return SEGY_OK;
 
         case 0:
