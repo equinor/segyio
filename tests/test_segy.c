@@ -2,10 +2,11 @@
 #include <stdlib.h>
 
 #include <segyio/segy.h>
+#include <segyio/util.h>
 
 #include "unittest.h"
 
-void test_interpret_file() {
+static void test_interpret_file() {
     /*
      * test all structural properties of a file, i.e. traces, samples, sorting
      * etc, but don't actually read any data
@@ -22,7 +23,7 @@ void test_interpret_file() {
     const int il = INLINE_3D;
     const int xl = CROSSLINE_3D;
 
-    FILE* fp = fopen( file, "r" );
+    FILE* fp = fopen( file, "rb" );
 
     assertTrue( fp != NULL, "Could not open file." );
     err = segy_binheader( fp, header );
@@ -197,7 +198,7 @@ void test_interpret_file_prestack() {
 
 */
 
-void testReadInLine_4(){
+static void testReadInLine_4(){
     const char *file = "test-data/small.sgy";
 
     int sorting;
@@ -211,7 +212,7 @@ void testReadInLine_4(){
 
     char header[ SEGY_BINARY_HEADER_SIZE ];
 
-    FILE* fp = fopen( file, "r" );
+    FILE* fp = fopen( file, "rb" );
     assertTrue( 0 == segy_binheader( fp, header ), "Could not read header" );
     const long trace0 = segy_trace0( header );
     const unsigned int samples = segy_samples( header );
@@ -272,7 +273,7 @@ void testReadInLine_4(){
     fclose(fp);
 }
 
-void testReadCrossLine_22(){
+static void testReadCrossLine_22(){
     const char *file = "test-data/small.sgy";
 
     int sorting;
@@ -286,7 +287,7 @@ void testReadCrossLine_22(){
 
     char header[ SEGY_BINARY_HEADER_SIZE ];
 
-    FILE* fp = fopen( file, "r" );
+    FILE* fp = fopen( file, "rb" );
     assertTrue( 0 == segy_binheader( fp, header ), "Could not read header" );
     const long trace0 = segy_trace0( header );
     const unsigned int samples = segy_samples( header );
@@ -341,23 +342,21 @@ void testReadCrossLine_22(){
     assertClose(5.22049f, data[samples*last_line+samples-1], 0.0001);
 
     for( float* ptr = data; ptr < data + (samples * line_length); ++ptr ) {
-        float xl = *ptr - floorf(*ptr);
-        assertTrue( 0.219f <= xl && xl <= 0.231f, "Sample value not in range" );
+        float x = *ptr - floorf(*ptr);
+        assertTrue( 0.219f <= x && x <= 0.231f, "Sample value not in range" );
     }
 
     free(data);
     fclose(fp);
 }
 
-int32_t from_int32( int32_t );
-
-void test_modify_trace_header() {
+static void test_modify_trace_header() {
     const char *file = "test-data/small-traceheader.sgy";
 
     int err;
     char bheader[ SEGY_BINARY_HEADER_SIZE ];
 
-    FILE* fp = fopen( file, "r+" );
+    FILE* fp = fopen( file, "r+b" );
     err = segy_binheader( fp, bheader );
     assertTrue( err == 0, "Could not read header" );
     const long trace0 = segy_trace0( bheader );
@@ -439,9 +438,9 @@ static const char* expected_textheader =
     "C39                                                                             "
     "C40                                                                            \x80";
 
-void test_text_header() {
+static void test_text_header() {
     const char *file = "test-data/text.sgy";
-    FILE* fp = fopen( file, "r" );
+    FILE* fp = fopen( file, "rb" );
 
     char ascii[ SEGY_TEXT_HEADER_SIZE + 1 ] = { 0 };
     int err = segy_read_textheader(fp, ascii);
@@ -451,9 +450,9 @@ void test_text_header() {
     fclose( fp );
 }
 
-void test_trace_header_errors() {
+static void test_trace_header_errors() {
     const char *file = "test-data/small.sgy";
-    FILE* fp = fopen( file, "r" );
+    FILE* fp = fopen( file, "rb" );
     int err;
 
     char binheader[ SEGY_BINARY_HEADER_SIZE ];
@@ -486,9 +485,9 @@ void test_trace_header_errors() {
     fclose( fp );
 }
 
-void test_file_error_codes() {
+static void test_file_error_codes() {
     const char *file = "test-data/small.sgy";
-    FILE* fp = fopen( file, "r" );
+    FILE* fp = fopen( file, "rb" );
     fclose( fp );
 
     int err;
@@ -543,7 +542,7 @@ void test_file_error_codes() {
     assertTrue( err == SEGY_FSEEK_ERROR, "Could seek in invalid file." );
 }
 
-void test_error_codes_sans_file() {
+static void test_error_codes_sans_file() {
     int err;
 
     unsigned int linenos[] = { 0, 1, 2 };
@@ -561,14 +560,7 @@ void test_error_codes_sans_file() {
                 "Expected sorting to be invalid." );
 }
 
-
-/*
- * segy_seek is private to the implementation, but we need external linkage for
- * this test.
- */
-int segy_seek( FILE*, unsigned int, long, unsigned int );
-
-void test_file_size_above_4GB(){
+static void test_file_size_above_4GB(){
     FILE* fp = tmpfile();
 
     unsigned int trace = 5e6;

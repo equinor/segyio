@@ -1,8 +1,17 @@
+#ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
+#elif HAVE_ARPA_INET_H
+#include <arpa/inet.h>
+#elif HAVE_WINSOCK2_H
+#include <winsock2.h>
+#endif
+
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "segy.h"
+#include <segyio/segy.h>
+#include <segyio/util.h>
 
 static unsigned char a2e[256] = {
     0,  1,  2,  3,  55, 45, 46, 47, 22, 5,  37, 11, 12, 13, 14, 15,
@@ -61,9 +70,9 @@ void ibm2ieee(void* to, const void* from, int len) {
     register int exp; /* exponent */
     register int sgn; /* sign */
 
-    for (; len-- > 0; to = (char*) to + 4, from = (char*) from + 4) {
+    for (; len-- > 0; to = (char*) to + 4, from = (const char*) from + 4) {
         /* split into sign, exponent, and fraction */
-        fr = ntohl(*(int32_t*) from); /* pick up value */
+        fr = ntohl(*(const int32_t*) from); /* pick up value */
         sgn = fr >> 31; /* save sign */
         fr <<= 1; /* shift sign out */
         exp = fr >> 25; /* save exponent */
@@ -109,9 +118,9 @@ void ieee2ibm(void* to, const void* from, int len) {
     register int exp; /* exponent */
     register int sgn; /* sign */
 
-    for (; len-- > 0; to = (char*) to + 4, from = (char*) from + 4) {
+    for (; len-- > 0; to = (char*) to + 4, from = (const char*) from + 4) {
         /* split into sign, exponent, and fraction */
-        fr = *(unsigned*) from; /* pick up value */
+        fr = *(const unsigned*) from; /* pick up value */
         sgn = fr >> 31; /* save sign */
         fr <<= 1; /* shift sign out */
         exp = fr >> 24; /* save exponent */
@@ -143,17 +152,6 @@ void ieee2ibm(void* to, const void* from, int len) {
         /* put the pieces back together and return it */
         fr = (fr >> 8) | (exp << 24) | (sgn << 31);
         *(unsigned*) to = htonl(fr);
-    }
-}
-
-static void flipEndianness32(char* data, unsigned int count) {
-    for( unsigned int i = 0; i < count; i += 4) {
-        char a = data[i];
-        char b = data[i + 1];
-        data[i] = data[i + 3];
-        data[i + 1] = data[i + 2];
-        data[i + 2] = b;
-        data[i + 3] = a;
     }
 }
 
@@ -298,59 +296,24 @@ static int bfield_size[] = {
     [- HEADER_SIZE + BIN_Unassigned2]           =  0,
 };
 
-/*
- * to/from_int32 are to be considered internal functions, but have external
- * linkage so that tests can hook into them. They're not declared in the header
- * files, and use of this internal interface is at user's own risk, i.e. it may
- * change without notice.
- */
-int to_int32( const char* buf ) {
-    int32_t value;
-    memcpy( &value, buf, sizeof( value ) );
-    return ((value >> 24) & 0xff)
-         | ((value << 8)  & 0xff0000)
-         | ((value >> 8)  & 0xff00)
-         | ((value << 24) & 0xff000000);
-}
-
-int to_int16( const char* buf ) {
-    int16_t value;
-    memcpy( &value, buf, sizeof( value ) );
-    return ((value >> 8) & 0x00ff)
-         | ((value << 8) & 0xff00);
-}
-
-/* from native int to segy int. fixed-width ints used as byte buffers */
-int32_t from_int32( int32_t buf ) {
-    int32_t value = 0;
-    memcpy( &value, &buf, sizeof( value ) );
-    return ((value >> 24) & 0xff)
-         | ((value << 8)  & 0xff0000)
-         | ((value >> 8)  & 0xff00)
-         | ((value << 24) & 0xff000000);
-}
-
-int16_t from_int16( int16_t buf ) {
-    int16_t value = 0;
-    memcpy( &value, &buf, sizeof( value ) );
-    return ((value >> 8) & 0x00ff)
-         | ((value << 8) & 0xff00);
-}
-
 static int get_field( const char* header,
                       const int* table,
                       int field,
-                      int* f ) {
+                      int32_t* f ) {
 
     const int bsize = table[ field ];
+    uint32_t buf32 = 0;
+    uint16_t buf16 = 0;
 
     switch( bsize ) {
         case 4:
-            *f = to_int32( header + (field - 1) );
+            memcpy( &buf32, header + (field - 1), 4 );
+            *f = (int32_t)ntohl( buf32 );
             return SEGY_OK;
 
         case 2:
-            *f = to_int16( header + (field - 1) );
+            memcpy( &buf16, header + (field - 1), 2 );
+            *f = (int32_t)ntohs( buf16 );
             return SEGY_OK;
 
         case 0:
@@ -366,7 +329,7 @@ int segy_get_field( const char* traceheader, int field, int* f ) {
     return get_field( traceheader, field_size, field, f );
 }
 
-int segy_get_bfield( const char* binheader, int field, int* f ) {
+int segy_get_bfield( const char* binheader, int field, int32_t* f ) {
     field -= SEGY_TEXT_HEADER_SIZE;
 
     if( field < 0 || field >= SEGY_BINARY_HEADER_SIZE )
@@ -375,20 +338,20 @@ int segy_get_bfield( const char* binheader, int field, int* f ) {
     return get_field( binheader, bfield_size, field, f );
 }
 
-static int set_field( char* header, const int* table, int field, int val ) {
+static int set_field( char* header, const int* table, int field, int32_t val ) {
     const int bsize = table[ field ];
 
-    int32_t buf32;
-    int16_t buf16;
+    uint32_t buf32;
+    uint16_t buf16;
 
     switch( bsize ) {
         case 4:
-            buf32 = from_int32( val );
+            buf32 = htonl( val );
             memcpy( header + (field - 1), &buf32, sizeof( buf32 ) );
             return SEGY_OK;
 
         case 2:
-            buf16 = from_int16( val );
+            buf16 = htons( val );
             memcpy( header + (field - 1), &buf16, sizeof( buf16 ) );
             return SEGY_OK;
 
@@ -451,7 +414,7 @@ int segy_format( const char* buf ) {
 }
 
 unsigned int segy_samples( const char* buf ) {
-    int samples;
+    int32_t samples;
     segy_get_bfield( buf, BIN_Samples, &samples );
     return (unsigned int) samples;
 }
@@ -614,7 +577,7 @@ int segy_sample_indexes(FILE* fp, double* buf, double t0, size_t count) {
         return err;
     }
 
-    for (int i = 0; i < count; i++) {
+    for (size_t i = 0; i < count; i++) {
         buf[i] = t0 + i * dt;
     }
 
@@ -726,14 +689,14 @@ int segy_offsets( FILE* fp,
     return SEGY_OK;
 }
 
-int segy_line_indices( FILE* fp,
-                       int field,
-                       unsigned int traceno,
-                       unsigned int stride,
-                       unsigned int num_indices,
-                       unsigned int* buf,
-                       long trace0,
-                       unsigned int trace_bsize ) {
+static int segy_line_indices( FILE* fp,
+                              int field,
+                              unsigned int traceno,
+                              unsigned int stride,
+                              unsigned int num_indices,
+                              unsigned int* buf,
+                              long trace0,
+                              unsigned int trace_bsize ) {
 
     if( field_size[ field ] == 0 )
         return SEGY_INVALID_FIELD;
@@ -928,8 +891,16 @@ int segy_to_native( int format,
                     unsigned int size,
                     float* buf ) {
 
-    if( format == IEEE_FLOAT_4_BYTE )
-        flipEndianness32( (char*)buf, size * sizeof( float ) );
+    assert( sizeof( float ) == sizeof( uint32_t ) );
+
+    if( format == IEEE_FLOAT_4_BYTE ) {
+        uint32_t u;
+        while( size-- ) {
+            memcpy( &u, buf, sizeof( float ) );
+            u = ntohl( u );
+            memcpy( buf++, &u, sizeof( float ) );
+        }
+    }
     else
         ibm2ieee( buf, buf, size );
 
@@ -940,8 +911,16 @@ int segy_from_native( int format,
                       unsigned int size,
                       float* buf ) {
 
-    if( format == IEEE_FLOAT_4_BYTE )
-        flipEndianness32( (char*)buf, size * sizeof( float ) );
+    assert( sizeof( float ) == sizeof( uint32_t ) );
+
+    if( format == IEEE_FLOAT_4_BYTE ) {
+        uint32_t u;
+        while( size-- ) {
+            memcpy( &u, buf, sizeof( float ) );
+            u = htonl( u );
+            memcpy( buf++, &u, sizeof( float ) );
+        }
+    }
     else
         ieee2ibm( buf, buf, size );
 
@@ -1110,7 +1089,7 @@ int segy_write_textheader( FILE* fp, unsigned int pos, const char* buf ) {
     return SEGY_OK;
 }
 
-unsigned int segy_textheader_size() {
+int segy_textheader_size() {
     return SEGY_TEXT_HEADER_SIZE + 1;
 }
 

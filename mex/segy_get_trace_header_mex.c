@@ -14,7 +14,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
     char* msg2;
     int err;
 
-    FILE* fp = segyfopen( prhs[ 0 ], "r" );
+    FILE* fp = segyfopen( prhs[ 0 ], "rb" );
     struct segy_file_format fmt = filefmt( fp );
     int traceno = mxGetScalar( prhs[ 1 ] );
 

@@ -14,7 +14,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
     char* msg2;
     int err;
 
-    FILE* fp = segyfopen( prhs[ 0 ], "r" );
+    FILE* fp = segyfopen( prhs[ 0 ], "rb" );
     int first_trace = mxGetScalar( prhs[ 1 ] );
     int last_trace  = mxGetScalar( prhs[ 2 ] );
     int notype      = mxGetScalar( prhs[ 3 ] );

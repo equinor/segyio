@@ -15,7 +15,7 @@ int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, 
 
     int errc = 0;
 
-    FILE* fp = fopen( file, "r" );
+    FILE* fp = fopen( file, "rb" );
     if (fp == NULL) {
         fprintf(stderr, "Unable to open file: '%s'\n", file);
         return -1;

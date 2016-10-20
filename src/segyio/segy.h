@@ -39,10 +39,10 @@ int segy_write_binheader( FILE*, const char* buf );
 unsigned int segy_samples( const char* binheader );
 /* exception: the int returned is an enum, SEGY_SORTING, not an error code */
 int segy_format( const char* binheader );
-int segy_get_field( const char* traceheader, int field, int* f );
-int segy_get_bfield( const char* binheader, int field, int* f );
-int segy_set_field( char* traceheader, int field, int val );
-int segy_set_bfield( char* binheader, int field, int val );
+int segy_get_field( const char* traceheader, int field, int32_t* f );
+int segy_get_bfield( const char* binheader, int field, int32_t* f );
+int segy_set_field( char* traceheader, int field, int32_t val );
+int segy_set_bfield( char* binheader, int field, int32_t val );
 
 unsigned segy_trace_bsize( unsigned int samples );
 /* byte-offset of the first trace header. */
@@ -54,7 +54,7 @@ int segy_sample_indexes(FILE* fp, double* buf, double t0, size_t count);
 
 /* text header operations */
 int segy_read_textheader(FILE *, char *buf);
-unsigned int segy_textheader_size();
+int segy_textheader_size();
 int segy_write_textheader( FILE*, unsigned int pos, const char* buf );
 
 /* Read the trace header at `traceno` into `buf`. */

@@ -1,0 +1,26 @@
+version: 1.0.{build}
+
+clone_depth: 1
+
+configuration:
+    - Debug
+    - Release
+
+os: Visual Studio 2015
+image: Visual Studio 2015
+
+platform:
+    - x86
+    - x64
+
+environment:
+    matrix:
+        - PYTHON: C:\Python27
+
+build_script:
+    - python -m pip install --user numpy
+    - mkdir build
+    - pushd build
+    - cmake C:\projects\SegyIO -DBUILD_MEX=OFF -DBUILD_PYTHON=ON -DCMAKE_BUILD_TYPE=%configuration%
+    - cmake --build . --config %configuration%
+    - ctest -C %configuration% --output-on-failure

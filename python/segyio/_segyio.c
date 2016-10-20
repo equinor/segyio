@@ -1,6 +1,14 @@
-#include <Python.h>
+#if defined(_DEBUG) && defined(_MSC_VER)
+#  define _CRT_NOFORCE_MAINFEST 1
+#  undef _DEBUG
+#  include <Python.h>
+#  define _DEBUG 1
+#else
+#  include <Python.h>
+#endif
 #include "segyio/segy.h"
 #include <assert.h>
+#include <string.h>
 
 // ---------------  FILE Handling ------------
 static FILE *get_FILE_pointer_from_capsule(PyObject *capsule) {
@@ -33,9 +41,31 @@ static void *py_FILE_destructor(PyObject *capsule) {
 static PyObject *py_FILE_open(PyObject *self, PyObject *args) {
     char *filename = NULL;
     char *mode = NULL;
-    PyArg_ParseTuple(args, "ss", &filename, &mode);
+    int mode_len = 0;
+    PyArg_ParseTuple(args, "ss#", &filename, &mode, &mode_len);
 
-    FILE *p_FILE = fopen(filename, mode);
+    if( mode_len == 0 ) {
+        PyErr_SetString(PyExc_IOError, "Mode string must be non-empty");
+        return NULL;
+    }
+
+    // append a 'b' if it is not passed by the user; not a problem on unix, but
+    // windows and other platforms fail without it
+    // the heap alloc is expensive, but avoids the risk of local stack
+    // smashing and is C++ compatible
+    char* binary_mode = strcpy( calloc( mode_len + 2, sizeof( char ) ), mode );
+    if( binary_mode[ mode_len - 1 ] != 'b' ) binary_mode[ mode_len ] = 'b';
+
+     // Account for invalid mode. On unix this is fine, but windows crashes the
+     // process if mode is invalid
+    if( !strstr( "rb" "wb" "ab" "r+b" "w+b" "a+b", binary_mode ) ) {
+        PyErr_Format( PyExc_IOError, "Invalid mode string '%s'", binary_mode );
+        free( binary_mode );
+        return NULL;
+    }
+
+    FILE *p_FILE = fopen( filename, binary_mode );
+    free( binary_mode );
 
     if (p_FILE == NULL) {
         return PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
@@ -162,7 +192,7 @@ static PyObject *py_handle_segy_error_with_index_and_name(int error, int errno_e
 // ------------ Text Header -------------
 
 static PyObject *py_textheader_size(PyObject *self) {
-    return Py_BuildValue("i", segy_textheader_size());
+    return Py_BuildValue("i", SEGY_TEXT_HEADER_SIZE);
 }
 
 static PyObject *py_read_texthdr(PyObject *self, PyObject *args) {
@@ -197,7 +227,7 @@ static PyObject *py_write_texthdr(PyObject *self, PyObject *args) {
 
     PyArg_ParseTuple(args, "Ois#", &file_capsule, &index, &buffer, &size);
 
-    if (size < segy_textheader_size() - 1) {
+    if (size < SEGY_TEXT_HEADER_SIZE) {
         return PyErr_Format(PyExc_ValueError, "String must have at least 3200 characters. Received count: %d", size);
     }
 
@@ -448,7 +478,9 @@ static PyObject *py_init_line_metrics(PyObject *self, PyObject *args) {
     unsigned int xline_length = segy_crossline_length(inline_count);
 
     unsigned int iline_stride;
-    segy_inline_stride(sorting, inline_count, &iline_stride);
+    int error = segy_inline_stride(sorting, inline_count, &iline_stride);
+    //Only check first call since the only error that can occur is SEGY_INVALID_SORTING
+    if( error ) { return py_handle_segy_error( error, errno ); }
 
     unsigned int xline_stride;
     segy_crossline_stride(sorting, crossline_count, &xline_stride);
@@ -547,7 +579,8 @@ static PyObject *py_init_metrics(PyObject *self, PyObject *args) {
 }
 
 static Py_buffer check_and_get_buffer(PyObject *object, const char *name, unsigned int expected) {
-    Py_buffer buffer;
+    static const Py_buffer zero_buffer;
+    Py_buffer buffer = zero_buffer;
     if (!PyObject_CheckBuffer(object)) {
         PyErr_Format(PyExc_TypeError, "The destination for %s is not a buffer object", name);
         return buffer;
@@ -560,7 +593,8 @@ static Py_buffer check_and_get_buffer(PyObject *object, const char *name, unsign
         return buffer;
     }
 
-    if (buffer.len < expected * sizeof(unsigned int)) {
+    size_t buffer_len = buffer.len;
+    if (buffer_len < expected * sizeof(unsigned int)) {
         PyErr_Format(PyExc_ValueError, "The destination for %s is too small. ", name);
         PyBuffer_Release(&buffer);
         return buffer;

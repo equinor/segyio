@@ -32,6 +32,7 @@ class SegyFile(object):
         """
         Constructor, internal.
         """
+
         self._filename = filename
         self._mode = mode
         self._il = iline

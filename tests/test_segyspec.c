@@ -7,7 +7,7 @@
 #include <segyio/segy.h>
 
 
-void testSegyInspection() {
+static void testSegyInspection() {
     const char *path = "test-data/small.sgy";
     double t0 = 1111.0;
 
@@ -26,19 +26,19 @@ void testSegyInspection() {
 
     assertTrue(spec.sample_count == 50, "Expected sample count to be 50");
 
-    for(int i = 0; i < spec.sample_count; i++) {
+    for(unsigned int i = 0; i < spec.sample_count; i++) {
         double t = t0 + i * 4.0;
         assertTrue(spec.sample_indexes[i] == t, "Sample index not equal to expected value");
     }
 
     assertTrue(spec.inline_count == 5, "Expect inline count to be 5");
-    for(int i = 0; i < spec.inline_count; i++) {
+    for(unsigned int i = 0; i < spec.inline_count; i++) {
         unsigned int il = spec.inline_indexes[i];
         assertTrue(il >= 1 && il <= 5, "Expected inline index value to be between [1, 5]");
     }
 
     assertTrue(spec.crossline_count == 5, "Expect crossline count to be 5");
-    for(int i = 0; i < spec.crossline_count; i++) {
+    for(unsigned int i = 0; i < spec.crossline_count; i++) {
         unsigned int xl = spec.crossline_indexes[i];
         assertTrue(xl >= 20 && xl <= 24, "Expected crossline index value to be between [20, 24]");
     }
@@ -54,7 +54,7 @@ void testSegyInspection() {
 
 }
 
-void testAlloc(){
+static void testAlloc(){
     const char *path = "test-data/small.sgy";
     double t0 = 1111.0;
     SegySpec spec;

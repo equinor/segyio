@@ -101,7 +101,7 @@ def create(filename, spec):
 
     txt_hdr_sz = segyio._segyio.textheader_size()
     bin_hdr_sz = segyio._segyio.binheader_size()
-    f._tr0          = -1 + txt_hdr_sz + bin_hdr_sz + (spec.ext_headers * (txt_hdr_sz - 1))
+    f._tr0          = txt_hdr_sz + bin_hdr_sz + (spec.ext_headers * txt_hdr_sz)
     f._sorting       = spec.sorting
     f._fmt          = spec.format
     f._offsets       = spec.offsets

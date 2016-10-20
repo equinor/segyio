@@ -54,7 +54,7 @@ class _segyioTests(TestCase):
         self.assertEqual(400, _segyio.binheader_size())
 
     def test_textheader_size(self):
-        self.assertEqual(3201, _segyio.textheader_size())
+        self.assertEqual(3200, _segyio.textheader_size())
 
     def test_open_non_existing_file(self):
         with self.assertRaises(IOError):
@@ -197,7 +197,7 @@ class _segyioTests(TestCase):
 
         self.assertEqual(metrics['iline_field'], ilb)
         self.assertEqual(metrics['xline_field'], xlb)
-        self.assertEqual(metrics['trace0'], _segyio.textheader_size() + _segyio.binheader_size() - 1)
+        self.assertEqual(metrics['trace0'], _segyio.textheader_size() + _segyio.binheader_size())
         self.assertEqual(metrics['sample_count'], 50)
         self.assertEqual(metrics['format'], 1)
         self.assertEqual(metrics['trace_bsize'], 200)

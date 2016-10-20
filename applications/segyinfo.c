@@ -17,11 +17,11 @@ static void printSegyTraceInfo( const char* buf ) {
     printf("Inline3D:          %d\n", il );
 }
 
-static inline int min( int x, int y ) {
+static inline int minimum( int x, int y ) {
     return x < y ? x : y;
 }
 
-static inline int max( int x, int y ) {
+static inline int maximum( int x, int y ) {
     return x > y ? x : y;
 }
 
@@ -33,7 +33,7 @@ int main(int argc, char* argv[]) {
         exit(1);
     }
 
-    FILE* fp = fopen( argv[ 1 ], "r" );
+    FILE* fp = fopen( argv[ 1 ], "rb" );
     if( !fp ) {
         perror( "fopen():" );
         exit( 3 );
@@ -105,16 +105,16 @@ int main(int argc, char* argv[]) {
             exit( err );
         }
 
-        int samples;
-        err = segy_get_field( traceh, TRACE_SAMPLE_COUNT, &samples );
+        int sample_count;
+        err = segy_get_field( traceh, TRACE_SAMPLE_COUNT, &sample_count );
 
         if( err != 0 ) {
             fprintf( stderr, "Invalid trace header field: %d\n", TRACE_SAMPLE_COUNT );
             exit( err );
         }
 
-        min_sample_count = min( samples, min_sample_count );
-        max_sample_count = max( samples, max_sample_count );
+        min_sample_count = minimum( sample_count, min_sample_count );
+        max_sample_count = maximum( sample_count, max_sample_count );
     }
 
     puts("");

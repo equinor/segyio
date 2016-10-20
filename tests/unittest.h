@@ -8,7 +8,7 @@
 #include <string.h>
 #include <math.h>
 
-void testAssertionFailed(const char *message, const char *file, int line) {
+static void testAssertionFailed(const char *message, const char *file, int line) {
     fprintf(stderr, "Assertion failed in file: %s on line: %d\n", file, line);
     if (strlen(message) > 0) {
         fprintf(stderr, "%s", message);
@@ -16,9 +16,9 @@ void testAssertionFailed(const char *message, const char *file, int line) {
     exit(1);
 }
 
-#define assertTrue(value, message) _testAssertTrue((value), (message), __FILE__, __LINE__)
+#define assertTrue(value, message) testAssertTrue((value), (message), __FILE__, __LINE__)
 
-void _testAssertTrue(bool value, const char *message, const char *file, int line) {
+static void testAssertTrue(bool value, const char *message, const char *file, int line) {
     if (!value) {
         if (message && strlen(message) == 0) {
             message = "The expression did not evaluate to true!";
@@ -27,9 +27,9 @@ void _testAssertTrue(bool value, const char *message, const char *file, int line
     }
 }
 
-#define assertClose(expected, actual, eps) _testAssertClose((expected), (actual), (eps), __FILE__, __LINE__)
+#define assertClose(expected, actual, eps) testAssertClose((expected), (actual), (eps), __FILE__, __LINE__)
 
-void _testAssertClose(double expected, double actual, double eps, const char *file, int line) {
+static void testAssertClose(double expected, double actual, double eps, const char *file, int line) {
     double diff = fabs(expected-actual);
     if (diff > eps) {
         char message[1000];
