@@ -393,6 +393,12 @@ static void test_modify_trace_header() {
     err = segy_write_traceheader( fp, 0, traceh, trace0, trace_bsize );
     assertTrue( err == 0, "Error writing traceheader." );
 
+    err = segy_set_field( traceh, SourceGroupScalar, -100 );
+    assertTrue( err == 0, "Error writing to trace header buffer." );
+    int32_t scale;
+    err = segy_get_field( traceh, SourceGroupScalar, &scale );
+    assertTrue( err == 0, "Error while reading SourceGroupScalar from dirty field." );
+
     fclose( fp );
 }
 
