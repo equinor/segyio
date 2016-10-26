@@ -34,6 +34,8 @@ class SliceWidget(QtGui.QWidget):
         # setting up the figure and canvas
         self.figure = Figure(figsize=(800, 200), dpi=20, facecolor='white')
 
+
+
         self.axes = self.figure.add_subplot(111)
 
         self.segy_plot = SegyPlot(self.slices,
@@ -65,7 +67,6 @@ class SliceWidget(QtGui.QWidget):
         if self.x_axis_indexes is not None:
             self.index_changed.emit(self.x_axis_indexes[x])
 
-
     def update_image(self, index):
         self.segy_plot.update_image(index)
         self.figure_canvas.draw()
@@ -81,3 +82,24 @@ class SliceWidget(QtGui.QWidget):
     def set_horizontal_line_indicator(self, line):
         self.segy_plot.set_horizontal_line_indicator(line)
         self.figure_canvas.draw()
+
+    def toggle_disabled_state(self):
+
+        self.overlay = Overlay(self)
+        self.overlay.setGeometry(self.layout.geometry())
+        self.overlay.show()
+
+
+
+class Overlay(QtGui.QWidget):
+    def __init__(self, parent):
+        super(Overlay, self).__init__(parent)
+        self.parent = parent
+    def paintEvent(self, QPaintEvent):
+
+        painter = QtGui.QPainter(self)
+
+        color = QtGui.QColor(0,0,0,50)
+        painter.fillRect(self.rect(), color)
+
+

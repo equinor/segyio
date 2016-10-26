@@ -1,9 +1,9 @@
 set(PYTHON_SOURCES
     __init__.py
     linenavigationbar.py
+    segyiowrapper.py
     segyplot.py
     slicewidget.py
-    util.py
     )
 
 add_python_package(segyview segyview "${PYTHON_SOURCES}")
