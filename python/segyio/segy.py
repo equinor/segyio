@@ -302,6 +302,21 @@ class SegyFile(object):
             Fill the file with one trace (filled with zeros)::
                 >>> tr = np.zeros(f.samples)
                 >>> f.trace = itertools.repeat(tr)
+
+            For advanced users: sometimes you want to load the entire segy file
+            to memory and apply your own structural manipulations or operations
+            on it. Some segy files are very large and may not fit, in which
+            case this feature will break down. This is an optimisation feature;
+            using it should generally be driven by measurements.
+
+            Read the first 10 traces::
+                >>> f.trace.raw[0:10]
+
+            Read *all* traces to memory::
+                >>> f.trace.raw[:]
+
+            Read every other trace to memory::
+                >>> f.trace.raw[::2]
         """
 
         return Trace(self)
