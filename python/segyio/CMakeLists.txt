@@ -4,6 +4,7 @@ set(PYTHON_SOURCES
         _line.py
         _field.py
         _trace.py
+        _raw_trace.py
         segy.py
         tracefield.py
         binfield.py

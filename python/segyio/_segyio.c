@@ -705,18 +705,29 @@ static PyObject *py_fread_trace0(PyObject *self, PyObject *args) {
 static PyObject *py_read_trace(PyObject *self, PyObject *args) {
     errno = 0;
     PyObject *file_capsule = NULL;
-    unsigned int trace_no;
+    PyObject *trace_no;
     PyObject *buffer_out;
+    int trace_count;
     long trace0;
     unsigned int trace_bsize;
     int format;
     unsigned int samples;
 
-    PyArg_ParseTuple(args, "OIOlIiI", &file_capsule, &trace_no, &buffer_out, &trace0, &trace_bsize, &format, &samples);
+    PyArg_ParseTuple(args, "OOiOlIiI", &file_capsule, &trace_no, &trace_count, &buffer_out, &trace0, &trace_bsize, &format, &samples);
 
     FILE *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
 
     if (PyErr_Occurred()) { return NULL; }
+
+    if( !trace_no || trace_no == Py_None ) {
+        PyErr_SetString(PyExc_TypeError, "Trace number must be int or slice." );
+        return NULL;
+    }
+
+    if( !PyInt_Check( trace_no ) && !PySlice_Check( trace_no ) ) {
+        PyErr_SetString(PyExc_TypeError, "Trace number must be int or slice." );
+        return NULL;
+    }
 
     if (!PyObject_CheckBuffer(buffer_out)) {
         PyErr_SetString(PyExc_TypeError, "The destination buffer is not of the correct type.");
@@ -725,13 +736,36 @@ static PyObject *py_read_trace(PyObject *self, PyObject *args) {
     Py_buffer buffer;
     PyObject_GetBuffer(buffer_out, &buffer, PyBUF_FORMAT | PyBUF_C_CONTIGUOUS | PyBUF_WRITEABLE);
 
-    int error = segy_readtrace(p_FILE, trace_no, buffer.buf, trace0, trace_bsize);
+    Py_ssize_t start, stop, step, length;
+    if( PySlice_Check( trace_no ) ) {
+        int err = PySlice_GetIndicesEx( (PySliceObject*)trace_no,
+                                        trace_count,
+                                        &start, &stop, &step,
+                                        &length );
+        if( err != 0 ) return NULL;
 
-    if (error != 0) {
-        return py_handle_segy_error_with_index_and_name(error, errno, trace_no, "Trace");
+    }
+    else {
+        start = PyInt_AsSsize_t( trace_no );
+        if( start < 0 ) start += trace_count;
+        step = 1;
+        stop = start + step;
+        length = 1;
     }
 
-    error = segy_to_native(format, samples, buffer.buf);
+    int error = 0;
+    char* buf = buffer.buf;
+    Py_ssize_t i;
+
+    for( i = 0; error == 0 && i < length; ++i, buf += trace_bsize ) {
+        error = segy_readtrace(p_FILE, start + (i * step), (float*)buf, trace0, trace_bsize);
+    }
+
+    if (error != 0) {
+        return py_handle_segy_error_with_index_and_name(error, errno, start + (i * step), "Trace");
+    }
+
+    error = segy_to_native(format, length * samples, buffer.buf);
 
     if (error != 0) {
         PyErr_SetString(PyExc_TypeError, "Unable to convert buffer to native format.");

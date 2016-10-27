@@ -187,6 +187,28 @@ class TestSegy(TestCase):
             for line in f.xline:
                 pass
 
+    def test_traces_raw(self):
+        with segyio.open(self.filename, "r") as f:
+            gen_traces = np.array(map( np.copy, f.trace ), dtype = np.single)
+
+            raw_traces = f.trace.raw[:]
+            self.assertTrue(np.array_equal(gen_traces, raw_traces))
+
+            self.assertEqual(len(gen_traces), f.tracecount)
+            self.assertEqual(len(raw_traces), f.tracecount)
+
+            self.assertEqual(gen_traces[0][49], raw_traces[0][49])
+            self.assertEqual(gen_traces[1][49], f.trace.raw[1][49])
+            self.assertEqual(gen_traces[2][49], raw_traces[2][49])
+
+            self.assertTrue(np.array_equal(f.trace[10], f.trace.raw[10]))
+
+            for raw, gen in itertools.izip(f.trace.raw[::2], f.trace[::2]):
+                self.assertTrue(np.array_equal(raw, gen))
+
+            for raw, gen in itertools.izip(f.trace.raw[::-1], f.trace[::-1]):
+                self.assertTrue(np.array_equal(raw, gen))
+
     def test_read_header(self):
         with segyio.open(self.filename, "r") as f:
             self.assertEqual(1, f.header[0][189])

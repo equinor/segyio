@@ -1,5 +1,6 @@
 import numpy as np
 import segyio
+from segyio._raw_trace import RawTrace
 
 
 class Trace:
@@ -70,22 +71,18 @@ class Trace:
             raise TypeError("Buffer must be None or numpy.ndarray")
         elif buf.dtype != np.single:
             buf = np.empty(shape=samples, dtype=np.single)
-        elif buf.shape != samples:
-            buf.reshape(samples)
 
         return buf
 
     def _readtr(self, traceno, buf=None):
-        if traceno < 0:
-            traceno += self._file.tracecount
-
         buf = self._trace_buffer(buf)
 
+        tracecount = self._file.tracecount
         trace0 = self._file._tr0
         bsz = self._file._bsz
         fmt = self._file._fmt
         samples = self._file.samples
-        return segyio._segyio.read_trace(self._file.xfd, traceno, buf, trace0, bsz, fmt, samples)
+        return segyio._segyio.read_trace(self._file.xfd, traceno, tracecount, buf, trace0, bsz, fmt, samples)
 
     def _writetr(self, traceno, buf):
         self.write_trace(traceno, buf, self._file)
@@ -99,3 +96,8 @@ class Trace:
         """
 
         segyio._segyio.write_trace(segy.xfd, traceno, buf, segy._tr0, segy._bsz, segy._fmt, segy.samples)
+
+    @property
+    def raw(self):
+        """ :rtype: segyio.RawTrace """
+        return RawTrace(self)
