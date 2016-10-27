@@ -3,7 +3,10 @@ from .segyiowrapper import SegyIOWrapper, SlicesWrapper
 
 try:
     from .linenavigationbar import LineNavigationBar
+    from .progresswidget import ProgressWidget
     from .slicewidget import SliceWidget
+    from .segyiowrapper import SegyIOWrapper, SlicesWrapper
+    from .viewer import *
 except ImportError as e:
     import sys
     import traceback
