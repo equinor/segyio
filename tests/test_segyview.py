@@ -11,11 +11,10 @@ class TestSegyView(TestCase):
 
     def test_read_all_traces_to_memory_compare_with_depth_slice_and_verify_cube_rotation(self):
 
-        swrap = SegyIOWrapper()
 
         with segyio.open(self.filename, "r") as segy:
-            swrap.s = segy
-            swrap.read_traces_to_memory()
+            swrap = SegyIOWrapper.wrap(segy)
+            swrap.read_all_traces_to_memory()
             for i, depth_slice in enumerate(swrap.depth_slices):
                 for ilno, xlno in itertools.product(range(len(segy.ilines)), range(len(segy.xlines))):
 
