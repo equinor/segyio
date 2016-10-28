@@ -4,7 +4,8 @@ from distutils.core import setup, Extension
 
 _segyio = Extension('segyio._segyio',
                     sources=['python/segyio/_segyio.c', 'src/segyio/segy.c', 'src/spec/segyspec.c'],
-                    include_dirs=['src'])
+                    include_dirs=['src'],
+                    extra_compile_args=["-std=c99"])
 
 long_description = """
 =======
@@ -50,7 +51,7 @@ written according to specification, but segyio does not mandate this.
 """
 
 setup(name='SegyIO',
-      version='1.0.2',
+      version='1.0.3',
       description='IO library for SEG-Y files',
       long_description=long_description,
       author='Statoil ASA',
