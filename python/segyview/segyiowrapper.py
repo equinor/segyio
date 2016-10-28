@@ -1,7 +1,8 @@
 import sys
+import math
 import numpy as np
-from numpy import inf
 import segyio
+import itertools
 
 
 class SlicesWrapper(object):
@@ -80,12 +81,15 @@ class SegyIOWrapper(object):
         :return:
         """
         if self.segy is not None:
-            self.segy.close()
+            try:
+                self.segy.close()
+            except Exception:
+                raise
 
     def __del__(self):
         self.close()
 
-    def read_all_traces_to_memory(self, progress_callback=None):
+    def read_all_traces_to_memory(self, progress_callback=None, number_of_read_iterations=100):
         """ Read all traces into memory and identify global min and max values.
 
         Utility method to handle the challenge of navigating up and down in depth slices,
@@ -100,36 +104,34 @@ class SegyIOWrapper(object):
 
         all_traces = np.empty(shape=((len(self.segy.ilines) * len(self.segy.xlines)), self.segy.samples), dtype=np.single)
 
-        number_of_traces = self.segy.tracecount
-
         # signal file read start to anyone listening to the monitor
         if self.file_activity_monitor is not None:
             self.file_activity_monitor.set_file_read_started()
 
-        for i, t in enumerate(self.segy.trace):
+        step_size = int(math.ceil(float(self.segy.tracecount)/number_of_read_iterations))
+
+        # read traces into memory in step_size
+        for i, in itertools.izip(range(0, self.segy.tracecount, step_size)):
 
             if self.file_activity_monitor is not None and self.file_activity_monitor.cancelled_operation:
-                """ Read operation is cancelled, closing segy file, and signal that file read is finished
-                """
-                self.segy.close()
                 self.file_activity_monitor.set_file_read_finished()
                 return False
 
-            all_traces[i] = t
+            all_traces[i: i+step_size] = self.segy.trace.raw[i:i+step_size]
 
             if progress_callback is not None:
-                progress_callback((float(i + 1) / number_of_traces) * 100)
+                progress_callback((float(i+step_size) / self.segy.tracecount) * 100)
 
         if self.file_activity_monitor is not None:
             self.file_activity_monitor.set_file_read_finished()
 
-        iline_slices = all_traces.reshape(len(self.segy.ilines), len(self.segy.xlines), self.segy.samples)
-        xline_slices = iline_slices.transpose(1, 0, 2)
+        ils = all_traces.reshape(len(self.segy.ilines), len(self.segy.xlines), self.segy.samples)
+        xls = ils.transpose(1, 0, 2)
 
-        self.depth_slices = iline_slices.transpose(2, 0, 1)
+        self.depth_slices = ils.transpose(2, 0, 1)
 
-        self.iline_slices = SlicesWrapper(self, self.segy.ilines.tolist(), iline_slices, read_from_file=False)
-        self.xline_slices = SlicesWrapper(self, self.segy.xlines.tolist(), xline_slices, read_from_file=False)
+        self.iline_slices = SlicesWrapper(self, self.segy.ilines.tolist(), ils, read_from_file=False)
+        self.xline_slices = SlicesWrapper(self, self.segy.xlines.tolist(), xls, read_from_file=False)
         self.min_max = self.identify_min_max(all_traces)
         return True
 
@@ -137,8 +139,8 @@ class SegyIOWrapper(object):
     def identify_min_max(all_traces):
 
         # removing positive and negative infinite numbers
-        all_traces[all_traces == inf] = 0
-        all_traces[all_traces == -inf] = 0
+        all_traces[all_traces == np.inf] = 0
+        all_traces[all_traces == -np.inf] = 0
 
         min_value = np.nanmin(all_traces)
         max_value = np.nanmax(all_traces)
