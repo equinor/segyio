@@ -46,7 +46,7 @@ class Line:
 
             def gen():
                 s = set(self.lines)
-                rng = xrange(*lineno.indices(self.lines[-1] + 1))
+                rng = range(*lineno.indices(self.lines[-1] + 1))
 
                 # use __getitem__ lookup to avoid tuple
                 # construction and unpacking and fast-forward
@@ -73,7 +73,7 @@ class Line:
             if lineno.start is None:
                 lineno = slice(self.lines[0], lineno.stop, lineno.step)
 
-            rng = xrange(*lineno.indices(self.lines[-1] + 1))
+            rng = range(*lineno.indices(self.lines[-1] + 1))
             s = set(self.lines)
 
             for i, x in itertools.izip(filter(s.__contains__, rng), val):

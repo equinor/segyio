@@ -23,7 +23,7 @@ class Header(object):
             gen_buf = self._header_buffer(buf)
 
             def gen():
-                for i in xrange(*traceno.indices(self.segy.tracecount)):
+                for i in range(*traceno.indices(self.segy.tracecount)):
                     yield self.__getitem__(i, gen_buf)
 
             return gen()
@@ -48,7 +48,7 @@ class Header(object):
         def gen():
             start = t0
             stop = t0 + (length * stride)
-            for i in xrange(start, stop, stride):
+            for i in range(start, stop, stride):
                 yield Field.trace(buf, traceno=i, segy=self.segy)
 
         return gen()
@@ -60,7 +60,7 @@ class Header(object):
         if isinstance(val, Field) or isinstance(val, dict):
             val = itertools.repeat(val)
 
-        for i, x in itertools.izip(xrange(start, stop, stride), val):
+        for i, x in itertools.izip(range(start, stop, stride), val):
             self[i] = x
 
     @property
