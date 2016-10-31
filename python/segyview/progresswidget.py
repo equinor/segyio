@@ -20,6 +20,6 @@ class ProgressWidget(QtGui.QWidget):
 
         self.setLayout(layout)
 
-    def set_value(self, int):
-        self.p_bar.setValue(int)
+    def set_value(self, value):
+        self.p_bar.setValue(value)
 
