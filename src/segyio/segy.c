@@ -294,6 +294,40 @@ static int bfield_size[] = {
     [- HEADER_SIZE + BIN_Unassigned2]           =  0,
 };
 
+struct segy_file_handle {
+    FILE* fp;
+};
+
+segy_file* segy_open( const char* path, const char* mode ) {
+    FILE* fp = fopen( path, mode );
+
+    if( !fp ) return NULL;
+
+    segy_file* file = malloc( sizeof( segy_file ) );
+
+    if( !file ) {
+        fclose( fp );
+        return NULL;
+    }
+
+    file->fp = fp;
+    return file;
+}
+
+int segy_flush( segy_file* fp, bool async ) {
+    return fflush( fp->fp );
+}
+
+long segy_ftell( segy_file* fp ) {
+    return ftell( fp->fp );
+}
+
+int segy_close( segy_file* fp ) {
+    int err = fclose( fp->fp );
+    free( fp );
+    return err;
+}
+
 static int get_field( const char* header,
                       const int* table,
                       int field,
@@ -375,30 +409,30 @@ int segy_set_bfield( char* binheader, int field, int val ) {
     return set_field( binheader, bfield_size, field, val );
 }
 
-int segy_binheader( FILE* fp, char* buf ) {
+int segy_binheader( segy_file* fp, char* buf ) {
     if(fp == NULL) {
         return SEGY_INVALID_ARGS;
     }
 
-    const int err = fseek( fp, SEGY_TEXT_HEADER_SIZE, SEEK_SET );
+    const int err = fseek( fp->fp, SEGY_TEXT_HEADER_SIZE, SEEK_SET );
     if( err != 0 ) return SEGY_FSEEK_ERROR;
 
-    const size_t read_count = fread( buf, 1, SEGY_BINARY_HEADER_SIZE, fp);
+    const size_t read_count = fread( buf, 1, SEGY_BINARY_HEADER_SIZE, fp->fp );
     if( read_count != SEGY_BINARY_HEADER_SIZE )
         return SEGY_FREAD_ERROR;
 
     return SEGY_OK;
 }
 
-int segy_write_binheader( FILE* fp, const char* buf ) {
+int segy_write_binheader( segy_file* fp, const char* buf ) {
     if(fp == NULL) {
         return SEGY_INVALID_ARGS;
     }
 
-    const int err = fseek( fp, SEGY_TEXT_HEADER_SIZE, SEEK_SET );
+    const int err = fseek( fp->fp, SEGY_TEXT_HEADER_SIZE, SEEK_SET );
     if( err != 0 ) return SEGY_FSEEK_ERROR;
 
-    const size_t writec = fwrite( buf, 1, SEGY_BINARY_HEADER_SIZE, fp);
+    const size_t writec = fwrite( buf, 1, SEGY_BINARY_HEADER_SIZE, fp->fp );
     if( writec != SEGY_BINARY_HEADER_SIZE )
         return SEGY_FWRITE_ERROR;
 
@@ -430,19 +464,19 @@ long segy_trace0( const char* binheader ) {
            SEGY_TEXT_HEADER_SIZE * extra_headers;
 }
 
-int segy_seek( FILE* fp,
+int segy_seek( segy_file* fp,
                unsigned int trace,
                long trace0,
                unsigned int trace_bsize ) {
 
     trace_bsize += SEGY_TRACE_HEADER_SIZE;
     const long pos = trace0 + ( (long)trace * (long)trace_bsize );
-    const int err = fseek( fp, pos, SEEK_SET );
+    const int err = fseek( fp->fp, pos, SEEK_SET );
     if( err != 0 ) return SEGY_FSEEK_ERROR;
     return SEGY_OK;
 }
 
-int segy_traceheader( FILE* fp,
+int segy_traceheader( segy_file* fp,
                       unsigned int traceno,
                       char* buf,
                       long trace0,
@@ -451,7 +485,7 @@ int segy_traceheader( FILE* fp,
     const int err = segy_seek( fp, traceno, trace0, trace_bsize );
     if( err != 0 ) return err;
 
-    const size_t readc = fread( buf, 1, SEGY_TRACE_HEADER_SIZE, fp );
+    const size_t readc = fread( buf, 1, SEGY_TRACE_HEADER_SIZE, fp->fp );
 
     if( readc != SEGY_TRACE_HEADER_SIZE )
         return SEGY_FREAD_ERROR;
@@ -459,7 +493,7 @@ int segy_traceheader( FILE* fp,
     return SEGY_OK;
 }
 
-int segy_write_traceheader( FILE* fp,
+int segy_write_traceheader( segy_file* fp,
                             unsigned int traceno,
                             const char* buf,
                             long trace0,
@@ -468,7 +502,7 @@ int segy_write_traceheader( FILE* fp,
     const int err = segy_seek( fp, traceno, trace0, trace_bsize );
     if( err != 0 ) return err;
 
-    const size_t writec = fwrite( buf, 1, SEGY_TRACE_HEADER_SIZE, fp );
+    const size_t writec = fwrite( buf, 1, SEGY_TRACE_HEADER_SIZE, fp->fp );
 
     if( writec != SEGY_TRACE_HEADER_SIZE )
         return SEGY_FWRITE_ERROR;
@@ -502,10 +536,13 @@ static int file_size( FILE* fp, size_t* size ) {
  *
  * This function assumes that *all traces* are of the same size.
  */
-int segy_traces( FILE* fp, size_t* traces, long trace0, unsigned int trace_bsize ) {
+int segy_traces( segy_file* fp,
+                 size_t* traces,
+                 long trace0,
+                 unsigned int trace_bsize ) {
 
     size_t fsize;
-    int err = file_size( fp, &fsize );
+    int err = file_size( fp->fp, &fsize );
     if( err != 0 ) return err;
 
     trace_bsize += SEGY_TRACE_HEADER_SIZE;
@@ -518,7 +555,7 @@ int segy_traces( FILE* fp, size_t* traces, long trace0, unsigned int trace_bsize
     return SEGY_OK;
 }
 
-static int segy_sample_interval(FILE* fp, double* dt) {
+static int segy_sample_interval( segy_file* fp, double* dt) {
 
     char bin_header[ SEGY_BINARY_HEADER_SIZE ];
     char trace_header[SEGY_TRACE_HEADER_SIZE];
@@ -567,7 +604,7 @@ static int segy_sample_interval(FILE* fp, double* dt) {
 
 }
 
-int segy_sample_indexes(FILE* fp, double* buf, double t0, size_t count) {
+int segy_sample_indexes( segy_file* fp, double* buf, double t0, size_t count) {
 
     double dt;
     int err = segy_sample_interval(fp, &dt);
@@ -593,7 +630,7 @@ int segy_sample_indexes(FILE* fp, double* buf, double t0, size_t count) {
  * inline, header[0].ilnum should be equal to header[1].ilnum, similarly for
  * crosslines. If neither match, the sorting is considered unknown.
  */
-int segy_sorting( FILE* fp,
+int segy_sorting( segy_file* fp,
                   int il,
                   int xl,
                   int* sorting,
@@ -647,7 +684,7 @@ int segy_sorting( FILE* fp,
  * the crossline number changes (which changes first depends on sorting, but is
  * irrelevant for this function).
  */
-int segy_offsets( FILE* fp,
+int segy_offsets( segy_file* fp,
                   int il,
                   int xl,
                   unsigned int traces,
@@ -687,7 +724,7 @@ int segy_offsets( FILE* fp,
     return SEGY_OK;
 }
 
-static int segy_line_indices( FILE* fp,
+static int segy_line_indices( segy_file* fp,
                               int field,
                               unsigned int traceno,
                               unsigned int stride,
@@ -711,7 +748,7 @@ static int segy_line_indices( FILE* fp,
     return SEGY_OK;
 }
 
-static int count_lines( FILE* fp,
+static int count_lines( segy_file* fp,
                         int field,
                         unsigned int offsets,
                         unsigned int* out,
@@ -751,7 +788,7 @@ static int count_lines( FILE* fp,
     return SEGY_OK;
 }
 
-int segy_count_lines( FILE* fp,
+int segy_count_lines( segy_file* fp,
                       int field,
                       unsigned int offsets,
                       unsigned int* l1out,
@@ -785,7 +822,7 @@ unsigned int segy_crossline_length(unsigned int inline_count) {
     return inline_count;
 }
 
-int segy_inline_indices( FILE* fp,
+int segy_inline_indices( segy_file* fp,
                          int il,
                          int sorting,
                          unsigned int inline_count,
@@ -812,7 +849,7 @@ int segy_inline_indices( FILE* fp,
     return SEGY_INVALID_SORTING;
 }
 
-int segy_crossline_indices( FILE* fp,
+int segy_crossline_indices( segy_file* fp,
                             int xl,
                             int sorting,
                             unsigned int inline_count,
@@ -841,13 +878,13 @@ int segy_crossline_indices( FILE* fp,
 }
 
 
-static int skip_traceheader( FILE* fp ) {
-    const int err = fseek( fp, SEGY_TRACE_HEADER_SIZE, SEEK_CUR );
+static int skip_traceheader( segy_file* fp ) {
+    const int err = fseek( fp->fp, SEGY_TRACE_HEADER_SIZE, SEEK_CUR );
     if( err != 0 ) return SEGY_FSEEK_ERROR;
     return SEGY_OK;
 }
 
-int segy_readtrace( FILE* fp,
+int segy_readtrace( segy_file* fp,
                     unsigned int traceno,
                     float* buf,
                     long trace0,
@@ -859,14 +896,14 @@ int segy_readtrace( FILE* fp,
     err = skip_traceheader( fp );
     if( err != 0 ) return err;
 
-    const size_t readc = fread( buf, 1, trace_bsize, fp );
+    const size_t readc = fread( buf, 1, trace_bsize, fp->fp );
     if( readc != trace_bsize ) return SEGY_FREAD_ERROR;
 
     return SEGY_OK;
 
 }
 
-int segy_writetrace( FILE* fp,
+int segy_writetrace( segy_file* fp,
                      unsigned int traceno,
                      const float* buf,
                      long trace0,
@@ -879,7 +916,7 @@ int segy_writetrace( FILE* fp,
     err = skip_traceheader( fp );
     if( err != 0 ) return err;
 
-    const size_t writec = fwrite( buf, 1, trace_bsize, fp );
+    const size_t writec = fwrite( buf, 1, trace_bsize, fp->fp );
     if( writec != trace_bsize )
         return SEGY_FWRITE_ERROR;
     return SEGY_OK;
@@ -959,7 +996,7 @@ static long index_of( unsigned int x,
  * If reading a trace fails, this function will return whatever error
  * segy_readtrace returns.
  */
-int segy_read_line( FILE* fp,
+int segy_read_line( segy_file* fp,
                     unsigned int line_trace0,
                     unsigned int line_length,
                     unsigned int stride,
@@ -988,7 +1025,7 @@ int segy_read_line( FILE* fp,
  * If reading a trace fails, this function will return whatever error
  * segy_readtrace returns.
  */
-int segy_write_line( FILE* fp,
+int segy_write_line( segy_file* fp,
                      unsigned int line_trace0,
                      unsigned int line_length,
                      unsigned int stride,
@@ -1059,13 +1096,13 @@ int segy_crossline_stride( int sorting,
     }
 }
 
-int segy_read_textheader(FILE *fp, char *buf) { //todo: Missing position/index support
+int segy_read_textheader( segy_file* fp, char *buf) { //todo: Missing position/index support
     if(fp == NULL) {
         return SEGY_FSEEK_ERROR;
     }
-    rewind( fp );
+    rewind( fp->fp );
 
-    const size_t read = fread( buf, 1, SEGY_TEXT_HEADER_SIZE, fp );
+    const size_t read = fread( buf, 1, SEGY_TEXT_HEADER_SIZE, fp->fp );
     if( read != SEGY_TEXT_HEADER_SIZE ) return SEGY_FREAD_ERROR;
 
     buf[ SEGY_TEXT_HEADER_SIZE ] = '\0';
@@ -1073,7 +1110,7 @@ int segy_read_textheader(FILE *fp, char *buf) { //todo: Missing position/index s
     return SEGY_OK;
 }
 
-int segy_write_textheader( FILE* fp, unsigned int pos, const char* buf ) {
+int segy_write_textheader( segy_file* fp, unsigned int pos, const char* buf ) {
     int err;
     char mbuf[ SEGY_TEXT_HEADER_SIZE + 1 ];
 
@@ -1085,10 +1122,10 @@ int segy_write_textheader( FILE* fp, unsigned int pos, const char* buf ) {
                       : SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE +
                         ((pos-1) * SEGY_TEXT_HEADER_SIZE);
 
-    err = fseek( fp, offset, SEEK_SET );
+    err = fseek( fp->fp, offset, SEEK_SET );
     if( err != 0 ) return SEGY_FSEEK_ERROR;
 
-    size_t writec = fwrite( mbuf, 1, SEGY_TEXT_HEADER_SIZE, fp );
+    size_t writec = fwrite( mbuf, 1, SEGY_TEXT_HEADER_SIZE, fp->fp );
     if( writec != SEGY_TEXT_HEADER_SIZE )
         return SEGY_FWRITE_ERROR;
 

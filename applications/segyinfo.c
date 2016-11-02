@@ -33,7 +33,7 @@ int main(int argc, char* argv[]) {
         exit(1);
     }
 
-    FILE* fp = fopen( argv[ 1 ], "rb" );
+    segy_file* fp = segy_open( argv[ 1 ], "rb" );
     if( !fp ) {
         perror( "fopen():" );
         exit( 3 );
@@ -136,6 +136,6 @@ int main(int argc, char* argv[]) {
     clock_t diff = clock() - start;
     printf("Read all trace headers in: %.2f s\n", (double) diff / CLOCKS_PER_SEC);
 
-    fclose( fp );
+    segy_close( fp );
     return 0;
 }

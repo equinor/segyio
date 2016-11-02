@@ -11,8 +11,8 @@
 #include <string.h>
 
 // ---------------  FILE Handling ------------
-static FILE *get_FILE_pointer_from_capsule(PyObject *capsule) {
-    if (!PyCapsule_IsValid(capsule, "FILE*")) {
+static segy_file *get_FILE_pointer_from_capsule(PyObject *capsule) {
+    if (!PyCapsule_IsValid(capsule, "segy_file*")) {
         PyErr_SetString(PyExc_TypeError, "The object was not of type FILE");
         return NULL;
     }
@@ -22,7 +22,7 @@ static FILE *get_FILE_pointer_from_capsule(PyObject *capsule) {
         return NULL;
     }
 
-    FILE *p_FILE = PyCapsule_GetPointer(capsule, "FILE*");
+    segy_file *p_FILE = PyCapsule_GetPointer(capsule, "segy_file*");
 
     if (!p_FILE) {
         PyErr_SetString(PyExc_ValueError, "File Handle is NULL");
@@ -33,7 +33,7 @@ static FILE *get_FILE_pointer_from_capsule(PyObject *capsule) {
 
 static void *py_FILE_destructor(PyObject *capsule) {
 #ifndef NDEBUG
-    fputs("FILE* destructed before calling close()\n", stderr);
+    fputs("segy_file* destructed before calling close()\n", stderr);
 #endif
     return NULL;
 }
@@ -64,13 +64,13 @@ static PyObject *py_FILE_open(PyObject *self, PyObject *args) {
         return NULL;
     }
 
-    FILE *p_FILE = fopen( filename, binary_mode );
+    segy_file *p_FILE = segy_open( filename, binary_mode );
     free( binary_mode );
 
     if (p_FILE == NULL) {
         return PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
     }
-    return PyCapsule_New(p_FILE, "FILE*", (PyCapsule_Destructor) py_FILE_destructor);
+    return PyCapsule_New(p_FILE, "segy_file*", (PyCapsule_Destructor) py_FILE_destructor);
 }
 
 static PyObject *py_FILE_close(PyObject *self, PyObject *args) {
@@ -78,11 +78,11 @@ static PyObject *py_FILE_close(PyObject *self, PyObject *args) {
     PyObject *file_capsule = NULL;
     PyArg_ParseTuple(args, "O", &file_capsule);
 
-    FILE *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
+    segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
 
     if (PyErr_Occurred()) { return NULL; }
 
-    fclose(p_FILE);
+    segy_close(p_FILE);
 
     if (errno != 0) {
         return PyErr_SetFromErrno(PyExc_IOError);
@@ -98,12 +98,14 @@ static PyObject *py_FILE_flush(PyObject *self, PyObject *args) {
     PyObject *file_capsule = NULL;
     PyArg_ParseTuple(args, "O", &file_capsule);
 
-    FILE *p_FILE = NULL;
+    segy_file *p_FILE = NULL;
     if(file_capsule != Py_None) {
         p_FILE = get_FILE_pointer_from_capsule(file_capsule);
     }
 
-    fflush(p_FILE);
+    if( !p_FILE ) return Py_BuildValue("");
+
+    segy_flush(p_FILE, false );
 
     if (errno != 0) {
         return PyErr_SetFromErrno(PyExc_IOError);
@@ -202,7 +204,7 @@ static PyObject *py_read_texthdr(PyObject *self, PyObject *args) {
 
     PyArg_ParseTuple(args, "Oi", &file_capsule, &index);
 
-    FILE *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
+    segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
 
     char *buffer = malloc(sizeof(char) * (segy_textheader_size()));
 
@@ -231,7 +233,7 @@ static PyObject *py_write_texthdr(PyObject *self, PyObject *args) {
         return PyErr_Format(PyExc_ValueError, "String must have at least 3200 characters. Received count: %d", size);
     }
 
-    FILE *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
+    segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
 
     int error = segy_write_textheader(p_FILE, index, buffer);
 
@@ -338,7 +340,7 @@ static PyObject *py_read_binaryhdr(PyObject *self, PyObject *args) {
 
     PyArg_ParseTuple(args, "O", &file_capsule);
 
-    FILE *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
+    segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
 
     if (PyErr_Occurred()) { return NULL; }
 
@@ -361,7 +363,7 @@ static PyObject *py_write_binaryhdr(PyObject *self, PyObject *args) {
 
     PyArg_ParseTuple(args, "OO", &file_capsule, &binary_header_capsule);
 
-    FILE *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
+    segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
     char *binary_header = get_header_pointer_from_capsule(binary_header_capsule, NULL);
 
     if (PyErr_Occurred()) { return NULL; }
@@ -406,7 +408,7 @@ static PyObject *py_read_trace_header(PyObject *self, PyObject *args) {
 
     PyArg_ParseTuple(args, "OIOlI", &file_capsule, &traceno, &trace_header_capsule, &trace0, &trace_bsize);
 
-    FILE *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
+    segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
 
     if (PyErr_Occurred()) { return NULL; }
 
@@ -434,7 +436,7 @@ static PyObject *py_write_trace_header(PyObject *self, PyObject *args) {
 
     PyArg_ParseTuple(args, "OIOlI", &file_capsule, &traceno, &trace_header_capsule, &trace0, &trace_bsize);
 
-    FILE *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
+    segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
 
     if (PyErr_Occurred()) { return NULL; }
 
@@ -504,7 +506,7 @@ static PyObject *py_init_metrics(PyObject *self, PyObject *args) {
 
     PyArg_ParseTuple(args, "OOii", &file_capsule, &binary_header_capsule, &il_field, &xl_field);
 
-    FILE *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
+    segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
 
     if (PyErr_Occurred()) { return NULL; }
 
@@ -613,7 +615,7 @@ static PyObject *py_init_line_indices(PyObject *self, PyObject *args) {
 
     PyArg_ParseTuple(args, "OOOO", &file_capsule, &metrics, &iline_out, &xline_out);
 
-    FILE *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
+    segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
 
     if (PyErr_Occurred()) { return NULL; }
 
@@ -716,7 +718,7 @@ static PyObject *py_read_trace(PyObject *self, PyObject *args) {
 
     PyArg_ParseTuple(args, "OOiOlIiI", &file_capsule, &trace_no, &trace_count, &buffer_out, &trace0, &trace_bsize, &format, &samples);
 
-    FILE *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
+    segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
 
     if (PyErr_Occurred()) { return NULL; }
 
@@ -791,7 +793,7 @@ static PyObject *py_write_trace(PyObject *self, PyObject *args) {
 
     PyArg_ParseTuple(args, "OIOlIiI", &file_capsule, &trace_no, &buffer_in, &trace0, &trace_bsize, &format, &samples);
 
-    FILE *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
+    segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
 
     if (PyErr_Occurred()) { return NULL; }
 
@@ -840,7 +842,7 @@ static PyObject *py_read_line(PyObject *self, PyObject *args) {
     PyArg_ParseTuple(args, "OIIIOlIiI", &file_capsule, &line_trace0, &line_length, &stride, &buffer_in, &trace0,
                      &trace_bsize, &format, &samples);
 
-    FILE *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
+    segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
 
     if (PyErr_Occurred()) { return NULL; }
 

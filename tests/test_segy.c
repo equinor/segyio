@@ -23,7 +23,7 @@ static void test_interpret_file() {
     const int il = INLINE_3D;
     const int xl = CROSSLINE_3D;
 
-    FILE* fp = fopen( file, "rb" );
+    segy_file* fp = segy_open( file, "rb" );
 
     assertTrue( fp != NULL, "Could not open file." );
     err = segy_binheader( fp, header );
@@ -99,7 +99,7 @@ static void test_interpret_file() {
     line_length = segy_crossline_length( inlines_sz );
     assertTrue( line_length == 5, "Crossline length should be 5." );
 
-    fclose( fp );
+    segy_close( fp );
 }
 
 /* Prestack test for when we have an approperiate prestack file
@@ -212,7 +212,7 @@ static void testReadInLine_4(){
 
     char header[ SEGY_BINARY_HEADER_SIZE ];
 
-    FILE* fp = fopen( file, "rb" );
+    segy_file* fp = segy_open( file, "rb" );
     assertTrue( 0 == segy_binheader( fp, header ), "Could not read header" );
     const long trace0 = segy_trace0( header );
     const unsigned int samples = segy_samples( header );
@@ -270,7 +270,7 @@ static void testReadInLine_4(){
         assertTrue( *ptr >= 4.0f && *ptr <= 5.0f, "Sample value not in range." );
 
     free(data);
-    fclose(fp);
+    segy_close(fp);
 }
 
 static void testReadCrossLine_22(){
@@ -287,7 +287,7 @@ static void testReadCrossLine_22(){
 
     char header[ SEGY_BINARY_HEADER_SIZE ];
 
-    FILE* fp = fopen( file, "rb" );
+    segy_file* fp = segy_open( file, "rb" );
     assertTrue( 0 == segy_binheader( fp, header ), "Could not read header" );
     const long trace0 = segy_trace0( header );
     const unsigned int samples = segy_samples( header );
@@ -347,7 +347,7 @@ static void testReadCrossLine_22(){
     }
 
     free(data);
-    fclose(fp);
+    segy_close(fp);
 }
 
 static void test_modify_trace_header() {
@@ -356,7 +356,7 @@ static void test_modify_trace_header() {
     int err;
     char bheader[ SEGY_BINARY_HEADER_SIZE ];
 
-    FILE* fp = fopen( file, "r+b" );
+    segy_file* fp = segy_open( file, "r+b" );
     err = segy_binheader( fp, bheader );
     assertTrue( err == 0, "Could not read header" );
     const long trace0 = segy_trace0( bheader );
@@ -380,7 +380,7 @@ static void test_modify_trace_header() {
     assertTrue( ilno == 2, "Wrong iline no." );
 
     err = segy_write_traceheader( fp, 0, traceh, trace0, trace_bsize );
-    fflush( fp );
+    segy_flush( fp, false );
 
     err = segy_traceheader( fp, 0, traceh, trace0, trace_bsize );
     assertTrue( err == 0, "Error while reading trace header." );
@@ -399,7 +399,7 @@ static void test_modify_trace_header() {
     err = segy_get_field( traceh, SourceGroupScalar, &scale );
     assertTrue( err == 0, "Error while reading SourceGroupScalar from dirty field." );
 
-    fclose( fp );
+    segy_close( fp );
 }
 
 static const char* expected_textheader =
@@ -446,19 +446,19 @@ static const char* expected_textheader =
 
 static void test_text_header() {
     const char *file = "test-data/text.sgy";
-    FILE* fp = fopen( file, "rb" );
+    segy_file* fp = segy_open( file, "rb" );
 
     char ascii[ SEGY_TEXT_HEADER_SIZE + 1 ] = { 0 };
     int err = segy_read_textheader(fp, ascii);
     assertTrue( err == 0, "Could not read text header" );
     assertTrue( strcmp(expected_textheader, ascii) == 0, "Text headers did not match" );
 
-    fclose( fp );
+    segy_close( fp );
 }
 
 static void test_trace_header_errors() {
     const char *file = "test-data/small.sgy";
-    FILE* fp = fopen( file, "rb" );
+    segy_file* fp = segy_open( file, "rb" );
     int err;
 
     char binheader[ SEGY_BINARY_HEADER_SIZE ];
@@ -488,13 +488,13 @@ static void test_trace_header_errors() {
     err = segy_get_field( header, DayOfYear, &field );
     assertTrue( err == SEGY_OK, "Reading failed at valid byte offset." );
 
-    fclose( fp );
+    segy_close( fp );
 }
 
 static void test_file_error_codes() {
     const char *file = "test-data/small.sgy";
-    FILE* fp = fopen( file, "rb" );
-    fclose( fp );
+    segy_file* fp = segy_open( file, "rb" );
+    segy_close( fp );
 
     int err;
     char binheader[ SEGY_BINARY_HEADER_SIZE ];
@@ -567,16 +567,16 @@ static void test_error_codes_sans_file() {
 }
 
 static void test_file_size_above_4GB(){
-    FILE* fp = tmpfile();
+    segy_file* fp = segy_open( tmpnam( NULL ), "w+b" );
 
     unsigned int trace = 5e6;
     unsigned int trace_bsize = 1e3;
     long trace0 = 0;
     int err = segy_seek( fp, trace, trace0, trace_bsize);
     assertTrue(err==0, "");
-    long pos = ftell(fp);
+    long pos = segy_ftell( fp );
     assertTrue(pos == (long)trace*((long)trace_bsize+SEGY_TRACE_HEADER_SIZE), "seek overflow");
-    fclose(fp);
+    segy_close(fp);
 }
 
 int main() {
