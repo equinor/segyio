@@ -28,14 +28,21 @@
  * calls that use the same name for one of its parameters.
  */
 
+struct segy_file_handle;
+typedef struct segy_file_handle segy_file;
+
+segy_file* segy_open( const char* path, const char* mode );
+int segy_flush( segy_file*, bool async );
+int segy_close( segy_file* );
+
 /* binary header operations */
 /*
  * The binheader buffer passed to these functions must be of *at least*
  * `segy_binheader_size`.
  */
 unsigned int segy_binheader_size();
-int segy_binheader( FILE*, char* buf );
-int segy_write_binheader( FILE*, const char* buf );
+int segy_binheader( segy_file*, char* buf );
+int segy_write_binheader( segy_file*, const char* buf );
 unsigned int segy_samples( const char* binheader );
 /* exception: the int returned is an enum, SEGY_SORTING, not an error code */
 int segy_format( const char* binheader );
@@ -48,24 +55,24 @@ unsigned segy_trace_bsize( unsigned int samples );
 /* byte-offset of the first trace header. */
 long segy_trace0( const char* binheader );
 /* number of traces in this file */
-int segy_traces( FILE*, size_t*, long trace0, unsigned int trace_bsize );
+int segy_traces( segy_file*, size_t*, long trace0, unsigned int trace_bsize );
 
-int segy_sample_indexes(FILE* fp, double* buf, double t0, size_t count);
+int segy_sample_indexes(segy_file* fp, double* buf, double t0, size_t count);
 
 /* text header operations */
-int segy_read_textheader(FILE *, char *buf);
+int segy_read_textheader( segy_file*, char *buf);
 int segy_textheader_size();
-int segy_write_textheader( FILE*, unsigned int pos, const char* buf );
+int segy_write_textheader( segy_file*, unsigned int pos, const char* buf );
 
 /* Read the trace header at `traceno` into `buf`. */
-int segy_traceheader( FILE*,
+int segy_traceheader( segy_file*,
                       unsigned int traceno,
                       char* buf,
                       long trace0,
                       unsigned int trace_bsize );
 
 /* Read the trace header at `traceno` into `buf`. */
-int segy_write_traceheader( FILE*,
+int segy_write_traceheader( segy_file*,
                             unsigned int traceno,
                             const char* buf,
                             long trace0,
@@ -76,7 +83,7 @@ int segy_write_traceheader( FILE*,
  * if the function can figure out how the file is sorted. If not, some error
  * code will be returned and `out` will not be modified.
  */
-int segy_sorting( FILE*,
+int segy_sorting( segy_file*,
                   int il,
                   int xl,
                   int* sorting,
@@ -87,7 +94,7 @@ int segy_sorting( FILE*,
  * Number of offsets in this file, written to `offsets`. 1 if a 3D data set, >1
  * if a 4D data set.
  */
-int segy_offsets( FILE*,
+int segy_offsets( segy_file*,
                   int il,
                   int xl,
                   unsigned int traces,
@@ -100,13 +107,13 @@ int segy_offsets( FILE*,
  * make sense of the read trace it must be converted to native floats, and the
  * buffer sent to write must be converted to target float.
  */
-int segy_readtrace( FILE*,
+int segy_readtrace( segy_file*,
                     unsigned int traceno,
                     float* buf,
                     long trace0,
                     unsigned int trace_bsize );
 
-int segy_writetrace( FILE*,
+int segy_writetrace( segy_file*,
                      unsigned int traceno,
                      const float* buf,
                      long trace0,
@@ -121,7 +128,7 @@ int segy_from_native( int format,
                       int size,
                       float* buf );
 
-int segy_read_line( FILE* fp,
+int segy_read_line( segy_file* fp,
                     unsigned int line_trace0,
                     unsigned int line_length,
                     unsigned int stride,
@@ -129,7 +136,7 @@ int segy_read_line( FILE* fp,
                     long trace0,
                     unsigned int trace_bsize );
 
-int segy_write_line( FILE* fp,
+int segy_write_line( segy_file* fp,
                      unsigned int line_trace0,
                      unsigned int line_length,
                      unsigned int stride,
@@ -149,7 +156,7 @@ int segy_write_line( FILE* fp,
  * `offsets` is the number of offsets in the file and be found with
  * `segy_offsets`.
  */
-int segy_count_lines( FILE*,
+int segy_count_lines( segy_file*,
                       int field,
                       unsigned int offsets,
                       unsigned int* l1out,
@@ -171,7 +178,7 @@ unsigned int segy_crossline_length(unsigned int inline_count);
  * Find the indices of the inlines and write to `buf`. `offsets` are the number
  * of offsets for this file as returned by `segy_offsets`
  */
-int segy_inline_indices( FILE*,
+int segy_inline_indices( segy_file*,
                          int il,
                          int sorting,
                          unsigned int inline_count,
@@ -181,7 +188,7 @@ int segy_inline_indices( FILE*,
                          long trace0,
                          unsigned int trace_bsize );
 
-int segy_crossline_indices( FILE*,
+int segy_crossline_indices( segy_file*,
                             int xl,
                             int sorting,
                             unsigned int inline_count,

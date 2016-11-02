@@ -54,7 +54,7 @@ int main(int argc, char* argv[]) {
 
     clock_t start = clock();
 
-    FILE* fp = fopen( argv[ 1 ], "rb" );
+    segy_file* fp = segy_open( argv[ 1 ], "rb" );
     if( !fp ) {
         perror( "fopen()" );
         exit( SEGY_FOPEN_ERROR );
@@ -161,7 +161,7 @@ int main(int argc, char* argv[]) {
 
     free( inline_indices );
     free( crossline_indices );
-    fclose( fp );
+    segy_close( fp );
 
     exit(0);
 }

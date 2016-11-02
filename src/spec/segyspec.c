@@ -15,7 +15,7 @@ int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, 
 
     int errc = 0;
 
-    FILE* fp = fopen( file, "rb" );
+    segy_file* fp = segy_open( file, "rb" );
     if (fp == NULL) {
         fprintf(stderr, "Unable to open file: '%s'\n", file);
         return -1;
@@ -110,7 +110,7 @@ int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, 
         goto CLEANUP;
     }
 
-    fclose(fp);
+    segy_close(fp);
 
     return 0;
 
@@ -123,7 +123,7 @@ int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, 
         free(spec->sample_indexes);
     free(spec->filename);
 
-    fclose(fp);
+    segy_close(fp);
 
     return errc;
 }
