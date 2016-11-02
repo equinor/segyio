@@ -32,6 +32,7 @@ struct segy_file_handle;
 typedef struct segy_file_handle segy_file;
 
 segy_file* segy_open( const char* path, const char* mode );
+int segy_mmap( segy_file* );
 int segy_flush( segy_file*, bool async );
 int segy_close( segy_file* );
 
@@ -385,7 +386,9 @@ typedef enum {
     SEGY_MISSING_LINE_INDEX,
     SEGY_INVALID_OFFSETS,
     SEGY_TRACE_SIZE_MISMATCH,
-    SEGY_INVALID_ARGS
+    SEGY_INVALID_ARGS,
+    SEGY_MMAP_ERROR,
+    SEGY_MMAP_INVALID,
 } SEGY_ERROR;
 
 

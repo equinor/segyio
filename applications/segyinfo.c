@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 #include <segyio/segy.h>
@@ -27,9 +28,9 @@ static inline int maximum( int x, int y ) {
 
 int main(int argc, char* argv[]) {
     
-    if( argc != 2 ) {
+    if( argc < 2 ) {
         puts("Missing argument, expected run signature:");
-        printf("  %s <segy_file>\n", argv[0]);
+        printf("  %s <segy_file> [mmap]\n", argv[0]);
         exit(1);
     }
 
@@ -38,6 +39,9 @@ int main(int argc, char* argv[]) {
         perror( "fopen():" );
         exit( 3 );
     }
+
+    if( argc > 2 && strcmp( argv[ 2 ], "mmap" ) == 0 )
+        segy_mmap( fp );
 
     int err;
     char header[ SEGY_BINARY_HEADER_SIZE ];

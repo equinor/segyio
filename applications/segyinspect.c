@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include <segyio/segy.h>
 
@@ -37,9 +38,9 @@ static const char* getFastestDirectionName( int sorting ) {
 
 int main(int argc, char* argv[]) {
 
-    if (!(argc == 2 || argc == 4)) {
+    if( argc < 2 ) {
         puts("Missing argument, expected run signature:");
-        printf("  %s <segy_file> [INLINE_BYTE CROSSLINE_BYTE]\n", argv[0]);
+        printf("  %s <segy_file> [mmap] [INLINE_BYTE CROSSLINE_BYTE]\n", argv[0]);
         printf("  Inline and crossline bytes default to: 189 and 193\n");
         exit(1);
     }
@@ -47,9 +48,13 @@ int main(int argc, char* argv[]) {
     int xl_field = CROSSLINE_3D;
     int il_field = INLINE_3D;
 
-    if (argc == 4) {
-        il_field = atoi(argv[2]);
-        xl_field = atoi(argv[3]);
+    bool memory_map = argc > 2 && strcmp( argv[ 2 ], "mmap" ) == 0;
+
+    if( ( memory_map && argc > 4 ) || ( !memory_map && argc > 2 ) ) {
+        int argindex = memory_map ? 2 : 3;
+
+        il_field = atoi(argv[ argindex + 0 ]);
+        xl_field = atoi(argv[ argindex + 1 ]);
     }
 
     clock_t start = clock();

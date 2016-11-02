@@ -16,4 +16,7 @@ else()
     message(FATAL_ERROR "Could not find htons.")
 endif()
 
-
+check_include_file("sys/mman.h" HAVE_SYS_MMAN_H)
+if (HAVE_SYS_MMAN_H)
+    add_definitions("-DHAVE_MMAP")
+endif()
