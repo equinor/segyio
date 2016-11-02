@@ -1,3 +1,8 @@
+#ifdef HAVE_MMAP
+  #define _POSIX_SOURCE
+  #include <sys/mman.h>
+#endif //HAVE_MMAP
+
 #ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
 #elif HAVE_ARPA_INET_H
@@ -9,6 +14,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #include <segyio/segy.h>
 #include <segyio/util.h>
@@ -294,8 +300,36 @@ static int bfield_size[] = {
     [- HEADER_SIZE + BIN_Unassigned2]           =  0,
 };
 
+/*
+ * Determine the file size in bytes. If this function succeeds, the file
+ * pointer will be reset to wherever it was before this call. If this call
+ * fails for some reason, the return value is 0 and the file pointer location
+ * will be determined by the behaviour of fseek.
+ */
+static int file_size( FILE* fp, size_t* size ) {
+    const long prev_pos = ftell( fp );
+
+    int err = fseek( fp, 0, SEEK_END );
+    if( err != 0 ) return SEGY_FSEEK_ERROR;
+
+    const size_t sz = ftell( fp );
+    err = fseek( fp, prev_pos, SEEK_SET );
+    if( err != 0 ) return SEGY_FSEEK_ERROR;
+
+    *size = sz;
+    return SEGY_OK;
+}
+
+/*
+ * addr is NULL if mmap is not found under compilation or if the file is
+ * not requested mmap'd. If so, the fallback code path of FILE* is taken
+ */
 struct segy_file_handle {
+    void* addr;
+    void* cur;
     FILE* fp;
+    size_t fsize;
+    char mode[ 4 ];
 };
 
 segy_file* segy_open( const char* path, const char* mode ) {
@@ -303,7 +337,7 @@ segy_file* segy_open( const char* path, const char* mode ) {
 
     if( !fp ) return NULL;
 
-    segy_file* file = malloc( sizeof( segy_file ) );
+    segy_file* file = calloc( 1, sizeof( segy_file ) );
 
     if( !file ) {
         fclose( fp );
@@ -311,11 +345,51 @@ segy_file* segy_open( const char* path, const char* mode ) {
     }
 
     file->fp = fp;
+    strncpy( file->mode, mode, 3 );
+
     return file;
 }
 
+int segy_mmap( segy_file* fp ) {
+#ifndef HAVE_MMAP
+    return SEGY_MMAP_INVALID;
+#else
+
+    int err = file_size( fp->fp, &fp->fsize );
+
+    if( err != 0 ) return SEGY_FSEEK_ERROR;
+
+    bool rw = strstr( fp->mode, "+" ) || strstr( fp->mode, "w" );
+    const int prot =  rw ? PROT_READ | PROT_WRITE : PROT_READ;
+
+    int fd = fileno( fp->fp );
+    void* addr = mmap( NULL, fp->fsize, prot, MAP_SHARED, fd, 0 );
+
+    if( addr == MAP_FAILED )
+        return SEGY_MMAP_ERROR;
+
+    fp->addr = fp->cur = addr;
+    return SEGY_OK;
+#endif //HAVE_MMAP
+}
+
 int segy_flush( segy_file* fp, bool async ) {
-    return fflush( fp->fp );
+    int syncerr = 0;
+
+#ifdef HAVE_MMAP
+    if( fp->addr ) {
+        int flag = async ? MS_ASYNC : MS_SYNC;
+        syncerr = msync( fp->addr, fp->fsize, flag );
+    }
+#endif //HAVE_MMAP
+
+    if( syncerr != 0 ) return syncerr;
+
+    int flusherr = fflush( fp->fp );
+
+    if( flusherr != 0 ) return SEGY_FWRITE_ERROR;
+
+    return SEGY_OK;
 }
 
 long segy_ftell( segy_file* fp ) {
@@ -323,7 +397,19 @@ long segy_ftell( segy_file* fp ) {
 }
 
 int segy_close( segy_file* fp ) {
-    int err = fclose( fp->fp );
+    int err = segy_flush( fp, false );
+
+#ifdef HAVE_MMAP
+    if( !fp->addr ) goto no_mmap;
+
+    err = munmap( fp->addr, fp->fsize );
+    if( err != 0 )
+        err = SEGY_MMAP_ERROR;
+
+no_mmap:
+#endif //HAVE_MMAP
+
+    fclose( fp->fp );
     free( fp );
     return err;
 }
@@ -471,6 +557,14 @@ int segy_seek( segy_file* fp,
 
     trace_bsize += SEGY_TRACE_HEADER_SIZE;
     const long pos = trace0 + ( (long)trace * (long)trace_bsize );
+
+    if( fp->addr ) {
+        if( (size_t)pos >= fp->fsize ) return SEGY_FSEEK_ERROR;
+
+        fp->cur = (char*)fp->addr + pos;
+        return SEGY_OK;
+    }
+
     const int err = fseek( fp->fp, pos, SEEK_SET );
     if( err != 0 ) return SEGY_FSEEK_ERROR;
     return SEGY_OK;
@@ -484,6 +578,11 @@ int segy_traceheader( segy_file* fp,
 
     const int err = segy_seek( fp, traceno, trace0, trace_bsize );
     if( err != 0 ) return err;
+
+    if( fp->addr ) {
+        memcpy( buf, fp->cur, SEGY_TRACE_HEADER_SIZE );
+        return SEGY_OK;
+    }
 
     const size_t readc = fread( buf, 1, SEGY_TRACE_HEADER_SIZE, fp->fp );
 
@@ -502,31 +601,16 @@ int segy_write_traceheader( segy_file* fp,
     const int err = segy_seek( fp, traceno, trace0, trace_bsize );
     if( err != 0 ) return err;
 
+    if( fp->addr ) {
+        memcpy( fp->cur, buf, SEGY_TRACE_HEADER_SIZE );
+        return SEGY_OK;
+    }
+
     const size_t writec = fwrite( buf, 1, SEGY_TRACE_HEADER_SIZE, fp->fp );
 
     if( writec != SEGY_TRACE_HEADER_SIZE )
         return SEGY_FWRITE_ERROR;
 
-    return SEGY_OK;
-}
-
-/*
- * Determine the file size in bytes. If this function succeeds, the file
- * pointer will be reset to wherever it was before this call. If this call
- * fails for some reason, the return value is 0 and the file pointer location
- * will be determined by the behaviour of fseek.
- */
-static int file_size( FILE* fp, size_t* size ) {
-    const long prev_pos = ftell( fp );
-
-    int err = fseek( fp, 0, SEEK_END );
-    if( err != 0 ) return SEGY_FSEEK_ERROR;
-
-    const size_t sz = ftell( fp );
-    err = fseek( fp, prev_pos, SEEK_SET );
-    if( err != 0 ) return SEGY_FSEEK_ERROR;
-
-    *size = sz;
     return SEGY_OK;
 }
 
@@ -879,6 +963,10 @@ int segy_crossline_indices( segy_file* fp,
 
 
 static int skip_traceheader( segy_file* fp ) {
+    if( fp->addr ) {
+        fp->cur = (char*)fp->cur + SEGY_TRACE_HEADER_SIZE;
+        return SEGY_OK;
+    }
     const int err = fseek( fp->fp, SEGY_TRACE_HEADER_SIZE, SEEK_CUR );
     if( err != 0 ) return SEGY_FSEEK_ERROR;
     return SEGY_OK;
@@ -895,6 +983,11 @@ int segy_readtrace( segy_file* fp,
 
     err = skip_traceheader( fp );
     if( err != 0 ) return err;
+
+    if( fp->addr ) {
+        memcpy( buf, fp->cur, trace_bsize );
+        return SEGY_OK;
+    }
 
     const size_t readc = fread( buf, 1, trace_bsize, fp->fp );
     if( readc != trace_bsize ) return SEGY_FREAD_ERROR;
@@ -915,6 +1008,11 @@ int segy_writetrace( segy_file* fp,
 
     err = skip_traceheader( fp );
     if( err != 0 ) return err;
+
+    if( fp->addr ) {
+        memcpy( fp->cur, buf, trace_bsize );
+        return SEGY_OK;
+    }
 
     const size_t writec = fwrite( buf, 1, trace_bsize, fp->fp );
     if( writec != trace_bsize )
