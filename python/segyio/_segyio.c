@@ -694,6 +694,7 @@ static PyObject *py_fread_trace0(PyObject *self, PyObject *args) {
     unsigned int trace_no;
     unsigned int linenos_sz = (unsigned int) PyObject_Length(indices_object);
     int error = segy_line_trace0(lineno, other_line_length, stride, buffer.buf, linenos_sz, &trace_no);
+    PyBuffer_Release( &buffer );
 
     if (error != 0) {
         return py_handle_segy_error_with_index_and_name(error, errno, lineno, type_name);
@@ -761,13 +762,15 @@ static PyObject *py_read_trace(PyObject *self, PyObject *args) {
         error = segy_readtrace(p_FILE, start + (i * step), (float*)buf, trace0, trace_bsize);
     }
 
+    int conv_error = segy_to_native(format, length * samples, buffer.buf);
+    PyBuffer_Release( &buffer );
+
     if (error != 0) {
         return py_handle_segy_error_with_index_and_name(error, errno, start + (i * step), "Trace");
     }
 
-    error = segy_to_native(format, length * samples, buffer.buf);
 
-    if (error != 0) {
+    if (conv_error != 0) {
         PyErr_SetString(PyExc_TypeError, "Unable to convert buffer to native format.");
         return NULL;
     }
@@ -807,20 +810,19 @@ static PyObject *py_write_trace(PyObject *self, PyObject *args) {
     }
 
     error = segy_writetrace(p_FILE, trace_no, buffer.buf, trace0, trace_bsize);
-
-    int converr = segy_to_native(format, samples, buffer.buf);
+    int conv_error = segy_to_native(format, samples, buffer.buf);
+    PyBuffer_Release( &buffer );
 
     if (error != 0) {
         return py_handle_segy_error_with_index_and_name(error, errno, trace_no, "Trace");
     }
 
-    if (converr != 0) {
+    if (conv_error != 0) {
         PyErr_SetString(PyExc_TypeError, "Unable to convert buffer to native format.");
         return NULL;
     }
 
-    Py_IncRef(buffer_in);
-    return buffer_in;
+    return Py_BuildValue("");
 }
 
 static PyObject *py_read_line(PyObject *self, PyObject *args) {
@@ -852,10 +854,12 @@ static PyObject *py_read_line(PyObject *self, PyObject *args) {
     int error = segy_read_line(p_FILE, line_trace0, line_length, stride, buffer.buf, trace0, trace_bsize);
 
     if (error != 0) {
+        PyBuffer_Release( &buffer );
         return py_handle_segy_error_with_index_and_name(error, errno, line_trace0, "Line");
     }
 
     error = segy_to_native(format, samples * line_length, buffer.buf);
+    PyBuffer_Release( &buffer );
 
     if (error != 0) {
         PyErr_SetString(PyExc_TypeError, "Unable to convert buffer to native format.");
