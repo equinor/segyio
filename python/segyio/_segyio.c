@@ -808,13 +808,13 @@ static PyObject *py_write_trace(PyObject *self, PyObject *args) {
 
     error = segy_writetrace(p_FILE, trace_no, buffer.buf, trace0, trace_bsize);
 
+    int converr = segy_to_native(format, samples, buffer.buf);
+
     if (error != 0) {
         return py_handle_segy_error_with_index_and_name(error, errno, trace_no, "Trace");
     }
 
-    error = segy_to_native(format, samples, buffer.buf);
-
-    if (error != 0) {
+    if (converr != 0) {
         PyErr_SetString(PyExc_TypeError, "Unable to convert buffer to native format.");
         return NULL;
     }
