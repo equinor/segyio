@@ -37,6 +37,7 @@ def main():
 
         # one inline is N traces concatenated. We fill in the xline number
         line = np.concatenate([trace + (xl / 100.0) for xl in spec.xlines])
+        line = line.reshape( (len(spec.xlines), spec.samples) )
 
         # write the line itself to the file
         # write the inline number in all this line's headers
