@@ -85,23 +85,6 @@ class SliceWidget(QtGui.QWidget):
         self.segy_plot.set_horizontal_line_indicator(line)
         self.figure_canvas.draw()
 
-    def toggle_disabled_state(self):
-
-        self.overlay = Overlay(self)
-        self.overlay.setGeometry(self.layout.geometry())
-        self.overlay.show()
-
-
-class Overlay(QtGui.QWidget):
-    def __init__(self, parent):
-        super(Overlay, self).__init__(parent)
-        self.parent = parent
-    def paintEvent(self, QPaintEvent):
-
-        painter = QtGui.QPainter(self)
-
-        color = QtGui.QColor(0,0,0,50)
-        painter.fillRect(self.rect(), color)
 
 
 class ColorBarWidget(QtGui.QWidget):
@@ -123,7 +106,6 @@ class ColorBarWidget(QtGui.QWidget):
 
         # signals
         self.colormap_monitor.cmap_changed.connect(self.set_cmap)
-        self.figure_canvas.mpl_connect('button_press_event', self.cbar_plt.mouse_clicked)
 
         self.colormap_monitor.min_max_changed.connect(self.set_min_max)
 

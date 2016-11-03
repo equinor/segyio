@@ -126,13 +126,13 @@ class SegyPlot(object):
 
 class ColorBarPlot(object):
     def __init__(self, axes, cmap=None, v_min_max=None):
-        print(v_min_max)
         self.axes = axes
         self.cmap = cmap
 
-        min, max = v_min_max
-        norm = matplotlib.colors.Normalize(vmin=min, vmax=max)
+        # default to 0,1 when not set
+        min, max = v_min_max or (0,1)
 
+        norm = matplotlib.colors.Normalize(vmin=min, vmax=max)
         self.colorbar = matplotlib.colorbar.ColorbarBase(self.axes, cmap=cmap, norm=norm)
 
     def set_cmap(self, cmap):
@@ -144,6 +144,3 @@ class ColorBarPlot(object):
         self.colorbar.set_clim(min, max)
         self.colorbar.draw_all()
 
-    def mouse_clicked(self, evt):
-        if evt.inaxes is not None:
-            print(evt)
