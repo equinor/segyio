@@ -1,3 +1,4 @@
+#include <float.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,13 +19,8 @@ static void printSegyTraceInfo( const char* buf ) {
     printf("Inline3D:          %d\n", il );
 }
 
-static inline int minimum( int x, int y ) {
-    return x < y ? x : y;
-}
-
-static inline int maximum( int x, int y ) {
-    return x > y ? x : y;
-}
+#define minimum(x,y) ((x) < (y) ? (x) : (y))
+#define maximum(x,y) ((x) > (y) ? (x) : (y))
 
 int main(int argc, char* argv[]) {
     
@@ -53,7 +49,7 @@ int main(int argc, char* argv[]) {
     }
 
     const int format = segy_format( header );
-    const unsigned int samples = segy_samples( header );
+    const int samples = segy_samples( header );
     const long trace0 = segy_trace0( header );
     const unsigned int trace_bsize = segy_trace_bsize( samples );
     int extended_headers;
@@ -100,9 +96,14 @@ int main(int argc, char* argv[]) {
     printSegyTraceInfo( traceh );
 
     clock_t start = clock();
+    float* trbuf = malloc( sizeof( float ) * trace_bsize );
+
+    float minval = FLT_MAX;
+    float maxval = FLT_MIN;
+
     int min_sample_count = 999999999;
     int max_sample_count = 0;
-    for( int i = 0; i < (int)traces; i++ ) {
+    for( int i = 0; i < (int)traces; ++i ) {
         err = segy_traceheader( fp, i, traceh, trace0, trace_bsize );
         if( err != 0 ) {
             perror( "Unable to read trace" );
@@ -119,7 +120,23 @@ int main(int argc, char* argv[]) {
 
         min_sample_count = minimum( sample_count, min_sample_count );
         max_sample_count = maximum( sample_count, max_sample_count );
+
+        err = segy_readtrace( fp, i, trbuf, trace0, trace_bsize );
+
+        if( err != 0 ) {
+            fprintf( stderr, "Unable to read trace: %d\n", i );
+            exit( err );
+        }
+
+        segy_to_native( format, samples, trbuf );
+
+        for( int j = 0; j < samples; ++j ) {
+            minval = minimum( trbuf[ j ], minval );
+            maxval = maximum( trbuf[ j ], maxval );
+        }
     }
+
+    free( trbuf );
 
     puts("");
     puts("Info from last trace:");
@@ -135,6 +152,8 @@ int main(int argc, char* argv[]) {
     puts("");
     printf("Min sample count: %d\n", min_sample_count);
     printf("Max sample count: %d\n", max_sample_count);
+    printf("Min sample value: %f\n", minval );
+    printf("Max sample value: %f\n", maxval );
     puts("");
 
     clock_t diff = clock() - start;

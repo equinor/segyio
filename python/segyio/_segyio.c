@@ -71,8 +71,6 @@ static PyObject *py_FILE_open(PyObject *self, PyObject *args) {
         return PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
     }
 
-    segy_mmap( p_FILE );
-
     return PyCapsule_New(p_FILE, "segy_file*", (PyCapsule_Destructor) py_FILE_destructor);
 }
 
