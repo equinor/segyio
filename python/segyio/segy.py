@@ -513,9 +513,9 @@ class SegyFile(object):
         xl_len = self._xline_length
 
         if self.sorting == TraceSortingFormat.CROSSLINE_SORTING:
-            shape = (xl_len, il_len)
-        elif self.sorting == TraceSortingFormat.INLINE_SORTING:
             shape = (il_len, xl_len)
+        elif self.sorting == TraceSortingFormat.INLINE_SORTING:
+            shape = (xl_len, il_len)
         else:
             raise RuntimeError("Unexpected sorting type")
 
