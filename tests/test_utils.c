@@ -57,9 +57,9 @@ static void check(float f1, double * epsm) {
     unsigned ibm1, ibm2;
 
     frexp(f1, &exp);
-    ieee2ibm(&ibm1, &f1, 1);
-    ibm2ieee(&f2, &ibm1, 1);
-    ieee2ibm(&ibm2, &f2, 1);
+    ieee2ibm(&ibm1, &f1);
+    ibm2ieee(&f2, &ibm1);
+    ieee2ibm(&ibm2, &f2);
 
     assertTrue(memcmp(&ibm1, &ibm2, sizeof ibm1) == 0, "The content of two memory areas were not identical!");
     //printf("Error: %08x <=> %08x\n", *(unsigned*) &ibm1, *(unsigned*) &ibm2);

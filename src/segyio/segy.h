@@ -114,11 +114,11 @@ int segy_writetrace( FILE*,
 
 /* convert to/from native float from segy formats (likely IBM or IEEE) */
 int segy_to_native( int format,
-                    unsigned int size,
+                    int size,
                     float* buf );
 
 int segy_from_native( int format,
-                      unsigned int size,
+                      int size,
                       float* buf );
 
 int segy_read_line( FILE* fp,

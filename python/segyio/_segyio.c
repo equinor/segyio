@@ -755,11 +755,11 @@ static PyObject *py_read_trace(PyObject *self, PyObject *args) {
     }
 
     int error = 0;
-    char* buf = buffer.buf;
+    float* buf = buffer.buf;
     Py_ssize_t i;
 
-    for( i = 0; error == 0 && i < length; ++i, buf += trace_bsize ) {
-        error = segy_readtrace(p_FILE, start + (i * step), (float*)buf, trace0, trace_bsize);
+    for( i = 0; error == 0 && i < length; ++i, buf += samples ) {
+        error = segy_readtrace(p_FILE, start + (i * step), buf, trace0, trace_bsize);
     }
 
     int conv_error = segy_to_native(format, length * samples, buffer.buf);
