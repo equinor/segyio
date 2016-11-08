@@ -80,3 +80,8 @@ from .binfield import BinField
 from .open import open
 from .create import create
 from .segy import SegyFile, spec
+
+__version__    = '1.0.3'
+__copyright__  = 'Copyright 2016, Statoil ASA'
+__license__    = 'GNU Lesser General Public License version 3'
+__status__     = 'Production'
