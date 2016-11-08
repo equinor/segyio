@@ -390,8 +390,10 @@ class _segyioTests(TestCase):
 
         _segyio.close(f)
 
-    def read_small(self):
+    def read_small(self, mmap = False):
         f = _segyio.open(self.filename, "r")
+
+        if mmap: _segyio.mmap(f)
 
         binary_header = _segyio.read_binaryheader(f)
         ilb = 189
@@ -417,6 +419,28 @@ class _segyioTests(TestCase):
 
     def test_read_line(self):
         f, metrics, iline_idx, xline_idx = self.read_small()
+
+        tr0 = metrics['trace0']
+        bsz = metrics['trace_bsize']
+        samples = metrics['sample_count']
+        xline_stride = metrics['xline_stride']
+        iline_stride = metrics['iline_stride']
+
+        xline_trace0 = _segyio.fread_trace0(20, len(iline_idx), xline_stride, xline_idx, "crossline")
+        iline_trace0 = _segyio.fread_trace0(1, len(xline_idx), iline_stride, iline_idx, "inline")
+
+        buf = numpy.zeros((len(iline_idx), samples), dtype=numpy.single)
+
+        _segyio.read_line(f, xline_trace0, len(iline_idx), xline_stride, buf, tr0, bsz, 1, samples)
+        self.assertAlmostEqual(sum(sum(buf)), 800.061169624, places=6)
+
+        _segyio.read_line(f, iline_trace0, len(xline_idx), iline_stride, buf, tr0, bsz, 1, samples)
+        self.assertAlmostEqual(sum(sum(buf)), 305.061146736, places=6)
+
+        _segyio.close(f)
+
+    def test_read_line_mmap(self):
+        f, metrics, iline_idx, xline_idx = self.read_small(True)
 
         tr0 = metrics['trace0']
         bsz = metrics['trace_bsize']

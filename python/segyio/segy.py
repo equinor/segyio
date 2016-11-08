@@ -98,6 +98,34 @@ class SegyFile(object):
         """
         _segyio.close(self.xfd)
 
+    def mmap(self):
+        """Memory map the file
+        :rtype: bool
+
+        Memory map the file. This is an advanced feature for speed and
+        optimization; however, it is no silver bullet. If your file is smaller
+        than the memory available on your system this will likely result in
+        faster reads and writes, especially for line modes. However, if the
+        file is very large, or memory is very pressured, this optimization
+        might cause overall system slowdowns. However, if you're opening the
+        same file from many different instances of segyio then memory mapping
+        may significantly reduce the memory pressure.
+
+        If this call returns true, the file is memory mapped. If memory mapping
+        was build-time disabled or is not available for your platform this call
+        always return false. If the memory mapping is unsuccessful you can keep
+        using segyio - reading and writing falls back on non-memory mapped
+        features.
+
+        Examples:
+            Memory map::
+            >>> mapped = f.mmap()
+            >>> if mapped: print( "File is memory mapped!" )
+            >>> # keep using segyio as per usual
+            >>> print( f.trace[10] )
+        """
+        return _segyio.mmap(self.xfd)
+
     @property
     def sorting(self):
         """ :rtype: int """
