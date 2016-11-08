@@ -20,14 +20,18 @@ class LineSelectionMonitor(QtCore.QObject):
         self.depth_changed.emit(new_index)
 
 
-class ColorMapMonitor(QtCore.QObject):
+class SliceViewMonitor(QtCore.QObject):
     cmap_changed = QtCore.pyqtSignal(str)
+    min_max_changed = QtCore.pyqtSignal(object)
 
     def __init__(self, parent=None):
         QtCore.QObject.__init__(self, parent)
 
     def colormap_updated(self, value):
         self.cmap_changed.emit(str(value))
+
+    def min_max_updated(self, values):
+        self.min_max_changed.emit(tuple(map(float, values)))
 
 
 class FileActivityMonitor(QtCore.QObject):
@@ -36,7 +40,7 @@ class FileActivityMonitor(QtCore.QObject):
     cancelled_operation = False
 
     def __init__(self, parent=None):
-        QtCore.QObject.__init__(self)
+        QtCore.QObject.__init__(self, parent)
         self.cancelled_operation = False
 
     def reset(self):
@@ -88,11 +92,11 @@ class View(object):
 
         self._main_widget = QtGui.QWidget()
         self._line_selection_monitor = LineSelectionMonitor(self._main_widget)
-        self._colormap_monitor = ColorMapMonitor(self._main_widget)
+        self._sliceview_monitor = SliceViewMonitor(self._main_widget)
 
         x_slice_widget, i_slice_widget, depth_slice_widget = initialize_slice_widgets(self._swrap,
                                                                                       self._line_selection_monitor,
-                                                                                      self._colormap_monitor)
+                                                                                      self._sliceview_monitor)
         # layout for the single parent widget
         top_row = QtGui.QHBoxLayout()
         top_row.addWidget(x_slice_widget, 0)
@@ -118,19 +122,19 @@ class View(object):
 
     @property
     def colormap_monitor(self):
-        return self._colormap_monitor
+        return self._sliceview_monitor
 
     @property
     def file_activity_monitor(self):
         return self._file_activity_monitor
 
 
-def initialize_slice_widgets(segyio_wrapper, line_selection_monitor, colormap_monitor):
+def initialize_slice_widgets(segyio_wrapper, line_selection_monitor, sliceview_monitor):
     """
     Given a segio_wrapper, and signal monitors, sliceviewer widgets for all three slices in a segy-cube are created.
     :param segyio_wrapper:
     :param line_selection_monitor:
-    :param colormap_monitor:
+    :param sliceview_monitor:
     :return: three QWidgets for the three segy slices, in x, i and depth slice order.
     """
 
@@ -169,9 +173,14 @@ def initialize_slice_widgets(segyio_wrapper, line_selection_monitor, colormap_mo
     line_selection_monitor.depth_changed.connect(depth_slice_widget.update_image)
 
     # colormap signals
-    colormap_monitor.cmap_changed.connect(x_slice_widget.set_cmap)
-    colormap_monitor.cmap_changed.connect(i_slice_widget.set_cmap)
-    colormap_monitor.cmap_changed.connect(depth_slice_widget.set_cmap)
+    sliceview_monitor.cmap_changed.connect(x_slice_widget.set_cmap)
+    sliceview_monitor.cmap_changed.connect(i_slice_widget.set_cmap)
+    sliceview_monitor.cmap_changed.connect(depth_slice_widget.set_cmap)
+
+    # setting min max thresholds
+    sliceview_monitor.min_max_changed.connect(x_slice_widget.set_min_max)
+    sliceview_monitor.min_max_changed.connect(i_slice_widget.set_min_max)
+    sliceview_monitor.min_max_changed.connect(depth_slice_widget.set_min_max)
 
     return x_slice_widget, i_slice_widget, depth_slice_widget
 

@@ -1,6 +1,6 @@
 from PyQt4 import QtGui, QtCore
 
-from segyplot import SegyPlot
+from segyplot import SegyPlot, ColorBarPlot
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
@@ -32,9 +32,7 @@ class SliceWidget(QtGui.QWidget):
         self.current_index = 0
 
         # setting up the figure and canvas
-        self.figure = Figure(figsize=(800, 200), dpi=20, facecolor='white')
-
-
+        self.figure = Figure(figsize=(16, 4), dpi=100, facecolor='white')
 
         self.axes = self.figure.add_subplot(111)
 
@@ -71,8 +69,12 @@ class SliceWidget(QtGui.QWidget):
         self.segy_plot.update_image(index)
         self.figure_canvas.draw()
 
-    def set_cmap(self, action):
-        self.segy_plot.set_colormap(str(action))
+    def set_cmap(self, cmap):
+        self.segy_plot.set_colormap(str(cmap))
+        self.figure_canvas.draw()
+
+    def set_min_max(self, min_max):
+        self.segy_plot.set_min_max(min_max)
         self.figure_canvas.draw()
 
     def set_vertical_line_indicator(self, line):
@@ -83,23 +85,39 @@ class SliceWidget(QtGui.QWidget):
         self.segy_plot.set_horizontal_line_indicator(line)
         self.figure_canvas.draw()
 
-    def toggle_disabled_state(self):
-
-        self.overlay = Overlay(self)
-        self.overlay.setGeometry(self.layout.geometry())
-        self.overlay.show()
 
 
+class ColorBarWidget(QtGui.QWidget):
+    """
+    Widget displaying a colorbar, with the selected min-max range and colormap
+    """
+    def __init__(self, segyio_wrapper, colormap_monitor=None):
+        super(ColorBarWidget, self).__init__()
 
-class Overlay(QtGui.QWidget):
-    def __init__(self, parent):
-        super(Overlay, self).__init__(parent)
-        self.parent = parent
-    def paintEvent(self, QPaintEvent):
+        self.swrap = segyio_wrapper
 
-        painter = QtGui.QPainter(self)
+        # setting up the colorbar figure
+        self.colormap_monitor = colormap_monitor
+        self.figure = Figure(figsize=(1, 3), dpi=50, facecolor='white')
+        self.axes = self.figure.add_subplot(111)
+        self.cbar_plt = ColorBarPlot(self.axes, cmap='seismic', v_min_max=self.swrap.min_max)
+        self.figure_canvas = FigureCanvas(self.figure)
+        self.figure_canvas.setParent(self)
 
-        color = QtGui.QColor(0,0,0,50)
-        painter.fillRect(self.rect(), color)
+        # signals
+        self.colormap_monitor.cmap_changed.connect(self.set_cmap)
 
+        self.colormap_monitor.min_max_changed.connect(self.set_min_max)
+
+        self.layout = QtGui.QVBoxLayout(self)
+        self.layout.addWidget(self.figure_canvas)
+
+
+    def set_cmap(self,value):
+        self.cbar_plt.set_cmap(str(value))
+        self.figure_canvas.draw()
+
+    def set_min_max(self, min_max):
+        self.cbar_plt.set_min_max(min_max)
+        self.figure_canvas.draw()
 

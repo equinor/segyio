@@ -1,6 +1,6 @@
 set(PYTHON_SOURCES
     __init__.py
-    linenavigationbar.py
+    controlwidgets.py
     progresswidget.py
     segyiowrapper.py
     segyplot.py

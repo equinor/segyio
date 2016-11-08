@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 import sys
 
 from PyQt4 import QtGui, QtCore
@@ -16,7 +15,7 @@ class SegyViewer(QtGui.QMainWindow):
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 
         # signal monitors
-        self.colormap_monitor = ColorMapMonitor(self)
+        self.sliceview_monitor = SliceViewMonitor(self)
         self.line_monitor = LineSelectionMonitor(self)
         self.file_activity_monitor = FileActivityMonitor(self)
 
@@ -25,7 +24,7 @@ class SegyViewer(QtGui.QMainWindow):
 
         # menus
         available_colormaps = ['seismic', 'spectral', 'RdGy', 'hot', 'jet', 'gray']
-        self.configure_main_menu(self.menuBar(), self.colormap_monitor, available_colormaps)
+        self.configure_main_menu(self.menuBar(), self.sliceview_monitor, available_colormaps)
 
         # layout
         self.setWindowTitle("SegyViewer")
@@ -37,6 +36,11 @@ class SegyViewer(QtGui.QMainWindow):
 
         self.ddock = QtGui.QDockWidget("depth slice")
         self.ddock.setFeatures(QtGui.QDockWidget.DockWidgetFloatable | QtGui.QDockWidget.DockWidgetMovable)
+
+
+        self.cdock= QtGui.QDockWidget("Control Panel")
+        self.cdock.setFeatures(QtGui.QDockWidget.DockWidgetFloatable | QtGui.QDockWidget.DockWidgetMovable)
+
         self.setup_dock_widgets()
 
         # progress bar
@@ -61,8 +65,10 @@ class SegyViewer(QtGui.QMainWindow):
     def setup_dock_widgets(self):
         self.setDockOptions(QtGui.QMainWindow.AllowNestedDocks)
         self.addDockWidget(QtCore.Qt.TopDockWidgetArea, self.xdock)
-        self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self.idock)
+        self.addDockWidget(QtCore.Qt.TopDockWidgetArea, self.idock)
         self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self.ddock)
+        self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self.cdock)
+
 
     def configure_main_menu(self, menu, colormap_monitor, available_colormaps):
         menu.fileMenu = menu.addMenu('&File')
@@ -102,7 +108,7 @@ class SegyViewer(QtGui.QMainWindow):
 
         # removing old slice widgets from dock widgets
         for dock_widget in self.findChildren(QtGui.QDockWidget):
-            for widgt in dock_widget.findChildren(SliceWidget):
+            for widgt in dock_widget.findChildren(QtGui.QWidget):
                 widgt.deleteLater()
 
     def open_file_dialogue(self):
@@ -149,7 +155,7 @@ class SegyViewer(QtGui.QMainWindow):
             if status == 0:  # when completed successfully
                 self.initialize_slice_widgets()
             self.progress_bar.hide()
-            self.file_loader_thread.quit()
+
 
         # a memory read, might take some time. Set up a separate thread and update the progressbar
         if read_to_memory:
@@ -166,6 +172,8 @@ class SegyViewer(QtGui.QMainWindow):
 
             # set up finished callback
             self.file_loader_worker.finished.connect(complete_finished_file_load_operation)
+            self.file_loader_worker.finished.connect(self.file_loader_thread.quit)
+
 
             # and start
             self.file_loader_thread.start()
@@ -173,16 +181,15 @@ class SegyViewer(QtGui.QMainWindow):
             complete_finished_file_load_operation(0)
 
     def initialize_slice_widgets(self):
-        self.addToolBar(LineNavigationBar(self.swrap.xlines,
-                                          self.swrap.ilines,
-                                          range(self.swrap.samples),
-                                          self.line_monitor))
+        self.addToolBar(SegyViewerToolBar(self.swrap,
+                                          self.line_monitor, self.sliceview_monitor))
 
-        x_wdgt, i_wdgt, d_wdgt = viewer.initialize_slice_widgets(self.swrap, self.line_monitor, self.colormap_monitor)
+        x_wdgt, i_wdgt, d_wdgt = viewer.initialize_slice_widgets(self.swrap, self.line_monitor, self.sliceview_monitor)
 
         self.xdock.setWidget(x_wdgt)
         self.idock.setWidget(i_wdgt)
         self.ddock.setWidget(d_wdgt)
+        self.cdock.setWidget(ColorBarWidget(self.swrap, colormap_monitor=self.sliceview_monitor))
 
 def main():
 
@@ -197,6 +204,7 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
 
 

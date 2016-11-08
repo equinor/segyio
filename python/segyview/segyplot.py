@@ -1,6 +1,7 @@
 from matplotlib.ticker import FuncFormatter, MaxNLocator
 import matplotlib.patches as patches
 
+import matplotlib
 
 class SegyPlot(object):
 
@@ -25,7 +26,7 @@ class SegyPlot(object):
         self.y_axis_name, self.y_axis_indexes = y_axis_indexes or (None, None)
 
         self.slice_axes = axes
-        self.slice_axes.tick_params(axis='both', labelsize=30)
+        self.slice_axes.tick_params(axis='both', labelsize=8)
 
         if self.x_axis_indexes is not None:
             def x_axis_label_formatter(val, position):
@@ -33,7 +34,7 @@ class SegyPlot(object):
                     return self.x_axis_indexes[int(val)]
                 return ''
 
-            self.slice_axes.set_xlabel(self.x_axis_name, fontsize=40)
+            self.slice_axes.set_xlabel(self.x_axis_name, fontsize=8)
             self.slice_axes.get_xaxis().set_major_formatter(FuncFormatter(x_axis_label_formatter))
             self.slice_axes.get_xaxis().set_major_locator(MaxNLocator(20))  # max 20 ticks are shown
 
@@ -43,7 +44,7 @@ class SegyPlot(object):
                     return self.y_axis_indexes[int(val)]
                 return ''
 
-            self.slice_axes.set_ylabel(self.y_axis_name, fontsize=40)
+            self.slice_axes.set_ylabel(self.y_axis_name, fontsize=8)
             self.slice_axes.get_yaxis().set_major_formatter(FuncFormatter(y_axis_label_formatter))
             self.slice_axes.get_yaxis().set_major_locator(MaxNLocator(10))  # max 20 ticks are shown
 
@@ -64,8 +65,9 @@ class SegyPlot(object):
                     fill=False,
                     alpha=1,
                     color='black',
-                    linestyle='--',
-                    linewidth=2
+                    linestyle='dashed',
+                    linewidth=0.5,
+
                 )
             )
 
@@ -78,8 +80,8 @@ class SegyPlot(object):
                     fill=False,
                     alpha=1,
                     color='black',
-                    linestyle='--',
-                    linewidth=2
+                    linestyle='dashed',
+                    linewidth=0.5
                 )
             )
 
@@ -93,6 +95,12 @@ class SegyPlot(object):
                 visible=False
             )
         )
+
+    def set_min_max(self, v_min_max):
+        self.vmin, self.vmax = v_min_max or (None, None)
+        self.im.set_clim(self.vmin,self.vmax)
+
+
 
     def set_colormap(self, cmap):
         self.cmap = cmap
@@ -115,4 +123,24 @@ class SegyPlot(object):
 
     def disable_overlay(self):
         self.disabled_overlay.set_visible(False)
+
+class ColorBarPlot(object):
+    def __init__(self, axes, cmap=None, v_min_max=None):
+        self.axes = axes
+        self.cmap = cmap
+
+        # default to 0,1 when not set
+        min, max = v_min_max or (0,1)
+
+        norm = matplotlib.colors.Normalize(vmin=min, vmax=max)
+        self.colorbar = matplotlib.colorbar.ColorbarBase(self.axes, cmap=cmap, norm=norm)
+
+    def set_cmap(self, cmap):
+        self.colorbar.set_cmap(str(cmap))
+        self.colorbar.draw_all()
+
+    def set_min_max(self, min_max):
+        min, max = min_max
+        self.colorbar.set_clim(min, max)
+        self.colorbar.draw_all()
 

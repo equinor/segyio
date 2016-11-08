@@ -2,10 +2,10 @@ from .segyplot import SegyPlot
 from .segyiowrapper import SegyIOWrapper, SlicesWrapper
 
 try:
-    from .linenavigationbar import LineNavigationBar
     from .progresswidget import ProgressWidget
-    from .slicewidget import SliceWidget
+    from .slicewidget import SliceWidget, ColorBarWidget
     from .segyiowrapper import SegyIOWrapper, SlicesWrapper
+    from .controlwidgets import *
     from .viewer import *
 except ImportError as e:
     import sys

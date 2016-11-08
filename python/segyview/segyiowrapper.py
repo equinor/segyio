@@ -41,7 +41,7 @@ class SegyIOWrapper(object):
         self.segy = segy
         self.file_name = file_name
         self.file_activity_monitor = file_activity_monitor
-        self.iline_slices, self.xline_slices, self.depth_slices, self.min_max = None, None, None, None
+        self.iline_slices, self.xline_slices, self.depth_slices, self._min_max = None, None, None, None
 
     @classmethod
     def wrap(cls, segy, file_activity_monitor=None):
@@ -73,7 +73,7 @@ class SegyIOWrapper(object):
         self.iline_slices = SlicesWrapper(self, self.segy.ilines.tolist(), self.segy.iline, read_from_file=True)
         self.xline_slices = SlicesWrapper(self, self.segy.xlines.tolist(), self.segy.xline, read_from_file=True)
         self.depth_slices = SlicesWrapper(self, range(self.segy.samples), self.segy.depth_slice, read_from_file=True)
-        self.min_max = None
+        self._min_max = None
 
     def close(self):
         """
@@ -132,7 +132,7 @@ class SegyIOWrapper(object):
 
         self.iline_slices = SlicesWrapper(self, self.segy.ilines.tolist(), ils, read_from_file=False)
         self.xline_slices = SlicesWrapper(self, self.segy.xlines.tolist(), xls, read_from_file=False)
-        self.min_max = self.identify_min_max(all_traces)
+        self._min_max = self.identify_min_max(all_traces)
         return True
 
     @staticmethod
@@ -170,3 +170,7 @@ class SegyIOWrapper(object):
     @property
     def depth_slice(self):
         return self.depth_slices
+
+    @property
+    def min_max(self):
+        return self._min_max
