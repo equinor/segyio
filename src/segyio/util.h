@@ -10,8 +10,8 @@
 
 void ebcdic2ascii( const char* ebcdic, char* ascii );
 void ascii2ebcdic( const char* ascii, char* ebcdic );
-void ibm2ieee(void* to, const void* from, int len);
-void ieee2ibm(void* to, const void* from, int len);
+void ibm2ieee(void* to, const void* from);
+void ieee2ibm(void* to, const void* from);
 int segy_seek( FILE*, unsigned int, long, unsigned int );
 
 #endif //SEGYIO_UTILS_H

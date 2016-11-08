@@ -65,94 +65,92 @@ void ascii2ebcdic( const char* ascii, char* ebcdic ) {
     *ebcdic = '\0';
 }
 
-void ibm2ieee(void* to, const void* from, int len) {
-    register unsigned fr; /* fraction */
+void ibm2ieee( void* to, const void* from ) {
+    uint32_t fr;      /* fraction */
     register int exp; /* exponent */
-    register int sgn; /* sign */
+    uint32_t sgn;     /* sign */
 
-    for (; len-- > 0; to = (char*) to + 4, from = (const char*) from + 4) {
-        /* split into sign, exponent, and fraction */
-        fr = ntohl(*(const int32_t*) from); /* pick up value */
-        sgn = fr >> 31; /* save sign */
-        fr <<= 1; /* shift sign out */
-        exp = fr >> 25; /* save exponent */
-        fr <<= 7; /* shift exponent out */
+    memcpy( &fr, from, sizeof( uint32_t ) );
+    /* split into sign, exponent, and fraction */
+    fr = ntohl( fr ); /* pick up value */
+    sgn = fr >> 31; /* save sign */
+    fr <<= 1; /* shift sign out */
+    exp = fr >> 25; /* save exponent */
+    fr <<= 7; /* shift exponent out */
 
-        if (fr == 0) { /* short-circuit for zero */
-            exp = 0;
-            goto done;
-        }
-
-        /* adjust exponent from base 16 offset 64 radix point before first digit
-         * to base 2 offset 127 radix point after first digit
-         * (exp - 64) * 4 + 127 - 1 == exp * 4 - 256 + 126 == (exp << 2) - 130 */
-        exp = (exp << 2) - 130;
-
-        /* (re)normalize */
-        while (fr < 0x80000000) { /* 3 times max for normalized input */
-            --exp;
-            fr <<= 1;
-        }
-
-        if (exp <= 0) { /* underflow */
-            if (exp < -24) /* complete underflow - return properly signed zero */
-                fr = 0;
-            else /* partial underflow - return denormalized number */
-                fr >>= -exp;
-            exp = 0;
-        } else if (exp >= 255) { /* overflow - return infinity */
-            fr = 0;
-            exp = 255;
-        } else { /* just a plain old number - remove the assumed high bit */
-            fr <<= 1;
-        }
-
-        done:
-        /* put the pieces back together and return it */
-        *(unsigned*) to = (fr >> 9) | (exp << 23) | (sgn << 31);
+    if (fr == 0) { /* short-circuit for zero */
+        exp = 0;
+        goto done;
     }
+
+    /* adjust exponent from base 16 offset 64 radix point before first digit
+     * to base 2 offset 127 radix point after first digit
+     * (exp - 64) * 4 + 127 - 1 == exp * 4 - 256 + 126 == (exp << 2) - 130 */
+    exp = (exp << 2) - 130;
+
+    /* (re)normalize */
+    while (fr < 0x80000000) { /* 3 times max for normalized input */
+        --exp;
+        fr <<= 1;
+    }
+
+    if (exp <= 0) { /* underflow */
+        if (exp < -24) /* complete underflow - return properly signed zero */
+            fr = 0;
+        else /* partial underflow - return denormalized number */
+            fr >>= -exp;
+        exp = 0;
+    } else if (exp >= 255) { /* overflow - return infinity */
+        fr = 0;
+        exp = 255;
+    } else { /* just a plain old number - remove the assumed high bit */
+        fr <<= 1;
+    }
+
+done:
+    /* put the pieces back together and return it */
+    fr = (fr >> 9) | (exp << 23) | (sgn << 31);
+    memcpy( to, &fr, sizeof( uint32_t ) );
 }
 
-void ieee2ibm(void* to, const void* from, int len) {
-    register unsigned fr; /* fraction */
+void ieee2ibm( void* to, const void* from ) {
+    uint32_t fr;      /* fraction */
     register int exp; /* exponent */
-    register int sgn; /* sign */
+    uint32_t sgn;     /* sign */
 
-    for (; len-- > 0; to = (char*) to + 4, from = (const char*) from + 4) {
-        /* split into sign, exponent, and fraction */
-        fr = *(const unsigned*) from; /* pick up value */
-        sgn = fr >> 31; /* save sign */
-        fr <<= 1; /* shift sign out */
-        exp = fr >> 24; /* save exponent */
-        fr <<= 8; /* shift exponent out */
+    /* split into sign, exponent, and fraction */
+    memcpy( &fr, from, sizeof( uint32_t ) ); /* pick up value */
+    sgn = fr >> 31; /* save sign */
+    fr <<= 1; /* shift sign out */
+    exp = fr >> 24; /* save exponent */
+    fr <<= 8; /* shift exponent out */
 
-        if (exp == 255) { /* infinity (or NAN) - map to largest */
-            fr = 0xffffff00;
-            exp = 0x7f;
-            goto done;
-        }
-        else if (exp > 0) /* add assumed digit */
-            fr = (fr >> 1) | 0x80000000;
-        else if (fr == 0) /* short-circuit for zero */
-            goto done;
-
-        /* adjust exponent from base 2 offset 127 radix point after first digit
-         * to base 16 offset 64 radix point before first digit */
-        exp += 130;
-        fr >>= -exp & 3;
-        exp = (exp + 3) >> 2;
-
-        /* (re)normalize */
-        while (fr < 0x10000000) { /* never executed for normalized input */
-            --exp;
-            fr <<= 4;
-        }
-
-        done:
-        /* put the pieces back together and return it */
-        fr = (fr >> 8) | (exp << 24) | (sgn << 31);
-        *(unsigned*) to = htonl(fr);
+    if (exp == 255) { /* infinity (or NAN) - map to largest */
+        fr = 0xffffff00;
+        exp = 0x7f;
+        goto done;
     }
+    else if (exp > 0) /* add assumed digit */
+        fr = (fr >> 1) | 0x80000000;
+    else if (fr == 0) /* short-circuit for zero */
+        goto done;
+
+    /* adjust exponent from base 2 offset 127 radix point after first digit
+     * to base 16 offset 64 radix point before first digit */
+    exp += 130;
+    fr >>= -exp & 3;
+    exp = (exp + 3) >> 2;
+
+    /* (re)normalize */
+    while (fr < 0x10000000) { /* never executed for normalized input */
+        --exp;
+        fr <<= 4;
+    }
+
+done:
+    /* put the pieces back together and return it */
+    fr = htonl( (fr >> 8) | (exp << 24) | (sgn << 31) );
+    memcpy( to, &fr, sizeof( uint32_t ) );
 }
 
 /* Lookup table for field sizes. All values not explicitly set are 0 */
@@ -888,41 +886,49 @@ int segy_writetrace( FILE* fp,
 }
 
 int segy_to_native( int format,
-                    unsigned int size,
+                    int size,
                     float* buf ) {
 
     assert( sizeof( float ) == sizeof( uint32_t ) );
 
+    uint32_t u;
     if( format == IEEE_FLOAT_4_BYTE ) {
-        uint32_t u;
         while( size-- ) {
             memcpy( &u, buf, sizeof( float ) );
             u = ntohl( u );
             memcpy( buf++, &u, sizeof( float ) );
         }
     }
-    else
-        ibm2ieee( buf, buf, size );
+    else {
+        while( size-- ) {
+            ibm2ieee( &u, buf );
+            memcpy( buf++, &u, sizeof( float ) );
+        }
+    }
 
     return SEGY_OK;
 }
 
 int segy_from_native( int format,
-                      unsigned int size,
+                      int size,
                       float* buf ) {
 
     assert( sizeof( float ) == sizeof( uint32_t ) );
 
+    uint32_t u;
     if( format == IEEE_FLOAT_4_BYTE ) {
-        uint32_t u;
         while( size-- ) {
             memcpy( &u, buf, sizeof( float ) );
             u = htonl( u );
             memcpy( buf++, &u, sizeof( float ) );
         }
     }
-    else
-        ieee2ibm( buf, buf, size );
+    else {
+        while( size-- ) {
+            ieee2ibm( &u, buf );
+            memcpy( buf++, &u, sizeof( float ) );
+        }
+    }
 
     return SEGY_OK;
 }
