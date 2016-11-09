@@ -47,6 +47,7 @@ class TestSegy(TestCase):
 
     def setUp(self):
         self.filename = "test-data/small.sgy"
+        self.prestack = "test-data/small-ps.sgy"
 
     def test_inline_4(self):
         with segyio.open(self.filename, "r") as f:
@@ -178,6 +179,31 @@ class TestSegy(TestCase):
             buf = None
             for i, trace in enumerate(f.trace[0:6:2, buf]):
                 self.assertTrue(np.array_equal(trace, traces[i]))
+
+    def test_traces_offset(self):
+        with segyio.open(self.prestack, "r") as f:
+
+            self.assertEqual(2, len(f.offsets))
+            self.assertListEqual([1, 2], list(f.offsets))
+
+            # traces are laid out |l1o1 l1o2 l2o1 l2o2...|
+            # where l = iline number and o = offset number
+            # traces are not re-indexed according to offsets
+            # see make-ps-file.py for value formula
+            self.assertAlmostEqual(101.01, f.trace[0][0], places = 4)
+            self.assertAlmostEqual(201.01, f.trace[1][0], places = 4)
+            self.assertAlmostEqual(101.02, f.trace[2][0], places = 4)
+            self.assertAlmostEqual(201.02, f.trace[3][0], places = 4)
+            self.assertAlmostEqual(102.01, f.trace[6][0], places = 4)
+
+    def test_headers_offset(self):
+        with segyio.open(self.prestack, "r") as f:
+            il, xl = TraceField.INLINE_3D, TraceField.CROSSLINE_3D
+            self.assertEqual(f.header[0][il], f.header[1][il])
+            self.assertEqual(f.header[1][il], f.header[2][il])
+
+            self.assertEqual(f.header[0][xl], f.header[1][xl])
+            self.assertNotEqual(f.header[1][xl], f.header[2][xl])
 
     def test_line_generators(self):
         with segyio.open(self.filename, "r") as f:
