@@ -14,7 +14,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
     char* msg2;
     int err;
 
-    FILE* fp = segyfopen( prhs[ 0 ], "rb" );
+    segy_file* fp = segyfopen( prhs[ 0 ], "rb" );
     struct segy_file_format fmt = filefmt( fp );
     int traceno = mxGetScalar( prhs[ 1 ] );
 
@@ -26,7 +26,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
     plhs[ 0 ] = mxCreateCharArray( 1, dims );
     err = segy_traceheader( fp, traceno, mxGetData( plhs[ 0 ] ), fmt.trace0, fmt.trace_bsize );
 
-    fclose( fp );
+    segy_close( fp );
 
     if( err != 0 ) {
         msg1 = "segy:get_trace_header:os";

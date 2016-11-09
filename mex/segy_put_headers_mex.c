@@ -14,7 +14,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
     char* msg2;
     int err;
 
-    FILE* fp = segyfopen( prhs[ 0 ], "r+b" );
+    segy_file* fp = segyfopen( prhs[ 0 ], "r+b" );
     double* headers = mxGetPr( prhs[ 1 ] );
     int field = mxGetScalar( prhs[ 2 ] );
 
@@ -53,10 +53,10 @@ void mexFunction(int nlhs, mxArray *plhs[],
         }
     }
 
-    fclose( fp );
+    segy_close( fp );
     return;
 
 cleanup:
-    fclose( fp );
+    segy_close( fp );
     mexErrMsgIdAndTxt( msg1, msg2 );
 }

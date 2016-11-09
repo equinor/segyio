@@ -16,7 +16,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
     int err;
 
     const char* filename = mxArrayToString( prhs[ 0 ] );
-    FILE* fp = segyfopen( prhs[ 0 ], "rb" );
+    segy_file* fp = segyfopen( prhs[ 0 ], "rb" );
 
     int field = mxGetScalar( prhs[ 1 ] );
 
@@ -48,13 +48,13 @@ void mexFunction(int nlhs, mxArray *plhs[],
         out[ i ] = f;
     }
 
-    fclose( fp );
+    segy_close( fp );
 
     plhs[ 1 ] = mxCreateDoubleScalar( fmt.traces );
     return;
 
 cleanup:
-    fclose( fp );
+    segy_close( fp );
 
 cleanup_fopen:
     mexErrMsgIdAndTxt( msg1, msg2 );

@@ -6,9 +6,9 @@
 void mexFunction(int nlhs, mxArray *plhs[],
                  int nrhs, const mxArray *prhs[]) {
 
-    FILE* fp = segyfopen( prhs[ 0 ], "rb" );
+    segy_file* fp = segyfopen( prhs[ 0 ], "rb" );
     struct segy_file_format fmt = filefmt( fp );
-    fclose( fp );
+    segy_close( fp );
 
     plhs[0] = mxCreateDoubleScalar( fmt.traces );
 }

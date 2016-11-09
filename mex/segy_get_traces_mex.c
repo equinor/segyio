@@ -14,7 +14,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
     char* msg2;
     int err;
 
-    FILE* fp = segyfopen( prhs[ 0 ], "rb" );
+    segy_file* fp = segyfopen( prhs[ 0 ], "rb" );
     int first_trace = mxGetScalar( prhs[ 1 ] );
     int last_trace  = mxGetScalar( prhs[ 2 ] );
     int notype      = mxGetScalar( prhs[ 3 ] );
@@ -54,7 +54,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
         }
     }
 
-    fclose( fp );
+    segy_close( fp );
 
     if( notype != -1 )
         fmt.format = notype;
@@ -69,7 +69,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
     return;
 
 cleanup:
-    fclose( fp );
+    segy_close( fp );
 
 cleanup_fopen:
     mexErrMsgIdAndTxt( msg1, msg2 );
