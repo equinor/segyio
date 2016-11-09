@@ -56,6 +56,11 @@ static void test_interpret_file() {
     assertTrue( err == 0, "Could not figure out offsets." );
     assertTrue( offsets == 1, "Expected offsets to be 1 (no extra offsets)." );
 
+    int offset_index = -1;
+    err = segy_offset_indices( fp, 37, 1, &offset_index, trace0, trace_bsize );
+    assertTrue( err == 0, "Could not figure out offset indices." );
+    assertTrue( offset_index == 1, "Expected offset index to be 1." );
+
     err = segy_count_lines( fp, xl, offsets, &inlines_sz, &crosslines_sz, trace0, trace_bsize );
     assertTrue( err == 0, "Could not determine line count in this file." );
     assertTrue( inlines_sz == 5, "Expected 5 inlines." );

@@ -104,6 +104,17 @@ int segy_offsets( segy_file*,
                   unsigned int trace_bsize );
 
 /*
+ * The names of the individual offsets. `out` must be a buffer of
+ * `segy_offsets` elements.
+ */
+int segy_offset_indices( segy_file*,
+                         int offset_field,
+                         int offsets,
+                         int* out,
+                         long trace0,
+                         unsigned int trace_bsize );
+
+/*
  * read/write traces. Does not manipulate the buffers at all, i.e. in order to
  * make sense of the read trace it must be converted to native floats, and the
  * buffer sent to write must be converted to target float.
