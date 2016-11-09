@@ -147,18 +147,24 @@ class TestSegy(TestCase):
             pass
 
     def test_file_info(self):
-        with segyio.open(self.filename, "r") as f:
+        t0 = 1111.0
+        dt = 4
+        with segyio.open(self.filename, "r", t0=t0) as f:
             self.assertEqual(2, f.sorting)
             self.assertEqual(1, f.offsets)
             self.assertEqual(1, int(f.format))
 
-            xlines = list(xrange(20, 25))
-            ilines = list(xrange(1, 6))
+            xlines = list(range(20, 25))
+            ilines = list(range(1, 6))
             self.assertEqual(xlines, list(f.xlines))
             self.assertEqual(ilines, list(f.ilines))
             self.assertEqual(25, f.tracecount)
             self.assertEqual(len(f.trace), f.tracecount)
             self.assertEqual(50, f.samples)
+            self.assertEqual(dt, f.sample_indexes[1]-f.sample_indexes[0])
+            sample_indexes = np.arange(t0, t0+f.samples*dt, dt)
+            np.testing.assert_array_almost_equal(sample_indexes, np.array(f.sample_indexes), 0)
+
 
     def test_traces_slicing(self):
         with segyio.open(self.filename, "r") as f:

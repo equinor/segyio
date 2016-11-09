@@ -41,6 +41,7 @@ class SegyFile(object):
         # property value holders
         self._ilines = None
         self._xlines = None
+        self._sample_indexes = None
         self._tracecount = None
         self._sorting = None
         self._offsets = None
@@ -535,6 +536,10 @@ class SegyFile(object):
     @xline.setter
     def xline(self, value):
         self.xline[:] = value
+
+    @property
+    def sample_indexes(self):
+        return self._sample_indexes
 
     def _depth_buffer(self, buf=None):
         il_len = self._iline_length

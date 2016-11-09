@@ -620,6 +620,31 @@ static Py_buffer check_and_get_buffer(PyObject *object, const char *name, unsign
     return buffer;
 }
 
+static Py_buffer check_and_get_double_buffer(PyObject *object, const char *name, unsigned int expected) {
+    static const Py_buffer zero_buffer;
+    Py_buffer buffer = zero_buffer;
+    if (!PyObject_CheckBuffer(object)) {
+        PyErr_Format(PyExc_TypeError, "The destination for %s is not a buffer object", name);
+        return buffer;
+    }
+    PyObject_GetBuffer(object, &buffer, PyBUF_FORMAT | PyBUF_C_CONTIGUOUS | PyBUF_WRITEABLE);
+
+    if (strcmp(buffer.format, "d") != 0) {
+        PyErr_Format(PyExc_TypeError, "The destination for %s is not a buffer object of type 'double'", name);
+        PyBuffer_Release(&buffer);
+        return buffer;
+    }
+
+    size_t buffer_len = buffer.len;
+    if (buffer_len < expected * sizeof(unsigned int)) {
+        PyErr_Format(PyExc_ValueError, "The destination for %s is too small. ", name);
+        PyBuffer_Release(&buffer);
+        return buffer;
+    }
+
+    return buffer;
+}
+
 
 static PyObject *py_init_line_indices(PyObject *self, PyObject *args) {
     errno = 0;
@@ -627,8 +652,10 @@ static PyObject *py_init_line_indices(PyObject *self, PyObject *args) {
     PyObject *metrics = NULL;
     PyObject *iline_out = NULL;
     PyObject *xline_out = NULL;
+    PyObject *sample_indexes_out = NULL;
+    float t0;
 
-    PyArg_ParseTuple(args, "OOOO", &file_capsule, &metrics, &iline_out, &xline_out);
+    PyArg_ParseTuple(args, "OOOOOf", &file_capsule, &metrics, &iline_out, &xline_out, &sample_indexes_out, &t0);
 
     segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
 
@@ -657,6 +684,21 @@ static PyObject *py_init_line_indices(PyObject *self, PyObject *args) {
         return NULL;
     }
 
+    unsigned int sample_count;
+    PyArg_Parse(PyDict_GetItemString(metrics, "sample_count"), "I", &sample_count);
+    Py_buffer sample_indexes_buffer = check_and_get_double_buffer(sample_indexes_out, "sample_indexes", sample_count);
+
+    if (PyErr_Occurred()) {
+        PyBuffer_Release(&sample_indexes_buffer);
+        return NULL;
+    }
+
+    int error = segy_sample_indexes(p_FILE, sample_indexes_buffer.buf, t0, sample_count);
+
+    if (error != 0) {
+        py_handle_segy_error(error, errno);
+    }
+
     int il_field;
     int xl_field;
     int sorting;
@@ -671,7 +713,7 @@ static PyObject *py_init_line_indices(PyObject *self, PyObject *args) {
     PyArg_Parse(PyDict_GetItemString(metrics, "trace0"), "l", &trace0);
     PyArg_Parse(PyDict_GetItemString(metrics, "trace_bsize"), "I", &trace_bsize);
 
-    int error = segy_inline_indices(p_FILE, il_field, sorting, iline_count, xline_count, offset_count, iline_buffer.buf,
+    error = segy_inline_indices(p_FILE, il_field, sorting, iline_count, xline_count, offset_count, iline_buffer.buf,
                                     trace0, trace_bsize);
 
     if (error != 0) {
