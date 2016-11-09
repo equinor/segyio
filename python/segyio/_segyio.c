@@ -582,6 +582,7 @@ static PyObject *py_init_metrics(PyObject *self, PyObject *args) {
     PyObject *dict = PyDict_New();
     PyDict_SetItemString(dict, "iline_field", Py_BuildValue("i", il_field));
     PyDict_SetItemString(dict, "xline_field", Py_BuildValue("i", xl_field));
+    PyDict_SetItemString(dict, "offset_field", Py_BuildValue("i", 37));
     PyDict_SetItemString(dict, "trace0", Py_BuildValue("l", trace0));
     PyDict_SetItemString(dict, "sample_count", Py_BuildValue("I", sample_count));
     PyDict_SetItemString(dict, "format", Py_BuildValue("i", format));
@@ -621,14 +622,16 @@ static Py_buffer check_and_get_buffer(PyObject *object, const char *name, unsign
 }
 
 
-static PyObject *py_init_line_indices(PyObject *self, PyObject *args) {
+static PyObject *py_init_indices(PyObject *self, PyObject *args) {
     errno = 0;
     PyObject *file_capsule = NULL;
     PyObject *metrics = NULL;
     PyObject *iline_out = NULL;
     PyObject *xline_out = NULL;
+    PyObject *offset_out = NULL;
 
-    PyArg_ParseTuple(args, "OOOO", &file_capsule, &metrics, &iline_out, &xline_out);
+    PyArg_ParseTuple(args, "OOOOO", &file_capsule, &metrics,
+                            &iline_out, &xline_out, &offset_out);
 
     segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
 
@@ -641,8 +644,10 @@ static PyObject *py_init_line_indices(PyObject *self, PyObject *args) {
 
     unsigned int iline_count;
     unsigned int xline_count;
+    unsigned int offset_count;
     PyArg_Parse(PyDict_GetItemString(metrics, "iline_count"), "I", &iline_count);
     PyArg_Parse(PyDict_GetItemString(metrics, "xline_count"), "I", &xline_count);
+    PyArg_Parse(PyDict_GetItemString(metrics, "offset_count"), "I", &offset_count);
 
     if (PyErr_Occurred()) { return NULL; }
 
@@ -657,17 +662,25 @@ static PyObject *py_init_line_indices(PyObject *self, PyObject *args) {
         return NULL;
     }
 
+    Py_buffer offsets_buffer = check_and_get_buffer(offset_out, "offsets", offset_count);
+
+    if (PyErr_Occurred()) {
+        PyBuffer_Release(&iline_buffer);
+        PyBuffer_Release(&xline_buffer);
+        return NULL;
+    }
+
     int il_field;
     int xl_field;
+    int offset_field;
     int sorting;
-    unsigned int offset_count;
     long trace0;
     unsigned int trace_bsize;
 
     PyArg_Parse(PyDict_GetItemString(metrics, "iline_field"), "i", &il_field);
     PyArg_Parse(PyDict_GetItemString(metrics, "xline_field"), "i", &xl_field);
+    PyArg_Parse(PyDict_GetItemString(metrics, "offset_field"), "i", &offset_field);
     PyArg_Parse(PyDict_GetItemString(metrics, "sorting"), "i", &sorting);
-    PyArg_Parse(PyDict_GetItemString(metrics, "offset_count"), "I", &offset_count);
     PyArg_Parse(PyDict_GetItemString(metrics, "trace0"), "l", &trace0);
     PyArg_Parse(PyDict_GetItemString(metrics, "trace_bsize"), "I", &trace_bsize);
 
@@ -685,6 +698,15 @@ static PyObject *py_init_line_indices(PyObject *self, PyObject *args) {
         py_handle_segy_error_with_fields(error, errno, il_field, xl_field, 2);
     }
 
+    error = segy_offset_indices( p_FILE, offset_field, offset_count,
+                                 offsets_buffer.buf,
+                                 trace0, trace_bsize );
+
+    if (error != 0) {
+        py_handle_segy_error_with_fields(error, errno, il_field, xl_field, 2);
+    }
+
+    PyBuffer_Release(&offsets_buffer);
     PyBuffer_Release(&xline_buffer);
     PyBuffer_Release(&iline_buffer);
     return Py_BuildValue("");
@@ -920,7 +942,7 @@ static PyMethodDef SegyMethods[] = {
 
         {"init_line_metrics",  (PyCFunction) py_init_line_metrics,  METH_VARARGS, "Find the length and stride of inline and crossline."},
         {"init_metrics",       (PyCFunction) py_init_metrics,       METH_VARARGS, "Find most metrics for a segy file."},
-        {"init_line_indices",  (PyCFunction) py_init_line_indices,  METH_VARARGS, "Find the indices for inline and crossline."},
+        {"init_indices",       (PyCFunction) py_init_indices,       METH_VARARGS, "Find the indices for inline, crossline and offsets."},
         {"fread_trace0",       (PyCFunction) py_fread_trace0,       METH_VARARGS, "Find trace0 of a line."},
         {"read_trace",         (PyCFunction) py_read_trace,         METH_VARARGS, "Read trace data."},
         {"write_trace",        (PyCFunction) py_write_trace,        METH_VARARGS, "Write trace data."},
