@@ -14,7 +14,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
     char* msg2;
     int err;
 
-    FILE* fp = segyfopen( prhs[ 0 ], "r+b" );
+    segy_file* fp = segyfopen( prhs[ 0 ], "r+b" );
     plhs[ 0 ] = mxDuplicateArray( prhs[ 1 ] );
     int first_trace = mxGetScalar( prhs[ 2 ] );
     int last_trace  = mxGetScalar( prhs[ 3 ] );
@@ -53,7 +53,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
         }
     }
 
-    fclose( fp );
+    segy_close( fp );
 
     segy_to_native( fmt.format, fmt.samples * fmt.traces, out );
 
@@ -62,7 +62,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
     return;
 
 cleanup:
-    fclose( fp );
+    segy_close( fp );
     segy_to_native( fmt.format, fmt.samples * fmt.traces, out );
 
     mexErrMsgIdAndTxt( msg1, msg2 );

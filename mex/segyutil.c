@@ -51,7 +51,7 @@ struct segy_file_format buffmt( const char* binary ) {
     return fmt;
 }
 
-struct segy_file_format filefmt( FILE* fp ) {
+struct segy_file_format filefmt( segy_file* fp ) {
     char binary[SEGY_BINARY_HEADER_SIZE];
     int err = segy_binheader( fp, binary );
 
@@ -74,10 +74,10 @@ struct segy_file_format filefmt( FILE* fp ) {
     mexErrMsgIdAndTxt( msg1, msg2 );
 }
 
-FILE* segyfopen( const mxArray* filename, const char* mode ) {
+segy_file* segyfopen( const mxArray* filename, const char* mode ) {
     const char* fname = mxArrayToString( filename );
 
-    FILE* fp = fopen( fname, mode );
+    segy_file* fp = segy_open( fname, mode );
     int err = errno;
 
     mxFree( (void*)fname );

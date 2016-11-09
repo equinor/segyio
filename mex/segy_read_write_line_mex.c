@@ -42,7 +42,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
 
     uint32_t stride = (uint32_t)mxGetScalar(mx_stride);
 
-    FILE* fp;
+    segy_file* fp;
 
     unsigned int line_trace0;
 
@@ -52,7 +52,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
     }
 
     if (read) {
-        fp = fopen( spec.filename, "rb" );
+        fp = segy_open( spec.filename, "rb" );
         if (fp == NULL) {
             goto CLEANUP;
         }
@@ -71,7 +71,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
         }
     }
     else {
-        fp = fopen( spec.filename, "r+b" );
+        fp = segy_open( spec.filename, "r+b" );
         if (fp == NULL) {
             goto CLEANUP;
         }
@@ -96,11 +96,11 @@ void mexFunction(int nlhs, mxArray *plhs[],
         }
     }
 
-    fclose(fp);
+    segy_close(fp);
     return;
 
     CLEANUP:
-    fclose(fp);
+    segy_close(fp);
     ERROR:
     {
         int nfields = 1;

@@ -6,6 +6,8 @@
 
 #include <mex.h>
 
+#include <segyio/segy.h>
+
 #include "spec/segyspec.h"
 
 
@@ -20,7 +22,7 @@ struct segy_file_format {
 };
 
 struct segy_file_format buffmt( const char* );
-struct segy_file_format filefmt( FILE* );
-FILE* segyfopen( const mxArray* filename, const char* mode );
+struct segy_file_format filefmt( segy_file* );
+segy_file* segyfopen( const mxArray* filename, const char* mode );
 
 #endif //SEGYIO_SEGYUTIL_H
