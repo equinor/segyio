@@ -81,7 +81,7 @@ from .open import open
 from .create import create
 from .segy import SegyFile, spec
 
-__version__    = '1.0.3'
+__version__    = '1.0.4'
 __copyright__  = 'Copyright 2016, Statoil ASA'
 __license__    = 'GNU Lesser General Public License version 3'
 __status__     = 'Production'

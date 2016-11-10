@@ -13,7 +13,7 @@ except ImportError as e:
     exc_type, exc_value, exc_traceback = sys.exc_info()
     traceback.print_exception(exc_type, exc_value, exc_traceback, limit=2, file=sys.stderr)
 
-__version__    = '1.0.3'
+__version__    = '1.0.4'
 __copyright__  = 'Copyright 2016, Statoil ASA'
 __license__    = 'GNU Lesser General Public License version 3'
 __status__     = 'Production'
