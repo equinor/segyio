@@ -7,29 +7,29 @@ classdef Segy
     methods(Static)
 
         function obj = readInLine(spec, index)
-            obj = segy_read_write_line_mex(spec, index, max(size(spec.crossline_indexes)), spec.inline_indexes, spec.il_stride);
+            obj = segy_read_write_line_mex(spec, index, max(size(spec.crossline_indexes)), spec.inline_indexes, spec.il_stride, spec.offset_count);
         end
 
         function obj = readCrossLine(spec, index)
-            obj = segy_read_write_line_mex(spec, index, max(size(spec.inline_indexes)), spec.crossline_indexes, spec.xl_stride);
+            obj = segy_read_write_line_mex(spec, index, max(size(spec.inline_indexes)), spec.crossline_indexes, spec.xl_stride, spec.offset_count);
         end
 
         function obj = writeCrossLine(spec, data, index)
-            segy_read_write_line_mex(spec, index, max(size(spec.inline_indexes)), spec.crossline_indexes, spec.xl_stride, data);
+            segy_read_write_line_mex(spec, index, max(size(spec.inline_indexes)), spec.crossline_indexes, spec.xl_stride, spec.offset_count, data);
             obj = data;
         end
 
         function obj = writeInLine(spec, data, index)
-            segy_read_write_line_mex(spec, index, max(size(spec.crossline_indexes)), spec.inline_indexes, spec.il_stride, data);
+            segy_read_write_line_mex(spec, index, max(size(spec.crossline_indexes)), spec.inline_indexes, spec.il_stride, spec.offset_count, data);
             obj = data;
         end
 
         function data = get_line(cube, dir, n)
             if strcmpi(dir, 'iline')
-                data = segy_read_write_line_mex(cube, n, max(size(cube.crossline_indexes)), cube.inline_indexes, cube.il_stride);
+                data = segy_read_write_line_mex(cube, n, max(size(cube.crossline_indexes)), cube.inline_indexes, cube.il_stride, cube.offset_count);
 
             elseif strcmpi(dir, 'xline')
-                data = segy_read_write_line_mex(cube, n, max(size(cube.inline_indexes)), cube.crossline_indexes, cube.xl_stride);
+                data = segy_read_write_line_mex(cube, n, max(size(cube.inline_indexes)), cube.crossline_indexes, cube.xl_stride, cube.offset_count);
 
             else
                 error('Only iline and xline are valid directions.');
@@ -38,10 +38,10 @@ classdef Segy
 
         function data = put_line(cube, data, dir, n)
             if strcmpi(dir, 'iline')
-                segy_read_write_line_mex(cube, n, max(size(cube.crossline_indexes)), cube.inline_indexes, cube.il_stride, data);
+                segy_read_write_line_mex(cube, n, max(size(cube.crossline_indexes)), cube.inline_indexes, cube.il_stride, cube.offset_count, data);
 
             elseif strcmpi(dir, 'xline')
-                segy_read_write_line_mex(cube, n, max(size(cube.inline_indexes)), cube.crossline_indexes, cube.xl_stride, data );
+                segy_read_write_line_mex(cube, n, max(size(cube.inline_indexes)), cube.crossline_indexes, cube.xl_stride, cube.offset_count, data );
 
             else
                 error('Only iline and xline are valid directions.');

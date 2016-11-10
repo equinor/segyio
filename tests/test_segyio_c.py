@@ -285,21 +285,21 @@ class _segyioTests(TestCase):
         _segyio.init_line_indices(f, metrics, iline_indexes, xline_indexes)
 
         with self.assertRaises(KeyError):
-            _segyio.fread_trace0(0, len(xline_indexes), line_metrics['iline_stride'], iline_indexes, "inline")
+            _segyio.fread_trace0(0, len(xline_indexes), line_metrics['iline_stride'], offset_count, iline_indexes, "inline")
 
         with self.assertRaises(KeyError):
-            _segyio.fread_trace0(2, len(iline_indexes), line_metrics['xline_stride'], xline_indexes, "crossline")
+            _segyio.fread_trace0(2, len(iline_indexes), line_metrics['xline_stride'], offset_count, xline_indexes, "crossline")
 
-        value = _segyio.fread_trace0(1, len(xline_indexes), line_metrics['iline_stride'], iline_indexes, "inline")
+        value = _segyio.fread_trace0(1, len(xline_indexes), line_metrics['iline_stride'], offset_count, iline_indexes, "inline")
         self.assertEqual(value, 0)
 
-        value = _segyio.fread_trace0(2, len(xline_indexes), line_metrics['iline_stride'], iline_indexes, "inline")
+        value = _segyio.fread_trace0(2, len(xline_indexes), line_metrics['iline_stride'], offset_count, iline_indexes, "inline")
         self.assertEqual(value, 5)
 
-        value = _segyio.fread_trace0(21, len(iline_indexes), line_metrics['xline_stride'], xline_indexes, "crossline")
+        value = _segyio.fread_trace0(21, len(iline_indexes), line_metrics['xline_stride'], offset_count, xline_indexes, "crossline")
         self.assertEqual(value, 1)
 
-        value = _segyio.fread_trace0(22, len(iline_indexes), line_metrics['xline_stride'], xline_indexes, "crossline")
+        value = _segyio.fread_trace0(22, len(iline_indexes), line_metrics['xline_stride'], offset_count, xline_indexes, "crossline")
         self.assertEqual(value, 2)
 
         _segyio.close(f)
@@ -425,16 +425,17 @@ class _segyioTests(TestCase):
         samples = metrics['sample_count']
         xline_stride = metrics['xline_stride']
         iline_stride = metrics['iline_stride']
+        offsets = metrics['offset_count']
 
-        xline_trace0 = _segyio.fread_trace0(20, len(iline_idx), xline_stride, xline_idx, "crossline")
-        iline_trace0 = _segyio.fread_trace0(1, len(xline_idx), iline_stride, iline_idx, "inline")
+        xline_trace0 = _segyio.fread_trace0(20, len(iline_idx), xline_stride, offsets, xline_idx, "crossline")
+        iline_trace0 = _segyio.fread_trace0(1, len(xline_idx), iline_stride, offsets, iline_idx, "inline")
 
         buf = numpy.zeros((len(iline_idx), samples), dtype=numpy.single)
 
-        _segyio.read_line(f, xline_trace0, len(iline_idx), xline_stride, buf, tr0, bsz, 1, samples)
+        _segyio.read_line(f, xline_trace0, len(iline_idx), xline_stride, offsets, buf, tr0, bsz, 1, samples)
         self.assertAlmostEqual(sum(sum(buf)), 800.061169624, places=6)
 
-        _segyio.read_line(f, iline_trace0, len(xline_idx), iline_stride, buf, tr0, bsz, 1, samples)
+        _segyio.read_line(f, iline_trace0, len(xline_idx), iline_stride, offsets, buf, tr0, bsz, 1, samples)
         self.assertAlmostEqual(sum(sum(buf)), 305.061146736, places=6)
 
         _segyio.close(f)
@@ -447,16 +448,17 @@ class _segyioTests(TestCase):
         samples = metrics['sample_count']
         xline_stride = metrics['xline_stride']
         iline_stride = metrics['iline_stride']
+        offsets = metrics['offset_count']
 
-        xline_trace0 = _segyio.fread_trace0(20, len(iline_idx), xline_stride, xline_idx, "crossline")
-        iline_trace0 = _segyio.fread_trace0(1, len(xline_idx), iline_stride, iline_idx, "inline")
+        xline_trace0 = _segyio.fread_trace0(20, len(iline_idx), xline_stride, offsets, xline_idx, "crossline")
+        iline_trace0 = _segyio.fread_trace0(1, len(xline_idx), iline_stride, offsets, iline_idx, "inline")
 
         buf = numpy.zeros((len(iline_idx), samples), dtype=numpy.single)
 
-        _segyio.read_line(f, xline_trace0, len(iline_idx), xline_stride, buf, tr0, bsz, 1, samples)
+        _segyio.read_line(f, xline_trace0, len(iline_idx), xline_stride, offsets, buf, tr0, bsz, 1, samples)
         self.assertAlmostEqual(sum(sum(buf)), 800.061169624, places=6)
 
-        _segyio.read_line(f, iline_trace0, len(xline_idx), iline_stride, buf, tr0, bsz, 1, samples)
+        _segyio.read_line(f, iline_trace0, len(xline_idx), iline_stride, offsets, buf, tr0, bsz, 1, samples)
         self.assertAlmostEqual(sum(sum(buf)), 305.061146736, places=6)
 
         _segyio.close(f)
@@ -466,9 +468,9 @@ class _segyioTests(TestCase):
         indices = numpy.asarray(elements, dtype=numpy.uintc)
 
         for index in indices:
-            d = _segyio.fread_trace0(index, 1, 1, indices, "depth")
+            d = _segyio.fread_trace0(index, 1, 1, 1, indices, "depth")
             self.assertEqual(d, index)
 
         with self.assertRaises(KeyError):
-            d = _segyio.fread_trace0(25, 1, 1, indices, "depth")
+            d = _segyio.fread_trace0(25, 1, 1, 1, indices, "depth")
 

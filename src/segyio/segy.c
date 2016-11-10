@@ -1086,10 +1086,11 @@ static long index_of( unsigned int x,
 /*
  * Read the inline or crossline `lineno`. If it's an inline or crossline
  * depends on the parameters. The line has a length of `line_length` traces,
- * and `buf` must be of (minimum) `line_length*samples_per_trace` size.  Reads
- * every `stride` trace, starting at the trace specified by the *position* of
- * the value `lineno` in `linenos`. If `lineno` isn't present in `linenos`,
- * SEGY_MISSING_LINE_INDEX will be returned.
+ * `offsets` are the number of offsets in this file, and `buf` must be of
+ * (minimum) `line_length*samples_per_trace` size.  Reads every `stride` trace,
+ * starting at the trace specified by the *position* of the value `lineno` in
+ * `linenos`. If `lineno` isn't present in `linenos`, SEGY_MISSING_LINE_INDEX
+ * will be returned.
  *
  * If reading a trace fails, this function will return whatever error
  * segy_readtrace returns.
@@ -1098,11 +1099,14 @@ int segy_read_line( segy_file* fp,
                     unsigned int line_trace0,
                     unsigned int line_length,
                     unsigned int stride,
+                    int offsets,
                     float* buf,
                     long trace0,
                     unsigned int trace_bsize ) {
 
     const size_t trace_data_size = trace_bsize / 4;
+
+    stride *= offsets;
 
     for( ; line_length--; line_trace0 += stride, buf += trace_data_size ) {
         int err = segy_readtrace( fp, line_trace0, buf, trace0, trace_bsize );
@@ -1127,11 +1131,15 @@ int segy_write_line( segy_file* fp,
                      unsigned int line_trace0,
                      unsigned int line_length,
                      unsigned int stride,
-                     float* buf,
+                     int offsets,
+                     const float* buf,
                      long trace0,
                      unsigned int trace_bsize ) {
 
     const size_t trace_data_size = trace_bsize / 4;
+
+    line_trace0 *= offsets;
+    stride *= offsets;
 
     for( ; line_length--; line_trace0 += stride, buf += trace_data_size ) {
         int err = segy_writetrace( fp, line_trace0, buf, trace0, trace_bsize );
@@ -1141,10 +1149,10 @@ int segy_write_line( segy_file* fp,
     return SEGY_OK;
 }
 
-
 int segy_line_trace0( unsigned int lineno,
                       unsigned int line_length,
                       unsigned int stride,
+                      int offsets,
                       const unsigned int* linenos,
                       const unsigned int linenos_sz,
                       unsigned int* traceno ) {
@@ -1155,7 +1163,7 @@ int segy_line_trace0( unsigned int lineno,
 
     if( stride == 1 ) index *= line_length;
 
-    *traceno = index;
+    *traceno = index * offsets;
 
     return SEGY_OK;
 }

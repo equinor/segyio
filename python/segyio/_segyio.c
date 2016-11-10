@@ -696,10 +696,11 @@ static PyObject *py_fread_trace0(PyObject *self, PyObject *args) {
     unsigned int lineno;
     unsigned int other_line_length;
     unsigned int stride;
+    int offsets;
     PyObject *indices_object;
     char *type_name;
 
-    PyArg_ParseTuple(args, "IIIOs", &lineno, &other_line_length, &stride, &indices_object, &type_name);
+    PyArg_ParseTuple(args, "IIIiOs", &lineno, &other_line_length, &stride, &offsets, &indices_object, &type_name);
 
     Py_buffer buffer;
     if (!PyObject_CheckBuffer(indices_object)) {
@@ -710,7 +711,7 @@ static PyObject *py_fread_trace0(PyObject *self, PyObject *args) {
 
     unsigned int trace_no;
     unsigned int linenos_sz = (unsigned int) PyObject_Length(indices_object);
-    int error = segy_line_trace0(lineno, other_line_length, stride, buffer.buf, linenos_sz, &trace_no);
+    int error = segy_line_trace0(lineno, other_line_length, stride, offsets, buffer.buf, linenos_sz, &trace_no);
     PyBuffer_Release( &buffer );
 
     if (error != 0) {
@@ -848,14 +849,19 @@ static PyObject *py_read_line(PyObject *self, PyObject *args) {
     unsigned int line_trace0;
     unsigned int line_length;
     unsigned int stride;
+    int offsets;
     PyObject *buffer_in;
     long trace0;
     unsigned int trace_bsize;
     int format;
     unsigned int samples;
 
-    PyArg_ParseTuple(args, "OIIIOlIiI", &file_capsule, &line_trace0, &line_length, &stride, &buffer_in, &trace0,
-                     &trace_bsize, &format, &samples);
+    PyArg_ParseTuple(args, "OIIIiOlIiI", &file_capsule,
+                                         &line_trace0,
+                                         &line_length, &stride, &offsets,
+                                         &buffer_in,
+                                         &trace0, &trace_bsize,
+                                         &format, &samples);
 
     segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
 
@@ -868,7 +874,7 @@ static PyObject *py_read_line(PyObject *self, PyObject *args) {
     Py_buffer buffer;
     PyObject_GetBuffer(buffer_in, &buffer, PyBUF_FORMAT | PyBUF_C_CONTIGUOUS | PyBUF_WRITEABLE);
 
-    int error = segy_read_line(p_FILE, line_trace0, line_length, stride, buffer.buf, trace0, trace_bsize);
+    int error = segy_read_line(p_FILE, line_trace0, line_length, stride, offsets, buffer.buf, trace0, trace_bsize);
 
     if (error != 0) {
         PyBuffer_Release( &buffer );

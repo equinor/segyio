@@ -12,10 +12,10 @@ void mexFunction(int nlhs, mxArray *plhs[],
 
     bool read;
 
-    if (nrhs == 5) {
+    if (nrhs == 6) {
         read = true;
     }
-    else if (nrhs == 6) {
+    else if (nrhs == 7) {
         read = false;
     }
     else {
@@ -27,6 +27,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
     const mxArray* mx_line_length = prhs[2];
     const mxArray* mx_line_indexes = prhs[3];
     const mxArray* mx_stride = prhs[4];
+    const mxArray* mx_offsets = prhs[5];
 
     SegySpec spec;
     recreateSpec(&spec,mx_spec);
@@ -41,12 +42,13 @@ void mexFunction(int nlhs, mxArray *plhs[],
     uint32_t line_count = (n>m)? n:m;
 
     uint32_t stride = (uint32_t)mxGetScalar(mx_stride);
+    int32_t offsets = (int32_t)mxGetScalar(mx_offsets);
 
     segy_file* fp;
 
     unsigned int line_trace0;
 
-    int errc = segy_line_trace0( index, line_length, stride, line_indexes, line_count, &line_trace0 );
+    int errc = segy_line_trace0( index, line_length, stride, offsets, line_indexes, line_count, &line_trace0 );
     if (errc != 0) {
         goto CLEANUP;
     }
@@ -60,7 +62,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
         plhs[0] = mxCreateNumericMatrix(spec.sample_count, line_length, mxSINGLE_CLASS, mxREAL);
         float *data_ptr = (float *) mxGetData(plhs[0]);
 
-        errc = segy_read_line( fp, line_trace0, line_length, stride, data_ptr, spec.first_trace_pos, spec.trace_bsize );
+        errc = segy_read_line( fp, line_trace0, line_length, stride, offsets, data_ptr, spec.first_trace_pos, spec.trace_bsize );
         if (errc != 0) {
             goto CLEANUP;
         }
@@ -76,7 +78,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
             goto CLEANUP;
         }
 
-        const mxArray* mx_data = prhs[5];
+        const mxArray* mx_data = prhs[6];
 
         float *data_ptr = (float *) mxGetData(mx_data);
 
@@ -85,7 +87,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
             goto CLEANUP;
         }
 
-        errc = segy_write_line( fp, line_trace0, line_length, stride, data_ptr, spec.first_trace_pos, spec.trace_bsize );
+        errc = segy_write_line( fp, line_trace0, line_length, stride, offsets, data_ptr, spec.first_trace_pos, spec.trace_bsize );
         if (errc != 0) {
             goto CLEANUP;
         }

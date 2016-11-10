@@ -62,11 +62,11 @@ class Line:
             except TypeError:
                 raise TypeError("Must be int or slice")
             else:
-                t0 = self.trace0fn(lineno)
+                t0 = self.trace0fn(lineno, self.segy.offsets)
                 return self.readfn(t0, self.len, self.stride, buf)
 
-    def trace0fn(self, lineno):
-        return segyio._segyio.fread_trace0(lineno, len(self.other_lines), self.stride, self.lines, self.name)
+    def trace0fn(self, lineno, offsets):
+        return segyio._segyio.fread_trace0(lineno, len(self.other_lines), self.stride, offsets, self.lines, self.name)
 
     def __setitem__(self, lineno, val):
         if isinstance(lineno, slice):
@@ -81,7 +81,7 @@ class Line:
 
             return
 
-        t0 = self.trace0fn(lineno)
+        t0 = self.trace0fn(lineno, self.segy.offsets)
         self.writefn(t0, self.len, self.stride, val)
 
     def __len__(self):
