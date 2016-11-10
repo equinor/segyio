@@ -23,7 +23,7 @@ class Trace:
 
         elif isinstance(index, slice):
             def gen():
-                for i in xrange(*index.indices(len(self))):
+                for i in range(*index.indices(len(self))):
                     yield self._readtr(i, buf)
 
             return gen()
@@ -50,7 +50,7 @@ class Trace:
             self._writetr(index, val)
 
         elif isinstance(index, slice):
-            for i, buf in xrange(*index.indices(len(self))), val:
+            for i, buf in range(*index.indices(len(self))), val:
                 self._writetr(i, val)
 
         else:

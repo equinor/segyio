@@ -247,7 +247,7 @@ class SegyFile(object):
             val = itertools.repeat(val)
 
         h, buf = self.header, None
-        for i, v in itertools.izip(xrange(self.tracecount), val):
+        for i, v in itertools.izip(range(self.tracecount), val):
             h[i, buf] = v
 
     @property
@@ -291,7 +291,7 @@ class SegyFile(object):
             Reuse an array for memory efficiency when working with indices.
             When using slices or full ranges this is done for you::
                 >>> tr = None
-                >>> for i in xrange(100):
+                >>> for i in range(100):
                 ...     tr = f.trace[i, tr]
                 ...     tr = tr * 2
                 ...     print(np.average(tr))
@@ -352,7 +352,7 @@ class SegyFile(object):
     @trace.setter
     def trace(self, val):
         tr = self.trace
-        for i, v in itertools.izip(xrange(len(tr)), val):
+        for i, v in itertools.izip(range(len(tr)), val):
             tr[i] = v
 
     def _shape_buffer(self, shape, buf):
@@ -446,7 +446,7 @@ class SegyFile(object):
 
         def writefn(t0, length, step, val):
             val = buffn(val)
-            for i, v in itertools.izip(xrange(t0, t0 + step * length, step), val):
+            for i, v in itertools.izip(range(t0, t0 + step * length, step), val):
                 Trace.write_trace(i, v, self)
 
         return Line(self, il_len, il_stride, lines, other_lines, buffn, readfn, writefn, "Inline")
@@ -527,7 +527,7 @@ class SegyFile(object):
 
         def writefn(t0, length, step, val):
             val = buffn(val)
-            for i, v in itertools.izip(xrange(t0, t0 + step * length, step), val):
+            for i, v in itertools.izip(range(t0, t0 + step * length, step), val):
                 Trace.write_trace(i, v, self)
 
         return Line(self, xl_len, xl_stride, lines, other_lines, buffn, readfn, writefn, "Crossline")
