@@ -425,10 +425,8 @@ class TestSegy(TestCase):
                 # alternative form using left-hand-side slices
                 dst.iline[2:4] = src.iline
 
-
-                buf = None # reuse buffer for speed
                 for lineno in dst.xlines:
-                    dst.xline[lineno] = src.xline[lineno, buf]
+                    dst.xline[lineno] = src.xline[lineno]
 
             with segyio.open(dstfile, "r") as dst:
                 self.assertEqual(20, dst.samples)

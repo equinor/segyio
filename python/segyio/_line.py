@@ -29,41 +29,43 @@ class Line:
         self.readfn = readfn
         self.writefn = writefn
 
-    def __getitem__(self, lineno, buf=None):
-        """ :rtype: numpy.ndarray|collections.Iterable[numpy.ndarray]"""
-        if isinstance(lineno, tuple):
-            return self.__getitem__(lineno[0], lineno[1])
+    def _get(self, lineno, buf):
+        """ :rtype: numpy.ndarray"""
+        try:
+            lineno = int(lineno)
+        except TypeError:
+            raise TypeError("Must be int or slice")
+        else:
+            t0 = self.trace0fn(lineno)
+            return self.readfn(t0, self.len, self.stride, buf)
 
-        buf = self.buffn(buf)
+    def _get_iter(self, lineno, buf):
+        """ :rtype: collections.Iterable[numpy.ndarray]"""
+
+        # in order to support [:end] syntax, we must make sure
+        # start has a non-None value. lineno.indices() would set it
+        # to 0, but we don't know if that's a reasonable value or
+        # not. If start is None we set it to the first line
+        if lineno.start is None:
+            lineno = slice(self.lines[0], lineno.stop, lineno.step)
+
+        def gen():
+            s = set(self.lines)
+            rng = xrange(*lineno.indices(self.lines[-1] + 1))
+
+            for i in itertools.ifilter(s.__contains__, rng):
+                yield self._get(i, buf)
+
+        return gen()
+
+    def __getitem__(self, lineno):
+        """ :rtype: numpy.ndarray|collections.Iterable[numpy.ndarray]"""
+        buf = self.buffn()
 
         if isinstance(lineno, slice):
-            # in order to support [:end] syntax, we must make sure
-            # start has a non-None value. lineno.indices() would set it
-            # to 0, but we don't know if that's a reasonable value or
-            # not. If start is None we set it to the first line
-            if lineno.start is None:
-                lineno = slice(self.lines[0], lineno.stop, lineno.step)
+            return self._get_iter(lineno, buf)
 
-            def gen():
-                s = set(self.lines)
-                rng = range(*lineno.indices(self.lines[-1] + 1))
-
-                # use __getitem__ lookup to avoid tuple
-                # construction and unpacking and fast-forward
-                # into the interesting code path
-                for i in itertools.ifilter(s.__contains__, rng):
-                    yield self.__getitem__(i, buf)
-
-            return gen()
-
-        else:
-            try:
-                lineno = int(lineno)
-            except TypeError:
-                raise TypeError("Must be int or slice")
-            else:
-                t0 = self.trace0fn(lineno, len(self.segy.offsets))
-                return self.readfn(t0, self.len, self.stride, buf)
+        return self._get(lineno, buf)
 
     def trace0fn(self, lineno, offsets):
         return segyio._segyio.fread_trace0(lineno, len(self.other_lines), self.stride, offsets, self.lines, self.name)
@@ -90,4 +92,4 @@ class Line:
     def __iter__(self):
         buf = self.buffn()
         for i in self.lines:
-            yield self.__getitem__(i, buf)
+            yield self._get(i, buf)
