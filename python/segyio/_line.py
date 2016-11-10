@@ -29,17 +29,33 @@ class Line:
         self.readfn = readfn
         self.writefn = writefn
 
-    def _get(self, lineno, buf):
+    def _get(self, lineno, offset, buf):
         """ :rtype: numpy.ndarray"""
+
+        offs = self.segy.offsets
+
+        if offset is None:
+            offset = 0
+        else:
+            try:
+                offset = next(i for i, x in enumerate(offs) if x == offset)
+            except StopIteration:
+                try:
+                    int(offset)
+                except TypeError:
+                    raise TypeError("Offset must be int or slice")
+
+                raise KeyError("Unknkown offset {}".format(offset))
+
         try:
             lineno = int(lineno)
         except TypeError:
             raise TypeError("Must be int or slice")
-        else:
-            t0 = self.trace0fn(lineno)
-            return self.readfn(t0, self.len, self.stride, buf)
 
-    def _get_iter(self, lineno, buf):
+        t0 = self.trace0fn(lineno, offset)
+        return self.readfn(t0, self.len, self.stride, buf)
+
+    def _get_iter(self, lineno, offset, buf):
         """ :rtype: collections.Iterable[numpy.ndarray]"""
 
         # in order to support [:end] syntax, we must make sure
@@ -50,25 +66,31 @@ class Line:
             lineno = slice(self.lines[0], lineno.stop, lineno.step)
 
         def gen():
+            o = self.segy.offsets[0]
             s = set(self.lines)
             rng = xrange(*lineno.indices(self.lines[-1] + 1))
 
             for i in itertools.ifilter(s.__contains__, rng):
-                yield self._get(i, buf)
+                yield self._get(i, o, buf)
 
         return gen()
 
-    def __getitem__(self, lineno):
+    def __getitem__(self, lineno, offset = None):
         """ :rtype: numpy.ndarray|collections.Iterable[numpy.ndarray]"""
         buf = self.buffn()
 
-        if isinstance(lineno, slice):
-            return self._get_iter(lineno, buf)
+        if isinstance(lineno, tuple):
+            lineno, offset = lineno
 
-        return self._get(lineno, buf)
+        if isinstance(lineno, slice) or isinstance(offset, slice):
+            return self._get_iter(lineno, offset, buf)
 
-    def trace0fn(self, lineno, offsets):
-        return segyio._segyio.fread_trace0(lineno, len(self.other_lines), self.stride, offsets, self.lines, self.name)
+        return self._get(lineno, offset, buf)
+
+    def trace0fn(self, lineno, offset_index):
+        offsets = len(self.segy.offsets)
+        trace0 = segyio._segyio.fread_trace0(lineno, len(self.other_lines), self.stride, offsets, self.lines, self.name)
+        return offset_index + trace0
 
     def __setitem__(self, lineno, val):
         if isinstance(lineno, slice):
@@ -83,7 +105,7 @@ class Line:
 
             return
 
-        t0 = self.trace0fn(lineno, len(self.segy.offsets))
+        t0 = self.trace0fn(lineno, 0)
         self.writefn(t0, self.len, self.stride, val)
 
     def __len__(self):
@@ -92,4 +114,4 @@ class Line:
     def __iter__(self):
         buf = self.buffn()
         for i in self.lines:
-            yield self._get(i, buf)
+            yield self._get(i, None, buf)

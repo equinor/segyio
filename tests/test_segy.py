@@ -205,6 +205,39 @@ class TestSegy(TestCase):
             self.assertEqual(f.header[0][xl], f.header[1][xl])
             self.assertNotEqual(f.header[1][xl], f.header[2][xl])
 
+    def test_iline_offset(self):
+        with segyio.open(self.prestack, "r") as f:
+
+            line1 = f.iline[1, 1]
+            self.assertAlmostEqual(101.01, line1[0][0], places = 4)
+            self.assertAlmostEqual(101.02, line1[1][0], places = 4)
+            self.assertAlmostEqual(101.03, line1[2][0], places = 4)
+
+            self.assertAlmostEqual(101.01001, line1[0][1], places = 4)
+            self.assertAlmostEqual(101.01002, line1[0][2], places = 4)
+            self.assertAlmostEqual(101.02001, line1[1][1], places = 4)
+
+            line2 = f.iline[1, 2]
+            self.assertAlmostEqual(201.01, line2[0][0], places = 4)
+            self.assertAlmostEqual(201.02, line2[1][0], places = 4)
+            self.assertAlmostEqual(201.03, line2[2][0], places = 4)
+
+            self.assertAlmostEqual(201.01001, line2[0][1], places = 4)
+            self.assertAlmostEqual(201.01002, line2[0][2], places = 4)
+            self.assertAlmostEqual(201.02001, line2[1][1], places = 4)
+
+            with self.assertRaises(KeyError):
+                f.iline[1, 0]
+
+            with self.assertRaises(KeyError):
+                f.iline[1, 3]
+
+            with self.assertRaises(KeyError):
+                f.iline[100, 1]
+
+            with self.assertRaises(TypeError):
+                f.iline[1, {}]
+
     def test_line_generators(self):
         with segyio.open(self.filename, "r") as f:
             for line in f.iline:
