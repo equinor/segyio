@@ -82,13 +82,16 @@ class View(object):
     The widget, and monitors are provided through the class properties.
     """
 
-    def __init__(self, segy):
+    def __init__(self, segy, read_file_to_memory=False):
 
         self.segy = segy
 
         self._file_activity_monitor = FileActivityMonitor()
 
         self._swrap = SegyIOWrapper.wrap(segy, self.file_activity_monitor)
+
+        if read_file_to_memory:
+            self._swrap.read_all_traces_to_memory()
 
         self._main_widget = QtGui.QWidget()
         self._line_selection_monitor = LineSelectionMonitor(self._main_widget)
