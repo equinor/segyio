@@ -51,7 +51,7 @@ written according to specification, but segyio does not mandate this.
 """
 
 setup(name='SegyIO',
-      version='1.0.3',
+      version='1.0.4',
       description='IO library for SEG-Y files',
       long_description=long_description,
       author='Statoil ASA',
