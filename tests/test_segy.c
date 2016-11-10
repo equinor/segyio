@@ -567,7 +567,7 @@ static void test_error_codes_sans_file() {
 }
 
 static void test_file_size_above_4GB(){
-    segy_file* fp = segy_open( tmpnam( NULL ), "w+b" );
+    segy_file* fp = segy_open( "4gbfile", "w+b" );
 
     unsigned int trace = 5e6;
     unsigned int trace_bsize = 1e3;
