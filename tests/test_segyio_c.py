@@ -247,16 +247,19 @@ class _segyioTests(TestCase):
 
         one = numpy.zeros(1, dtype=numpy.uintc)
         two = numpy.zeros(2, dtype=numpy.uintc)
+        three = numpy.zeros(2, dtype=numpy.double)
+        four = 0.0
         with self.assertRaises(ValueError):
-            _segyio.init_line_indices(f, dummy_metrics, one, two)
+            _segyio.init_line_indices(f, dummy_metrics, one, two, three, four)
 
         with self.assertRaises(ValueError):
-            _segyio.init_line_indices(f, dummy_metrics, two, one)
+            _segyio.init_line_indices(f, dummy_metrics, two, one, three, four)
 
         # Happy Path
         iline_indexes = numpy.zeros(metrics['iline_count'], dtype=numpy.uintc)
         xline_indexes = numpy.zeros(metrics['xline_count'], dtype=numpy.uintc)
-        _segyio.init_line_indices(f, metrics, iline_indexes, xline_indexes)
+        sample_indexes = numpy.zeros(metrics['sample_count'], dtype=numpy.double)
+        _segyio.init_line_indices(f, metrics, iline_indexes, xline_indexes, sample_indexes, 0.0)
 
         self.assertListEqual([1, 2, 3, 4, 5], list(iline_indexes))
         self.assertListEqual([20, 21, 22, 23, 24], list(xline_indexes))
@@ -282,7 +285,8 @@ class _segyioTests(TestCase):
 
         iline_indexes = numpy.zeros(metrics['iline_count'], dtype=numpy.uintc)
         xline_indexes = numpy.zeros(metrics['xline_count'], dtype=numpy.uintc)
-        _segyio.init_line_indices(f, metrics, iline_indexes, xline_indexes)
+        sample_indexes = numpy.zeros(metrics['sample_count'], dtype=numpy.double)
+        _segyio.init_line_indices(f, metrics, iline_indexes, xline_indexes, sample_indexes, 0.0)
 
         with self.assertRaises(KeyError):
             _segyio.fread_trace0(0, len(xline_indexes), line_metrics['iline_stride'], iline_indexes, "inline")
@@ -413,12 +417,13 @@ class _segyioTests(TestCase):
 
         iline_indexes = numpy.zeros(metrics['iline_count'], dtype=numpy.uintc)
         xline_indexes = numpy.zeros(metrics['xline_count'], dtype=numpy.uintc)
-        _segyio.init_line_indices(f, metrics, iline_indexes, xline_indexes)
+        sample_indexes = numpy.zeros(metrics['sample_count'], dtype=numpy.double)
+        _segyio.init_line_indices(f, metrics, iline_indexes, xline_indexes, sample_indexes, 0.0)
 
-        return f, metrics, iline_indexes, xline_indexes
+        return f, metrics, iline_indexes, xline_indexes, sample_indexes
 
     def test_read_line(self):
-        f, metrics, iline_idx, xline_idx = self.read_small()
+        f, metrics, iline_idx, xline_idx, sample_indexes = self.read_small()
 
         tr0 = metrics['trace0']
         bsz = metrics['trace_bsize']
@@ -440,7 +445,7 @@ class _segyioTests(TestCase):
         _segyio.close(f)
 
     def test_read_line_mmap(self):
-        f, metrics, iline_idx, xline_idx = self.read_small(True)
+        f, metrics, iline_idx, xline_idx, sample_indexes = self.read_small(True)
 
         tr0 = metrics['trace0']
         bsz = metrics['trace_bsize']

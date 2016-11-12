@@ -3,7 +3,7 @@ import numpy
 import segyio
 
 
-def open(filename, mode="r", iline=189, xline=193):
+def open(filename, mode="r", iline=189, xline=193, t0=0):
     """Open a segy file.
 
     Opens a segy file and tries to figure out its sorting, inline numbers,
@@ -68,7 +68,8 @@ def open(filename, mode="r", iline=189, xline=193):
 
         f._ilines = numpy.zeros(iline_count, dtype=numpy.uintc)
         f._xlines = numpy.zeros(xline_count, dtype=numpy.uintc)
-        segyio._segyio.init_line_indices(f.xfd, metrics, f.ilines, f.xlines)
+        f._sample_indexes = numpy.zeros(f.samples, dtype=numpy.double)
+        segyio._segyio.init_line_indices(f.xfd, metrics, f.ilines, f.xlines, f.sample_indexes, t0)
 
         f._iline_length = line_metrics['iline_length']
         f._iline_stride = line_metrics['iline_stride']
