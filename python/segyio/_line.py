@@ -55,23 +55,49 @@ class Line:
         t0 = self.trace0fn(lineno, offset)
         return self.readfn(t0, self.len, self.stride, buf)
 
+    # in order to support [:end] syntax, we must make sure
+    # start has a non-None value. lineno.indices() would set it
+    # to 0, but we don't know if that's a reasonable value or
+    # not. If start is None we set it to the first line
+    def _sanitize_slice(self, s, source):
+        if all((s.start, s.stop, s.step)):
+            return s
+
+        start, stop, step = s.start, s.stop, s.step
+        increasing = step is None or step > 0
+
+        if start is None:
+            start = source[0] if increasing else source[-1]
+
+        if stop is None:
+            stop = source[-1]+1 if increasing else source[0]-1
+
+        return slice(start, stop, step)
+
     def _get_iter(self, lineno, offset, buf):
         """ :rtype: collections.Iterable[numpy.ndarray]"""
 
-        # in order to support [:end] syntax, we must make sure
-        # start has a non-None value. lineno.indices() would set it
-        # to 0, but we don't know if that's a reasonable value or
-        # not. If start is None we set it to the first line
-        if lineno.start is None:
-            lineno = slice(self.lines[0], lineno.stop, lineno.step)
+        offsets = self.segy.offsets
+        if offset is None:
+            offset = offsets[0]
+
+        if not isinstance(lineno, slice):
+            lineno = slice(lineno, lineno + 1, 1)
+
+        if not isinstance(offset, slice):
+            offset = slice(offset, offset + 1, 1)
+
+        lineno = self._sanitize_slice(lineno, self.lines)
+        offset = self._sanitize_slice(offset, offsets)
 
         def gen():
-            o = self.segy.offsets[0]
-            s = set(self.lines)
-            rng = xrange(*lineno.indices(self.lines[-1] + 1))
+            offs, lns = set(self.segy.offsets), set(self.lines)
+            orng = xrange(*offset.indices(offsets[-1] + 1))
+            lrng = xrange(*lineno.indices(self.lines[-1] + 1))
 
-            for i in itertools.ifilter(s.__contains__, rng):
-                yield self._get(i, o, buf)
+            for l in itertools.ifilter(lns.__contains__, lrng):
+                for o in itertools.ifilter(offs.__contains__, orng):
+                    yield self._get(l, o, buf)
 
         return gen()
 

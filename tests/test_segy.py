@@ -238,6 +238,51 @@ class TestSegy(TestCase):
             with self.assertRaises(TypeError):
                 f.iline[1, {}]
 
+    def test_iline_slice_fixed_offset(self):
+        with segyio.open(self.prestack, "r") as f:
+
+            for i, ln in enumerate(f.iline[:, 1], 1):
+                self.assertAlmostEqual(i + 100.01, ln[0][0], places = 4)
+                self.assertAlmostEqual(i + 100.02, ln[1][0], places = 4)
+                self.assertAlmostEqual(i + 100.03, ln[2][0], places = 4)
+
+                self.assertAlmostEqual(i + 100.01001, ln[0][1], places = 4)
+                self.assertAlmostEqual(i + 100.01002, ln[0][2], places = 4)
+                self.assertAlmostEqual(i + 100.02001, ln[1][1], places = 4)
+
+    def test_iline_slice_fixed_line(self):
+        with segyio.open(self.prestack, "r") as f:
+
+            for i, ln in enumerate(f.iline[1, :], 1):
+                off = i * 100
+                self.assertAlmostEqual(off + 1.01, ln[0][0], places = 4)
+                self.assertAlmostEqual(off + 1.02, ln[1][0], places = 4)
+                self.assertAlmostEqual(off + 1.03, ln[2][0], places = 4)
+
+                self.assertAlmostEqual(off + 1.01001, ln[0][1], places = 4)
+                self.assertAlmostEqual(off + 1.01002, ln[0][2], places = 4)
+                self.assertAlmostEqual(off + 1.02001, ln[1][1], places = 4)
+
+    def test_iline_slice_all_offsets(self):
+        with segyio.open(self.prestack, "r") as f:
+            offs, ils = len(f.offsets), len(f.ilines)
+            self.assertEqual(offs * ils, sum(1 for _ in f.iline[:,:]))
+            self.assertEqual(offs * ils, sum(1 for _ in f.iline[:,::-1]))
+            self.assertEqual(offs * ils, sum(1 for _ in f.iline[::-1,:]))
+            self.assertEqual(offs * ils, sum(1 for _ in f.iline[::-1,::-1]))
+            self.assertEqual(0,  sum(1 for _ in f.iline[:, 10:12]))
+            self.assertEqual(0,  sum(1 for _ in f.iline[10:12, :]))
+
+            self.assertEqual((offs / 2) * ils, sum(1 for _ in f.iline[::2, :]))
+            self.assertEqual(offs * (ils / 2), sum(1 for _ in f.iline[:, ::2]))
+
+            self.assertEqual((offs / 2) * ils, sum(1 for _ in f.iline[::-2, :]))
+            self.assertEqual(offs * (ils / 2), sum(1 for _ in f.iline[:, ::-2]))
+
+            self.assertEqual((offs / 2) * (ils / 2), sum(1 for _ in f.iline[::2, ::2]))
+            self.assertEqual((offs / 2) * (ils / 2), sum(1 for _ in f.iline[::2, ::-2]))
+            self.assertEqual((offs / 2) * (ils / 2), sum(1 for _ in f.iline[::-2, ::2]))
+
     def test_line_generators(self):
         with segyio.open(self.filename, "r") as f:
             for line in f.iline:
