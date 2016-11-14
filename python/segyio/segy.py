@@ -373,7 +373,8 @@ class SegyFile(object):
         return self._shape_buffer(shape, buf)
 
     def _fread_line(self, trace0, length, stride, buf):
-        return _segyio.read_line(self.xfd, trace0, length, stride, buf, self._tr0, self._bsz, self._fmt, self.samples)
+        offsets = self.offsets
+        return _segyio.read_line(self.xfd, trace0, length, stride, offsets, buf, self._tr0, self._bsz, self._fmt, self.samples)
 
     @property
     def ilines(self):

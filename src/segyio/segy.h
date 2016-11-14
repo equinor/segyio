@@ -133,17 +133,19 @@ int segy_read_line( segy_file* fp,
                     unsigned int line_trace0,
                     unsigned int line_length,
                     unsigned int stride,
+                    int offsets,
                     float* buf,
                     long trace0,
                     unsigned int trace_bsize );
 
 int segy_write_line( segy_file* fp,
-                     unsigned int line_trace0,
-                     unsigned int line_length,
-                     unsigned int stride,
-                     float* buf,
-                     long trace0,
-                     unsigned int trace_bsize );
+                    unsigned int line_trace0,
+                    unsigned int line_length,
+                    unsigned int stride,
+                    int offsets,
+                    const float* buf,
+                    long trace0,
+                    unsigned int trace_bsize );
 
 /*
  * Count inlines and crosslines. Use this function to determine how large buffer
@@ -203,8 +205,10 @@ int segy_crossline_indices( segy_file*,
  * Find the first `traceno` of the line `lineno`. `linenos` should be the line
  * indices returned by `segy_inline_indices` or `segy_crossline_indices`. The
  * stride depends on the sorting and is given by `segy_inline_stride` or
- * `segy_crossline_stride`. `line_length` is the length, i.e. traces per line,
- * given by `segy_inline_length` or `segy_crossline_length`.
+ * `segy_crossline_stride`. `offsets` is given by `segy_offsets` function, and
+ * is the number of offsets in this file (1 for post stack data). `line_length`
+ * is the length, i.e. traces per line, given by `segy_inline_length` or
+ * `segy_crossline_length`.
  *
  * To read/write an inline, read `line_length` starting at `traceno`,
  * incrementing `traceno` with `stride` `line_length` times.
@@ -212,6 +216,7 @@ int segy_crossline_indices( segy_file*,
 int segy_line_trace0( unsigned int lineno,
                       unsigned int line_length,
                       unsigned int stride,
+                      int offsets,
                       const unsigned int* linenos,
                       const unsigned int linenos_sz,
                       unsigned int* traceno );
