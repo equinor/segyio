@@ -94,7 +94,6 @@ class Trace:
         :type buf: ?
         :type segy: segyio.SegyFile
         """
-
         segyio._segyio.write_trace(segy.xfd, traceno, buf, segy._tr0, segy._bsz, segy._fmt, segy.samples)
 
     @property

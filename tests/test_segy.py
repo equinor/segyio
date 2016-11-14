@@ -205,6 +205,25 @@ class TestSegy(TestCase):
             self.assertEqual(f.header[0][xl], f.header[1][xl])
             self.assertNotEqual(f.header[1][xl], f.header[2][xl])
 
+    def test_headers_line_offset(self):
+        fname = self.prestack.replace( ".sgy", "-line-header.sgy")
+        shutil.copyfile(self.prestack, fname)
+
+        il, xl = TraceField.INLINE_3D, TraceField.CROSSLINE_3D
+        with segyio.open(fname, "r+") as f:
+            f.header.iline[1,2] = { il: 11 }
+            f.header.iline[1,2] = { xl: 13 }
+
+        with segyio.open(fname, "r") as f:
+            self.assertEqual(f.header[0][il], 1)
+            self.assertEqual(f.header[1][il], 11)
+            self.assertEqual(f.header[2][il], 1)
+
+            self.assertEqual(f.header[0][xl], 1)
+            self.assertEqual(f.header[1][xl], 13)
+            self.assertEqual(f.header[2][xl], 2)
+
+
     def test_iline_offset(self):
         with segyio.open(self.prestack, "r") as f:
 
@@ -542,6 +561,50 @@ class TestSegy(TestCase):
             self.assertAlmostEqual(50.100, f.trace[-1][100], places = 4)
             self.assertEqual(f.header[0][TraceField.offset], f.header[1][TraceField.offset])
             self.assertEqual(1, f.header[1][TraceField.offset])
+
+    def test_create_from_naught_prestack(self):
+        fname = "test-data/mk-ps.sgy"
+        spec = segyio.spec()
+        spec.format  = 5
+        spec.sorting = 2
+        spec.samples = 7
+        spec.ilines  = range(1, 4)
+        spec.xlines  = range(1, 3)
+        spec.offsets = range(1, 6)
+
+        cube_size = len(spec.ilines) * len(spec.xlines)
+
+        with segyio.create(fname, spec) as dst:
+            arr = np.arange( start = 0.000,
+                             stop = 0.007,
+                             step = 0.001,
+                             dtype = np.single)
+
+            arr = np.concatenate([[arr + 0.01], [arr + 0.02]], axis = 0)
+            lines = [arr + i for i in spec.ilines]
+            cube = [(off * 100) + line for line in lines for off in spec.offsets]
+
+            dst.iline[:,:] = cube
+
+            for of in spec.offsets:
+                for il in spec.ilines:
+                    dst.header.iline[il,of] = { TraceField.INLINE_3D: il,
+                                                TraceField.offset: of
+                                              }
+                for xl in spec.xlines:
+                    dst.header.xline[xl,of] = { TraceField.CROSSLINE_3D: xl }
+
+        with segyio.open(fname, "r") as f:
+            self.assertAlmostEqual(101.010, f.trace[0][0],  places = 4)
+            self.assertAlmostEqual(101.011, f.trace[0][1],  places = 4)
+            self.assertAlmostEqual(101.016, f.trace[0][-1], places = 4)
+            self.assertAlmostEqual(503.025, f.trace[-1][5], places = 4)
+            self.assertNotEqual(f.header[0][TraceField.offset], f.header[1][TraceField.offset])
+            self.assertEqual(1, f.header[0][TraceField.offset])
+            self.assertEqual(2, f.header[1][TraceField.offset])
+
+            for x, y in itertools.izip(f.iline[:,:], cube):
+                self.assertListEqual(list(x.flatten()), list(y.flatten()))
 
     def test_create_write_lines(self):
         fname = "test-data/mklines.sgy"

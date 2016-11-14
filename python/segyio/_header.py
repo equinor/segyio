@@ -47,14 +47,16 @@ class Header(object):
     def readfn(self, t0, length, stride, buf):
         def gen():
             start = t0
-            stop = t0 + (length * stride)
-            for i in range(start, stop, stride):
+            step = stride * len(self.segy.offsets)
+            stop = t0 + (length * step)
+            for i in range(start, stop, step):
                 yield Field.trace(buf, traceno=i, segy=self.segy)
 
         return gen()
 
     def writefn(self, t0, length, stride, val):
         start = t0
+        stride *= len(self.segy.offsets)
         stop = t0 + (length * stride)
 
         if isinstance(val, Field) or isinstance(val, dict):
