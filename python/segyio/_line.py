@@ -74,9 +74,8 @@ class Line:
 
         return slice(start, stop, step)
 
-    def _get_iter(self, lineno, offset, buf):
-        """ :rtype: collections.Iterable[numpy.ndarray]"""
-
+    def _indices(self, lineno, offset):
+        """ :rtype: tuple[collections.Iterable, collections.Iterable]"""
         offsets = self.segy.offsets
         if offset is None:
             offset = offsets[0]
@@ -90,14 +89,21 @@ class Line:
         lineno = self._sanitize_slice(lineno, self.lines)
         offset = self._sanitize_slice(offset, offsets)
 
-        def gen():
-            offs, lns = set(self.segy.offsets), set(self.lines)
-            orng = xrange(*offset.indices(offsets[-1] + 1))
-            lrng = xrange(*lineno.indices(self.lines[-1] + 1))
+        offs, lns = set(self.segy.offsets), set(self.lines)
 
-            for l in itertools.ifilter(lns.__contains__, lrng):
-                for o in itertools.ifilter(offs.__contains__, orng):
-                    yield self._get(l, o, buf)
+        orng = range(*offset.indices(offsets[-1] + 1))
+        lrng = range(*lineno.indices(self.lines[-1] + 1))
+
+        return filter(lns.__contains__, lrng), filter(offs.__contains__, orng)
+
+    def _get_iter(self, lineno, off, buf):
+        """ :rtype: collections.Iterable[numpy.ndarray]"""
+
+        def gen():
+            lines, offsets = self._indices(lineno, off)
+            for line in lines:
+                for offset in offsets:
+                    yield self._get(line, offset, buf)
 
         return gen()
 
