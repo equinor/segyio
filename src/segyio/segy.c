@@ -808,6 +808,30 @@ int segy_offsets( segy_file* fp,
     return SEGY_OK;
 }
 
+int segy_offset_indices( segy_file* fp,
+                         int offset_field,
+                         int offsets,
+                         int* out,
+                         long trace0,
+                         unsigned int trace_bsize ) {
+    int err = 0;
+    int32_t x = 0;
+    char header[ SEGY_TRACE_HEADER_SIZE ];
+
+    if( field_size[ offset_field ] == 0 )
+        return SEGY_INVALID_FIELD;
+
+    for( int i = 0; i < offsets; ++i ) {
+        err = segy_traceheader( fp, i, header, trace0, trace_bsize );
+        if( err != SEGY_OK ) return err;
+
+        segy_get_field( header, offset_field, &x );
+        *out++ = x;
+    }
+
+    return SEGY_OK;
+}
+
 static int segy_line_indices( segy_file* fp,
                               int field,
                               unsigned int traceno,

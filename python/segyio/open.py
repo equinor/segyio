@@ -60,15 +60,17 @@ def open(filename, mode="r", iline=189, xline=193):
         f._tracecount = metrics['trace_count']
 
         f._sorting = metrics['sorting']
-        f._offsets = metrics['offset_count']
 
         iline_count, xline_count = metrics['iline_count'], metrics['xline_count']
+        offset_count = metrics['offset_count']
 
-        line_metrics = segyio._segyio.init_line_metrics(f.sorting, f.tracecount, iline_count, xline_count, f.offsets)
+        line_metrics = segyio._segyio.init_line_metrics(f.sorting, f.tracecount,
+                                                        iline_count, xline_count, offset_count)
 
-        f._ilines = numpy.zeros(iline_count, dtype=numpy.uintc)
-        f._xlines = numpy.zeros(xline_count, dtype=numpy.uintc)
-        segyio._segyio.init_line_indices(f.xfd, metrics, f.ilines, f.xlines)
+        f._ilines  = numpy.zeros(iline_count, dtype=numpy.uintc)
+        f._xlines  = numpy.zeros(xline_count, dtype=numpy.uintc)
+        f._offsets = numpy.zeros(offset_count, dtype = numpy.uintc)
+        segyio._segyio.init_indices(f.xfd, metrics, f.ilines, f.xlines, f.offsets)
 
         f._iline_length = line_metrics['iline_length']
         f._iline_stride = line_metrics['iline_stride']

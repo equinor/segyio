@@ -102,10 +102,10 @@ def create(filename, spec):
     txt_hdr_sz = segyio._segyio.textheader_size()
     bin_hdr_sz = segyio._segyio.binheader_size()
     f._tr0          = txt_hdr_sz + bin_hdr_sz + (spec.ext_headers * txt_hdr_sz)
-    f._sorting       = spec.sorting
+    f._sorting      = spec.sorting
     f._fmt          = int(spec.format)
-    f._offsets       = spec.offsets
-    f._tracecount    = len(spec.ilines) * len(spec.xlines) * spec.offsets
+    f._offsets      = numpy.copy(numpy.asarray(spec.offsets, dtype = numpy.intc))
+    f._tracecount   = len(spec.ilines) * len(spec.xlines) * len(spec.offsets)
 
     f._il           = int(spec.iline)
     f._ilines        = numpy.copy(numpy.asarray(spec.ilines, dtype=numpy.uintc))
@@ -113,7 +113,8 @@ def create(filename, spec):
     f._xl           = int(spec.xline)
     f._xlines        = numpy.copy(numpy.asarray(spec.xlines, dtype=numpy.uintc))
 
-    line_metrics = segyio._segyio.init_line_metrics(f.sorting, f.tracecount, len(f.ilines), len(f.xlines), f.offsets)
+    line_metrics = segyio._segyio.init_line_metrics(f.sorting, f.tracecount,
+                                                    len(f.ilines), len(f.xlines), len(f.offsets))
 
     f._iline_length = line_metrics['iline_length']
     f._iline_stride = line_metrics['iline_stride']

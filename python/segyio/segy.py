@@ -143,7 +143,7 @@ class SegyFile(object):
 
     @property
     def offsets(self):
-        """ :rtype: int """
+        """ :rtype: numpy.ndarray"""
         return self._offsets
 
     @property
@@ -373,7 +373,7 @@ class SegyFile(object):
         return self._shape_buffer(shape, buf)
 
     def _fread_line(self, trace0, length, stride, buf):
-        offsets = self.offsets
+        offsets = len(self.offsets)
         return _segyio.read_line(self.xfd, trace0, length, stride, offsets, buf, self._tr0, self._bsz, self._fmt, self.samples)
 
     @property
@@ -760,7 +760,7 @@ class spec:
         self.ilines = None
         self.xline = 193
         self.xlines = None
-        self.offsets = 1
+        self.offsets = [1]
         self.samples = None
         self.tracecount = None
         self.ext_headers = 0
