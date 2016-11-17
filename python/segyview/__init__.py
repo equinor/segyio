@@ -23,6 +23,8 @@ def resource_icon(name):
 try:
     from .colormapcombo import ColormapCombo
     from .layoutcombo import LayoutCombo
+    from .layoutfigure import LayoutFigure
+    from .layoutcanvas import LayoutCanvas
     from .progresswidget import ProgressWidget
     from .slicewidget import SliceWidget, ColorBarWidget
     from .segyiowrapper import SegyIOWrapper, SlicesWrapper

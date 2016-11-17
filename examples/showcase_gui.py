@@ -4,7 +4,7 @@ import sys
 from PyQt4.QtCore import Qt
 from PyQt4.QtGui import QMainWindow, QWidget, QApplication, QLabel, QVBoxLayout
 
-from segyview import LayoutCombo, ColormapCombo
+from segyview import LayoutCombo, ColormapCombo, LayoutCanvas
 
 
 class TestGUI(QMainWindow):
@@ -29,8 +29,9 @@ class TestGUI(QMainWindow):
         layout = QVBoxLayout()
         central_widget.setLayout(layout)
 
-        self._layout_label = QLabel()
-        layout.addWidget(self._layout_label)
+        self._layout_canvas = LayoutCanvas(width=5, height=5)
+        self._layout_canvas.set_plot_layout(layout_combo.get_current_layout())
+        layout.addWidget(self._layout_canvas)
 
         self._colormap_label = QLabel()
         layout.addWidget(self._colormap_label)
@@ -38,7 +39,7 @@ class TestGUI(QMainWindow):
         self.setCentralWidget(central_widget)
 
     def _layout_changed(self, layout):
-        self._layout_label.setText("Layout selected: %s" % str(layout))
+        self._layout_canvas.set_plot_layout(layout)
 
     def _colormap_changed(self, index):
         colormap = str(self._colormap_combo.itemText(index))
