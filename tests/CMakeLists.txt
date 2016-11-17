@@ -1,4 +1,5 @@
 configure_file(test-data/small.sgy test-data/small.sgy COPYONLY)
+configure_file(test-data/small-ps.sgy test-data/small-ps.sgy COPYONLY)
 configure_file(test-data/text.sgy  test-data/text.sgy COPYONLY)
 configure_file(test-data/small.sgy test-data/small-traceheader.sgy COPYONLY)
 
