@@ -21,6 +21,7 @@ def resource_icon(name):
 
 
 try:
+    from .colormapcombo import ColormapCombo
     from .layoutcombo import LayoutCombo
     from .progresswidget import ProgressWidget
     from .slicewidget import SliceWidget, ColorBarWidget
