@@ -56,6 +56,7 @@ add_subdirectory(python)
 add_subdirectory(applications)
 add_subdirectory(examples)
 add_subdirectory(tests)
+add_subdirectory(resources)
 
 # install the library
 install(FILES src/segyio/segy.h DESTINATION ${CMAKE_INSTALL_PREFIX}/include/segyio)
