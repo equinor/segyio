@@ -7,7 +7,7 @@ class Line:
     """ Line mode for traces and trace headers. Internal.
 
     The _line class provides an interface for line-oriented operations. The
-    line reading operations themselves are not streaming - it's assumed than
+    line reading operations themselves are not streaming - it's assumed that
     when a line is queried it's somewhat limited in size and will comfortably
     fit in memory, and that the full line is interesting. This also applies to
     line headers; however, all returned values support the iterable protocol so
