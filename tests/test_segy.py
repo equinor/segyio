@@ -165,6 +165,8 @@ class TestSegy(TestCase):
             self.assertEqual(25, f.tracecount)
             self.assertEqual(len(f.trace), f.tracecount)
             self.assertEqual(50, f.samples)
+            dt = segyio.get_dt(f)
+            self.assertEqual(4, dt)
 
     def test_traces_slicing(self):
         with segyio.open(self.filename, "r") as f:

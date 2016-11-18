@@ -45,6 +45,7 @@ unsigned int segy_binheader_size();
 int segy_binheader( segy_file*, char* buf );
 int segy_write_binheader( segy_file*, const char* buf );
 unsigned int segy_samples( const char* binheader );
+int segy_sample_interval( segy_file*, float* dt);
 /* exception: the int returned is an enum, SEGY_SORTING, not an error code */
 int segy_format( const char* binheader );
 int segy_get_field( const char* traceheader, int field, int32_t* f );

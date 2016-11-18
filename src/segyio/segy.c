@@ -639,7 +639,7 @@ int segy_traces( segy_file* fp,
     return SEGY_OK;
 }
 
-static int segy_sample_interval( segy_file* fp, double* dt) {
+int segy_sample_interval( segy_file* fp, float* dt) {
 
     char bin_header[ SEGY_BINARY_HEADER_SIZE ];
     char trace_header[SEGY_TRACE_HEADER_SIZE];
@@ -673,10 +673,8 @@ static int segy_sample_interval( segy_file* fp, double* dt) {
         fprintf(stderr, "Trace sampling rate in SEGY header and trace header set to 0.0. Will default to 4 ms.\n");
         *dt = 4.0;
     } else if (binary_header_dt == 0.0) {
-        fprintf(stderr, "Trace sampling rate in SEGY header set to 0.0. Will use trace sampling rate of: %f\n", trace_header_dt);
         *dt = trace_header_dt;
     } else if (trace_header_dt == 0.0) {
-        fprintf(stderr, "Trace sampling rate in trace header set to 0.0. Will use SEGY header sampling rate of: %f\n", binary_header_dt);
         *dt = binary_header_dt;
     } else if (trace_header_dt != binary_header_dt) {
         fprintf(stderr, "Trace sampling rate in SEGY header and trace header are not equal. Will use SEGY header sampling rate of: %f\n",
@@ -690,7 +688,7 @@ static int segy_sample_interval( segy_file* fp, double* dt) {
 
 int segy_sample_indexes( segy_file* fp, double* buf, double t0, size_t count) {
 
-    double dt;
+    float dt;
     int err = segy_sample_interval(fp, &dt);
     if (err != 0) {
         return err;
