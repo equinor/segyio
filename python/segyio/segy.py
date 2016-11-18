@@ -160,8 +160,7 @@ class SegyFile(object):
         both in individual (trace) mode and line mode. Individual headers are
         accessed via generators and are not read from or written to disk until
         the generator is realised and the header in question is used. Supports
-        python slicing (yields a generator), as well as direct lookup.
-
+        python slicing (which yields a generator), as well as direct lookup.
 
         Examples:
             Reading a field in a trace::
@@ -237,6 +236,20 @@ class SegyFile(object):
                 False
                 >>> f.header[2] == g.header[24]
                 True
+
+            The header mode can also be accessed with line addressing, which
+            supports all of iline and xline's indexing features.
+
+            Rename the iline 3 to 4::
+                >>> f.header.iline[3][TraceField.INLINE_3D] = 4
+                >>> # please note that rewriting the header won't update the
+                >>> # file's interpretation of the file until you reload it, so
+                >>> # the new iline 4 will be considered iline 3 until the file
+                >>> # is reloaded
+
+            Set offset line 3 offset 3 to 5::
+                >>> f.header.iline[3, 3] = { TraceField.offset: 5 }
+
         :rtype: segyio._header.Header
         """
         return Header(self)
@@ -393,6 +406,15 @@ class SegyFile(object):
         an error. Note that each line is returned as a numpy array, meaning
         accessing the intersections of the inline and crossline is 0-indexed.
 
+        Additionally, the iline mode has a concept of offsets, which is useful
+        when dealing with prestack files. Offsets are accessed via so-called
+        sub indexing, meaning iline[10, 4] will give you line 10 at offset 4.
+        Please note that offset, like lines, are accessed via their numbers,
+        not their indices. If your file has the offsets [150, 250, 350, 450]
+        and the lines [2400..2500], you can access the third offset with
+        [2403,350]. Please refer to the examples for more details. If no offset
+        is specified, segyio will give you the first.
+
         Examples:
             Read an inline::
                 >>> il = f.iline[2400]
@@ -438,6 +460,44 @@ class SegyFile(object):
 
             Copy every other inline from a different file::
                 >>> f.iline = g.iline[::2]
+
+            Accessing offsets work the same way as accessing lines, and slicing
+            is supported as well. When doing range-based offset access, the
+            lines will be generated offsets-first, i.e equivalent to:
+            [(line1 off1), (line1 off2), (line1 off3), (line2 off1), ...]
+            or the double for loop::
+                >>> for line in lines:
+                ...     for off in offsets:
+                ...         yield (line, off)
+                ...
+
+            Copy all lines at all offsets::
+                >>> [np.copy(x) for x in f.iline[:,:]]
+
+            Print all line 10's offsets::
+                >>> print(f.iline[10,:])
+
+            Numpy operations at every line at offset 120::
+                >>> for line in f.iline[:, 120]:
+                ...     line = line * 2
+                ...     print(np.average(line))
+
+            Copy every other line and offset::
+                >>> map(np.copy, f.iline[::2, ::2])
+
+            Print offsets in reverse::
+                >>> for line in f.iline[:, ::-1]:
+                ...     print(line)
+
+            Copy all offsets [200, 250, 300, 350, ...] in the range [200, 800)
+            for all ilines [2420,2460)::
+                >>> [np.copy(x) for x in f.iline[2420:2460, 200:800:50]]
+
+            Copy every third offset from f to g::
+                >>> g.iline[:,:] = f.iline[:,::3]
+
+            Copy an iline from f to g at g's offset 200::
+                >>> g.iline[12, 200] = f.iline[21]
         """
         il_len, il_stride = self._iline_length, self._iline_stride
         lines = self.ilines
@@ -447,7 +507,8 @@ class SegyFile(object):
 
         def writefn(t0, length, step, val):
             val = buffn(val)
-            for i, v in itertools.izip(range(t0, t0 + step * length, step), val):
+            step *= len(self.offsets)
+            for i, v in itertools.izip(range(t0, t0 + (step * length), step), val):
                 Trace.write_trace(i, v, self)
 
         return Line(self, il_len, il_stride, lines, other_lines, buffn, readfn, writefn, "Inline")
@@ -472,6 +533,15 @@ class SegyFile(object):
         so if a files has crosslines [1400..1450], accessing line [0..100] will be
         an error. Note that each line is returned as a numpy array, meaning
         accessing the intersections of the inline and crossline is 0-indexed.
+
+        Additionally, the xline mode has a concept of offsets, which is useful
+        when dealing with prestack files. Offsets are accessed via so-called
+        sub indexing, meaning xline[10, 4] will give you line 10 at offset 4.
+        Please note that offset, like lines, are accessed via their numbers,
+        not their indices. If your file has the offsets [100, 200, 300, 400]
+        and the lines [1400..1450], you can access the second offset with
+        [1421,300]. Please refer to the examples for more details. If no offset
+        is specified, segyio will give you the first.
 
         Examples:
             Read an crossline::
@@ -519,6 +589,44 @@ class SegyFile(object):
 
             Copy every other crossline from a different file::
                 >>> f.xline = g.xline[::2]
+
+            Accessing offsets work the same way as accessing lines, and slicing
+            is supported as well. When doing range-based offset access, the
+            lines will be generated offsets-first, i.e equivalent to:
+            [(line1 off1), (line1 off2), (line1 off3), (line2 off1), ...]
+            or the double for loop::
+                >>> for line in lines:
+                ...     for off in offsets:
+                ...         yield (line, off)
+                ...
+
+            Copy all lines at all offsets::
+                >>> [np.copy(x) for x in f.xline[:,:]]
+
+            Print all line 10's offsets::
+                >>> print(f.xline[10,:])
+
+            Numpy operations at every line at offset 120::
+                >>> for line in f.xline[:, 120]:
+                ...     line = line * 2
+                ...     print(np.average(line))
+
+            Copy every other line and offset::
+                >>> map(np.copy, f.xline[::2, ::2])
+
+            Print offsets in reverse::
+                >>> for line in f.xline[:, ::-1]:
+                ...     print(line)
+
+            Copy all offsets [200, 250, 300, 350, ...] in the range [200, 800)
+            for all xlines [2420,2460)::
+                >>> [np.copy(x) for x in f.xline[2420:2460, 200:800:50]]
+
+            Copy every third offset from f to g::
+                >>> g.xline[:,:] = f.xline[:,::3]
+
+            Copy an xline from f to g at g's offset 200::
+                >>> g.xline[12, 200] = f.xline[21]
         """
         xl_len, xl_stride = self._xline_length, self._xline_stride
         lines = self.xlines
@@ -528,6 +636,7 @@ class SegyFile(object):
 
         def writefn(t0, length, step, val):
             val = buffn(val)
+            step *= len(self.offsets)
             for i, v in itertools.izip(range(t0, t0 + step * length, step), val):
                 Trace.write_trace(i, v, self)
 

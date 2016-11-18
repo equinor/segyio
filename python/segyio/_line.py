@@ -7,7 +7,7 @@ class Line:
     """ Line mode for traces and trace headers. Internal.
 
     The _line class provides an interface for line-oriented operations. The
-    line reading operations themselves are not streaming - it's assumed than
+    line reading operations themselves are not streaming - it's assumed that
     when a line is queried it's somewhat limited in size and will comfortably
     fit in memory, and that the full line is interesting. This also applies to
     line headers; however, all returned values support the iterable protocol so
@@ -29,60 +29,112 @@ class Line:
         self.readfn = readfn
         self.writefn = writefn
 
-    def __getitem__(self, lineno, buf=None):
-        """ :rtype: numpy.ndarray|collections.Iterable[numpy.ndarray]"""
-        if isinstance(lineno, tuple):
-            return self.__getitem__(lineno[0], lineno[1])
+    def _index(self, lineno, offset):
+        """ :rtype: int"""
+        offs = self.segy.offsets
 
-        buf = self.buffn(buf)
-
-        if isinstance(lineno, slice):
-            # in order to support [:end] syntax, we must make sure
-            # start has a non-None value. lineno.indices() would set it
-            # to 0, but we don't know if that's a reasonable value or
-            # not. If start is None we set it to the first line
-            if lineno.start is None:
-                lineno = slice(self.lines[0], lineno.stop, lineno.step)
-
-            def gen():
-                s = set(self.lines)
-                rng = range(*lineno.indices(self.lines[-1] + 1))
-
-                # use __getitem__ lookup to avoid tuple
-                # construction and unpacking and fast-forward
-                # into the interesting code path
-                for i in itertools.ifilter(s.__contains__, rng):
-                    yield self.__getitem__(i, buf)
-
-            return gen()
-
+        if offset is None:
+            offset = 0
         else:
             try:
-                lineno = int(lineno)
-            except TypeError:
-                raise TypeError("Must be int or slice")
-            else:
-                t0 = self.trace0fn(lineno, len(self.segy.offsets))
-                return self.readfn(t0, self.len, self.stride, buf)
+                offset = next(i for i, x in enumerate(offs) if x == offset)
+            except StopIteration:
+                try:
+                    int(offset)
+                except TypeError:
+                    raise TypeError("Offset must be int or slice")
 
-    def trace0fn(self, lineno, offsets):
-        return segyio._segyio.fread_trace0(lineno, len(self.other_lines), self.stride, offsets, self.lines, self.name)
+                raise KeyError("Unknkown offset {}".format(offset))
+
+        try:
+            lineno = int(lineno)
+        except TypeError:
+            raise TypeError("Must be int or slice")
+
+        trace0 = segyio._segyio.fread_trace0(lineno, len(self.other_lines), self.stride, len(offs), self.lines, self.name)
+        return offset + trace0
+
+    def _indices(self, lineno, offset):
+        """ :rtype: tuple[collections.Iterable, collections.Iterable]"""
+        offsets = self.segy.offsets
+        if offset is None:
+            offset = offsets[0]
+
+        if not isinstance(lineno, slice):
+            lineno = slice(lineno, lineno + 1, 1)
+
+        if not isinstance(offset, slice):
+            offset = slice(offset, offset + 1, 1)
+
+        lineno = self._sanitize_slice(lineno, self.lines)
+        offset = self._sanitize_slice(offset, offsets)
+
+        offs, lns = set(self.segy.offsets), set(self.lines)
+
+        orng = range(*offset.indices(offsets[-1] + 1))
+        lrng = range(*lineno.indices(self.lines[-1] + 1))
+
+        return filter(lns.__contains__, lrng), filter(offs.__contains__, orng)
+
+    # in order to support [:end] syntax, we must make sure
+    # start has a non-None value. lineno.indices() would set it
+    # to 0, but we don't know if that's a reasonable value or
+    # not. If start is None we set it to the first line
+    def _sanitize_slice(self, s, source):
+        if all((s.start, s.stop, s.step)):
+            return s
+
+        start, stop, step = s.start, s.stop, s.step
+        increasing = step is None or step > 0
+
+        if start is None:
+            start = source[0] if increasing else source[-1]
+
+        if stop is None:
+            stop = source[-1]+1 if increasing else source[0]-1
+
+        return slice(start, stop, step)
+
+    def _get(self, lineno, offset, buf):
+        """ :rtype: numpy.ndarray"""
+        t0 = self._index(lineno, offset)
+        return self.readfn(t0, self.len, self.stride, buf)
+
+
+    def _get_iter(self, lineno, off, buf):
+        """ :rtype: collections.Iterable[numpy.ndarray]"""
+
+        for line, offset in itertools.product(*self._indices(lineno, off)):
+            yield self._get(line, offset, buf)
+
+    def __getitem__(self, lineno, offset = None):
+        """ :rtype: numpy.ndarray|collections.Iterable[numpy.ndarray]"""
+        buf = self.buffn()
+
+        if isinstance(lineno, tuple):
+            lineno, offset = lineno
+
+        if isinstance(lineno, slice) or isinstance(offset, slice):
+            return self._get_iter(lineno, offset, buf)
+
+        return self._get(lineno, offset, buf)
 
     def __setitem__(self, lineno, val):
-        if isinstance(lineno, slice):
-            if lineno.start is None:
-                lineno = slice(self.lines[0], lineno.stop, lineno.step)
+        offset = None
+        if isinstance(lineno, tuple):
+            lineno, offset = lineno
 
-            rng = range(*lineno.indices(self.lines[-1] + 1))
-            s = set(self.lines)
+        if isinstance(lineno, slice) or isinstance(offset, slice):
+            lines, offsets = self._indices(lineno, offset)
 
-            for i, x in itertools.izip(filter(s.__contains__, rng), val):
-                self.__setitem__(i, x)
+            indices = itertools.product(*self._indices(lineno, offset))
+            for (line, offset), x in itertools.izip(indices, val):
+                t0 = self._index(line, offset)
+                self.writefn(t0, self.len, self.stride, x)
 
-            return
-
-        t0 = self.trace0fn(lineno, len(self.segy.offsets))
-        self.writefn(t0, self.len, self.stride, val)
+        else:
+            t0 = self._index(lineno, offset)
+            self.writefn(t0, self.len, self.stride, val)
 
     def __len__(self):
         return len(self.lines)
@@ -90,4 +142,4 @@ class Line:
     def __iter__(self):
         buf = self.buffn()
         for i in self.lines:
-            yield self.__getitem__(i, buf)
+            yield self._get(i, None, buf)

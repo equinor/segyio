@@ -12,7 +12,7 @@ quick start on reading files, type `help(segyio.open)`.
 An open segy file is interacted with in modes, found in the segy module. For a
 reference with examples, please type `help(segyio.segy)`. For documentation on
 individual modes, please refer to the individual modes with
-`help(segyio.segy.file.[mode])`, or look it up in the aggregated segyio.segy.
+`help(segyio.SegyFile.[mode])`, or look it up in the aggregated segyio.segy.
 The available modes are:
     * text, for textual headers including extended headers
     * bin, for the binary header

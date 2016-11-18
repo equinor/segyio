@@ -47,6 +47,7 @@ class TestSegy(TestCase):
 
     def setUp(self):
         self.filename = "test-data/small.sgy"
+        self.prestack = "test-data/small-ps.sgy"
 
     def test_inline_4(self):
         with segyio.open(self.filename, "r") as f:
@@ -178,6 +179,128 @@ class TestSegy(TestCase):
             buf = None
             for i, trace in enumerate(f.trace[0:6:2, buf]):
                 self.assertTrue(np.array_equal(trace, traces[i]))
+
+    def test_traces_offset(self):
+        with segyio.open(self.prestack, "r") as f:
+
+            self.assertEqual(2, len(f.offsets))
+            self.assertListEqual([1, 2], list(f.offsets))
+
+            # traces are laid out |l1o1 l1o2 l2o1 l2o2...|
+            # where l = iline number and o = offset number
+            # traces are not re-indexed according to offsets
+            # see make-ps-file.py for value formula
+            self.assertAlmostEqual(101.01, f.trace[0][0], places = 4)
+            self.assertAlmostEqual(201.01, f.trace[1][0], places = 4)
+            self.assertAlmostEqual(101.02, f.trace[2][0], places = 4)
+            self.assertAlmostEqual(201.02, f.trace[3][0], places = 4)
+            self.assertAlmostEqual(102.01, f.trace[6][0], places = 4)
+
+    def test_headers_offset(self):
+        with segyio.open(self.prestack, "r") as f:
+            il, xl = TraceField.INLINE_3D, TraceField.CROSSLINE_3D
+            self.assertEqual(f.header[0][il], f.header[1][il])
+            self.assertEqual(f.header[1][il], f.header[2][il])
+
+            self.assertEqual(f.header[0][xl], f.header[1][xl])
+            self.assertNotEqual(f.header[1][xl], f.header[2][xl])
+
+    def test_headers_line_offset(self):
+        fname = self.prestack.replace( ".sgy", "-line-header.sgy")
+        shutil.copyfile(self.prestack, fname)
+
+        il, xl = TraceField.INLINE_3D, TraceField.CROSSLINE_3D
+        with segyio.open(fname, "r+") as f:
+            f.header.iline[1,2] = { il: 11 }
+            f.header.iline[1,2] = { xl: 13 }
+
+        with segyio.open(fname, "r") as f:
+            self.assertEqual(f.header[0][il], 1)
+            self.assertEqual(f.header[1][il], 11)
+            self.assertEqual(f.header[2][il], 1)
+
+            self.assertEqual(f.header[0][xl], 1)
+            self.assertEqual(f.header[1][xl], 13)
+            self.assertEqual(f.header[2][xl], 2)
+
+
+    def test_iline_offset(self):
+        with segyio.open(self.prestack, "r") as f:
+
+            line1 = f.iline[1, 1]
+            self.assertAlmostEqual(101.01, line1[0][0], places = 4)
+            self.assertAlmostEqual(101.02, line1[1][0], places = 4)
+            self.assertAlmostEqual(101.03, line1[2][0], places = 4)
+
+            self.assertAlmostEqual(101.01001, line1[0][1], places = 4)
+            self.assertAlmostEqual(101.01002, line1[0][2], places = 4)
+            self.assertAlmostEqual(101.02001, line1[1][1], places = 4)
+
+            line2 = f.iline[1, 2]
+            self.assertAlmostEqual(201.01, line2[0][0], places = 4)
+            self.assertAlmostEqual(201.02, line2[1][0], places = 4)
+            self.assertAlmostEqual(201.03, line2[2][0], places = 4)
+
+            self.assertAlmostEqual(201.01001, line2[0][1], places = 4)
+            self.assertAlmostEqual(201.01002, line2[0][2], places = 4)
+            self.assertAlmostEqual(201.02001, line2[1][1], places = 4)
+
+            with self.assertRaises(KeyError):
+                f.iline[1, 0]
+
+            with self.assertRaises(KeyError):
+                f.iline[1, 3]
+
+            with self.assertRaises(KeyError):
+                f.iline[100, 1]
+
+            with self.assertRaises(TypeError):
+                f.iline[1, {}]
+
+    def test_iline_slice_fixed_offset(self):
+        with segyio.open(self.prestack, "r") as f:
+
+            for i, ln in enumerate(f.iline[:, 1], 1):
+                self.assertAlmostEqual(i + 100.01, ln[0][0], places = 4)
+                self.assertAlmostEqual(i + 100.02, ln[1][0], places = 4)
+                self.assertAlmostEqual(i + 100.03, ln[2][0], places = 4)
+
+                self.assertAlmostEqual(i + 100.01001, ln[0][1], places = 4)
+                self.assertAlmostEqual(i + 100.01002, ln[0][2], places = 4)
+                self.assertAlmostEqual(i + 100.02001, ln[1][1], places = 4)
+
+    def test_iline_slice_fixed_line(self):
+        with segyio.open(self.prestack, "r") as f:
+
+            for i, ln in enumerate(f.iline[1, :], 1):
+                off = i * 100
+                self.assertAlmostEqual(off + 1.01, ln[0][0], places = 4)
+                self.assertAlmostEqual(off + 1.02, ln[1][0], places = 4)
+                self.assertAlmostEqual(off + 1.03, ln[2][0], places = 4)
+
+                self.assertAlmostEqual(off + 1.01001, ln[0][1], places = 4)
+                self.assertAlmostEqual(off + 1.01002, ln[0][2], places = 4)
+                self.assertAlmostEqual(off + 1.02001, ln[1][1], places = 4)
+
+    def test_iline_slice_all_offsets(self):
+        with segyio.open(self.prestack, "r") as f:
+            offs, ils = len(f.offsets), len(f.ilines)
+            self.assertEqual(offs * ils, sum(1 for _ in f.iline[:,:]))
+            self.assertEqual(offs * ils, sum(1 for _ in f.iline[:,::-1]))
+            self.assertEqual(offs * ils, sum(1 for _ in f.iline[::-1,:]))
+            self.assertEqual(offs * ils, sum(1 for _ in f.iline[::-1,::-1]))
+            self.assertEqual(0,  sum(1 for _ in f.iline[:, 10:12]))
+            self.assertEqual(0,  sum(1 for _ in f.iline[10:12, :]))
+
+            self.assertEqual((offs / 2) * ils, sum(1 for _ in f.iline[::2, :]))
+            self.assertEqual(offs * (ils / 2), sum(1 for _ in f.iline[:, ::2]))
+
+            self.assertEqual((offs / 2) * ils, sum(1 for _ in f.iline[::-2, :]))
+            self.assertEqual(offs * (ils / 2), sum(1 for _ in f.iline[:, ::-2]))
+
+            self.assertEqual((offs / 2) * (ils / 2), sum(1 for _ in f.iline[::2, ::2]))
+            self.assertEqual((offs / 2) * (ils / 2), sum(1 for _ in f.iline[::2, ::-2]))
+            self.assertEqual((offs / 2) * (ils / 2), sum(1 for _ in f.iline[::-2, ::2]))
 
     def test_line_generators(self):
         with segyio.open(self.filename, "r") as f:
@@ -399,10 +522,8 @@ class TestSegy(TestCase):
                 # alternative form using left-hand-side slices
                 dst.iline[2:4] = src.iline
 
-
-                buf = None # reuse buffer for speed
                 for lineno in dst.xlines:
-                    dst.xline[lineno] = src.xline[lineno, buf]
+                    dst.xline[lineno] = src.xline[lineno]
 
             with segyio.open(dstfile, "r") as dst:
                 self.assertEqual(20, dst.samples)
@@ -440,6 +561,50 @@ class TestSegy(TestCase):
             self.assertAlmostEqual(50.100, f.trace[-1][100], places = 4)
             self.assertEqual(f.header[0][TraceField.offset], f.header[1][TraceField.offset])
             self.assertEqual(1, f.header[1][TraceField.offset])
+
+    def test_create_from_naught_prestack(self):
+        fname = "test-data/mk-ps.sgy"
+        spec = segyio.spec()
+        spec.format  = 5
+        spec.sorting = 2
+        spec.samples = 7
+        spec.ilines  = range(1, 4)
+        spec.xlines  = range(1, 3)
+        spec.offsets = range(1, 6)
+
+        cube_size = len(spec.ilines) * len(spec.xlines)
+
+        with segyio.create(fname, spec) as dst:
+            arr = np.arange( start = 0.000,
+                             stop = 0.007,
+                             step = 0.001,
+                             dtype = np.single)
+
+            arr = np.concatenate([[arr + 0.01], [arr + 0.02]], axis = 0)
+            lines = [arr + i for i in spec.ilines]
+            cube = [(off * 100) + line for line in lines for off in spec.offsets]
+
+            dst.iline[:,:] = cube
+
+            for of in spec.offsets:
+                for il in spec.ilines:
+                    dst.header.iline[il,of] = { TraceField.INLINE_3D: il,
+                                                TraceField.offset: of
+                                              }
+                for xl in spec.xlines:
+                    dst.header.xline[xl,of] = { TraceField.CROSSLINE_3D: xl }
+
+        with segyio.open(fname, "r") as f:
+            self.assertAlmostEqual(101.010, f.trace[0][0],  places = 4)
+            self.assertAlmostEqual(101.011, f.trace[0][1],  places = 4)
+            self.assertAlmostEqual(101.016, f.trace[0][-1], places = 4)
+            self.assertAlmostEqual(503.025, f.trace[-1][5], places = 4)
+            self.assertNotEqual(f.header[0][TraceField.offset], f.header[1][TraceField.offset])
+            self.assertEqual(1, f.header[0][TraceField.offset])
+            self.assertEqual(2, f.header[1][TraceField.offset])
+
+            for x, y in itertools.izip(f.iline[:,:], cube):
+                self.assertListEqual(list(x.flatten()), list(y.flatten()))
 
     def test_create_write_lines(self):
         fname = "test-data/mklines.sgy"
