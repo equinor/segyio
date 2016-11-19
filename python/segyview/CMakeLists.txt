@@ -7,6 +7,7 @@ set(PYTHON_SOURCES
     slicewidget.py
     viewer.py
     layoutcombo.py
+    colormapcombo.py
     )
 
 add_python_package(segyview segyview "${PYTHON_SOURCES}")
