@@ -1,7 +1,27 @@
+import os.path as path
+
 from .segyplot import SegyPlot
 from .segyiowrapper import SegyIOWrapper, SlicesWrapper
 
+img_prefix = path.abspath(path.join(path.dirname(path.abspath(__file__)), "resources", "img"))
+
+if not path.exists(img_prefix):
+    img_prefix = path.abspath(path.join(path.dirname(path.abspath(__file__)), "..", "..", "resources", "img"))
+
+
+def resource_icon_path(name):
+    return path.join(img_prefix, name)
+
+
+def resource_icon(name):
+    """Load an image as an icon"""
+    # print("Icon used: %s" % name)
+    from PyQt4.QtGui import QIcon
+    return QIcon(resource_icon_path(name))
+
+
 try:
+    from .layoutcombo import LayoutCombo
     from .progresswidget import ProgressWidget
     from .slicewidget import SliceWidget, ColorBarWidget
     from .segyiowrapper import SegyIOWrapper, SlicesWrapper

@@ -49,4 +49,4 @@ before_script:
   - make
   - export LD_LIBRARY_PATH=$PWD
 
-script: make && ctest --output-on-failure
+script: make && ctest --output-on-failure -E gui
