@@ -60,6 +60,24 @@ class SegyFile(object):
 
         super(SegyFile, self).__init__()
 
+    def __str__(self):
+        f = "SegyFile {}:".format(self._filename)
+        il =  "  inlines: {} [{}, {}]".format(len(self.ilines), self.ilines[0], self.ilines[-1])
+        xl =  "  crosslines: {} [{}, {}]".format(len(self.xlines), self.xlines[0], self.xlines[-1])
+        tr =  "  traces: {}".format(self.tracecount)
+        sm =  "  samples: {}".format(self.samples)
+        of =  "  offsets: {} [{}, {}]".format(len(self.offsets), self.offsets[0], self.offsets[-1])
+        fmt = "  float representation: {}".format(self.format)
+
+        props = [f, il, xl, tr, sm]
+
+        if len(self.offsets) > 1:
+            props.append(of)
+
+        props.append(fmt)
+        return '\n'.join(props)
+
+
     def __repr__(self):
         return "SegyFile('{}', '{}', iline = {}, xline = {})".format(
                         self._filename, self._mode, self._il, self._xl)
