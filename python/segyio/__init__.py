@@ -52,6 +52,9 @@ class Enum(object):
                 return k
         return "Unknown Enum"
 
+    def __repr__(self):
+        return str(self)
+
     def __hash__(self):
         return hash(self._value)
 

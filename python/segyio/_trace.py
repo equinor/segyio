@@ -62,6 +62,9 @@ class Trace:
     def __iter__(self):
         return self[:]
 
+    def __repr__(self):
+        return "Trace(traces = {}, samples = {})".format(len(self), self._file.samples)
+
     def _trace_buffer(self, buf=None):
         samples = self._file.samples
 

@@ -60,6 +60,10 @@ class SegyFile(object):
 
         super(SegyFile, self).__init__()
 
+    def __repr__(self):
+        return "SegyFile('{}', '{}', iline = {}, xline = {})".format(
+                        self._filename, self._mode, self._il, self._xl)
+
     def __enter__(self):
         """Internal.
         :rtype: segyio.segy.SegyFile
@@ -787,6 +791,9 @@ class SegyFile(object):
                     raise IndexError("Textual header %d not in file" % index)
 
                 _segyio.write_textheader(self.xfd, index, val)
+
+            def __repr__(inner):
+                return "Text(external_headers = {})".format(self.ext_headers)
 
         return TextHeader()
 
