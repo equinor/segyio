@@ -17,3 +17,5 @@ class RawTrace(object):
 
         return self.trace._readtr(index, buf)
 
+    def __repr__(self):
+        return self.trace.__repr__() + ".raw"

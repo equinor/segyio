@@ -79,3 +79,10 @@ class Field:
             segyio._segyio.write_traceheader(segy.xfd, traceno, buf, segy._tr0, segy._bsz)
 
         return Field(buf, traceno=traceno, write=wr, field_type=TraceField)
+
+    def __repr__(self):
+        def assigned(x):
+            return x != BinField.Unassigned1 and x != BinField.Unassigned2
+
+        fields = filter(assigned, self._field_type.enums())
+        return self[fields].__repr__()

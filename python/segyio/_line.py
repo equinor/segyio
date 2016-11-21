@@ -29,6 +29,9 @@ class Line:
         self.readfn = readfn
         self.writefn = writefn
 
+    def __repr__(self):
+        return "Line(direction = {}, length = {})".format(self.name, self.len)
+
     def _index(self, lineno, offset):
         """ :rtype: int"""
         offs = self.segy.offsets

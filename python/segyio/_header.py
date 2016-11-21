@@ -44,6 +44,9 @@ class Header(object):
     def __iter__(self):
         return self[:]
 
+    def __repr__(self):
+        return "Header(traces = {})".format(self.segy.samples)
+
     def readfn(self, t0, length, stride, buf):
         def gen():
             start = t0
