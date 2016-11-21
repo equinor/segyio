@@ -63,6 +63,9 @@ class Enum(object):
         else:
             return self._value == o
 
+    def __ne__(self, other):
+        return not self == other
+
     @classmethod
     def enums(cls):
         result = []
