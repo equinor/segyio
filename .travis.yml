@@ -28,12 +28,6 @@ addons:
         - cmake-data
         - valgrind
         - python-numpy
-        - python-matplotlib
-
-install:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-      pip install --user matplotlib;
-    fi
 
 before_script:
   # Valgrind is experimental(ish) on MacOS with false positives on among others printf
@@ -49,4 +43,4 @@ before_script:
   - make
   - export LD_LIBRARY_PATH=$PWD
 
-script: make && ctest --output-on-failure -E gui
+script: make && ctest --output-on-failure
