@@ -8,6 +8,8 @@ set(PYTHON_SOURCES
     viewer.py
     layoutcombo.py
     colormapcombo.py
+    layoutfigure.py
+    layoutcanvas.py
     )
 
 add_python_package(segyview segyview "${PYTHON_SOURCES}")
