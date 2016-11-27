@@ -2,13 +2,36 @@
 #  define _CRT_NOFORCE_MAINFEST 1
 #  undef _DEBUG
 #  include <Python.h>
+#  include <bytesobject.h>
 #  define _DEBUG 1
 #else
 #  include <Python.h>
+#  include <bytesobject.h>
 #endif
 #include "segyio/segy.h"
 #include <assert.h>
 #include <string.h>
+
+#if PY_MAJOR_VERSION >= 3
+#define IS_PY3K
+#endif
+
+static bool integer_check(PyObject* integer) {
+#ifdef IS_PY3K
+    return PyLong_Check(integer);
+#else
+    return PyInt_Check(integer);
+#endif
+}
+
+static Py_ssize_t convert_integer(PyObject* integer) {
+#ifdef IS_PY3K
+    return PyLong_AsSsize_t(integer);
+#else
+    return PyInt_AsSsize_t(integer);
+#endif
+}
+
 
 // ---------------  FILE Handling ------------
 static segy_file *get_FILE_pointer_from_capsule(PyObject *capsule) {
@@ -230,7 +253,7 @@ static PyObject *py_read_texthdr(PyObject *self, PyObject *args) {
         return PyErr_Format(PyExc_Exception, "Could not read text header: %s", strerror(errno));
     }
 
-    PyObject *result = Py_BuildValue("s", buffer);
+    PyObject *result = PyBytes_FromStringAndSize(buffer, SEGY_TEXT_HEADER_SIZE);
     free(buffer);
     return result;
 }
@@ -765,7 +788,7 @@ static PyObject *py_read_trace(PyObject *self, PyObject *args) {
         return NULL;
     }
 
-    if( !PyInt_Check( trace_no ) && !PySlice_Check( trace_no ) ) {
+    if( !integer_check( trace_no ) && !PySlice_Check( trace_no ) ) {
         PyErr_SetString(PyExc_TypeError, "Trace number must be int or slice." );
         return NULL;
     }
@@ -787,7 +810,7 @@ static PyObject *py_read_trace(PyObject *self, PyObject *args) {
 
     }
     else {
-        start = PyInt_AsSsize_t( trace_no );
+        start = convert_integer( trace_no );
         if( start < 0 ) start += trace_count;
         step = 1;
         stop = start + step;
@@ -952,7 +975,22 @@ static PyMethodDef SegyMethods[] = {
 
 
 /* module initialization */
+#ifdef IS_PY3K
+static struct PyModuleDef segyio_module = {
+        PyModuleDef_HEAD_INIT,
+        "_segyio",   /* name of module */
+        NULL, /* module documentation, may be NULL */
+        -1,  /* size of per-interpreter state of the module, or -1 if the module keeps state in global variables. */
+        SegyMethods
+};
+
+PyMODINIT_FUNC
+PyInit__segyio(void) {
+    return PyModule_Create(&segyio_module);
+}
+#else
 PyMODINIT_FUNC
 init_segyio(void) {
     (void) Py_InitModule("_segyio", SegyMethods);
 }
+#endif

@@ -1,6 +1,11 @@
 import itertools
 
-import segyio
+import segyio._segyio as _segyio
+
+try:
+    from itertools import izip as zip
+except ImportError:  # will be 3.x series
+    pass
 
 
 class Line:
@@ -54,7 +59,7 @@ class Line:
         except TypeError:
             raise TypeError("Must be int or slice")
 
-        trace0 = segyio._segyio.fread_trace0(lineno, len(self.other_lines), self.stride, len(offs), self.lines, self.name)
+        trace0 = _segyio.fread_trace0(lineno, len(self.other_lines), self.stride, len(offs), self.lines, self.name)
         return offset + trace0
 
     def _indices(self, lineno, offset):
@@ -94,7 +99,7 @@ class Line:
             start = source[0] if increasing else source[-1]
 
         if stop is None:
-            stop = source[-1]+1 if increasing else source[0]-1
+            stop = source[-1] + 1 if increasing else source[0] - 1
 
         return slice(start, stop, step)
 
@@ -103,14 +108,13 @@ class Line:
         t0 = self._index(lineno, offset)
         return self.readfn(t0, self.len, self.stride, buf)
 
-
     def _get_iter(self, lineno, off, buf):
         """ :rtype: collections.Iterable[numpy.ndarray]"""
 
         for line, offset in itertools.product(*self._indices(lineno, off)):
             yield self._get(line, offset, buf)
 
-    def __getitem__(self, lineno, offset = None):
+    def __getitem__(self, lineno, offset=None):
         """ :rtype: numpy.ndarray|collections.Iterable[numpy.ndarray]"""
         buf = self.buffn()
 
@@ -131,7 +135,7 @@ class Line:
             lines, offsets = self._indices(lineno, offset)
 
             indices = itertools.product(*self._indices(lineno, offset))
-            for (line, offset), x in itertools.izip(indices, val):
+            for (line, offset), x in zip(indices, val):
                 t0 = self._index(line, offset)
                 self.writefn(t0, self.len, self.stride, x)
 

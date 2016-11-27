@@ -1,7 +1,7 @@
 import sys
 import numpy as np
 import segyio
-from itertools import izip as izip
+
 
 def main():
     if len(sys.argv) < 9:
@@ -14,10 +14,10 @@ def main():
     spec = segyio.spec()
     filename = sys.argv[1]
 
-# to create a file from nothing, we need to tell segyio about the structure of
-# the file, i.e. its inline numbers, crossline numbers, etc. You can also add
-# more structural information, This is the absolute minimal specification for a
-# N-by-M volume with K offsets volume
+    # to create a file from nothing, we need to tell segyio about the structure of
+    # the file, i.e. its inline numbers, crossline numbers, etc. You can also add
+    # more structural information, This is the absolute minimal specification for a
+    # N-by-M volume with K offsets volume
     spec.sorting = 2
     spec.format = 1
     spec.samples = int(sys.argv[2])

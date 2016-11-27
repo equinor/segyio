@@ -31,8 +31,6 @@ static void testEbcdicTable() {
     ebcdic2ascii(ebcdic, result_ascii);
 
     assertTrue(strcmp(ascii, result_ascii) == 0, "Conversion from EBCDIC to ASCII to EBCDIC failed!");
-    for(unsigned char i = 0; i < 255; i++) {
-    }
 }
 
 static void testConversionAllocation() {

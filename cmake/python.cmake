@@ -31,7 +31,7 @@ function(add_python_test TESTNAME PYTHON_TEST_FILE)
         
     add_test(NAME ${TESTNAME}
             WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/tests
-            COMMAND python test_runner.py ${PYTHON_TEST_FILE}
+            COMMAND ${PYTHON_EXECUTABLE} test_runner.py ${PYTHON_TEST_FILE}
             )
 
     to_path_list(pythonpath "${CMAKE_BINARY_DIR}/python" "$ENV{PYTHONPATH}")
@@ -43,7 +43,7 @@ function(add_python_example TESTNAME PYTHON_TEST_FILE)
 
     add_test(NAME ${TESTNAME}
             WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/examples
-            COMMAND python ${PYTHON_TEST_FILE} ${ARGN}
+            COMMAND ${PYTHON_EXECUTABLE} ${PYTHON_TEST_FILE} ${ARGN}
             )
     to_path_list(pythonpath "${CMAKE_BINARY_DIR}/python" "$ENV{PYTHONPATH}")
     set_tests_properties(${TESTNAME} PROPERTIES ENVIRONMENT "PYTHONPATH=${pythonpath}")

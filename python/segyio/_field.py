@@ -24,7 +24,7 @@ class Field:
         # plain, unstructed output is expected, but header[f1,f2,f3]
         # yields a dict
         if len(d) == 1:
-            return d.values()[0]
+            return d.popitem()[1]
 
         return d
 

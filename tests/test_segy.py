@@ -13,6 +13,11 @@ from segyio._line import Line
 from segyio._header import Header
 from segyio._trace import Trace
 
+try:
+    from itertools import izip as zip
+    from itertools import imap as map
+except ImportError:  # will be 3.x series
+    pass
 
 def mklines(fname):
     spec = segyio.spec()
@@ -59,7 +64,7 @@ class TestSegy(TestCase):
 
             self.assertAlmostEqual(4.2, data[0, 0], places = 6)
             # middle sample
-            self.assertAlmostEqual(4.20024, data[0, sample_count/2-1], places = 6)
+            self.assertAlmostEqual(4.20024, data[0, sample_count//2-1], places = 6)
             # last sample
             self.assertAlmostEqual(4.20049, data[0, -1], places = 6)
 
@@ -68,7 +73,7 @@ class TestSegy(TestCase):
             # first sample
             self.assertAlmostEqual(4.22, data[middle_line, 0], places = 5)
             # middle sample
-            self.assertAlmostEqual(4.22024, data[middle_line, sample_count/2-1], places = 6)
+            self.assertAlmostEqual(4.22024, data[middle_line, sample_count//2-1], places = 6)
             # last sample
             self.assertAlmostEqual(4.22049, data[middle_line, -1], places = 6)
 
@@ -77,7 +82,7 @@ class TestSegy(TestCase):
             # first sample
             self.assertAlmostEqual(4.24, data[last_line, 0], places = 5)
             # middle sample
-            self.assertAlmostEqual(4.24024, data[last_line, sample_count/2-1], places = 6)
+            self.assertAlmostEqual(4.24024, data[last_line, sample_count//2-1], places = 6)
             # last sample
             self.assertAlmostEqual(4.24049, data[last_line, sample_count-1], places = 6)
 
@@ -90,7 +95,7 @@ class TestSegy(TestCase):
             # first sample
             self.assertAlmostEqual(1.22, data[0, 0], places = 5)
             # middle sample
-            self.assertAlmostEqual(1.22024, data[0, f.samples/2-1], places = 6)
+            self.assertAlmostEqual(1.22024, data[0, f.samples//2-1], places = 6)
             # last sample
             self.assertAlmostEqual(1.22049, data[0, f.samples-1], places = 6)
 
@@ -99,7 +104,7 @@ class TestSegy(TestCase):
             # first sample
             self.assertAlmostEqual(3.22, data[middle_line, 0], places = 5)
             # middle sample
-            self.assertAlmostEqual(3.22024, data[middle_line, f.samples/2-1], places = 6)
+            self.assertAlmostEqual(3.22024, data[middle_line, f.samples//2-1], places = 6)
             # last sample
             self.assertAlmostEqual(3.22049, data[middle_line, f.samples-1], places = 6)
 
@@ -108,7 +113,7 @@ class TestSegy(TestCase):
             # first sample
             self.assertAlmostEqual(5.22, data[last_line, 0], places = 5)
             # middle sample
-            self.assertAlmostEqual(5.22024, data[last_line, f.samples/2-1], places = 6)
+            self.assertAlmostEqual(5.22024, data[last_line, f.samples//2-1], places = 6)
             # last sample
             self.assertAlmostEqual(5.22049, data[last_line, f.samples-1], places = 6)
 
@@ -117,7 +122,7 @@ class TestSegy(TestCase):
             self.assertEqual(len(f.ilines), sum(1 for _ in f.iline))
             self.assertEqual(len(f.ilines), sum(1 for _ in f.iline[1:6]))
             self.assertEqual(len(f.ilines), sum(1 for _ in f.iline[5:0:-1]))
-            self.assertEqual(len(f.ilines) / 2, sum(1 for _ in f.iline[0::2]))
+            self.assertEqual(len(f.ilines) // 2, sum(1 for _ in f.iline[0::2]))
             self.assertEqual(len(f.ilines), sum(1 for _ in f.iline[1:]))
             self.assertEqual(3,  sum(1 for _ in f.iline[::2]))
             self.assertEqual(0,  sum(1 for _ in f.iline[12:24]))
@@ -153,8 +158,8 @@ class TestSegy(TestCase):
             self.assertEqual(1, f.offsets)
             self.assertEqual(1, int(f.format))
 
-            xlines = list(xrange(20, 25))
-            ilines = list(xrange(1, 6))
+            xlines = list(range(20, 25))
+            ilines = list(range(1, 6))
             self.assertEqual(xlines, list(f.xlines))
             self.assertEqual(ilines, list(f.ilines))
             self.assertEqual(25, f.tracecount)
@@ -164,13 +169,13 @@ class TestSegy(TestCase):
     def test_traces_slicing(self):
         with segyio.open(self.filename, "r") as f:
 
-            traces = map(np.copy, f.trace[0:6:2])
+            traces = list(map(np.copy, f.trace[0:6:2]))
             self.assertEqual(len(traces), 3)
             self.assertEqual(traces[0][49], f.trace[0][49])
             self.assertEqual(traces[1][49], f.trace[2][49])
             self.assertEqual(traces[2][49], f.trace[4][49])
 
-            rev_traces = map(np.copy, f.trace[4::-2])
+            rev_traces = list(map(np.copy, f.trace[4::-2]))
             self.assertEqual(rev_traces[0][49], f.trace[4][49])
             self.assertEqual(rev_traces[1][49], f.trace[2][49])
             self.assertEqual(rev_traces[2][49], f.trace[0][49])
@@ -292,15 +297,15 @@ class TestSegy(TestCase):
             self.assertEqual(0,  sum(1 for _ in f.iline[:, 10:12]))
             self.assertEqual(0,  sum(1 for _ in f.iline[10:12, :]))
 
-            self.assertEqual((offs / 2) * ils, sum(1 for _ in f.iline[::2, :]))
-            self.assertEqual(offs * (ils / 2), sum(1 for _ in f.iline[:, ::2]))
+            self.assertEqual((offs // 2) * ils, sum(1 for _ in f.iline[::2, :]))
+            self.assertEqual(offs * (ils // 2), sum(1 for _ in f.iline[:, ::2]))
 
-            self.assertEqual((offs / 2) * ils, sum(1 for _ in f.iline[::-2, :]))
-            self.assertEqual(offs * (ils / 2), sum(1 for _ in f.iline[:, ::-2]))
+            self.assertEqual((offs // 2) * ils, sum(1 for _ in f.iline[::-2, :]))
+            self.assertEqual(offs * (ils // 2), sum(1 for _ in f.iline[:, ::-2]))
 
-            self.assertEqual((offs / 2) * (ils / 2), sum(1 for _ in f.iline[::2, ::2]))
-            self.assertEqual((offs / 2) * (ils / 2), sum(1 for _ in f.iline[::2, ::-2]))
-            self.assertEqual((offs / 2) * (ils / 2), sum(1 for _ in f.iline[::-2, ::2]))
+            self.assertEqual((offs // 2) * (ils // 2), sum(1 for _ in f.iline[::2, ::2]))
+            self.assertEqual((offs // 2) * (ils // 2), sum(1 for _ in f.iline[::2, ::-2]))
+            self.assertEqual((offs // 2) * (ils // 2), sum(1 for _ in f.iline[::-2, ::2]))
 
     def test_line_generators(self):
         with segyio.open(self.filename, "r") as f:
@@ -312,7 +317,7 @@ class TestSegy(TestCase):
 
     def test_traces_raw(self):
         with segyio.open(self.filename, "r") as f:
-            gen_traces = np.array(map( np.copy, f.trace ), dtype = np.single)
+            gen_traces = np.array(list(map( np.copy, f.trace )), dtype = np.single)
 
             raw_traces = f.trace.raw[:]
             self.assertTrue(np.array_equal(gen_traces, raw_traces))
@@ -326,10 +331,10 @@ class TestSegy(TestCase):
 
             self.assertTrue(np.array_equal(f.trace[10], f.trace.raw[10]))
 
-            for raw, gen in itertools.izip(f.trace.raw[::2], f.trace[::2]):
+            for raw, gen in zip(f.trace.raw[::2], f.trace[::2]):
                 self.assertTrue(np.array_equal(raw, gen))
 
-            for raw, gen in itertools.izip(f.trace.raw[::-1], f.trace[::-1]):
+            for raw, gen in zip(f.trace.raw[::-1], f.trace[::-1]):
                 self.assertTrue(np.array_equal(raw, gen))
 
     def test_read_header(self):
@@ -541,7 +546,7 @@ class TestSegy(TestCase):
         with segyio.create(fname, spec) as dst:
             tr = np.arange( start = 1.000, stop = 1.151, step = 0.001, dtype = np.single)
 
-            for i in xrange( len( dst.trace ) ):
+            for i in range( len( dst.trace ) ):
                 dst.trace[i] = tr
                 tr += 1.000
 
@@ -603,7 +608,7 @@ class TestSegy(TestCase):
             self.assertEqual(1, f.header[0][TraceField.offset])
             self.assertEqual(2, f.header[1][TraceField.offset])
 
-            for x, y in itertools.izip(f.iline[:,:], cube):
+            for x, y in zip(f.iline[:,:], cube):
                 self.assertListEqual(list(x.flatten()), list(y.flatten()))
 
     def test_create_write_lines(self):
@@ -698,7 +703,7 @@ class TestSegy(TestCase):
         with segyio.open(self.filename, "r") as f:
             self.assertEqual(len(f.depth_slice), f.samples)
 
-            for depth_sample in xrange(f.samples):
+            for depth_sample in range(f.samples):
                 depth_slice = f.depth_slice[depth_sample]
                 self.assertIsInstance(depth_slice, np.ndarray)
                 self.assertEqual(depth_slice.shape, (5, 5))
@@ -725,7 +730,7 @@ class TestSegy(TestCase):
         buf = np.empty(shape=(5, 5), dtype=np.single)
 
         def value(x, y):
-            return x + (1.0 / 5) * y
+            return x + (1.0 // 5) * y
 
         for x, y in itertools.product(range(5), range(5)):
             buf[x][y] = value(x, y)
@@ -734,6 +739,6 @@ class TestSegy(TestCase):
             f.depth_slice[7] = buf * 3.14 # assign to depth 7
             self.assertTrue(np.allclose(f.depth_slice[7], buf * 3.14))
 
-            f.depth_slice = [buf * i for i in xrange(len(f.depth_slice))]  # assign to all depths
+            f.depth_slice = [buf * i for i in range(len(f.depth_slice))]  # assign to all depths
             for index, depth_slice in enumerate(f.depth_slice):
                 self.assertTrue(np.allclose(depth_slice, buf * index))

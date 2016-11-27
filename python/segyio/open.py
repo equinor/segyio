@@ -55,7 +55,7 @@ def open(filename, mode="r", iline=189, xline=193):
         f._tr0 = metrics['trace0']
         f._fmt = metrics['format']
         f._bsz = metrics['trace_bsize']
-        f._ext_headers = (f._tr0 - 3600) / 3200  # should probably be from C
+        f._ext_headers = (f._tr0 - 3600) // 3200  # should probably be from C
 
         f._tracecount = metrics['trace_count']
 
