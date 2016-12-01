@@ -10,10 +10,11 @@
 static void testSegyInspection() {
     const char *path = "test-data/small.sgy";
     double t0 = 1111.0;
+    double dt = -1;
 
     SegySpec spec;
 
-    segyCreateSpec(&spec, path, INLINE_3D, CROSSLINE_3D, t0);
+    segyCreateSpec(&spec, path, INLINE_3D, CROSSLINE_3D, t0, dt);
 
     assertTrue(spec.sample_format == IBM_FLOAT_4_BYTE, "Expected the float format to be IBM Float");
 
@@ -26,8 +27,10 @@ static void testSegyInspection() {
 
     assertTrue(spec.sample_count == 50, "Expected sample count to be 50");
 
+    dt = spec.sample_indexes[1]-spec.sample_indexes[0];
+    assertTrue(dt == 4, "Expect dt to be 4");
     for(unsigned int i = 0; i < spec.sample_count; i++) {
-        double t = t0 + i * 4.0;
+        double t = t0 + i * dt;
         assertTrue(spec.sample_indexes[i] == t, "Sample index not equal to expected value");
     }
 
@@ -57,8 +60,10 @@ static void testSegyInspection() {
 static void testAlloc(){
     const char *path = "test-data/small.sgy";
     double t0 = 1111.0;
+    double dt = 4;
+
     SegySpec spec;
-    segyCreateSpec(&spec, path, INLINE_3D, CROSSLINE_3D, t0);
+    segyCreateSpec(&spec, path, INLINE_3D, CROSSLINE_3D, t0, dt);
 
     if (spec.crossline_indexes != NULL)
         free(spec.crossline_indexes);

@@ -165,8 +165,34 @@ class TestSegy(TestCase):
             self.assertEqual(25, f.tracecount)
             self.assertEqual(len(f.trace), f.tracecount)
             self.assertEqual(50, f.samples)
-            dt = segyio.get_dt(f)
-            self.assertEqual(4, dt)
+
+    def test_dt_fallback(self):
+        f_name = self.filename.replace( ".sgy", "_dt_test.sgy")
+        shutil.copyfile(self.filename, f_name)
+        with segyio.open(f_name, "r+") as f:
+            # Both zero
+            f.bin[BinField.Interval] = 0
+            f.header[0][TraceField.TRACE_SAMPLE_INTERVAL] = 0
+            f.flush()
+            fallback_dt = 4
+            np.testing.assert_almost_equal(segyio.dt(f, fallback_dt), fallback_dt)
+
+            # dt in bin header different from first trace
+            f.bin[BinField.Interval] = 6000
+            f.header[0][TraceField.TRACE_SAMPLE_INTERVAL] = 1000
+            f.flush()
+            fallback_dt = 4
+            np.testing.assert_almost_equal(segyio.dt(f, fallback_dt), fallback_dt)
+
+    def test_dt_no_fallback(self):
+        f_name = self.filename.replace( ".sgy", "_dt_test.sgy")
+        shutil.copyfile(self.filename, f_name)
+        dt_us = 6000
+        with segyio.open(f_name, "r+") as f:
+            f.bin[BinField.Interval] = dt_us
+            f.header[0][TraceField.TRACE_SAMPLE_INTERVAL] = dt_us
+            f.flush()
+            np.testing.assert_almost_equal(segyio.dt(f), dt_us/1000)
 
     def test_traces_slicing(self):
         with segyio.open(self.filename, "r") as f:

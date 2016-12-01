@@ -45,7 +45,7 @@ unsigned int segy_binheader_size();
 int segy_binheader( segy_file*, char* buf );
 int segy_write_binheader( segy_file*, const char* buf );
 unsigned int segy_samples( const char* binheader );
-int segy_sample_interval( segy_file*, float* dt);
+int segy_sample_interval( segy_file*, double* dt);
 /* exception: the int returned is an enum, SEGY_SORTING, not an error code */
 int segy_format( const char* binheader );
 int segy_get_field( const char* traceheader, int field, int32_t* f );
@@ -59,7 +59,7 @@ long segy_trace0( const char* binheader );
 /* number of traces in this file */
 int segy_traces( segy_file*, size_t*, long trace0, unsigned int trace_bsize );
 
-int segy_sample_indexes(segy_file* fp, double* buf, double t0, size_t count);
+int segy_sample_indexes(segy_file* fp, double* buf, double t0, double dt, size_t count);
 
 /* text header operations */
 int segy_read_textheader( segy_file*, char *buf);

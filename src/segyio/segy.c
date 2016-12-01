@@ -639,7 +639,7 @@ int segy_traces( segy_file* fp,
     return SEGY_OK;
 }
 
-int segy_sample_interval( segy_file* fp, float* dt) {
+int segy_sample_interval( segy_file* fp, double* dt) {
 
     char bin_header[ SEGY_BINARY_HEADER_SIZE ];
     char trace_header[SEGY_TRACE_HEADER_SIZE];
@@ -658,37 +658,33 @@ int segy_sample_interval( segy_file* fp, float* dt) {
         return err;
     }
 
-    int _binary_header_dt;
-    segy_get_bfield(bin_header, BIN_Interval, &_binary_header_dt);
-    double binary_header_dt = _binary_header_dt/1000.0;
+    // microseconds: us
+    int binary_header_dt_us;
+    int trace_header_dt_us;
 
-    int _trace_header_dt;
-    segy_get_field(trace_header, TRACE_SAMPLE_INTERVAL, &_trace_header_dt);
-    double trace_header_dt = _trace_header_dt/1000.0;
+    segy_get_bfield(bin_header, BIN_Interval, &binary_header_dt_us);
+    segy_get_field(trace_header, TRACE_SAMPLE_INTERVAL, &trace_header_dt_us);
 
+    // milliseconds: ms
+    double binary_header_dt_ms = binary_header_dt_us/1000.0;
+    double trace_header_dt_ms = trace_header_dt_us/1000.0;
 
-    *dt = trace_header_dt;
-
-    if (binary_header_dt == 0.0 && trace_header_dt == 0.0) {
-        fprintf(stderr, "Trace sampling rate in SEGY header and trace header set to 0.0. Will default to 4 ms.\n");
-        *dt = 4.0;
-    } else if (binary_header_dt == 0.0) {
-        *dt = trace_header_dt;
-    } else if (trace_header_dt == 0.0) {
-        *dt = binary_header_dt;
-    } else if (trace_header_dt != binary_header_dt) {
-        fprintf(stderr, "Trace sampling rate in SEGY header and trace header are not equal. Will use SEGY header sampling rate of: %f\n",
-                binary_header_dt);
-        *dt = binary_header_dt;
+    if (trace_header_dt_us==0 && binary_header_dt_us==0) {
+        //noop
+    } else if (binary_header_dt_us == 0) {
+        *dt = trace_header_dt_ms;
+    } else if (trace_header_dt_us == 0) {
+        *dt = binary_header_dt_ms;
+    } else if (trace_header_dt_us == binary_header_dt_us) {
+        *dt = trace_header_dt_ms;
     }
 
     return 0;
 
 }
 
-int segy_sample_indexes( segy_file* fp, double* buf, double t0, size_t count) {
+int segy_sample_indexes( segy_file* fp, double* buf, double t0, double dt, size_t count) {
 
-    float dt;
     int err = segy_sample_interval(fp, &dt);
     if (err != 0) {
         return err;

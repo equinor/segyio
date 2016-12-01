@@ -1,7 +1,5 @@
 import segyio
 
 
-def get_dt(file):
-    dt = segyio._segyio.get_dt(file.xfd)
-
-    return dt['dt']
+def dt(f, fallback_dt=4):
+    return segyio._segyio.get_dt(f.xfd, fallback_dt)

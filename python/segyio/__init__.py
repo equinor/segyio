@@ -86,7 +86,7 @@ from .binfield import BinField
 from .open import open
 from .create import create
 from .segy import SegyFile, spec
-from .tools import get_dt
+from .tools import dt
 
 __version__    = '1.0.4'
 __copyright__  = 'Copyright 2016, Statoil ASA'
