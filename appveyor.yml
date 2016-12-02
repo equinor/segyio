@@ -18,9 +18,9 @@ environment:
         - PYTHON: C:\Python27
 
 build_script:
-    - python -m pip install --user numpy matplotlib
+    - python -m pip install --user numpy
     - mkdir build
     - pushd build
     - cmake C:\projects\SegyIO -DBUILD_MEX=OFF -DBUILD_PYTHON=ON -DCMAKE_BUILD_TYPE=%configuration%
     - cmake --build . --config %configuration%
-    - ctest -C %configuration% --output-on-failure -E gui
+    - ctest -C %configuration% --output-on-failure

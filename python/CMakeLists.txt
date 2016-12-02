@@ -50,4 +50,3 @@ add_custom_command(TARGET _segyio POST_BUILD
         ${CMAKE_BINARY_DIR}/python/segyio/_segyio.${LIB_SUFFIX})
 
 add_subdirectory(segyio)
-add_subdirectory(segyview)

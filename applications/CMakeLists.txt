@@ -1,11 +1,3 @@
-configure_file(segyviewer.py segyviewer COPYONLY)
-
-if (BUILD_PYTHON)
-    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/segyviewer
-            PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_EXECUTE WORLD_READ
-            DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
-endif ()
-
 add_executable(segyinfo segyinfo.c)
 target_link_libraries(segyinfo segyio-static)
 add_dependencies(segyinfo segyio-static)
