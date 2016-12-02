@@ -25,6 +25,11 @@ import segyio._segyio as _segyio
 
 from segyio.tracesortingformat import TraceSortingFormat
 
+try:
+    from itertools import izip as zip
+except ImportError:  # will be 3.x series
+    pass
+
 
 class SegyFile(object):
 
@@ -282,7 +287,7 @@ class SegyFile(object):
             val = itertools.repeat(val)
 
         h, buf = self.header, None
-        for i, v in itertools.izip(range(self.tracecount), val):
+        for i, v in zip(range(self.tracecount), val):
             h[i, buf] = v
 
     @property
@@ -387,7 +392,7 @@ class SegyFile(object):
     @trace.setter
     def trace(self, val):
         tr = self.trace
-        for i, v in itertools.izip(range(len(tr)), val):
+        for i, v in zip(range(len(tr)), val):
             tr[i] = v
 
     def _shape_buffer(self, shape, buf):
@@ -530,7 +535,7 @@ class SegyFile(object):
         def writefn(t0, length, step, val):
             val = buffn(val)
             step *= len(self.offsets)
-            for i, v in itertools.izip(range(t0, t0 + (step * length), step), val):
+            for i, v in zip(range(t0, t0 + (step * length), step), val):
                 Trace.write_trace(i, v, self)
 
         return Line(self, il_len, il_stride, lines, other_lines, buffn, readfn, writefn, "Inline")
@@ -659,7 +664,7 @@ class SegyFile(object):
         def writefn(t0, length, step, val):
             val = buffn(val)
             step *= len(self.offsets)
-            for i, v in itertools.izip(range(t0, t0 + step * length, step), val):
+            for i, v in zip(range(t0, t0 + step * length, step), val):
                 Trace.write_trace(i, v, self)
 
         return Line(self, xl_len, xl_stride, lines, other_lines, buffn, readfn, writefn, "Crossline")

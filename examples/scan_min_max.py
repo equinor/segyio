@@ -24,8 +24,8 @@ def main():
             if np.isfinite(local_max):
                 max_value = max(local_max, max_value)
 
-    print "min: {}".format(min_value)
-    print "max: {}".format(max_value)
+    print("min: {}".format(min_value))
+    print("max: {}".format(max_value))
 
 if __name__ == '__main__':
     main()

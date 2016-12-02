@@ -1,8 +1,10 @@
 language: generic
 
 env:
-  - BUILD_TYPE=RELEASE
-  - BUILD_TYPE=DEBUG
+  - BUILD_TYPE=RELEASE;PYTHON=2.7
+  - BUILD_TYPE=RELEASE;PYTHON=3.5
+  - BUILD_TYPE=DEBUG;PYTHON=2.7
+  - BUILD_TYPE=DEBUG;PYTHON=3.5
 
 os:
   - linux
@@ -21,13 +23,8 @@ matrix:
 
 addons:
     apt:
-      sources:
-        - george-edison55-precise-backports
       packages:
-        - cmake
-        - cmake-data
         - valgrind
-        - python-numpy
 
 before_script:
   # Valgrind is experimental(ish) on MacOS with false positives on among others printf
@@ -35,6 +32,24 @@ before_script:
   #    brew update;
   #    brew install --HEAD valgrind;
   #  fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+      export CONDA_OS=MacOSX;
+    else
+      export CONDA_OS=Linux;
+    fi
+  - if [[ "$PYTHON" == "2.7" ]]; then
+        wget https://repo.continuum.io/miniconda/Miniconda2-latest-${CONDA_OS}-x86_64.sh -O miniconda.sh;
+    else
+        wget https://repo.continuum.io/miniconda/Miniconda3-latest-${CONDA_OS}-x86_64.sh -O miniconda.sh;
+    fi
+  - bash miniconda.sh -b -p $HOME/miniconda
+  - export PATH="$HOME/miniconda/bin:$PATH"
+  - hash -r
+  - conda config --set always_yes yes --set changeps1 no
+  - conda update -q conda
+  - conda info -a
+
+  - conda install numpy cmake
 
   - cmake --version
   - mkdir build

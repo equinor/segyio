@@ -4,46 +4,46 @@ from unittest import TestCase
 import numpy
 import segyio._segyio as _segyio
 
-ACTUAL_TEXT_HEADER = "C 1 DATE: 2016-09-19                                                            " \
-                     "C 2 AN INCREASE IN AMPLITUDE EQUALS AN INCREASE IN ACOUSTIC IMPEDANCE           " \
-                     "C 3 Written by libsegyio (python)                                               " \
-                     "C 4                                                                             " \
-                     "C 5                                                                             " \
-                     "C 6                                                                             " \
-                     "C 7                                                                             " \
-                     "C 8                                                                             " \
-                     "C 9                                                                             " \
-                     "C10                                                                             " \
-                     "C11 TRACE HEADER POSITION:                                                      " \
-                     "C12   INLINE BYTES 189-193    | OFFSET BYTES 037-041                            " \
-                     "C13   CROSSLINE BYTES 193-197 |                                                 " \
-                     "C14                                                                             " \
-                     "C15 END EBCDIC HEADER                                                           " \
-                     "C16                                                                             " \
-                     "C17                                                                             " \
-                     "C18                                                                             " \
-                     "C19                                                                             " \
-                     "C20                                                                             " \
-                     "C21                                                                             " \
-                     "C22                                                                             " \
-                     "C23                                                                             " \
-                     "C24                                                                             " \
-                     "C25                                                                             " \
-                     "C26                                                                             " \
-                     "C27                                                                             " \
-                     "C28                                                                             " \
-                     "C29                                                                             " \
-                     "C30                                                                             " \
-                     "C31                                                                             " \
-                     "C32                                                                             " \
-                     "C33                                                                             " \
-                     "C34                                                                             " \
-                     "C35                                                                             " \
-                     "C36                                                                             " \
-                     "C37                                                                             " \
-                     "C38                                                                             " \
-                     "C39                                                                             " \
-                     "C40                                                                            \x80"
+ACTUAL_TEXT_HEADER = b"C 1 DATE: 2016-09-19                                                            " \
+                     b"C 2 AN INCREASE IN AMPLITUDE EQUALS AN INCREASE IN ACOUSTIC IMPEDANCE           " \
+                     b"C 3 Written by libsegyio (python)                                               " \
+                     b"C 4                                                                             " \
+                     b"C 5                                                                             " \
+                     b"C 6                                                                             " \
+                     b"C 7                                                                             " \
+                     b"C 8                                                                             " \
+                     b"C 9                                                                             " \
+                     b"C10                                                                             " \
+                     b"C11 TRACE HEADER POSITION:                                                      " \
+                     b"C12   INLINE BYTES 189-193    | OFFSET BYTES 037-041                            " \
+                     b"C13   CROSSLINE BYTES 193-197 |                                                 " \
+                     b"C14                                                                             " \
+                     b"C15 END EBCDIC HEADER                                                           " \
+                     b"C16                                                                             " \
+                     b"C17                                                                             " \
+                     b"C18                                                                             " \
+                     b"C19                                                                             " \
+                     b"C20                                                                             " \
+                     b"C21                                                                             " \
+                     b"C22                                                                             " \
+                     b"C23                                                                             " \
+                     b"C24                                                                             " \
+                     b"C25                                                                             " \
+                     b"C26                                                                             " \
+                     b"C27                                                                             " \
+                     b"C28                                                                             " \
+                     b"C29                                                                             " \
+                     b"C30                                                                             " \
+                     b"C31                                                                             " \
+                     b"C32                                                                             " \
+                     b"C33                                                                             " \
+                     b"C34                                                                             " \
+                     b"C35                                                                             " \
+                     b"C36                                                                             " \
+                     b"C37                                                                             " \
+                     b"C38                                                                             " \
+                     b"C39                                                                             " \
+                     b"C40                                                                            \x80"
 
 
 class _segyioTests(TestCase):
@@ -100,7 +100,9 @@ class _segyioTests(TestCase):
 
         _segyio.write_textheader(f, 0, "yolo" * 800)
 
-        self.assertEqual(_segyio.read_textheader(f, 0), "yolo" * 800)
+        textheader = _segyio.read_textheader(f, 0)
+        textheader = textheader.decode('ascii')  # Because in Python 3.5 bytes are not comparable to strings
+        self.assertEqual(textheader, "yolo" * 800)
 
         _segyio.close(f)
 

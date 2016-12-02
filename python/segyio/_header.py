@@ -4,6 +4,11 @@ import segyio
 from segyio._line import Line
 from segyio._field import Field
 
+try:
+    from itertools import izip as zip
+except ImportError:  # will be 3.x series
+    pass
+
 
 class Header(object):
     def __init__(self, segy):
@@ -65,7 +70,7 @@ class Header(object):
         if isinstance(val, Field) or isinstance(val, dict):
             val = itertools.repeat(val)
 
-        for i, x in itertools.izip(range(start, stop, stride), val):
+        for i, x in zip(range(start, stop, stride), val):
             self[i] = x
 
     @property
@@ -91,7 +96,7 @@ class Header(object):
             than that of the file being written to the surplus data will be
             ignored. Uses same rules for writing as `f.iline[i] = x`.
         """
-        for i, src in itertools.izip(self.segy.ilines, value):
+        for i, src in zip(self.segy.ilines, value):
             self.iline[i] = src
 
     @property
@@ -118,5 +123,5 @@ class Header(object):
             ignored. Uses same rules for writing as `f.xline[i] = x`.
         """
 
-        for i, src in itertools.izip(self.segy.xlines, value):
+        for i, src in zip(self.segy.xlines, value):
             self.xline[i] = src
