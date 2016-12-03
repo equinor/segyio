@@ -938,6 +938,68 @@ static PyObject *py_read_line(PyObject *self, PyObject *args) {
     return buffer_in;
 }
 
+static PyObject *py_read_depth_slice(PyObject *self, PyObject *args) {
+    errno = 0;
+    PyObject *file_capsule = NULL;
+    int depth;
+    int count;
+    int offsets;
+    PyObject *buffer_out;
+    long trace0;
+    unsigned int trace_bsize;
+    int format;
+    unsigned int samples;
+
+    PyArg_ParseTuple(args, "OiiiOlIiI", &file_capsule,
+                                        &depth,
+                                        &count,
+                                        &offsets,
+                                        &buffer_out,
+                                        &trace0, &trace_bsize,
+                                        &format, &samples);
+
+    segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
+
+    if (PyErr_Occurred()) { return NULL; }
+
+    if (!PyObject_CheckBuffer(buffer_out)) {
+        PyErr_SetString(PyExc_TypeError, "The destination buffer is not of the correct type.");
+        return NULL;
+    }
+    Py_buffer buffer;
+    PyObject_GetBuffer(buffer_out, &buffer, PyBUF_FORMAT | PyBUF_C_CONTIGUOUS | PyBUF_WRITEABLE);
+
+    Py_ssize_t trace_no = 0;
+    int error = 0;
+    float* trace_buffer = malloc(trace_bsize * samples);
+    float* buf = buffer.buf;
+
+    for(trace_no = 0; error == 0 && trace_no < count; ++trace_no) {
+        error = segy_readtrace(p_FILE, trace_no * offsets, trace_buffer, trace0, trace_bsize);
+
+        if (!error) {
+            buf[trace_no] = trace_buffer[depth];
+        }
+    }
+    free(trace_buffer);
+
+    if (error != 0) {
+        PyBuffer_Release( &buffer );
+        return py_handle_segy_error_with_index_and_name(error, errno, trace_no, "Depth");
+    }
+
+    error = segy_to_native(format, count, buffer.buf);
+    PyBuffer_Release( &buffer );
+
+    if (error != 0) {
+        PyErr_SetString(PyExc_TypeError, "Unable to convert buffer to native format.");
+        return NULL;
+    }
+
+    Py_IncRef(buffer_out);
+    return buffer_out;
+}
+
 /*  define functions in module */
 static PyMethodDef SegyMethods[] = {
         {"open",               (PyCFunction) py_FILE_open,          METH_VARARGS, "Opens a file."},
@@ -970,6 +1032,7 @@ static PyMethodDef SegyMethods[] = {
         {"read_trace",         (PyCFunction) py_read_trace,         METH_VARARGS, "Read trace data."},
         {"write_trace",        (PyCFunction) py_write_trace,        METH_VARARGS, "Write trace data."},
         {"read_line",          (PyCFunction) py_read_line,          METH_VARARGS, "Read a xline/iline from file."},
+        {"depth_slice",        (PyCFunction) py_read_depth_slice,   METH_VARARGS, "Read a depth slice."},
         {NULL, NULL, 0, NULL}
 };
 
