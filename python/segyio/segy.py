@@ -747,12 +747,15 @@ class SegyFile(object):
         other_indices = np.asarray([0], dtype=np.uintc)
         buffn = self._depth_buffer
 
+        slice_trace_count = self._iline_length * self._xline_length
+        offsets = len(self.offsets)
+        tr0 = self._tr0
+        bsz = self._bsz
+        fmt = self._fmt
+        samples = self.samples
+
         def readfn(depth, length, stride, buf):
-            buf_view = buf.reshape(self._iline_length * self._xline_length)
-
-            for i, trace_buf in enumerate(self.trace):
-                buf_view[i] = trace_buf[depth]
-
+            _segyio.depth_slice(self.xfd, depth, slice_trace_count, offsets, buf, tr0, bsz, fmt, samples)
             return buf
 
         def writefn(depth, length, stride, val):
