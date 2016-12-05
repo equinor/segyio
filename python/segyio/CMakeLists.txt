@@ -9,6 +9,7 @@ set(PYTHON_SOURCES
         tracefield.py
         binfield.py
         open.py
+        tools.py
         create.py
         segysampleformat.py
         tracesortingformat.py)

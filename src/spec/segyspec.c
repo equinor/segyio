@@ -11,7 +11,7 @@ static char* copyString(const char* path) {
 }
 
 
-int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, unsigned int crossline_field, double t0) {
+int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, unsigned int crossline_field, double t0, double dt) {
 
     int errc = 0;
 
@@ -36,7 +36,7 @@ int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, 
     spec->sample_count = segy_samples( header );
 
     spec->sample_indexes = malloc(sizeof(double) * spec->sample_count);
-    errc = segy_sample_indexes(fp, spec->sample_indexes, t0, spec->sample_count);
+    errc = segy_sample_indexes(fp, spec->sample_indexes, t0, dt, spec->sample_count);
     if (errc != 0) {
         goto CLEANUP;
     }

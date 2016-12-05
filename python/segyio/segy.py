@@ -33,7 +33,7 @@ except ImportError:  # will be 3.x series
 
 class SegyFile(object):
 
-    def __init__(self, filename, mode, iline=189, xline=193, t0=1111.0):
+    def __init__(self, filename, mode, iline=189, xline=193):
         """
         Constructor, internal.
         """

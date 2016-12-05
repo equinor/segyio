@@ -41,10 +41,16 @@ assert(spec.trace_sorting_format == TraceSortingFormat.INLINE);
 spec = SegySpec(filename, TraceField.INLINE_3D, TraceField.CROSSLINE_3D, t0);
 assert(length(spec.offset_count) == 1);
 
-%% samples
+%% sample_indexes
 spec = SegySpec(filename, TraceField.INLINE_3D, TraceField.CROSSLINE_3D, t0);
 sample_indexes = spec.sample_indexes;
 assert(length(sample_indexes) == 50);
+
+for i = 1:length(sample_indexes)
+    t = t0 + (i-1) * 4;
+    assert(sample_indexes(i) == t);
+end
+
 
 %% first_trace_pos
 spec = SegySpec(filename, TraceField.INLINE_3D, TraceField.CROSSLINE_3D, t0);
@@ -65,12 +71,6 @@ assert(xl_stride == 5);
 spec = SegySpec(filename, TraceField.INLINE_3D, TraceField.CROSSLINE_3D, t0);
 trace_bsize = spec.trace_bsize;
 assert(trace_bsize == 50*4);
-
-
-for i = 1:length(sample_indexes)
-    t = t0 + (i-1) * 4;
-    assert(sample_indexes(i) == t);
-end
 
 %% xline
 spec = SegySpec(filename, TraceField.INLINE_3D, TraceField.CROSSLINE_3D, t0);

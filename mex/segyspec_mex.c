@@ -29,7 +29,7 @@ mxArray *createPLHSStruct() {
 void checkInputOutputSizes(int nlhs, int nrhs ) {
 
     /* check for proper number of arguments */
-    if(nrhs!=4) {
+    if(nrhs!=5) {
         mexErrMsgIdAndTxt("MyToolbox:arrayProduct:nrhs","Four inputs required.");
     }
     if(nlhs!=1) {
@@ -44,14 +44,16 @@ void checkInputOutput(int nlhs, mxArray **plhs,
     checkInputOutputSizes(nlhs, nrhs);
 
     /* First input must be a string */
-    if ( mxIsChar(prhs[0]) != 1)
-        mexErrMsgIdAndTxt( "SegyIo:segyspec:inputNotString",
-                           "Input must be a string.");
+    if ( mxIsChar(prhs[0]) != 1) {
+        mexErrMsgIdAndTxt("SegyIo:segyspec:inputNotString",
+                          "Input must be a string.");
+    }
 
     /* First input must be a row vector */
-    if (mxGetM(prhs[0])!=1)
-        mexErrMsgIdAndTxt( "SegyIo:segyspec:inputNotVector",
-                           "Input must be a row vector.");
+    if (mxGetM(prhs[0])!=1) {
+        mexErrMsgIdAndTxt("SegyIo:segyspec:inputNotVector",
+                          "Input must be a row vector.");
+    }
 
     /* make sure the second input argument is int */
     if( !mxIsNumeric(prhs[1]) ||
@@ -62,12 +64,18 @@ void checkInputOutput(int nlhs, mxArray **plhs,
     /* make sure the third input argument is int */
     if( !mxIsNumeric(prhs[2]) ||
         mxGetNumberOfElements(prhs[2])!=1 ) {
-        mexErrMsgIdAndTxt("SegyIo:segyspec:notScalar","Input multiplier must be a int16.");
+        mexErrMsgIdAndTxt("SegyIo:segyspec:notScalar","Input multiplier must be a numeric.");
     }
 
     /* make sure the fourth input argument is double */
     if( !mxIsDouble(prhs[3]) ||
         mxGetNumberOfElements(prhs[3])!=1 ) {
+        mexErrMsgIdAndTxt("SegyIo:segyspec:notScalar","Input multiplier must be a double.");
+    }
+
+    /* make sure the fifth input argument is double */
+    if( !mxIsDouble(prhs[4]) ||
+        mxGetNumberOfElements(prhs[4])!=1 ) {
         mexErrMsgIdAndTxt("SegyIo:segyspec:notScalar","Input multiplier must be a double.");
     }
 
@@ -85,10 +93,11 @@ void mexFunction( int nlhs, mxArray *plhs[],
 
     int il = (int)mxGetScalar(prhs[1]);
     int xl = (int)mxGetScalar(prhs[2]);
-    float t0 = (float)mxGetScalar(prhs[3]);
+    double t0 = mxGetScalar(prhs[3]);
+    double dt = mxGetScalar(prhs[4]);
 
     SegySpec spec;
-    int errc = segyCreateSpec(&spec, filename, il, xl, t0);
+    int errc = segyCreateSpec(&spec, filename, il, xl, t0, dt);
     if (errc != 0) {
         goto FAILURE;
     }

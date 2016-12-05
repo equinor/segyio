@@ -28,6 +28,6 @@ typedef struct {
 
 } SegySpec;
 
-int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, unsigned int crossline_field, double t0);
+int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, unsigned int crossline_field, double t0, double dt);
 
 #endif //SEGYIO_SEGYSPEC_H

@@ -502,6 +502,22 @@ static PyObject *py_trace_bsize(PyObject *self, PyObject *args) {
     return Py_BuildValue("I", byte_count);
 }
 
+static PyObject *py_get_dt(PyObject *self, PyObject *args) {
+    errno = 0;
+
+    PyObject *file_capsule = NULL;
+    double dt;
+    PyArg_ParseTuple(args, "Od", &file_capsule, &dt);
+    segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
+
+    if (PyErr_Occurred()) { return NULL; }
+
+    int error = segy_sample_interval(p_FILE, &dt);
+    if (error != 0) { return py_handle_segy_error(error, errno); }
+
+    return PyFloat_FromDouble(dt);
+}
+
 
 static PyObject *py_init_line_metrics(PyObject *self, PyObject *args) {
     errno = 0;
@@ -1033,6 +1049,7 @@ static PyMethodDef SegyMethods[] = {
         {"write_trace",        (PyCFunction) py_write_trace,        METH_VARARGS, "Write trace data."},
         {"read_line",          (PyCFunction) py_read_line,          METH_VARARGS, "Read a xline/iline from file."},
         {"depth_slice",        (PyCFunction) py_read_depth_slice,   METH_VARARGS, "Read a depth slice."},
+        {"get_dt",             (PyCFunction) py_get_dt,             METH_VARARGS, "Read dt from file."},
         {NULL, NULL, 0, NULL}
 };
 

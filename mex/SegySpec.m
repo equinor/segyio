@@ -20,7 +20,8 @@ classdef SegySpec
     methods
 
         function obj = SegySpec(filename, inline_field, crossline_field, t0)
-            spec = segyspec_mex(filename, int32(inline_field), int32(crossline_field), t0);
+            dt = 4;
+            spec = segyspec_mex(filename, int32(inline_field), int32(crossline_field), t0, dt);
             obj.filename = filename;
 
             if (isempty(spec))
