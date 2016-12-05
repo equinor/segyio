@@ -33,7 +33,7 @@ class TestContext(object):
         target = os.path.join(self._temp_path, target, source_filename)
         try:
             os.makedirs(os.path.dirname(target))
-        except OSError, e:
+        except OSError as e:
             if e.errno != errno.EEXIST:
                 raise
         shutil.copyfile(source, target)
