@@ -736,6 +736,10 @@ int segy_sorting( segy_file* fp,
     segy_get_field( traceheader, xl, &xl0 );
     segy_get_field( traceheader, offset, &off0 );
 
+    size_t traces_size_t;
+    err = segy_traces( fp, &traces_size_t, trace0, trace_bsize );
+    if( err != 0 ) return err;
+    const int traces = traces_size_t;
     int traceno = 1;
 
     do {
@@ -746,11 +750,24 @@ int segy_sorting( segy_file* fp,
         segy_get_field( traceheader, xl, &xl1 );
         segy_get_field( traceheader, offset, &off1 );
         ++traceno;
-    } while( off0 != off1 );
+    } while( off0 != off1 && traceno < traces );
 
-    // todo: Should expect at least xline, inline or offset to change by one?
-    if     ( il0 == il1 ) *sorting = INLINE_SORTING;
-    else if( xl0 == xl1 ) *sorting = CROSSLINE_SORTING;
+    /*
+     * sometimes files come with Mx1, 1xN or even 1x1 geometries. When this is
+     * the case we look at the last trace and compare it to the first. If these
+     * numbers match we define the sorting direction as the non-1 dimension
+     */
+    err = segy_traceheader( fp, traces - 1, traceheader, trace0, trace_bsize );
+    if( err != SEGY_OK ) return err;
+
+    int il_last, xl_last;
+    segy_get_field( traceheader, il, &il_last );
+    segy_get_field( traceheader, xl, &xl_last );
+
+    if     ( il0 == il_last ) *sorting = CROSSLINE_SORTING;
+    else if( xl0 == xl_last ) *sorting = INLINE_SORTING;
+    else if( il0 == il1 )     *sorting = INLINE_SORTING;
+    else if( xl0 == xl1 )     *sorting = CROSSLINE_SORTING;
     else return SEGY_INVALID_SORTING;
 
     return SEGY_OK;
@@ -774,29 +791,33 @@ int segy_offsets( segy_file* fp,
     char header[ SEGY_TRACE_HEADER_SIZE ];
     unsigned int offsets = 0;
 
+    if( traces == 1 ) {
+        *out = 1;
+        return SEGY_OK;
+    }
+
+    /*
+     * check that field value is sane, so that we don't have to check
+     * segy_get_field's error
+     */
+    if( field_size[ il ] == 0 || field_size[ xl ] == 0 )
+        return SEGY_INVALID_FIELD;
+
+    err = segy_traceheader( fp, 0, header, trace0, trace_bsize );
+    segy_get_field( header, il, &il0 );
+    segy_get_field( header, xl, &xl0 );
+
     do {
+        ++offsets;
+
+        if( offsets == traces ) break;
+
         err = segy_traceheader( fp, offsets, header, trace0, trace_bsize );
         if( err != 0 ) return err;
 
-        /*
-         * check that field value is sane, so that we don't have to check
-         * segy_get_field's error
-         */
-        if( field_size[ il ] == 0 || field_size[ xl ] == 0 )
-            return SEGY_INVALID_FIELD;
-
-        segy_get_field( header, il, &il0 );
-        segy_get_field( header, xl, &xl0 );
-
-        err = segy_traceheader( fp, offsets + 1, header, trace0, trace_bsize );
-        if( err != 0 ) return err;
         segy_get_field( header, il, &il1 );
         segy_get_field( header, xl, &xl1 );
-
-        ++offsets;
-    } while( il0 == il1 && xl0 == xl1 && offsets < traces );
-
-    if( offsets >= traces ) return SEGY_INVALID_OFFSETS;
+    } while( il0 == il1 && xl0 == xl1 );
 
     *out = offsets;
     return SEGY_OK;

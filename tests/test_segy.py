@@ -53,6 +53,9 @@ class TestSegy(TestCase):
     def setUp(self):
         self.filename = "test-data/small.sgy"
         self.prestack = "test-data/small-ps.sgy"
+        self.fileMx1  = "test-data/Mx1.sgy"
+        self.file1xN  = "test-data/1xN.sgy"
+        self.file1x1  = "test-data/1x1.sgy"
 
     def test_inline_4(self):
         with segyio.open(self.filename, "r") as f:
@@ -498,6 +501,16 @@ class TestSegy(TestCase):
         with self.assertRaises(IndexError):
             with segyio.open(self.filename, "r", 189, 2) as f:
                 pass
+
+    def test_wonky_dimensions(self):
+        with segyio.open(self.fileMx1) as f:
+            pass
+
+        with segyio.open(self.file1xN) as f:
+            pass
+
+        with segyio.open(self.file1x1) as f:
+            pass
 
     def test_create_sgy(self):
         dstfile = self.filename.replace(".sgy", "-created.sgy")
