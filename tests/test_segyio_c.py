@@ -1,8 +1,8 @@
-import shutil
 from unittest import TestCase
 
 import numpy
 import segyio._segyio as _segyio
+from test_context import TestContext
 
 ACTUAL_TEXT_HEADER = b"C 1 DATE: 2016-09-19                                                            " \
                      b"C 2 AN INCREASE IN AMPLITUDE EQUALS AN INCREASE IN ACOUSTIC IMPEDANCE           " \
@@ -89,22 +89,23 @@ class _segyioTests(TestCase):
         _segyio.close(f)
 
     def test_write_text_header(self):
-        fname = self.filename.replace("small", "txt_hdr_wrt")
-        shutil.copyfile(self.filename, fname)
-        f = _segyio.open(fname, "r+")
+        with TestContext("write_text_header") as context:
+            context.copy_file(self.filename)
 
-        with self.assertRaises(ValueError):
-            _segyio.write_textheader(f, 0, "")
+            f = _segyio.open("small.sgy", "r+")
 
-        self.assertEqual(_segyio.read_textheader(f, 0), ACTUAL_TEXT_HEADER)
+            with self.assertRaises(ValueError):
+                _segyio.write_textheader(f, 0, "")
 
-        _segyio.write_textheader(f, 0, "yolo" * 800)
+            self.assertEqual(_segyio.read_textheader(f, 0), ACTUAL_TEXT_HEADER)
 
-        textheader = _segyio.read_textheader(f, 0)
-        textheader = textheader.decode('ascii')  # Because in Python 3.5 bytes are not comparable to strings
-        self.assertEqual(textheader, "yolo" * 800)
+            _segyio.write_textheader(f, 0, "yolo" * 800)
 
-        _segyio.close(f)
+            textheader = _segyio.read_textheader(f, 0)
+            textheader = textheader.decode('ascii')  # Because in Python 3.5 bytes are not comparable to strings
+            self.assertEqual(textheader, "yolo" * 800)
+
+            _segyio.close(f)
 
     def test_read_and_write_binary_header(self):
         with self.assertRaises(Exception):
@@ -113,18 +114,18 @@ class _segyioTests(TestCase):
         with self.assertRaises(Exception):
             _segyio.write_binaryheader(None, None)
 
-        fname = self.filename.replace("small", "bin_hdr_wrt")
-        shutil.copyfile(self.filename, fname)
-        f = _segyio.open(fname, "r+")
+        with TestContext("read_and_write_bin_header") as context:
+            context.copy_file(self.filename)
 
-        binary_header = _segyio.read_binaryheader(f)
+            f = _segyio.open("small.sgy", "r+")
 
-        with self.assertRaises(Exception):
-            _segyio.write_binaryheader(f, "Not the correct type")
+            binary_header = _segyio.read_binaryheader(f)
 
-        _segyio.write_binaryheader(f, binary_header)
-        _segyio.close(f)
+            with self.assertRaises(Exception):
+                _segyio.write_binaryheader(f, "Not the correct type")
 
+            _segyio.write_binaryheader(f, binary_header)
+            _segyio.close(f)
 
     def test_read_binary_header_fields(self):
         f = _segyio.open(self.filename, "r")
@@ -178,7 +179,6 @@ class _segyioTests(TestCase):
         self.assertEqual(metrics['xline_stride'], 5)
         self.assertEqual(metrics['iline_length'], 5)
         self.assertEqual(metrics['iline_stride'], 1)
-
 
     def test_metrics(self):
         f = _segyio.open(self.filename, "r")
@@ -336,67 +336,69 @@ class _segyioTests(TestCase):
         self.assertEqual(_segyio.get_field(hdr, 9), 19)
 
     def test_read_and_write_traceheader(self):
-        fname = self.filename.replace("small", "bin_hdr_wrt")
-        shutil.copyfile(self.filename, fname)
-        f = _segyio.open(fname, "r+")
-        binary_header = _segyio.read_binaryheader(f)
-        ilb = 189
-        xlb = 193
-        metrics = _segyio.init_metrics(f, binary_header, ilb, xlb)
+        with TestContext("read_and_write_trace_header") as context:
+            context.copy_file(self.filename)
 
-        empty = _segyio.empty_traceheader()
+            f = _segyio.open("small.sgy", "r+")
+            binary_header = _segyio.read_binaryheader(f)
+            ilb = 189
+            xlb = 193
+            metrics = _segyio.init_metrics(f, binary_header, ilb, xlb)
 
-        with self.assertRaises(TypeError):
-            trace_header = _segyio.read_traceheader("+", )
+            empty = _segyio.empty_traceheader()
 
-        with self.assertRaises(TypeError):
-            trace_header = _segyio.read_traceheader(f, 0, None)
+            with self.assertRaises(TypeError):
+                trace_header = _segyio.read_traceheader("+", )
 
-        trace_header = _segyio.read_traceheader(f, 0, _segyio.empty_traceheader(), metrics['trace0'], metrics['trace_bsize'])
+            with self.assertRaises(TypeError):
+                trace_header = _segyio.read_traceheader(f, 0, None)
 
-        self.assertEqual(_segyio.get_field(trace_header, ilb), 1)
-        self.assertEqual(_segyio.get_field(trace_header, xlb), 20)
+            trace_header = _segyio.read_traceheader(f, 0, _segyio.empty_traceheader(), metrics['trace0'], metrics['trace_bsize'])
 
-        trace_header = _segyio.read_traceheader(f, 1, _segyio.empty_traceheader(), metrics['trace0'], metrics['trace_bsize'])
+            self.assertEqual(_segyio.get_field(trace_header, ilb), 1)
+            self.assertEqual(_segyio.get_field(trace_header, xlb), 20)
 
-        self.assertEqual(_segyio.get_field(trace_header, ilb), 1)
-        self.assertEqual(_segyio.get_field(trace_header, xlb), 21)
+            trace_header = _segyio.read_traceheader(f, 1, _segyio.empty_traceheader(), metrics['trace0'], metrics['trace_bsize'])
 
-        _segyio.set_field(trace_header, ilb, 99)
-        _segyio.set_field(trace_header, xlb, 42)
+            self.assertEqual(_segyio.get_field(trace_header, ilb), 1)
+            self.assertEqual(_segyio.get_field(trace_header, xlb), 21)
 
-        _segyio.write_traceheader(f, 0, trace_header, metrics['trace0'], metrics['trace_bsize'])
+            _segyio.set_field(trace_header, ilb, 99)
+            _segyio.set_field(trace_header, xlb, 42)
 
-        trace_header = _segyio.read_traceheader(f, 0, _segyio.empty_traceheader(), metrics['trace0'], metrics['trace_bsize'])
+            _segyio.write_traceheader(f, 0, trace_header, metrics['trace0'], metrics['trace_bsize'])
 
-        self.assertEqual(_segyio.get_field(trace_header, ilb), 99)
-        self.assertEqual(_segyio.get_field(trace_header, xlb), 42)
+            trace_header = _segyio.read_traceheader(f, 0, _segyio.empty_traceheader(), metrics['trace0'], metrics['trace_bsize'])
 
-        _segyio.close(f)
+            self.assertEqual(_segyio.get_field(trace_header, ilb), 99)
+            self.assertEqual(_segyio.get_field(trace_header, xlb), 42)
+
+            _segyio.close(f)
 
     def test_read_and_write_trace(self):
-        f = _segyio.open("test-data/trace-wrt.sgy", "w+")
+        with TestContext("read_and_write_trace") as context:
+            f = _segyio.open("trace-wrt.sgy", "w+")
 
-        buf = numpy.ones(25, dtype=numpy.single)
-        buf[11] = 3.1415
-        _segyio.write_trace(f, 0, buf, 0, 100, 1, 25)
-        buf[:] = 42.0
-        _segyio.write_trace(f, 1, buf, 0, 100, 1, 25)
+            buf = numpy.ones(25, dtype=numpy.single)
+            buf[11] = 3.1415
+            _segyio.write_trace(f, 0, buf, 0, 100, 1, 25)
+            buf[:] = 42.0
+            _segyio.write_trace(f, 1, buf, 0, 100, 1, 25)
 
-        _segyio.flush(f)
+            _segyio.flush(f)
 
-        buf = numpy.zeros(25, dtype=numpy.single)
+            buf = numpy.zeros(25, dtype=numpy.single)
 
-        _segyio.read_trace(f, 0, 25, buf, 0, 100, 1, 25)
+            _segyio.read_trace(f, 0, 25, buf, 0, 100, 1, 25)
 
-        self.assertAlmostEqual(buf[10], 1.0, places=4)
-        self.assertAlmostEqual(buf[11], 3.1415, places=4)
+            self.assertAlmostEqual(buf[10], 1.0, places=4)
+            self.assertAlmostEqual(buf[11], 3.1415, places=4)
 
-        _segyio.read_trace(f, 1, 25, buf, 0, 100, 1, 25)
+            _segyio.read_trace(f, 1, 25, buf, 0, 100, 1, 25)
 
-        self.assertAlmostEqual(sum(buf), 42.0 * 25, places=4)
+            self.assertAlmostEqual(sum(buf), 42.0 * 25, places=4)
 
-        _segyio.close(f)
+            _segyio.close(f)
 
     def read_small(self, mmap = False):
         f = _segyio.open(self.filename, "r")

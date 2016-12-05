@@ -16,7 +16,9 @@ endif()
 
 
 if(BUILD_PYTHON)
+    configure_file(test_context.py test_context.py COPYONLY)
     add_python_test(python.segy test_segy.py)
     add_python_test(python.h.segy test_segyio_c.py)
     add_python_test(python.enum.segy test_enum.py)
+    add_python_test(python.test_context test_test_context.py)
 endif()
