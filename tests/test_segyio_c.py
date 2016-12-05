@@ -1,54 +1,29 @@
 from unittest import TestCase
 
 import numpy
+import segyio
 import segyio._segyio as _segyio
 from test_context import TestContext
-
-ACTUAL_TEXT_HEADER = b"C 1 DATE: 2016-09-19                                                            " \
-                     b"C 2 AN INCREASE IN AMPLITUDE EQUALS AN INCREASE IN ACOUSTIC IMPEDANCE           " \
-                     b"C 3 Written by libsegyio (python)                                               " \
-                     b"C 4                                                                             " \
-                     b"C 5                                                                             " \
-                     b"C 6                                                                             " \
-                     b"C 7                                                                             " \
-                     b"C 8                                                                             " \
-                     b"C 9                                                                             " \
-                     b"C10                                                                             " \
-                     b"C11 TRACE HEADER POSITION:                                                      " \
-                     b"C12   INLINE BYTES 189-193    | OFFSET BYTES 037-041                            " \
-                     b"C13   CROSSLINE BYTES 193-197 |                                                 " \
-                     b"C14                                                                             " \
-                     b"C15 END EBCDIC HEADER                                                           " \
-                     b"C16                                                                             " \
-                     b"C17                                                                             " \
-                     b"C18                                                                             " \
-                     b"C19                                                                             " \
-                     b"C20                                                                             " \
-                     b"C21                                                                             " \
-                     b"C22                                                                             " \
-                     b"C23                                                                             " \
-                     b"C24                                                                             " \
-                     b"C25                                                                             " \
-                     b"C26                                                                             " \
-                     b"C27                                                                             " \
-                     b"C28                                                                             " \
-                     b"C29                                                                             " \
-                     b"C30                                                                             " \
-                     b"C31                                                                             " \
-                     b"C32                                                                             " \
-                     b"C33                                                                             " \
-                     b"C34                                                                             " \
-                     b"C35                                                                             " \
-                     b"C36                                                                             " \
-                     b"C37                                                                             " \
-                     b"C38                                                                             " \
-                     b"C39                                                                             " \
-                     b"C40                                                                            \x80"
 
 
 class _segyioTests(TestCase):
     def setUp(self):
         self.filename = "test-data/small.sgy"
+
+        lines = {
+            1: "DATE: 2016-09-19",
+            2: "AN INCREASE IN AMPLITUDE EQUALS AN INCREASE IN ACOUSTIC IMPEDANCE",
+            3: "Written by libsegyio (python)",
+            11: "TRACE HEADER POSITION:",
+            12: "  INLINE BYTES 189-193    | OFFSET BYTES 037-041",
+            13: "  CROSSLINE BYTES 193-197 |",
+            15: "END EBCDIC HEADER"
+        }
+
+        rows = segyio.create_text_header(lines)
+        rows = bytearray(rows, 'ascii')  # mutable array of bytes
+        rows[-1] = 128  # \x80
+        self.ACTUAL_TEXT_HEADER = bytes(rows)
 
     def test_binary_header_size(self):
         self.assertEqual(400, _segyio.binheader_size())
@@ -81,7 +56,7 @@ class _segyioTests(TestCase):
     def test_read_text_header(self):
         f = _segyio.open(self.filename, "r")
 
-        self.assertEqual(_segyio.read_textheader(f, 0), ACTUAL_TEXT_HEADER)
+        self.assertEqual(_segyio.read_textheader(f, 0), self.ACTUAL_TEXT_HEADER)
 
         with self.assertRaises(Exception):
             _segyio.read_texthdr(None, 0)
@@ -97,7 +72,7 @@ class _segyioTests(TestCase):
             with self.assertRaises(ValueError):
                 _segyio.write_textheader(f, 0, "")
 
-            self.assertEqual(_segyio.read_textheader(f, 0), ACTUAL_TEXT_HEADER)
+            self.assertEqual(_segyio.read_textheader(f, 0), self.ACTUAL_TEXT_HEADER)
 
             _segyio.write_textheader(f, 0, "yolo" * 800)
 
