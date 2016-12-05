@@ -20,6 +20,7 @@ try:
 except ImportError:  # will be 3.x series
     pass
 
+
 def mklines(fname):
     spec = segyio.spec()
     spec.format  = 5
@@ -166,34 +167,6 @@ class TestSegy(TestCase):
             self.assertEqual(25, f.tracecount)
             self.assertEqual(len(f.trace), f.tracecount)
             self.assertEqual(50, f.samples)
-
-    def test_dt_fallback(self):
-        with TestContext("dt_fallback") as context:
-            context.copy_file(self.filename)
-            with segyio.open("small.sgy", "r+") as f:
-                # Both zero
-                f.bin[BinField.Interval] = 0
-                f.header[0][TraceField.TRACE_SAMPLE_INTERVAL] = 0
-                f.flush()
-                fallback_dt = 4
-                np.testing.assert_almost_equal(segyio.dt(f, fallback_dt), fallback_dt)
-
-                # dt in bin header different from first trace
-                f.bin[BinField.Interval] = 6000
-                f.header[0][TraceField.TRACE_SAMPLE_INTERVAL] = 1000
-                f.flush()
-                fallback_dt = 4
-                np.testing.assert_almost_equal(segyio.dt(f, fallback_dt), fallback_dt)
-
-    def test_dt_no_fallback(self):
-        with TestContext("dt_no_fallback") as context:
-            context.copy_file(self.filename)
-            dt_us = 6000
-            with segyio.open("small.sgy", "r+") as f:
-                f.bin[BinField.Interval] = dt_us
-                f.header[0][TraceField.TRACE_SAMPLE_INTERVAL] = dt_us
-                f.flush()
-                np.testing.assert_almost_equal(segyio.dt(f), dt_us/1000)
 
     def test_traces_slicing(self):
         with segyio.open(self.filename, "r") as f:
