@@ -14,15 +14,7 @@ def default_text_header(iline, xline, offset):
         13: "  CROSSLINE BYTES %03d-%03d |" % (xline, xline + 4),
         15: "END EBCDIC HEADER",
     }
-    rows = []
-    for line_no in range(1, 41):
-        line = ""
-        if line_no in lines:
-            line = lines[line_no]
-        row = "C{0:>2} {1:76}".format(line_no, line)
-        rows.append(row)
-
-    rows = ''.join(rows)
+    rows = segyio.create_text_header(lines)
     rows = bytearray(rows, 'ascii')  # mutable array of bytes
     rows[-1] = 128  # \x80 -- Unsure if this is really required...
     return bytes(rows)  # immutable array of bytes that is compatible with strings

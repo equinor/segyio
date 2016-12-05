@@ -28,3 +28,25 @@ def sample_indexes(segyfile, t0=0.0, dt_override=None):
         dt_override = dt(segyfile)
 
     return [t0 + t * dt_override for t in range(segyfile.samples)]
+
+
+def create_text_header(lines):
+    """
+    Will create a "correct" SEG-Y textual header.
+    Every line will be prefixed with C## and there are 40 lines.
+    The input must be a dictionary with the line number[1-40] as a key.
+    The value for each key should be up to 76 character long string.
+
+    :type lines: dict[int, str]
+    :rtype: str
+    """
+    rows = []
+    for line_no in range(1, 41):
+        line = ""
+        if line_no in lines:
+            line = lines[line_no]
+        row = "C{0:>2} {1:76}".format(line_no, line)
+        rows.append(row)
+
+    rows = ''.join(rows)
+    return rows

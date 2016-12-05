@@ -86,7 +86,7 @@ from .binfield import BinField
 from .open import open
 from .create import create
 from .segy import SegyFile, spec
-from .tools import dt, sample_indexes
+from .tools import dt, sample_indexes, create_text_header
 
 __version__    = '1.0.4'
 __copyright__  = 'Copyright 2016, Statoil ASA'
