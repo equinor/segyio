@@ -612,7 +612,11 @@ static PyObject *py_init_metrics(PyObject *self, PyObject *args) {
         return PyErr_Format(PyExc_RuntimeError, "Unable to determine sorting. File may be corrupt.");
     }
 
-    error = segy_count_lines(p_FILE, field, offset_count, l1out, l2out, trace0, trace_bsize);
+    if( trace_count != offset_count ) {
+        error = segy_count_lines(p_FILE, field, offset_count, l1out, l2out, trace0, trace_bsize);
+    } else {
+        il_count = xl_count = 1;
+    }
 
     if (error != 0) {
         return py_handle_segy_error_with_fields(error, errno, il_field, xl_field, 2);

@@ -5,10 +5,10 @@ import segyio
 
 def main():
     if len(sys.argv) < 9:
-        sys.exit(" ".join( "Usage: {} [file] [samples]",
+        sys.exit(" ".join(["Usage: {} [file] [samples]",
                            "[first iline] [last iline]",
                            "[first xline] [last xline]",
-                           "([first offset] [last offset])"
+                           "[first offset] [last offset]"]
                          ).format(sys.argv[0]))
 
     spec = segyio.spec()
