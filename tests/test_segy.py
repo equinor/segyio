@@ -3,9 +3,10 @@ from types import GeneratorType
 import itertools
 import numpy as np
 from unittest import TestCase
+from test_context import TestContext
+
 import segyio
 from segyio import TraceField, BinField
-import shutil
 import filecmp
 
 from segyio._field import Field
@@ -18,6 +19,7 @@ try:
     from itertools import imap as map
 except ImportError:  # will be 3.x series
     pass
+
 
 def mklines(fname):
     spec = segyio.spec()
@@ -166,34 +168,6 @@ class TestSegy(TestCase):
             self.assertEqual(len(f.trace), f.tracecount)
             self.assertEqual(50, f.samples)
 
-    def test_dt_fallback(self):
-        f_name = self.filename.replace( ".sgy", "_dt_test.sgy")
-        shutil.copyfile(self.filename, f_name)
-        with segyio.open(f_name, "r+") as f:
-            # Both zero
-            f.bin[BinField.Interval] = 0
-            f.header[0][TraceField.TRACE_SAMPLE_INTERVAL] = 0
-            f.flush()
-            fallback_dt = 4
-            np.testing.assert_almost_equal(segyio.dt(f, fallback_dt), fallback_dt)
-
-            # dt in bin header different from first trace
-            f.bin[BinField.Interval] = 6000
-            f.header[0][TraceField.TRACE_SAMPLE_INTERVAL] = 1000
-            f.flush()
-            fallback_dt = 4
-            np.testing.assert_almost_equal(segyio.dt(f, fallback_dt), fallback_dt)
-
-    def test_dt_no_fallback(self):
-        f_name = self.filename.replace( ".sgy", "_dt_test.sgy")
-        shutil.copyfile(self.filename, f_name)
-        dt_us = 6000
-        with segyio.open(f_name, "r+") as f:
-            f.bin[BinField.Interval] = dt_us
-            f.header[0][TraceField.TRACE_SAMPLE_INTERVAL] = dt_us
-            f.flush()
-            np.testing.assert_almost_equal(segyio.dt(f), dt_us/1000)
-
     def test_traces_slicing(self):
         with segyio.open(self.filename, "r") as f:
 
@@ -239,23 +213,21 @@ class TestSegy(TestCase):
             self.assertNotEqual(f.header[1][xl], f.header[2][xl])
 
     def test_headers_line_offset(self):
-        fname = self.prestack.replace( ".sgy", "-line-header.sgy")
-        shutil.copyfile(self.prestack, fname)
+        with TestContext("headers_line_offset") as context:
+            context.copy_file(self.prestack)
+            il, xl = TraceField.INLINE_3D, TraceField.CROSSLINE_3D
+            with segyio.open("small-ps.sgy", "r+") as f:
+                f.header.iline[1,2] = { il: 11 }
+                f.header.iline[1,2] = { xl: 13 }
 
-        il, xl = TraceField.INLINE_3D, TraceField.CROSSLINE_3D
-        with segyio.open(fname, "r+") as f:
-            f.header.iline[1,2] = { il: 11 }
-            f.header.iline[1,2] = { xl: 13 }
+            with segyio.open("small-ps.sgy", "r") as f:
+                self.assertEqual(f.header[0][il], 1)
+                self.assertEqual(f.header[1][il], 11)
+                self.assertEqual(f.header[2][il], 1)
 
-        with segyio.open(fname, "r") as f:
-            self.assertEqual(f.header[0][il], 1)
-            self.assertEqual(f.header[1][il], 11)
-            self.assertEqual(f.header[2][il], 1)
-
-            self.assertEqual(f.header[0][xl], 1)
-            self.assertEqual(f.header[1][xl], 13)
-            self.assertEqual(f.header[2][xl], 2)
-
+                self.assertEqual(f.header[0][xl], 1)
+                self.assertEqual(f.header[1][xl], 13)
+                self.assertEqual(f.header[2][xl], 2)
 
     def test_iline_offset(self):
         with segyio.open(self.prestack, "r") as f:
@@ -380,96 +352,95 @@ class TestSegy(TestCase):
                 f.header[0][700]
 
     def test_write_header(self):
-        fname = self.filename + "write-header"
-        shutil.copyfile(self.filename, fname)
-        with segyio.open(fname, "r+") as f:
-            # assign to a field in a header, write immediately
-            f.header[0][189] = 42
-            f.flush()
+        with TestContext("write_header") as context:
+            context.copy_file(self.filename)
+            with segyio.open("small.sgy", "r+") as f:
+                # assign to a field in a header, write immediately
+                f.header[0][189] = 42
+                f.flush()
 
-            self.assertEqual(42, f.header[0][189])
-            self.assertEqual(1, f.header[1][189])
+                self.assertEqual(42, f.header[0][189])
+                self.assertEqual(1, f.header[1][189])
 
-            # accessing non-existing offsets raises exceptions
-            with self.assertRaises(IndexError):
-                f.header[0][188] = 1 # between byte offsets
+                # accessing non-existing offsets raises exceptions
+                with self.assertRaises(IndexError):
+                    f.header[0][188] = 1 # between byte offsets
 
-            with self.assertRaises(IndexError):
-                f.header[0][-1] = 1
+                with self.assertRaises(IndexError):
+                    f.header[0][-1] = 1
 
-            with self.assertRaises(IndexError):
-                f.header[0][700] = 1
+                with self.assertRaises(IndexError):
+                    f.header[0][700] = 1
 
-            d = { TraceField.INLINE_3D: 43,
-                  TraceField.CROSSLINE_3D: 11,
-                  TraceField.offset: 15 }
+                d = { TraceField.INLINE_3D: 43,
+                      TraceField.CROSSLINE_3D: 11,
+                      TraceField.offset: 15 }
 
-            # assign multiple fields at once by using a dict
-            f.header[1] = d
+                # assign multiple fields at once by using a dict
+                f.header[1] = d
 
-            f.flush()
-            self.assertEqual(43, f.header[1][TraceField.INLINE_3D])
-            self.assertEqual(11, f.header[1][TraceField.CROSSLINE_3D])
-            self.assertEqual(15, f.header[1][TraceField.offset])
+                f.flush()
+                self.assertEqual(43, f.header[1][TraceField.INLINE_3D])
+                self.assertEqual(11, f.header[1][TraceField.CROSSLINE_3D])
+                self.assertEqual(15, f.header[1][TraceField.offset])
 
-            # looking up multiple values at once returns a { TraceField: value } dict
-            self.assertEqual(d, f.header[1][TraceField.INLINE_3D, TraceField.CROSSLINE_3D, TraceField.offset])
+                # looking up multiple values at once returns a { TraceField: value } dict
+                self.assertEqual(d, f.header[1][TraceField.INLINE_3D, TraceField.CROSSLINE_3D, TraceField.offset])
 
-            # slice-support over headers (similar to trace)
-            for th in f.header[0:10]:
-                pass
+                # slice-support over headers (similar to trace)
+                for th in f.header[0:10]:
+                    pass
 
-            self.assertEqual(6, len(list(f.header[10::-2])))
-            self.assertEqual(5, len(list(f.header[10:5:-1])))
-            self.assertEqual(0, len(list(f.header[10:5])))
+                self.assertEqual(6, len(list(f.header[10::-2])))
+                self.assertEqual(5, len(list(f.header[10:5:-1])))
+                self.assertEqual(0, len(list(f.header[10:5])))
 
-            # for-each support
-            for th in f.header:
-                pass
+                # for-each support
+                for th in f.header:
+                    pass
 
-            # copy a header
-            f.header[2] = f.header[1]
-            f.flush()
+                # copy a header
+                f.header[2] = f.header[1]
+                f.flush()
 
-            # don't use this interface in production code, it's only for testing
-            # i.e. don't access buf of treat it as a list
-            #self.assertEqual(list(f.header[2].buf), list(f.header[1].buf))
+                # don't use this interface in production code, it's only for testing
+                # i.e. don't access buf of treat it as a list
+                #self.assertEqual(list(f.header[2].buf), list(f.header[1].buf))
 
     def test_write_binary(self):
-        fname = self.filename.replace( ".sgy", "-binary.sgy")
-        shutil.copyfile(self.filename, fname)
+        with TestContext("write_binary") as context:
+            context.copy_file(self.filename)
+            with segyio.open("small.sgy", "r+") as f:
+                f.bin[3213] = 5
+                f.flush()
 
-        with segyio.open(fname, "r+") as f:
-            f.bin[3213] = 5
-            f.flush()
+                self.assertEqual(5, f.bin[3213])
 
-            self.assertEqual(5, f.bin[3213])
+                # accessing non-existing offsets raises exceptions
+                with self.assertRaises(IndexError):
+                    f.bin[0]
 
-            # accessing non-existing offsets raises exceptions
-            with self.assertRaises(IndexError):
-                f.bin[0]
+                with self.assertRaises(IndexError):
+                    f.bin[50000]
 
-            with self.assertRaises(IndexError):
-                f.bin[50000]
+                with self.assertRaises(IndexError):
+                    f.bin[3214]
 
-            with self.assertRaises(IndexError):
-                f.bin[3214]
+                d = { BinField.Traces: 43,
+                      BinField.SweepFrequencyStart: 11 }
 
-            d = { BinField.Traces: 43,
-                  BinField.SweepFrequencyStart: 11 }
+                # assign multiple fields at once by using a dict
+                f.bin = d
 
-            # assign multiple fields at once by using a dict
-            f.bin = d
+                f.flush()
+                self.assertEqual(43, f.bin[BinField.Traces])
+                self.assertEqual(11, f.bin[BinField.SweepFrequencyStart])
 
-            f.flush()
-            self.assertEqual(43, f.bin[BinField.Traces])
-            self.assertEqual(11, f.bin[BinField.SweepFrequencyStart])
+                # looking up multiple values at once returns a { TraceField: value } dict
+                self.assertEqual(d, f.bin[BinField.Traces, BinField.SweepFrequencyStart])
 
-            # looking up multiple values at once returns a { TraceField: value } dict
-            self.assertEqual(d, f.bin[BinField.Traces, BinField.SweepFrequencyStart])
-
-            # copy a header
-            f.bin = f.bin
+                # copy a header
+                f.bin = f.bin
 
     def test_fopen_error(self):
         # non-existent file
@@ -500,189 +471,198 @@ class TestSegy(TestCase):
                 pass
 
     def test_create_sgy(self):
-        dstfile = self.filename.replace(".sgy", "-created.sgy")
+        with TestContext("create_sgy") as context:
+            context.copy_file(self.filename)
+            src_file = "small.sgy"
+            dst_file = "small_created.sgy"
+            with segyio.open(src_file, "r") as src:
+                spec = segyio.spec()
+                spec.format     = int(src.format)
+                spec.sorting    = int(src.sorting)
+                spec.samples    = src.samples
+                spec.ilines     = src.ilines
+                spec.xlines     = src.xlines
 
-        with segyio.open(self.filename, "r") as src:
-            spec = segyio.spec()
-            spec.format     = int(src.format)
-            spec.sorting    = int(src.sorting)
-            spec.samples    = src.samples
-            spec.ilines     = src.ilines
-            spec.xlines     = src.xlines
+                with segyio.create(dst_file, spec) as dst:
+                    dst.text[0] = src.text[0]
+                    dst.bin     = src.bin
 
-            with segyio.create(dstfile, spec) as dst:
-                dst.text[0] = src.text[0]
-                dst.bin     = src.bin
+                    # copy all headers
+                    dst.header = src.header
 
-                # copy all headers
-                dst.header = src.header
+                    for i, srctr in enumerate(src.trace):
+                        dst.trace[i] = srctr
 
-                for i, srctr in enumerate(src.trace):
-                    dst.trace[i] = srctr
+                    dst.trace = src.trace
 
-                dst.trace = src.trace
+                    # this doesn't work yet, some restructuring is necessary
+                    # if it turns out to be a desired feature it's rather easy to do
+                    #for dsth, srch in zip(dst.header, src.header):
+                    #    dsth = srch
 
-                # this doesn't work yet, some restructuring is necessary
-                # if it turns out to be a desired feature it's rather easy to do
-                #for dsth, srch in zip(dst.header, src.header):
-                #    dsth = srch
+                    #for dsttr, srctr in zip(dst.trace, src.trace):
+                    #    dsttr = srctr
 
-                #for dsttr, srctr in zip(dst.trace, src.trace):
-                #    dsttr = srctr
-
-        self.assertTrue(filecmp.cmp(self.filename, dstfile))
+            self.assertTrue(filecmp.cmp(src_file, dst_file))
 
     def test_create_sgy_shorter_traces(self):
-        dstfile = self.filename.replace(".sgy", "-shorter.sgy")
+        with TestContext("create_sgy_shorter_traces") as context:
+            context.copy_file(self.filename)
+            src_file = "small.sgy"
+            dst_file = "small_created_shorter.sgy"
 
-        with segyio.open(self.filename, "r") as src:
-            spec = segyio.spec()
-            spec.format     = int(src.format)
-            spec.sorting    = int(src.sorting)
-            spec.samples    = 20 # reduces samples per trace
-            spec.ilines     = src.ilines
-            spec.xlines     = src.xlines
+            with segyio.open(src_file, "r") as src:
+                spec = segyio.spec()
+                spec.format  = int(src.format)
+                spec.sorting = int(src.sorting)
+                spec.samples = 20 # reduces samples per trace
+                spec.ilines  = src.ilines
+                spec.xlines  = src.xlines
 
-            with segyio.create(dstfile, spec) as dst:
-                for i, srch in enumerate(src.header):
-                    dst.header[i] = srch
-                    d = { TraceField.INLINE_3D: srch[TraceField.INLINE_3D] + 100 }
-                    dst.header[i] = d
+                with segyio.create(dst_file, spec) as dst:
+                    for i, srch in enumerate(src.header):
+                        dst.header[i] = srch
+                        d = { TraceField.INLINE_3D: srch[TraceField.INLINE_3D] + 100 }
+                        dst.header[i] = d
 
-                for lineno in dst.ilines:
-                    dst.iline[lineno] = src.iline[lineno]
+                    for lineno in dst.ilines:
+                        dst.iline[lineno] = src.iline[lineno]
 
-                # alternative form using left-hand-side slices
-                dst.iline[2:4] = src.iline
+                    # alternative form using left-hand-side slices
+                    dst.iline[2:4] = src.iline
 
-                for lineno in dst.xlines:
-                    dst.xline[lineno] = src.xline[lineno]
+                    for lineno in dst.xlines:
+                        dst.xline[lineno] = src.xline[lineno]
 
-            with segyio.open(dstfile, "r") as dst:
-                self.assertEqual(20, dst.samples)
-                self.assertEqual([x + 100 for x in src.ilines], list(dst.ilines))
+                with segyio.open(dst_file, "r") as dst:
+                    self.assertEqual(20, dst.samples)
+                    self.assertEqual([x + 100 for x in src.ilines], list(dst.ilines))
 
     def test_create_from_naught(self):
-        fname = "test-data/mk.sgy"
-        spec = segyio.spec()
-        spec.format  = 5
-        spec.sorting = 2
-        spec.samples = 150
-        spec.ilines  = range(1, 11)
-        spec.xlines  = range(1, 6)
+        with TestContext("create_from_naught") as context:
+            fname = "mk.sgy"
+            spec = segyio.spec()
+            spec.format  = 5
+            spec.sorting = 2
+            spec.samples = 150
+            spec.ilines  = range(1, 11)
+            spec.xlines  = range(1, 6)
 
-        with segyio.create(fname, spec) as dst:
-            tr = np.arange( start = 1.000, stop = 1.151, step = 0.001, dtype = np.single)
+            with segyio.create(fname, spec) as dst:
+                tr = np.arange( start = 1.000, stop = 1.151, step = 0.001, dtype = np.single)
 
-            for i in range( len( dst.trace ) ):
-                dst.trace[i] = tr
-                tr += 1.000
+                for i in range( len( dst.trace ) ):
+                    dst.trace[i] = tr
+                    tr += 1.000
 
-            for il in spec.ilines:
-                dst.header.iline[il] = { TraceField.INLINE_3D: il }
+                for il in spec.ilines:
+                    dst.header.iline[il] = { TraceField.INLINE_3D: il }
 
-            for xl in spec.xlines:
-                dst.header.xline[xl] = { TraceField.CROSSLINE_3D: xl }
+                for xl in spec.xlines:
+                    dst.header.xline[xl] = { TraceField.CROSSLINE_3D: xl }
 
-            # Set header field 'offset' to 1 in all headers
-            dst.header = { TraceField.offset: 1 }
+                # Set header field 'offset' to 1 in all headers
+                dst.header = { TraceField.offset: 1 }
 
-        with segyio.open(fname, "r") as f:
-            self.assertAlmostEqual(1,      f.trace[0][0],   places = 4)
-            self.assertAlmostEqual(1.001,  f.trace[0][1],   places = 4)
-            self.assertAlmostEqual(1.149,  f.trace[0][-1],   places = 4)
-            self.assertAlmostEqual(50.100, f.trace[-1][100], places = 4)
-            self.assertEqual(f.header[0][TraceField.offset], f.header[1][TraceField.offset])
-            self.assertEqual(1, f.header[1][TraceField.offset])
+            with segyio.open(fname, "r") as f:
+                self.assertAlmostEqual(1,      f.trace[0][0],   places = 4)
+                self.assertAlmostEqual(1.001,  f.trace[0][1],   places = 4)
+                self.assertAlmostEqual(1.149,  f.trace[0][-1],   places = 4)
+                self.assertAlmostEqual(50.100, f.trace[-1][100], places = 4)
+                self.assertEqual(f.header[0][TraceField.offset], f.header[1][TraceField.offset])
+                self.assertEqual(1, f.header[1][TraceField.offset])
 
     def test_create_from_naught_prestack(self):
-        fname = "test-data/mk-ps.sgy"
-        spec = segyio.spec()
-        spec.format  = 5
-        spec.sorting = 2
-        spec.samples = 7
-        spec.ilines  = range(1, 4)
-        spec.xlines  = range(1, 3)
-        spec.offsets = range(1, 6)
+        with TestContext("create_from_naught_prestack") as context:
+            fname = "mk-ps.sgy"
+            spec = segyio.spec()
+            spec.format  = 5
+            spec.sorting = 2
+            spec.samples = 7
+            spec.ilines  = range(1, 4)
+            spec.xlines  = range(1, 3)
+            spec.offsets = range(1, 6)
 
-        cube_size = len(spec.ilines) * len(spec.xlines)
+            cube_size = len(spec.ilines) * len(spec.xlines)
 
-        with segyio.create(fname, spec) as dst:
-            arr = np.arange( start = 0.000,
-                             stop = 0.007,
-                             step = 0.001,
-                             dtype = np.single)
+            with segyio.create(fname, spec) as dst:
+                arr = np.arange( start = 0.000,
+                                 stop = 0.007,
+                                 step = 0.001,
+                                 dtype = np.single)
 
-            arr = np.concatenate([[arr + 0.01], [arr + 0.02]], axis = 0)
-            lines = [arr + i for i in spec.ilines]
-            cube = [(off * 100) + line for line in lines for off in spec.offsets]
+                arr = np.concatenate([[arr + 0.01], [arr + 0.02]], axis = 0)
+                lines = [arr + i for i in spec.ilines]
+                cube = [(off * 100) + line for line in lines for off in spec.offsets]
 
-            dst.iline[:,:] = cube
+                dst.iline[:,:] = cube
 
-            for of in spec.offsets:
-                for il in spec.ilines:
-                    dst.header.iline[il,of] = { TraceField.INLINE_3D: il,
-                                                TraceField.offset: of
-                                              }
-                for xl in spec.xlines:
-                    dst.header.xline[xl,of] = { TraceField.CROSSLINE_3D: xl }
+                for of in spec.offsets:
+                    for il in spec.ilines:
+                        dst.header.iline[il,of] = { TraceField.INLINE_3D: il,
+                                                    TraceField.offset: of
+                                                  }
+                    for xl in spec.xlines:
+                        dst.header.xline[xl,of] = { TraceField.CROSSLINE_3D: xl }
 
-        with segyio.open(fname, "r") as f:
-            self.assertAlmostEqual(101.010, f.trace[0][0],  places = 4)
-            self.assertAlmostEqual(101.011, f.trace[0][1],  places = 4)
-            self.assertAlmostEqual(101.016, f.trace[0][-1], places = 4)
-            self.assertAlmostEqual(503.025, f.trace[-1][5], places = 4)
-            self.assertNotEqual(f.header[0][TraceField.offset], f.header[1][TraceField.offset])
-            self.assertEqual(1, f.header[0][TraceField.offset])
-            self.assertEqual(2, f.header[1][TraceField.offset])
+            with segyio.open(fname, "r") as f:
+                self.assertAlmostEqual(101.010, f.trace[0][0],  places = 4)
+                self.assertAlmostEqual(101.011, f.trace[0][1],  places = 4)
+                self.assertAlmostEqual(101.016, f.trace[0][-1], places = 4)
+                self.assertAlmostEqual(503.025, f.trace[-1][5], places = 4)
+                self.assertNotEqual(f.header[0][TraceField.offset], f.header[1][TraceField.offset])
+                self.assertEqual(1, f.header[0][TraceField.offset])
+                self.assertEqual(2, f.header[1][TraceField.offset])
 
-            for x, y in zip(f.iline[:,:], cube):
-                self.assertListEqual(list(x.flatten()), list(y.flatten()))
+                for x, y in zip(f.iline[:,:], cube):
+                    self.assertListEqual(list(x.flatten()), list(y.flatten()))
 
     def test_create_write_lines(self):
-        fname = "test-data/mklines.sgy"
+        fname = "mklines.sgy"
 
-        mklines(fname)
+        with TestContext("create_write_lines") as context:
+            mklines(fname)
 
-        with segyio.open(fname, "r") as f:
-            self.assertAlmostEqual(1,     f.iline[1][0][0], places = 4)
-            self.assertAlmostEqual(2.004, f.iline[2][0][4], places = 4)
-            self.assertAlmostEqual(2.014, f.iline[2][1][4], places = 4)
-            self.assertAlmostEqual(8.043, f.iline[8][4][3], places = 4)
+            with segyio.open(fname, "r") as f:
+                self.assertAlmostEqual(1,     f.iline[1][0][0], places = 4)
+                self.assertAlmostEqual(2.004, f.iline[2][0][4], places = 4)
+                self.assertAlmostEqual(2.014, f.iline[2][1][4], places = 4)
+                self.assertAlmostEqual(8.043, f.iline[8][4][3], places = 4)
 
     def test_create_sgy_skip_lines(self):
-        fname = "test-data/lines.sgy"
-        dstfile = fname.replace(".sgy", "-halved.sgy")
+        fname = "lines.sgy"
+        dstfile = "lines-halved.sgy"
 
-        mklines(fname)
+        with TestContext("create_sgy_skip_lines") as context:
+            mklines(fname)
 
-        with segyio.open(fname, "r") as src:
-            spec = segyio.spec()
-            spec.format     = int(src.format)
-            spec.sorting    = int(src.sorting)
-            spec.samples    = src.samples
-            spec.ilines     = src.ilines[::2]
-            spec.xlines     = src.xlines[::2]
+            with segyio.open(fname, "r") as src:
+                spec = segyio.spec()
+                spec.format     = int(src.format)
+                spec.sorting    = int(src.sorting)
+                spec.samples    = src.samples
+                spec.ilines     = src.ilines[::2]
+                spec.xlines     = src.xlines[::2]
 
-            with segyio.create(dstfile, spec) as dst:
-                # use the inline headers as base
-                dst.header.iline = src.header.iline[::2]
-                # then update crossline numbers from the crossline headers
-                for xl in dst.xlines:
-                    f = next(src.header.xline[xl])[TraceField.CROSSLINE_3D]
-                    dst.header.xline[xl] = { TraceField.CROSSLINE_3D: f }
+                with segyio.create(dstfile, spec) as dst:
+                    # use the inline headers as base
+                    dst.header.iline = src.header.iline[::2]
+                    # then update crossline numbers from the crossline headers
+                    for xl in dst.xlines:
+                        f = next(src.header.xline[xl])[TraceField.CROSSLINE_3D]
+                        dst.header.xline[xl] = { TraceField.CROSSLINE_3D: f }
 
-                # but we override the last xline to be 6, not 5
-                dst.header.xline[5] = { TraceField.CROSSLINE_3D: 6 }
-                dst.iline = src.iline[::2]
+                    # but we override the last xline to be 6, not 5
+                    dst.header.xline[5] = { TraceField.CROSSLINE_3D: 6 }
+                    dst.iline = src.iline[::2]
 
-        with segyio.open(dstfile, "r") as f:
-            self.assertListEqual(list(f.ilines), list(spec.ilines))
-            self.assertListEqual(list(f.xlines), [1, 3, 6])
-            self.assertAlmostEqual(1,     f.iline[1][0][0], places = 4)
-            self.assertAlmostEqual(3.004, f.iline[3][0][4], places = 4)
-            self.assertAlmostEqual(3.014, f.iline[3][1][4], places = 4)
-            self.assertAlmostEqual(7.023, f.iline[7][2][3], places = 4)
+            with segyio.open(dstfile, "r") as f:
+                self.assertListEqual(list(f.ilines), list(spec.ilines))
+                self.assertListEqual(list(f.xlines), [1, 3, 6])
+                self.assertAlmostEqual(1,     f.iline[1][0][0], places = 4)
+                self.assertAlmostEqual(3.004, f.iline[3][0][4], places = 4)
+                self.assertAlmostEqual(3.014, f.iline[3][1][4], places = 4)
+                self.assertAlmostEqual(7.023, f.iline[7][2][3], places = 4)
 
     def test_segyio_types(self):
         with segyio.open(self.filename, "r") as f:
@@ -752,21 +732,22 @@ class TestSegy(TestCase):
             slice = f.depth_slice[f.samples]
 
     def test_depth_slice_writing(self):
-        fname = self.filename.replace("small", "small-depth")
-        shutil.copyfile(self.filename, fname)
+        with TestContext("depth_slice_writing") as context:
+            context.copy_file(self.filename)
+            fname = ("small.sgy")
 
-        buf = np.empty(shape=(5, 5), dtype=np.single)
+            buf = np.empty(shape=(5, 5), dtype=np.single)
 
-        def value(x, y):
-            return x + (1.0 // 5) * y
+            def value(x, y):
+                return x + (1.0 // 5) * y
 
-        for x, y in itertools.product(range(5), range(5)):
-            buf[x][y] = value(x, y)
+            for x, y in itertools.product(range(5), range(5)):
+                buf[x][y] = value(x, y)
 
-        with segyio.open(fname, "r+") as f:
-            f.depth_slice[7] = buf * 3.14 # assign to depth 7
-            self.assertTrue(np.allclose(f.depth_slice[7], buf * 3.14))
+            with segyio.open(fname, "r+") as f:
+                f.depth_slice[7] = buf * 3.14 # assign to depth 7
+                self.assertTrue(np.allclose(f.depth_slice[7], buf * 3.14))
 
-            f.depth_slice = [buf * i for i in range(len(f.depth_slice))]  # assign to all depths
-            for index, depth_slice in enumerate(f.depth_slice):
-                self.assertTrue(np.allclose(depth_slice, buf * index))
+                f.depth_slice = [buf * i for i in range(len(f.depth_slice))]  # assign to all depths
+                for index, depth_slice in enumerate(f.depth_slice):
+                    self.assertTrue(np.allclose(depth_slice, buf * index))
