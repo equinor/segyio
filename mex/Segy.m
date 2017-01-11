@@ -162,10 +162,10 @@ classdef Segy
                 t0      = 0;
             end
             if nargin < 3
-                xl_word = TraceField.CROSSLINE_3D;
+                xl_word = TraceField.Crossline3D;
             end
             if nargin < 2
-                il_word = TraceField.INLINE_3D;
+                il_word = TraceField.Inline3D;
             end
 
             % for compatibility with old code; if argument is passed as a
@@ -195,9 +195,9 @@ classdef Segy
         function data = get_cube(sc)
             data = Segy.get_traces(sc.filename);
 
-            if sc.trace_sorting_format == TraceSortingFormat.INLINE
+            if sc.trace_sorting_format == TraceSortingFormat.iline
                 data = reshape( data, size( sc.sample_indexes, 1 ), size( sc.xline, 1 ), size( sc.iline, 1 ) );
-            elseif sc.trace_sorting_format == TraceSortingFormat.XLINE
+            elseif sc.trace_sorting_format == TraceSortingFormat.xline
                 data = reshape( data, size( sc.sample_indexes, 1 ), size( sc.iline, 1 ), size( sc.xline, 1 ) );
             else
                 warning('Sorting was not set properly. Data returned as single long line');
