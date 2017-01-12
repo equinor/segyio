@@ -8,6 +8,7 @@ classdef SegySpec
         crossline_indexes
         inline_indexes
         offset_count
+        offset
         first_trace_pos
         il_stride
         xl_stride
@@ -15,6 +16,7 @@ classdef SegySpec
         t
         iline
         xline
+        sorting
     end
 
     methods
@@ -42,6 +44,8 @@ classdef SegySpec
             obj.t = obj.sample_indexes;
             obj.iline = obj.inline_indexes;
             obj.xline = obj.crossline_indexes;
+            [~, s] = enumeration(obj.trace_sorting_format);
+            obj.sorting = s{uint32(obj.trace_sorting_format) + 1};
         end
 
     end
