@@ -178,6 +178,22 @@ int segy_count_lines( segy_file*,
                       unsigned int* l2out,
                       long trace0,
                       unsigned int trace_bsize );
+
+/*
+ * Alternative interface for segy_count_lines. If you have information about
+ * sorting this is easier to use, but requires both the inline and crossline
+ * header field positions. Does the argument shuffling needed to call
+ * segy_count_lines.
+ */
+int segy_lines_count( segy_file*,
+                      int il,
+                      int xl,
+                      int sorting,
+                      int offsets,
+                      int* il_count,
+                      int* xl_count,
+                      long trace0,
+                      unsigned int trace_bsize );
 /*
  * Find the `line_length` for the inlines. Assumes all inlines, crosslines and
  * traces don't vary in length.
