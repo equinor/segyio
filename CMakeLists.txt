@@ -16,6 +16,7 @@ endif ()
 
 option(BUILD_MEX    "Build Matlab mex files"    OFF)
 option(BUILD_PYTHON "Build Python wrappers"     ON)
+option(BUILD_JULIA  "Build Julia wrappers"      ON)
 
 include(cmake/check_includes.cmake)
 include(cmake/default_warnings.cmake)
@@ -52,6 +53,7 @@ set_target_properties(segyio-shared PROPERTIES OUTPUT_NAME segyio CLEAN_DIRECT_O
 # language bindings
 add_subdirectory(mex)
 add_subdirectory(python)
+add_subdirectory(julia)
 
 add_subdirectory(applications)
 add_subdirectory(examples)

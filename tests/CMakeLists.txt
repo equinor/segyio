@@ -20,3 +20,7 @@ if(BUILD_PYTHON)
     add_python_test(python.h.segy test_segyio_c.py)
     add_python_test(python.enum.segy test_enum.py)
 endif()
+
+if(BUILD_JULIA)
+    add_julia_test(julia.segy test_segy.jl)
+endif()

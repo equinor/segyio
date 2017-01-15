@@ -49,7 +49,7 @@ before_script:
   - conda update -q conda
   - conda info -a
 
-  - conda install numpy cmake
+  - conda install numpy cmake julia
 
   - cmake --version
   - mkdir build
