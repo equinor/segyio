@@ -162,10 +162,10 @@ classdef Segy
                 t0      = 0;
             end
             if nargin < 3
-                xl_word = TraceField.CROSSLINE_3D;
+                xl_word = TraceField.Crossline3D;
             end
             if nargin < 2
-                il_word = TraceField.INLINE_3D;
+                il_word = TraceField.Inline3D;
             end
 
             % for compatibility with old code; if argument is passed as a
@@ -182,22 +182,119 @@ classdef Segy
             segycube = SegySpec(filename, il_word, xl_word, t0);
         end
 
+        % Goal: 
+        %   Interpret segy cube as a 3D cube and save information needed to access
+        %   the segy file as a cube in terms of inline and crossline numbers.
         %
+        % inputs:
+        %   name        meaning
+        %   filename    filename of segy file
+        %   offset      bytenumber or header word for offset number
+        %   il_word     bytenumber or header word for inline number
+        %   xl_word     bytenumber or header word for crossline number
+        %   t0          Time (ms) / depth (m) of first sample. Optional (default = 0)
+        %   
+        % output:
+        %   name        meaning
+        %   segycube    struct needed to access segy file as a cube. Used by
+        %               get_ps_line.m, put_ps_line.m and possibly friends
+        function segycube = parse_ps_segycube(filename, offset, il_word, xl_word, t0)
+            if ~exist('offset', 'var') || isempty(offset)
+                offset = TraceField.offset;
+            end
+            if ~exist('il_word', 'var') || isempty(il_word)
+                il_word = TraceField.Inline3D;
+            end
+            if ~exist('xl_word', 'var') || isempty(xl_word)
+                xl_word = TraceField.Crossline3D;
+            end
+            if ~exist('t0', 'var') || isempty(t0)
+                t0 = 0;
+            end
+
+            if ischar(il_word)
+                il_word = TraceField.(il_word);
+            end
+
+            if ischar(xl_word)
+                xl_word = TraceField.(xl_word);
+            end
+
+            if ischar(offset)
+                offset = TraceField.(offset);
+            end
+
+            offset  = int32(offset);
+            il_word = int32(il_word);
+            xl_word = int32(xl_word);
+            t0      = double(t0);
+
+            segycube = Segy.interpret_segycube(filename, il_word, xl_word, t0);
+            offsets = segy_get_offsets_mex(segycube, offset, il_word, xl_word);
+            segycube.offset = offsets;
+        end
+
         % Goal:
-        %   Read a full cube from segycube struct.
+        %   Read an inline / crosline from a cube.
         %
         % Inputs:
-        %   sc          Data as an interpreted segy cube from
+        %   cube        Data as an interpreted segy cube from
         %               'interpret_segycube.m'
-        % Output:
-        %   data        Extracted cube with same sorting as in segy.
+        %   dir         Direction of desired line (iline / xline) as a string
+        %   n           Inline / crossline number
         %
+        % Output:
+        %   data        Extracted line
+        function data = get_ps_line(cube, dir, n)
+            if nargin < 3
+                error('Too few arguments. Usage: Segy.get_ps_line(cube, dir, n)');
+            end
+
+            if strcmpi(dir, 'iline')
+                len  = max(size(cube.crossline_indexes));
+                ix   = cube.inline_indexes;
+                st   = cube.il_stride;
+            elseif strcmpi(dir, 'xline')
+                len  = max(size(cube.inline_indexes));
+                ix   = cube.crossline_indexes;
+                st   = cube.xl_stride;
+            else
+                error('Only iline and xline are valid directions.');
+            end
+
+            tmp = segy_read_write_ps_line_mex(cube, n, len, ix, st);
+            tmp = reshape(tmp, [], cube.offset_count);
+            nt = length(cube.t);
+            data = permute(reshape(tmp, nt, size(tmp, 1)/nt, []), [1 3 2]);
+        end
+
+        function data = put_ps_line(cube, data, dir, n)
+            if nargin < 4
+                error('Too few arguments. Usage: Segy.put_ps_line(cube, data, dir, n)');
+            end
+
+            if strcmpi(dir, 'iline')
+                len  = max(size(cube.crossline_indexes));
+                ix   = cube.inline_indexes;
+                st   = cube.il_stride;
+            elseif strcmpi(dir, 'xline')
+                len  = max(size(cube.inline_indexes));
+                ix   = cube.crossline_indexes;
+                st   = cube.xl_stride;
+            else
+                error('Only iline and xline are valid directions.');
+            end
+
+            tmp = permute( data, [1 3 2] );
+            segy_read_write_ps_line_mex( cube, n, len, ix, st, tmp );
+        end
+
         function data = get_cube(sc)
             data = Segy.get_traces(sc.filename);
 
-            if sc.trace_sorting_format == TraceSortingFormat.INLINE
+            if sc.trace_sorting_format == TraceSortingFormat.iline
                 data = reshape( data, size( sc.sample_indexes, 1 ), size( sc.xline, 1 ), size( sc.iline, 1 ) );
-            elseif sc.trace_sorting_format == TraceSortingFormat.XLINE
+            elseif sc.trace_sorting_format == TraceSortingFormat.xline
                 data = reshape( data, size( sc.sample_indexes, 1 ), size( sc.iline, 1 ), size( sc.xline, 1 ) );
             else
                 warning('Sorting was not set properly. Data returned as single long line');

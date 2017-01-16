@@ -7,9 +7,9 @@ t0 = 1111.0;
 
 %% Spec is created
 try
-    spec = Segy.interpret_segycube(filename, 'INLINE_3D', 'CROSSLINE_3D', t0);
-    spec = Segy.interpret_segycube(filename, TraceField.INLINE_3D, 'CROSSLINE_3D', t0);
-    spec = Segy.interpret_segycube(filename, TraceField.INLINE_3D, 193, t0);
+    spec = Segy.interpret_segycube(filename, 'Inline3D', 'Crossline3D', t0);
+    spec = Segy.interpret_segycube(filename, TraceField.Inline3D, 'Crossline3D', t0);
+    spec = Segy.interpret_segycube(filename, TraceField.Inline3D, 193, t0);
     data = Segy.get_cube( spec );
 
     assert(all(size(data) == [50, 5, 5]));
@@ -50,11 +50,11 @@ end
 
 %% Segy.readInLine 4
 
-spec = Segy.interpret_segycube(filename, 'INLINE_3D', 'CROSSLINE_3D', t0);
+spec = Segy.interpret_segycube(filename, 'Inline3D', 'Crossline3D', t0);
 data = Segy.get_line(spec, 'iline', 4);
 sample_count = length(spec.sample_indexes);
 
-eps = 1e-4;
+eps = 1e-6;
 % first trace along xline
 % first sample
 assert(abs(data(1, 1) - 4.2)<eps);
@@ -83,7 +83,7 @@ assert(abs(data(sample_count,last)-4.24049)<eps);
 
 %% Segy.readCrossLine 1433
 
-spec = SegySpec(filename, TraceField.INLINE_3D, TraceField.CROSSLINE_3D, t0);
+spec = SegySpec(filename, TraceField.Inline3D, TraceField.Crossline3D, t0);
 data = Segy.readCrossLine(spec, 20);
 data = Segy.readCrossLine(spec, 21);
 data = Segy.readCrossLine(spec, 22);
@@ -123,7 +123,7 @@ filename_write = 'test-data/SEGY-3D_write_mex.sgy';
 
 copyfile(filename, filename_write)
 
-spec = SegySpec(filename_write, TraceField.INLINE_3D, TraceField.CROSSLINE_3D, t0);
+spec = SegySpec(filename_write, TraceField.Inline3D, TraceField.Crossline3D, t0);
 data = Segy.get_line(spec, 'xline', 22);
 
 assert(abs(data(1, 1) - 1.22) < eps);
@@ -150,7 +150,7 @@ assert(data(1, 1) == 200);
 assert(dt == 4000);
 assert(nt == 1);
 
-[headers, notraces] = Segy.get_header(filename, 'INLINE_3D');
+[headers, notraces] = Segy.get_header(filename, 'Inline3D');
 assert(isequal((1:5), unique(headers)));
 assert(notraces == 25)
 
@@ -170,7 +170,7 @@ assert(Segy.get_ntraces(filename) == 25);
 %
 % function provided by Matteo Ravasi
 
-Segy_struct_orig = Segy.interpret_segycube(filename,'INLINE_3D','CROSSLINE_3D');
+Segy_struct_orig = Segy.interpret_segycube(filename,'Inline3D','Crossline3D');
 data = Segy.get_traces(filename);
 data = data + 1000;
 
@@ -222,9 +222,57 @@ dummy = Segy.get_segy_header( filename );
 dummy = Segy.get_trace_header( filename, 0 );
 dummy = Segy.get_trace_header( filename, 10 );
 
-Segy.put_headers( filename, 10, 'CDP' );
-Segy.get_header( filename, 'CDP' );
+Segy.put_headers( filename, 10, 'cdp' );
+Segy.get_header( filename, 'cdp' );
 
 increasing = linspace( 1, notraces, notraces );
 Segy.put_headers( filename_copy, increasing, 'offset' );
 assert( all(increasing == Segy.get_header( filename_copy, 'offset' )) );
+
+%% test_traces_offset
+prestack_filename = 'test-data/small-ps.sgy';
+cube_with_offsets = Segy.parse_ps_segycube(prestack_filename);
+assert(isequal(cube_with_offsets.offset, [1 2]));
+
+try
+    ps_line1 = Segy.get_ps_line(cube_with_offsets, 'iline', 22);
+    % reading a line that doesn't exist should throw
+    assert(false);
+end
+ps_line1 = Segy.get_ps_line(cube_with_offsets, 'iline', 1);
+ps_line2 = Segy.get_ps_line(cube_with_offsets, 'xline', 1);
+
+% offset 1
+assert(abs(ps_line1(1,1,1) - 101.01)    < eps);
+assert(abs(ps_line1(1,1,2) - 101.02)    < eps);
+assert(abs(ps_line1(1,1,3) - 101.03)    < eps);
+assert(abs(ps_line1(2,1,1) - 101.01001) < eps);
+assert(abs(ps_line1(3,1,1) - 101.01002) < eps);
+assert(abs(ps_line1(2,1,2) - 101.02001) < eps);
+
+% offset 2
+assert(abs(ps_line1(1,2,1) - 201.01)    < eps);
+assert(abs(ps_line1(1,2,2) - 201.02)    < eps);
+assert(abs(ps_line1(1,2,3) - 201.03)    < eps);
+assert(abs(ps_line1(2,2,1) - 201.01001) < eps);
+assert(abs(ps_line1(3,2,1) - 201.01002) < eps);
+assert(abs(ps_line1(2,2,2) - 201.02001) < eps);
+
+% test writing of prestack lines
+Segy.put_ps_line( cube_with_offsets, ps_line1 - 100.00, 'iline', 1 );
+% offset 1
+wr_line1 = Segy.get_ps_line( cube_with_offsets, 'iline', 1 );
+assert(abs(wr_line1(1,1,1) - 001.01)    < eps);
+assert(abs(wr_line1(1,1,2) - 001.02)    < eps);
+assert(abs(wr_line1(1,1,3) - 001.03)    < eps);
+assert(abs(wr_line1(2,1,1) - 001.01001) < eps);
+assert(abs(wr_line1(3,1,1) - 001.01002) < eps);
+assert(abs(wr_line1(2,1,2) - 001.02001) < eps);
+
+% offset 2
+assert(abs(wr_line1(1,2,1) - 101.01)    < eps);
+assert(abs(wr_line1(1,2,2) - 101.02)    < eps);
+assert(abs(wr_line1(1,2,3) - 101.03)    < eps);
+assert(abs(wr_line1(2,2,1) - 101.01001) < eps);
+assert(abs(wr_line1(3,2,1) - 101.01002) < eps);
+assert(abs(wr_line1(2,2,2) - 101.02001) < eps);

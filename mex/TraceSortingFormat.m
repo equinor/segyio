@@ -1,9 +1,9 @@
 classdef TraceSortingFormat < int32
 % add comment here
     enumeration
-        UNKNOWN_SORTING (0)
-        XLINE (1)
-        INLINE (2)
+        unknown (0)
+        xline (1)
+        iline (2)
     end
 end
 
