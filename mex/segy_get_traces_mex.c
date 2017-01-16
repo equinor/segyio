@@ -29,21 +29,22 @@ void mexFunction(int nlhs, mxArray *plhs[],
         goto cleanup;
     }
 
-    if( last_trace != -1 && last_trace < fmt.traces )
-        fmt.traces = (last_trace + 1);
+    // if last_trace was defaulted we assign it to the last trace in the file
+    if( last_trace == -1 )
+        last_trace = fmt.traces - 1;
 
-    fmt.traces -= first_trace;
+    int traces = 1 + (last_trace - first_trace);
 
-    plhs[0] = mxCreateNumericMatrix( fmt.samples, fmt.traces, mxSINGLE_CLASS, mxREAL );
+    plhs[0] = mxCreateNumericMatrix( fmt.samples, traces, mxSINGLE_CLASS, mxREAL );
     float* out = mxGetData( plhs[ 0 ] );
 
-    if( first_trace > fmt.traces ) {
+    if( first_trace > last_trace ) {
         msg1 = "segy:get_traces:bounds";
         msg2 = "first trace must be smaller than last trace";
         goto cleanup;
     }
 
-    for( size_t i = first_trace; i < fmt.traces; ++i ) {
+    for( int i = first_trace; i <= last_trace; ++i ) {
         err = segy_readtrace( fp, i, out, fmt.trace0, fmt.trace_bsize );
         out += fmt.samples;
 
@@ -59,7 +60,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
     if( notype != -1 )
         fmt.format = notype;
 
-    segy_to_native( fmt.format, fmt.samples * fmt.traces, mxGetData( plhs[ 0 ] ) );
+    segy_to_native( fmt.format, fmt.samples * traces, mxGetData( plhs[ 0 ] ) );
 
     int interval;
     segy_get_bfield( binary, BIN_Interval, &interval );
