@@ -142,7 +142,7 @@ void mexFunction( int nlhs, mxArray *plhs[],
     if (spec.filename != NULL)
         free(spec.filename);
     mxFree(filename);
-    
+
     return;
 
     FAILURE:

@@ -182,7 +182,7 @@ classdef Segy
             segycube = SegySpec(filename, il_word, xl_word, t0);
         end
 
-        % Goal: 
+        % Goal:
         %   Interpret segy cube as a 3D cube and save information needed to access
         %   the segy file as a cube in terms of inline and crossline numbers.
         %
@@ -193,7 +193,7 @@ classdef Segy
         %   il_word     bytenumber or header word for inline number
         %   xl_word     bytenumber or header word for crossline number
         %   t0          Time (ms) / depth (m) of first sample. Optional (default = 0)
-        %   
+        %
         % output:
         %   name        meaning
         %   segycube    struct needed to access segy file as a cube. Used by

@@ -17,7 +17,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
     segy_file* fp = segyfopen( prhs[ 0 ], "rb" );
     char* textheader = mxMalloc( segy_textheader_size() );
     err = segy_read_textheader( fp, textheader );
-    
+
     if( err != 0 ) {
         msg1 = "segy:text_header:os";
         msg2 = strerror( errno );
