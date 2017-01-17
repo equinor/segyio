@@ -21,7 +21,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
     struct segy_file_format fmt = filefmt( fp );
 
     char traceheader[ SEGY_TRACE_HEADER_SIZE ];
-    /* 
+    /*
      * check that the field is valid and writing it won't return an error. by
      * checking it here we don't have to do it in the write loop
      */
