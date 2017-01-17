@@ -258,10 +258,13 @@ assert(abs(ps_line1(2,2,1) - 201.01001) < eps);
 assert(abs(ps_line1(3,2,1) - 201.01002) < eps);
 assert(abs(ps_line1(2,2,2) - 201.02001) < eps);
 
-% test writing of prestack lines
-Segy.put_ps_line( cube_with_offsets, ps_line1 - 100.00, 'iline', 1 );
+%%%%% test writing of prestack lines
+prestack_dest = 'test-data/mex-tmp-small-ps.sgy';
+assert(copyfile(prestack_filename, prestack_dest));
+ps_cube_w = Segy.parse_ps_segycube(prestack_dest);
+Segy.put_ps_line( ps_cube_w, ps_line1 - 100.00, 'iline', 1 );
 % offset 1
-wr_line1 = Segy.get_ps_line( cube_with_offsets, 'iline', 1 );
+wr_line1 = Segy.get_ps_line( ps_cube_w, 'iline', 1 );
 assert(abs(wr_line1(1,1,1) - 001.01)    < eps);
 assert(abs(wr_line1(1,1,2) - 001.02)    < eps);
 assert(abs(wr_line1(1,1,3) - 001.03)    < eps);
