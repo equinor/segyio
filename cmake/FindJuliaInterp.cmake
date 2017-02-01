@@ -6,7 +6,7 @@ if(NOT JULIA_EXECUTABLE)
     foreach(_CURRENT_VERSION "0.4 0.5")
         find_program(PYTHON_EXECUTABLE
             NAMES ${_Python_NAMES}
-            PATHS [HKEY_LOCAL_MACHINE\\SOFTWARE\\Julia\\JuliaCore\\${_CURRENT_VERSION}\\InstallPath]
+            PATHS [HKEY_LOCAL_MACHINE\\SOFTWARE\\Julia\\${_CURRENT_VERSION}\\InstallPath]
             )
     endforeach()
 
