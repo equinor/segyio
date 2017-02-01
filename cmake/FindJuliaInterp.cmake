@@ -25,6 +25,16 @@ if(JULIA_EXECUTABLE)
     unset(_JULIA_VERSION_RESULT)
 endif()
 
+if(NOT JULIA_EXECUTABLE)
+    foreach(_CURRENT_VERSION "0.4 0.5")
+        find_program(PYTHON_EXECUTABLE
+            NAMES ${_Python_NAMES}
+            PATHS [HKEY_LOCAL_MACHINE\\SOFTWARE\\Julia\\${_CURRENT_VERSION}\\InstallPath]
+            )
+    endforeach()
+
+endif()
+
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(JuliaInterp
                                   REQUIRED_VARS JULIA_EXECUTABLE
