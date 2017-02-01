@@ -14,10 +14,10 @@ platform:
     - x64
 
 environment:
+    JULIAVERSION: "julialang/bin/winnt/x86/0.4/julia-0.4-latest-win32.exe"
     matrix:
         - PYTHON: C:\Python27
         - PYTHON: C:\Python35
-        - JULIAVERSION: "julialang/bin/winnt/x86/0.4/julia-0.4-latest-win32.exe"
         #- JULIAVERSION: "julialang/bin/winnt/x64/0.4/julia-0.4-latest-win64.exe"
 
 install:
