@@ -1,6 +1,10 @@
 #ifndef SEGYIO_SEGY_H
 #define SEGYIO_SEGY_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif __cplusplus
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -424,5 +428,8 @@ typedef enum {
     SEGY_MMAP_INVALID,
 } SEGY_ERROR;
 
+#ifdef __cplusplus
+}
+#endif __cplusplus
 
 #endif //SEGYIO_SEGY_H

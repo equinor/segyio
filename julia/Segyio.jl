@@ -2,6 +2,8 @@ module Segyio
 
 export trace, iline, xline
 
+const libsegyio = @windows? :segyio : :libsegyio
+
 # we create a type handle for the opaque segy_file handle which has to be
 # passed to most segyio functions, then alias it to sgy because it's tedious
 # to read in already dense C interop function calls
@@ -13,7 +15,7 @@ typealias sgy Ptr{sgy_struct}
 # than one operation - for convenience, we create a julia-native function that
 # makes sure we return native floats. Updates its buf argument in-place.
 function to_native!(fmt :: Cint, buf)
-    ccall( (:segy_to_native, :libsegyio),
+    ccall( (:segy_to_native, libsegyio),
            Cint,
            (Cint, Cint, Ref{Cfloat}),
            fmt, length(buf), buf )
@@ -65,9 +67,9 @@ function Base.showcompact(io :: IO, f :: SegyFile)
 end
 
 function binaryheader(fd :: sgy)
-    headersz = ccall( (:segy_binheader_size, :libsegyio), Cuint, () )
+    headersz = ccall( (:segy_binheader_size, libsegyio), Cuint, () )
     header = Array(Cchar, headersz)
-    err  = ccall( (:segy_binheader, :libsegyio), Cint,
+    err  = ccall( (:segy_binheader, libsegyio), Cint,
                   (sgy, Ptr{Cchar}),
                   fd, header)
 
@@ -112,7 +114,7 @@ function fopen(path :: AbstractString;
         throw( ArgumentError( "Invalid mode '$mode'" ) )
     end
 
-    fd = ccall( (:segy_open, :libsegyio), sgy,
+    fd = ccall( (:segy_open, libsegyio), sgy,
                   (Cstring, Cstring),
                   path, mode )
     errno = Libc.errno()
@@ -124,18 +126,18 @@ function fopen(path :: AbstractString;
     # read values from the binary header
     header = binaryheader( fd )
 
-    trace0 = ccall( (:segy_trace0, :libsegyio), Clong, (Ptr{Cchar},), header )
-    sample_count = ccall( (:segy_samples, :libsegyio), Cuint,
+    trace0 = ccall( (:segy_trace0, libsegyio), Clong, (Ptr{Cchar},), header )
+    sample_count = ccall( (:segy_samples, libsegyio), Cuint,
                             (Ptr{Cchar},),
                             header )
-    format = ccall( (:segy_format, :libsegyio), Cint, (Ptr{Cchar},), header )
-    trace_bsize = ccall( (:segy_trace_bsize, :libsegyio), Cuint,
+    format = ccall( (:segy_format, libsegyio), Cint, (Ptr{Cchar},), header )
+    trace_bsize = ccall( (:segy_trace_bsize, libsegyio), Cuint,
                          (Cuint,),
                          sample_count )
 
     # figure out sorting
     sorting = Array(Cint, 1) # julia >= 0.4 could use Ref{Cint}
-    err = ccall( (:segy_sorting, :libsegyio), Cint,
+    err = ccall( (:segy_sorting, libsegyio), Cint,
                  (sgy, Cint, Cint, Ptr{Cint}, Clong, Cuint),
                  fd, il, xl, sorting, trace0, trace_bsize )
 
@@ -144,7 +146,7 @@ function fopen(path :: AbstractString;
 
 
     trace_count = Array(Cint, 1)
-    err = ccall( (:segy_traces, :libsegyio), Cint,
+    err = ccall( (:segy_traces, libsegyio), Cint,
                  (sgy, Ptr{Cint}, Clong, Cuint),
                  fd, trace_count, trace0, trace_bsize )
 
@@ -155,7 +157,7 @@ function fopen(path :: AbstractString;
 
 
     offset_count = Array(Cuint, 1)
-    err = ccall( (:segy_offsets, :libsegyio), Cint,
+    err = ccall( (:segy_offsets, libsegyio), Cint,
                  (sgy, Cint, Cint, Cuint, Ptr{Cuint}, Clong, Cuint),
                  fd, il, xl, trace_count, offset_count, trace0, trace_bsize )
 
@@ -165,7 +167,7 @@ function fopen(path :: AbstractString;
 
     iline_count = Array(Cint, 1)
     xline_count = Array(Cint, 1)
-    err = ccall( (:segy_lines_count, :libsegyio), Cint,
+    err = ccall( (:segy_lines_count, libsegyio), Cint,
                  (sgy, Cint, Cint, Cint, Cint, Ptr{Cint}, Ptr{Cint}, Clong, Cuint),
                  fd, il, xl, sorting, offset_count, iline_count, xline_count, trace0, trace_bsize )
 
@@ -174,22 +176,22 @@ function fopen(path :: AbstractString;
     xline_count = xline_count[1]
 
     # figure out line lengths and strides
-    iline_length = ccall( (:segy_inline_length,    :libsegyio), Cuint,
+    iline_length = ccall( (:segy_inline_length,    libsegyio), Cuint,
                           (Cuint,),
                           xline_count )
-    xline_length = ccall( (:segy_crossline_length, :libsegyio), Cuint,
+    xline_length = ccall( (:segy_crossline_length, libsegyio), Cuint,
                           (Cuint,),
                           iline_count )
 
     iline_stride = Array( Cuint, 1 )
-    err = ccall( (:segy_inline_stride, :libsegyio), Cint,
+    err = ccall( (:segy_inline_stride, libsegyio), Cint,
                  (Cint, Cuint, Ptr{Cuint}),
                  sorting, iline_count, iline_stride )
     if err != 0 error( "Could not figure out iline stride" ) end
     iline_stride = iline_stride[1]
 
     xline_stride = Array( Cuint, 1 )
-    err = ccall( (:segy_crossline_stride, :libsegyio), Cint,
+    err = ccall( (:segy_crossline_stride, libsegyio), Cint,
                  (Cint, Cuint, Ptr{Cuint}),
                  sorting, xline_count, xline_stride )
     if err != 0 error( "Could not figure out xline stride" ) end
@@ -197,20 +199,20 @@ function fopen(path :: AbstractString;
 
     # finally, find the line numbers themselves
     ilines = Array(Cuint, iline_count)
-    err = ccall( (:segy_inline_indices, :libsegyio), Cint,
+    err = ccall( (:segy_inline_indices, libsegyio), Cint,
                  (sgy, Cint, Cint, Cuint, Cuint, Cuint, Ptr{Cuint}, Clong, Cuint),
                  fd, il, sorting, iline_count, xline_count, offset_count, ilines, trace0, trace_bsize )
     if err != 0 error( "Could not determine inline numbers" ) end
 
     xlines  = Array(Cuint, xline_count)
-    err = ccall( (:segy_crossline_indices, :libsegyio), Cint,
+    err = ccall( (:segy_crossline_indices, libsegyio), Cint,
                  (sgy, Cint, Cint, Cuint, Cuint, Cuint, Ptr{Cuint}, Clong, Cuint),
                  fd, xl, sorting, iline_count, xline_count, offset_count, xlines, trace0, trace_bsize )
     if err != 0 error( "Could not determine crossline numbers" ) end
 
     offset_field = 37
     offsets = Array(Cint, offset_count)
-    err = ccall( (:segy_offset_indices, :libsegyio), Cint,
+    err = ccall( (:segy_offset_indices, libsegyio), Cint,
                  (sgy, Cint, Cint, Ptr{Cint}, Clong, Cuint),
                  fd, offset_field, offset_count, offsets, trace0, trace_bsize )
 
@@ -240,7 +242,7 @@ with `open`.
 """
 function fclose(fd :: SegyFile)
     if fd.fd == C_NULL return end
-    ccall( (:segy_close, :libsegyio), Void, (sgy,), fd.fd )
+    ccall( (:segy_close, libsegyio), Void, (sgy,), fd.fd )
     fd.fd = C_NULL
 end
 
@@ -253,7 +255,7 @@ Async is ignored if file is not mmapd, and defaults to false (synchronous
 write), which makes the call block until the writing is completed.
 """
 function fflush(fd :: SegyFile, async :: Integer = 0 )
-    ccall( (:segy_flush, :libsegyio), Void, (sgy, Cint), fd.fd, async )
+    ccall( (:segy_flush, libsegyio), Void, (sgy, Cint), fd.fd, async )
 end
 
 """
@@ -309,7 +311,7 @@ true
 ```
 """
 function mmap(fd :: SegyFile)
-    ccall( (:segy_mmap, :libsegyio), Cint, (sgy,), fd.fd) == 0
+    ccall( (:segy_mmap, libsegyio), Cint, (sgy,), fd.fd) == 0
 end
 
 ##############
@@ -338,14 +340,14 @@ julia> tr = trace(fd)
 Traces(length = 25, samples = 50)
 
 julia> tr[1]
-50-element Array{Float32,1}:                                                           
- 1.2                                                                                   
- 1.20001                                                                               
- 1.20002                                                                               
- 1.20003                                                                               
- 1.20004                                                                               
- ⋮                                                                                     
- 1.20045                                                                               
+50-element Array{Float32,1}:
+ 1.2
+ 1.20001
+ 1.20002
+ 1.20003
+ 1.20004
+ ⋮
+ 1.20045
  1.20046
  1.20047
  1.20048
@@ -374,7 +376,7 @@ Base.display(tr :: Traces) = show(tr)
 function readtr!(fd:: SegyFile, i :: Int, buf)
     # subtract 1 from the i in all cases. julia uses 1-indexing, but the
     # underlying C assumes 0-indexing.
-    err = ccall( (:segy_readtrace, :libsegyio), Cint,
+    err = ccall( (:segy_readtrace, libsegyio), Cint,
                  (sgy, Cuint, Ref{Cfloat}, Clong, Cuint),
                  fd.fd, i - 1, buf, fd.meta.trace0, fd.meta.bsize )
 
@@ -455,7 +457,7 @@ end
 Base.display(ln :: Line) = show(ln)
 
 function readln!(ln :: Line,
-                 line_trace0 :: Int,
+                 line_trace0 :: Integer,
                  buf)
 
     fd      = ln.fd
@@ -464,7 +466,7 @@ function readln!(ln :: Line,
     bsize   = fd.meta.bsize
     len     = ln.len
     stride  = ln.stride
-    err = ccall( (:segy_read_line, :libsegyio), Cint,
+    err = ccall( (:segy_read_line, libsegyio), Cint,
                  (sgy, Cuint, Cuint, Cuint, Cint, Ref{Cfloat}, Clong, Cuint),
                  fd.fd, line_trace0, len, stride, offsets, buf, tr0, bsize )
 
@@ -574,7 +576,7 @@ function lntrace0(ln :: Line, i :: Integer, offset :: Integer)
 
     offset = offset - 1
     line_trace0 = Array(Cuint, 1)
-    err = ccall( (:segy_line_trace0, :libsegyio), Cint,
+    err = ccall( (:segy_line_trace0, libsegyio), Cint,
                  (Cuint, Cuint, Cuint, Cint, Ref{Cuint}, Cuint, Ptr{Cuint}),
                  i,
                  length(ln.other),

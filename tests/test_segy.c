@@ -585,12 +585,19 @@ static void test_file_size_above_4GB(){
 }
 
 int main() {
+    puts("starting");
+    puts("interpret file");
     test_interpret_file();
     /* test_interpret_file_prestack(); */
+    puts("read inline 4");
     testReadInLine_4();
+    puts("read inline 22");
     testReadCrossLine_22();
+    puts("mod traceh");
     test_modify_trace_header();
+    puts("mod texth");
     test_text_header();
+    puts("test traceh");
     test_trace_header_errors();
     /*
      * due to its barely-defined behavorial nature, this test is commented out

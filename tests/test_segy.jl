@@ -1,4 +1,3 @@
-println(LOAD_PATH)
 using Segyio
 
 if VERSION >= v"0.5.0-dev+7720"
