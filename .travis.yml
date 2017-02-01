@@ -50,6 +50,7 @@ before_script:
   - conda info -a
 
   - conda install -c bioconda julia=0.4.5
+  - julia -e 'Pkg.add("BaseTestNext")'
   - conda install numpy cmake
 
   - cmake --version
