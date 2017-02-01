@@ -34,7 +34,7 @@ function(add_julia_test TESTNAME JULIA_TEST_FILE)
             COMMAND ${JULIA_EXECUTABLE} ${JULIA_TEST_FILE}
             )
 
-    to_path_list(juliapath "${CMAKE_BINARY_DIR}/julia" "$ENV{JULIA_LOAD_PATH}")
+    to_path_list(juliapath "${CMAKE_BINARY_DIR}/julia/Segyio" "$ENV{JULIA_LOAD_PATH}")
     set_tests_properties(${TESTNAME} PROPERTIES ENVIRONMENT "JULIA_LOAD_PATH=${juliapath}")
 endfunction()
 
