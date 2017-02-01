@@ -2,6 +2,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/FindJuliaInterp.cmake)
 
 if(NOT JULIAINTERP_FOUND)
     message(STATUS "Disabling Julia bindings")
+    #set(BUILD_JULIA OFF)
     return()
 endif()
 

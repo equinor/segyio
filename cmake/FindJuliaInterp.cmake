@@ -2,6 +2,16 @@ unset(_Julia_NAMES)
 list(APPEND _Julia_NAMES julia)
 find_program(JULIA_EXECUTABLE NAMES ${_Julia_NAMES})
 
+if(NOT JULIA_EXECUTABLE)
+    foreach(_CURRENT_VERSION "0.4 0.5")
+        find_program(PYTHON_EXECUTABLE
+            NAMES ${_Python_NAMES}
+            PATHS [HKEY_LOCAL_MACHINE\\SOFTWARE\\Julia\\JuliaCore\\${_CURRENT_VERSION}\\InstallPath]
+            )
+    endforeach()
+
+endif()
+
 if(JULIA_EXECUTABLE)
     execute_process(COMMAND
                     "${JULIA_EXECUTABLE}" -e
@@ -23,16 +33,6 @@ if(JULIA_EXECUTABLE)
     endif()
     unset(_VERSION)
     unset(_JULIA_VERSION_RESULT)
-endif()
-
-if(NOT JULIA_EXECUTABLE)
-    foreach(_CURRENT_VERSION "0.4 0.5")
-        find_program(PYTHON_EXECUTABLE
-            NAMES ${_Python_NAMES}
-            PATHS [HKEY_LOCAL_MACHINE\\SOFTWARE\\Julia\\${_CURRENT_VERSION}\\InstallPath]
-            )
-    endforeach()
-
 endif()
 
 include(FindPackageHandleStandardArgs)
