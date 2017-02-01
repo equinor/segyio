@@ -49,8 +49,7 @@ before_script:
   - conda update -q conda
   - conda info -a
 
-  - conda search -t conda julia
-  - conda install -c julia=0.4
+  - conda install -c bioconda julia=0.4.5
   - conda install numpy cmake
 
   - cmake --version
