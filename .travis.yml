@@ -1,10 +1,10 @@
 language: generic
 
 env:
-  - BUILD_TYPE=RELEASE;PYTHON=2.7
-  - BUILD_TYPE=RELEASE;PYTHON=3.5
-  - BUILD_TYPE=DEBUG;PYTHON=2.7
-  - BUILD_TYPE=DEBUG;PYTHON=3.5
+  - BUILD_TYPE=RELEASE;PYTHON=2.7; BUILDJULIA=ON; JULIA=0.4.5
+  - BUILD_TYPE=RELEASE;PYTHON=3.5; BUILDJULIA=OFF
+  - BUILD_TYPE=DEBUG;PYTHON=2.7; BUILDJULIA=OFF
+  - BUILD_TYPE=DEBUG;PYTHON=3.5; BUILDJULIA=OFF
 
 os:
   - linux
@@ -51,10 +51,15 @@ before_script:
 
   - conda install numpy cmake
 
+  - if [[ "$BUILDJULIA" == "ON" ]]; then
+    conda install -c bioconda julia=0.4.5
+    julia -e 'Pkg.add("BaseTestNext")'
+    fi
+
   - cmake --version
   - mkdir build
   - cd build
-  - cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
+  - cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBUILD_JULIA=$BUILDJULIA ..
   - make
   - export LD_LIBRARY_PATH=$PWD
 

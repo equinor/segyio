@@ -26,3 +26,7 @@ if(BUILD_PYTHON)
     add_python_test(python.tools test_tools.py)
     add_python_test(python.test_context test_test_context.py)
 endif()
+
+if(BUILD_JULIA)
+    add_julia_test(julia.segy test_segy.jl)
+endif()

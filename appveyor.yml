@@ -10,13 +10,24 @@ os: Visual Studio 2015
 image: Visual Studio 2015
 
 platform:
-    - x86
+    #- x86
     - x64
 
 environment:
+    JULIAVERSION: "julialang/bin/winnt/x86/0.4/julia-0.4-latest-win32.exe"
     matrix:
         - PYTHON: C:\Python27
         - PYTHON: C:\Python35
+        #- JULIAVERSION: "julialang/bin/winnt/x64/0.4/julia-0.4-latest-win64.exe"
+
+install:
+# Download most recent Julia Windows binary
+  - ps: (new-object net.webclient).DownloadFile(
+        $("http://s3.amazonaws.com/"+$env:JULIAVERSION),
+        "C:\projects\julia-binary.exe")
+# Run installer silently, output to C:\projects\julia
+  - C:\projects\julia-binary.exe /S /D=C:\projects\julia
+  - C:\projects\julia\bin\julia -e "Pkg.add(\"BaseTestNext\")"
 
 build_script:
     - "%PYTHON%\\python -m pip install --user numpy"
