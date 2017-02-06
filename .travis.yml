@@ -4,8 +4,8 @@ env:
   - BUILD_TYPE=RELEASE; PYTHON=2.7;
   - BUILD_TYPE=RELEASE; PYTHON=3.5;
   - BUILD_TYPE=RELEASE; JULIA=0.4.5
-  - BUILD_TYPE=DEBUG;PYTHON=2.7;
-  - BUILD_TYPE=DEBUG;PYTHON=3.5;
+  - BUILD_TYPE=DEBUG; PYTHON=2.7;
+  - BUILD_TYPE=DEBUG; PYTHON=3.5;
   - BUILD_TYPE=DEBUG; JULIA=0.4.5
 
 os:
@@ -53,18 +53,18 @@ before_script:
 
   - conda install numpy cmake
 
-  - if [[ -n ${JULIA+x} ]]; then
+  - if [[ -n "${JULIA+1}" ]]; then
         conda install -c bioconda julia=$JULIA
         julia -e 'Pkg.add("BaseTestNext")'
     fi
 
   - enabled=-DBUILD_PYTHON=OFF -DBUILD_MEX=OFF -DBUILD_JULIA=OFF
-  - if [[ -n ${PYTHON+x} ]]; then enabled=$enabled -DBUILD_PYTHON=ON; fi
-  - if [[ -n ${JULIA+x} ]];  then enabled=$enabled -DBUILD_JULIA=ON;  fi
+  - if [[ -n "${PYTHON+1}" ]]; then enabled=$enabled -DBUILD_PYTHON=ON; fi
+  - if [[ -n "${JULIA+1}" ]];  then enabled=$enabled -DBUILD_JULIA=ON;  fi
   - cmake --version
   - mkdir build
   - pushd build
-  - cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBUILD_JULIA=$BUILDJULIA ..
+  - cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE $enabled  ..
   - make
   - export LD_LIBRARY_PATH=$PWD
 
