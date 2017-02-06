@@ -50,9 +50,7 @@ before_script:
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
   - conda info -a
-
   - conda install numpy cmake
-
   - if [ -n "${JULIA+1}" ]; then
         echo "installing julia '$JULIA'"
     fi
