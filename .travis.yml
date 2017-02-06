@@ -54,8 +54,12 @@ before_script:
   - conda install numpy cmake
 
   - if [[ -n "${JULIA+1}" ]]; then
-        conda install -c bioconda julia=$JULIA;
-        julia -e 'Pkg.add("BaseTestNext")';
+        if [[ "$TRAVIS_OS_NAME" == "osx"; then
+            brew install julia
+        else
+            conda install -c bioconda julia=$JULIA;
+            julia -e 'Pkg.add("BaseTestNext")';
+        fi
     fi
 
   - enabled="-DBUILD_PYTHON=OFF -DBUILD_MEX=OFF -DBUILD_JULIA=OFF"
