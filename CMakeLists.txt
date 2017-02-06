@@ -38,9 +38,6 @@ endif(NOT CMAKE_BUILD_TYPE)
 include_directories(src)
 set(SOURCE_FILES src/segyio/segy.c src/spec/segyspec.c)
 
-# The object library type is a reusable component for later builds: shared, static and python
-add_library(segyio-object OBJECT ${SOURCE_FILES})
-
 set(STATIC_NAME segyio)
 if(WINDOWS)
     # MSVC outputs the same name for static and shared libraries (with the same
@@ -49,11 +46,15 @@ if(WINDOWS)
     set(DLL_EXPORT_FILES src/segyio/segy.def)
 endif()
 
-add_library(segyio-static STATIC $<TARGET_OBJECTS:segyio-object>)
+# The object library type is a reusable component for later builds: shared and python
+add_library(segyio-object OBJECT ${SOURCE_FILES})
+set_property(TARGET segyio-object PROPERTY POSITION_INDEPENDENT_CODE ON)
+
+add_library(segyio-static STATIC ${SOURCE_FILES})
 target_link_libraries(segyio-static ${SEGYIO_LIBRARIES})
 set_target_properties(segyio-static PROPERTIES OUTPUT_NAME ${STATIC_NAME} CLEAN_DIRECT_OUTPUT 1)
 
-add_library(segyio-shared SHARED ${SOURCE_FILES} ${DLL_EXPORT_FILES})
+add_library(segyio-shared SHARED $<TARGET_OBJECTS:segyio-object> ${DLL_EXPORT_FILES})
 target_link_libraries(segyio-shared ${SEGYIO_LIBRARIES} ${SEGYIO_LIBRARIES})
 set_target_properties(segyio-shared PROPERTIES OUTPUT_NAME segyio CLEAN_DIRECT_OUTPUT 1)
 
