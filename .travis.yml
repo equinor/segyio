@@ -52,7 +52,6 @@ before_script:
   - conda info -a
 
   - conda install numpy cmake
-
   - if [[ -n "${JULIA+1}" ]]; then
         if [[ "$TRAVIS_OS_NAME" == "osx"; then
             brew update;
