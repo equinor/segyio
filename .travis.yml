@@ -57,6 +57,7 @@ before_script:
         echo "installing julia '$JULIA'"
         #conda install -c bioconda julia=$JULIA
         #julia -e 'Pkg.add("BaseTestNext")'
+        #
     fi
 
   - enabled=-DBUILD_PYTHON=OFF -DBUILD_MEX=OFF -DBUILD_JULIA=OFF
