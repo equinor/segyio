@@ -53,14 +53,14 @@ before_script:
 
   - conda install numpy cmake
 
-  - if [[ -z ${JULIA+x} ]]; then
+  - if [[ -n ${JULIA+x} ]]; then
         conda install -c bioconda julia=$JULIA
         julia -e 'Pkg.add("BaseTestNext")'
     fi
 
   - enabled=-DBUILD_PYTHON=OFF -DBUILD_MEX=OFF -DBUILD_JULIA=OFF
-  - if [[ -z ${PYTHON+x} ]]; then enabled=$enabled -DBUILD_PYTHON=ON; fi
-  - if [[ -z ${JULIA+x} ]];  then enabled=$enabled -DBUILD_JULIA=ON;  fi
+  - if [[ -n ${PYTHON+x} ]]; then enabled=$enabled -DBUILD_PYTHON=ON; fi
+  - if [[ -n ${JULIA+x} ]];  then enabled=$enabled -DBUILD_JULIA=ON;  fi
   - cmake --version
   - mkdir build
   - pushd build
