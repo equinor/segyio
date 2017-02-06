@@ -50,8 +50,8 @@ if(WINDOWS)
 endif()
 
 # The object library type is a reusable component for later builds: shared and python
-add_library(segyio-object SHARED OBJECT ${SOURCE_FILES})
-#set_property(TARGET segyio-object PROPERTY POSITION_INDEPENDENT_CODE ON)
+add_library(segyio-object OBJECT ${SOURCE_FILES})
+set_property(TARGET segyio-object PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 add_library(segyio-static STATIC ${SOURCE_FILES})
 target_link_libraries(segyio-static ${SEGYIO_LIBRARIES})
