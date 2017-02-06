@@ -1,10 +1,12 @@
 language: generic
 
 env:
-  - BUILD_TYPE=RELEASE;PYTHON=2.7; BUILDJULIA=ON; JULIA=0.4.5
-  - BUILD_TYPE=RELEASE;PYTHON=3.5; BUILDJULIA=OFF
-  - BUILD_TYPE=DEBUG;PYTHON=2.7; BUILDJULIA=OFF
-  - BUILD_TYPE=DEBUG;PYTHON=3.5; BUILDJULIA=OFF
+  - BUILD_TYPE=RELEASE; PYTHON=2.7;
+  - BUILD_TYPE=RELEASE; PYTHON=3.5;
+  - BUILD_TYPE=RELEASE; JULIA=0.4.5
+  - BUILD_TYPE=DEBUG;PYTHON=2.7;
+  - BUILD_TYPE=DEBUG;PYTHON=3.5;
+  - BUILD_TYPE=DEBUG; JULIA=0.4.5
 
 os:
   - linux
@@ -51,14 +53,17 @@ before_script:
 
   - conda install numpy cmake
 
-  - if [[ "$BUILDJULIA" == "ON" ]]; then
-    conda install -c bioconda julia=0.4.5
-    julia -e 'Pkg.add("BaseTestNext")'
+  - if [[ -z "$JULIA" ]]; then
+        conda install -c bioconda julia=$JULIA
+        julia -e 'Pkg.add("BaseTestNext")'
     fi
 
+  - enabled=-DBUILD_PYTHON=OFF -DBUILD_MEX=OFF -DBUILD_JULIA=OFF
+  - if [[ -z "$PYTHON" ]]; then enabled=$enabled -DBUILD_PYTHON=ON; fi
+  - if [[ -z "$JULIA" ]]; then enabled=$enabled -DBUILD_JULIA=ON; fi
   - cmake --version
   - mkdir build
-  - cd build
+  - pushd build
   - cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBUILD_JULIA=$BUILDJULIA ..
   - make
   - export LD_LIBRARY_PATH=$PWD
