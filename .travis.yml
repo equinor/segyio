@@ -50,13 +50,17 @@ before_script:
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
   - conda info -a
+
   - conda install numpy cmake
-  - if [ -n "${JULIA+1}" ]; then
-        echo "installing julia '$JULIA'"
+
+  - if [[ -n "${JULIA+1}" ]]; then
+        conda install -c bioconda julia=$JULIA;
+        julia -e 'Pkg.add("BaseTestNext")';
     fi
+
   - enabled=-DBUILD_PYTHON=OFF -DBUILD_MEX=OFF -DBUILD_JULIA=OFF
-  - if [ -n "${PYTHON+1}" ]; then enabled=$enabled -DBUILD_PYTHON=ON; fi
-  - if [ -n "${JULIA+1}" ];  then enabled=$enabled -DBUILD_JULIA=ON;  fi
+  - if [[ -n "${PYTHON+1}" ]]; then enabled=$enabled -DBUILD_PYTHON=ON; fi
+  - if [[ -n "${JULIA+1}" ]];  then enabled=$enabled -DBUILD_JULIA=ON;  fi
   - cmake --version
   - mkdir build
   - pushd build
