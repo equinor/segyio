@@ -55,6 +55,7 @@ install:
   - if [[ -n "${JULIA+1}" ]]; then
         if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
             brew update;
+            brew tap staticfloat/julia;
             brew install julia;
         else
             conda install -c bioconda julia=$JULIA;
