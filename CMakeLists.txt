@@ -42,7 +42,7 @@ set(SOURCE_FILES src/segyio/segy.c src/spec/segyspec.c)
 add_library(segyio-object OBJECT ${SOURCE_FILES})
 
 set(STATIC_NAME segyio)
-if(MSVC)
+if(WINDOWS)
     # MSVC outputs the same name for static and shared libraries (with the same
     # extension), so we need to differentiate between the two somehow.
     set(STATIC_NAME "${STATIC_NAME}-static")
@@ -53,7 +53,7 @@ add_library(segyio-static STATIC $<TARGET_OBJECTS:segyio-object>)
 target_link_libraries(segyio-static ${SEGYIO_LIBRARIES})
 set_target_properties(segyio-static PROPERTIES OUTPUT_NAME ${STATIC_NAME} CLEAN_DIRECT_OUTPUT 1)
 
-add_library(segyio-shared SHARED $<TARGET_OBJECTS:segyio-object> ${DLL_EXPORT_FILES})
+add_library(segyio-shared SHARED ${SOURCE_FILES} ${DLL_EXPORT_FILES})
 target_link_libraries(segyio-shared ${SEGYIO_LIBRARIES} ${SEGYIO_LIBRARIES})
 set_target_properties(segyio-shared PROPERTIES OUTPUT_NAME segyio CLEAN_DIRECT_OUTPUT 1)
 

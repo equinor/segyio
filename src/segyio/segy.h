@@ -3,7 +3,7 @@
 
 #ifdef __cplusplus
 extern "C" {
-#endif __cplusplus
+#endif // __cplusplus
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -430,6 +430,6 @@ typedef enum {
 
 #ifdef __cplusplus
 }
-#endif __cplusplus
+#endif // __cplusplus
 
 #endif //SEGYIO_SEGY_H

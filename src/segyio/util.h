@@ -10,7 +10,7 @@
 
 #ifdef __cplusplus
 extern "C" {
-#endif __cplusplus
+#endif // __cplusplus
 
 struct segy_file_handle;
 
@@ -23,6 +23,6 @@ long segy_ftell( struct segy_file_handle* );
 
 #ifdef __cplusplus
 }
-#endif __cplusplus
+#endif // __cplusplus
 
 #endif //SEGYIO_UTILS_H
