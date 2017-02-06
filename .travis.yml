@@ -59,7 +59,7 @@ install:
         else
             conda install -c bioconda julia=$JULIA;
             julia -e 'Pkg.add("BaseTestNext")';
-        fi;
+        fi
     fi
 
 before_script:
