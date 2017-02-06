@@ -55,7 +55,8 @@ before_script:
 
   - if [[ -n "${JULIA+1}" ]]; then
         if [[ "$TRAVIS_OS_NAME" == "osx"; then
-            brew install julia
+            brew update;
+            brew install julia;
         else
             conda install -c bioconda julia=$JULIA;
             julia -e 'Pkg.add("BaseTestNext")';
