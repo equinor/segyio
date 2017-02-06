@@ -1,3 +1,5 @@
+project(segyio-mex)
+
 if (NOT BUILD_MEX)
     unset(MATLAB_MCC CACHE)
     unset(MATLAB_MEX CACHE)
@@ -17,6 +19,8 @@ configure_file(SegySampleFormat.m SegySampleFormat.m)
 configure_file(TraceSortingFormat.m TraceSortingFormat.m)
 configure_file(TraceField.m TraceField.m)
 
+get_property(dirs TARGET segyio-shared PROPERTY INCLUDE_DIRECTORIES)
+include_directories(${dirs})
 
 mexo(segyutil)
 mex(segyspec_mex)
@@ -32,6 +36,7 @@ mex(segy_get_trace_header_mex segyutil)
 mex(segy_get_field_mex segyutil)
 mex(segy_put_headers_mex segyutil)
 mex(segy_get_offsets_mex segyutil)
+
 
 install(FILES
         ${CMAKE_CURRENT_BINARY_DIR}/segyspec_mex.mexa64
@@ -54,3 +59,8 @@ install(FILES
         TraceField.m
         DESTINATION
         ${CMAKE_INSTALL_PREFIX}/matlab)
+
+if(BUILD_MEX_TESTS)
+    add_matlab_test(matlab.segyspec test/spec.m test_segyspec_mex)
+    add_matlab_test(matlab.segy     test/segy.m test_segy_mex)
+endif()

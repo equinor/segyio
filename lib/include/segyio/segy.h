@@ -1,6 +1,10 @@
 #ifndef SEGYIO_SEGY_H
 #define SEGYIO_SEGY_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -176,6 +180,22 @@ int segy_count_lines( segy_file*,
                       unsigned int offsets,
                       unsigned int* l1out,
                       unsigned int* l2out,
+                      long trace0,
+                      unsigned int trace_bsize );
+
+/*
+ * Alternative interface for segy_count_lines. If you have information about
+ * sorting this is easier to use, but requires both the inline and crossline
+ * header field positions. Does the argument shuffling needed to call
+ * segy_count_lines.
+ */
+int segy_lines_count( segy_file*,
+                      int il,
+                      int xl,
+                      int sorting,
+                      int offsets,
+                      int* il_count,
+                      int* xl_count,
                       long trace0,
                       unsigned int trace_bsize );
 /*
@@ -408,5 +428,8 @@ typedef enum {
     SEGY_MMAP_INVALID,
 } SEGY_ERROR;
 
+#ifdef __cplusplus
+}
+#endif // __cplusplus
 
 #endif //SEGYIO_SEGY_H

@@ -937,6 +937,41 @@ int segy_count_lines( segy_file* fp,
     return SEGY_OK;
 }
 
+int segy_lines_count( segy_file* fp,
+                      int il,
+                      int xl,
+                      int sorting,
+                      int offsets,
+                      int* il_count,
+                      int* xl_count,
+                      long trace0,
+                      unsigned int trace_bsize ) {
+
+    if( sorting == UNKNOWN_SORTING ) return SEGY_INVALID_SORTING;
+
+    int field;
+    unsigned int l1out, l2out;
+
+    if( sorting == INLINE_SORTING ) field = xl;
+    else field = il;
+
+    int err = segy_count_lines( fp, field, offsets,
+                                &l1out, &l2out,
+                                trace0, trace_bsize );
+
+    if( err != SEGY_OK ) return err;
+
+    if( sorting == INLINE_SORTING ) {
+        *il_count = l1out;
+        *xl_count = l2out;
+    } else {
+        *il_count = l2out;
+        *xl_count = l1out;
+    }
+
+    return SEGY_OK;
+}
+
 unsigned int segy_inline_length(unsigned int crossline_count) {
     return crossline_count;
 }

@@ -3,9 +3,10 @@
 from distutils.core import setup, Extension
 
 _segyio = Extension('segyio._segyio',
-                    sources=['python/segyio/_segyio.c', 'src/segyio/segy.c', 'src/spec/segyspec.c'],
-                    include_dirs=['src'],
-                    extra_compile_args=["-std=c99"])
+                    sources=['python/segyio/_segyio.c', 'lib/src/segy.c'],
+                    include_dirs=['lib/src', 'lib/include'],
+                    define_macros=[('HAVE_MMAP', 1), ('HAVE_NETINET_IN_H', 1)],
+                    extra_compile_args=['-std=c99'])
 
 long_description = """
 =======
