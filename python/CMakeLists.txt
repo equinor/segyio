@@ -25,7 +25,7 @@ if (NOT PYTHONLIBS_FOUND)
 endif()
 
 include_directories(${PYTHON_INCLUDE_DIRS})
-add_library(_segyio SHARED segyio/_segyio.c $<TARGET_OBJECTS:segyio-object>)
+add_library(_segyio SHARED segyio/_segyio.c ${SOURCE_FILES})
 
 if (MSVC)
     set(LIB_SUFFIX "pyd")
