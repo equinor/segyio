@@ -59,8 +59,8 @@ before_script:
     fi
 
   - enabled="-DBUILD_PYTHON=OFF -DBUILD_MEX=OFF -DBUILD_JULIA=OFF"
-  - if [[ -n "${PYTHON+1}" ]]; then enabled=$enabled -DBUILD_PYTHON=ON; fi
-  - if [[ -n "${JULIA+1}" ]];  then enabled=$enabled -DBUILD_JULIA=ON;  fi
+  - if [[ -n "${PYTHON+1}" ]]; then enabled="$enabled -DBUILD_PYTHON=ON"; fi
+  - if [[ -n "${JULIA+1}" ]];  then enabled="$enabled -DBUILD_JULIA=ON";  fi
   - cmake --version
   - mkdir build
   - pushd build
