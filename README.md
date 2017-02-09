@@ -1,4 +1,4 @@
-# SEGY IO #
+# SEGY IO ![build status](https://travis-ci.org/Statoil/SegyIO.svg?branch=master "TravisCI Build Status")
 
 ## Introduction ##
 
