@@ -8,6 +8,10 @@
  * testing utilities. These functions won't show up in the installed headers.
  */
 
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
 struct segy_file_handle;
 
 void ebcdic2ascii( const char* ebcdic, char* ascii );
@@ -16,5 +20,9 @@ void ibm2ieee(void* to, const void* from);
 void ieee2ibm(void* to, const void* from);
 int segy_seek( struct segy_file_handle*, unsigned int, long, unsigned int );
 long segy_ftell( struct segy_file_handle* );
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus
 
 #endif //SEGYIO_UTILS_H

@@ -1,5 +1,9 @@
 configure_file(../tests/test-data/small.sgy test-data/small.sgy COPYONLY)
 
+if(NOT BUILD_PYTHON)
+    return()
+endif()
+
 
 add_python_example(python.examples.about about.py test-data/small.sgy INLINE_3D CROSSLINE_3D)
 add_python_example(python.examples.write write.py test-data/small.sgy)

@@ -1,10 +1,12 @@
 language: generic
 
 env:
-  - BUILD_TYPE=RELEASE;PYTHON=2.7
-  - BUILD_TYPE=RELEASE;PYTHON=3.5
-  - BUILD_TYPE=DEBUG;PYTHON=2.7
-  - BUILD_TYPE=DEBUG;PYTHON=3.5
+  - BUILD_TYPE=RELEASE; PYTHON=2.7;
+  - BUILD_TYPE=RELEASE; PYTHON=3.5;
+  - BUILD_TYPE=RELEASE; JULIA=0.4.5
+  - BUILD_TYPE=DEBUG; PYTHON=2.7;
+  - BUILD_TYPE=DEBUG; PYTHON=3.5;
+  - BUILD_TYPE=DEBUG; JULIA=0.4.5
 
 os:
   - linux
@@ -26,7 +28,7 @@ addons:
       packages:
         - valgrind
 
-before_script:
+install:
   # Valgrind is experimental(ish) on MacOS with false positives on among others printf
   #- if [[ "$TRAVIS_OS_NAME" == "osx" && "$BUILD_TYPE" == "DEBUG" ]]; then
   #    brew update;
@@ -50,12 +52,27 @@ before_script:
   - conda info -a
 
   - conda install numpy cmake
+  - if [[ -n "${JULIA+1}" ]]; then
+        if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+            brew update;
+            brew tap staticfloat/julia;
+            brew install julia;
+        else
+            conda install -c bioconda julia=$JULIA;
+            julia -e 'Pkg.add("BaseTestNext")';
+        fi
+    fi
 
+before_script:
+  - enabled="-DBUILD_PYTHON=OFF -DBUILD_MEX=OFF -DBUILD_JULIA=OFF"
+  - if [[ -n "${PYTHON+1}" ]]; then enabled="$enabled -DBUILD_PYTHON=ON"; fi
+  - if [[ -n "${JULIA+1}" ]];  then enabled="$enabled -DBUILD_JULIA=ON";  fi
   - cmake --version
+
+script:
   - mkdir build
-  - cd build
-  - cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
+  - pushd build
+  - cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE $enabled  ..
   - make
   - export LD_LIBRARY_PATH=$PWD
-
-script: make && ctest --output-on-failure
+  - ctest --output-on-failure
