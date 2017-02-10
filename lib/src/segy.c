@@ -551,13 +551,13 @@ int segy_format( const char* buf ) {
     return format;
 }
 
-unsigned int segy_samples( const char* buf ) {
+int segy_samples( const char* buf ) {
     int32_t samples;
     segy_get_bfield( buf, SEGY_BIN_SAMPLES, &samples );
-    return (unsigned int) samples;
+    return samples;
 }
 
-unsigned int segy_trace_bsize( unsigned int samples ) {
+unsigned int segy_trace_bsize( int samples ) {
     /* Hard four-byte float assumption */
     return samples * 4;
 }
@@ -689,7 +689,7 @@ int segy_sample_interval( segy_file* fp, double* dt) {
     }
 
     const long trace0 = segy_trace0( bin_header );
-    unsigned int samples = segy_samples( bin_header );
+    int samples = segy_samples( bin_header );
     const size_t trace_bsize = segy_trace_bsize( samples );
 
     err = segy_traceheader(fp, 0, trace_header, trace0, trace_bsize);

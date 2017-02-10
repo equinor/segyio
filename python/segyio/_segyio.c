@@ -493,9 +493,9 @@ static PyObject *py_write_trace_header(PyObject *self, PyObject *args) {
 
 static PyObject *py_trace_bsize(PyObject *self, PyObject *args) {
     errno = 0;
-    unsigned int sample_count;
+    int sample_count;
 
-    PyArg_ParseTuple(args, "I", &sample_count);
+    PyArg_ParseTuple(args, "i", &sample_count);
 
     unsigned int byte_count = segy_trace_bsize(sample_count);
 
@@ -569,7 +569,7 @@ static PyObject *py_init_metrics(PyObject *self, PyObject *args) {
     if (PyErr_Occurred()) { return NULL; }
 
     long trace0 = segy_trace0(binary_header);
-    unsigned int sample_count = segy_samples(binary_header);
+    int sample_count = segy_samples(binary_header);
     int format = segy_format(binary_header);
     unsigned int trace_bsize = segy_trace_bsize(sample_count);
 
@@ -627,7 +627,7 @@ static PyObject *py_init_metrics(PyObject *self, PyObject *args) {
     PyDict_SetItemString(dict, "xline_field", Py_BuildValue("i", xl_field));
     PyDict_SetItemString(dict, "offset_field", Py_BuildValue("i", 37));
     PyDict_SetItemString(dict, "trace0", Py_BuildValue("l", trace0));
-    PyDict_SetItemString(dict, "sample_count", Py_BuildValue("I", sample_count));
+    PyDict_SetItemString(dict, "sample_count", Py_BuildValue("i", sample_count));
     PyDict_SetItemString(dict, "format", Py_BuildValue("i", format));
     PyDict_SetItemString(dict, "trace_bsize", Py_BuildValue("I", trace_bsize));
     PyDict_SetItemString(dict, "sorting", Py_BuildValue("i", sorting));

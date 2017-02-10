@@ -34,7 +34,7 @@ static void test_interpret_file() {
     assertTrue( trace0 == 3600,
                 "Wrong byte offset of the first trace header. Expected 3600." );
 
-    const unsigned int samples = segy_samples( header );
+    const int samples = segy_samples( header );
     assertTrue( samples == 50, "Expected 350 samples per trace." );
 
     const size_t trace_bsize = segy_trace_bsize( samples );
@@ -221,7 +221,7 @@ static void testReadInLine_4(){
     segy_file* fp = segy_open( file, "rb" );
     assertTrue( 0 == segy_binheader( fp, header ), "Could not read header" );
     const long trace0 = segy_trace0( header );
-    const unsigned int samples = segy_samples( header );
+    const int samples = segy_samples( header );
     const size_t trace_bsize = segy_trace_bsize( samples );
     const int format = segy_format( header );
 
@@ -255,7 +255,7 @@ static void testReadInLine_4(){
     assertClose(4.20049f, data[samples-1], 0.0001f);
 
     //middle xline
-    size_t middle_line = 2;
+    int middle_line = 2;
     //first sample
     assertClose(4.22f, data[samples*middle_line+0], 0.0001);
     //middle sample
@@ -264,7 +264,7 @@ static void testReadInLine_4(){
     assertClose(4.22049f, data[samples*middle_line+samples-1], 0.0001);
 
     //last xline
-    size_t last_line = (crosslines_sz-1);
+    int last_line = (crosslines_sz-1);
     //first sample
     assertClose(4.24f, data[samples*last_line+0], 0);
     //middle sample
@@ -296,7 +296,7 @@ static void testReadCrossLine_22(){
     segy_file* fp = segy_open( file, "rb" );
     assertTrue( 0 == segy_binheader( fp, header ), "Could not read header" );
     const long trace0 = segy_trace0( header );
-    const unsigned int samples = segy_samples( header );
+    const int samples = segy_samples( header );
     const size_t trace_bsize = segy_trace_bsize( samples );
     const int format = segy_format( header );
 
@@ -330,7 +330,7 @@ static void testReadCrossLine_22(){
     assertClose(1.22049f, data[samples-1], 0.0001);
 
     //middle inline
-    size_t middle_line = 2;
+    int middle_line = 2;
     //first sample
     assertClose(3.22f, data[samples*middle_line+0], 0.0001);
     //middle sample
@@ -339,7 +339,7 @@ static void testReadCrossLine_22(){
     assertClose(3.22049f, data[samples*middle_line+samples-1], 0.0001);
 
     //last inline
-    size_t last_line = (line_length-1);
+    int last_line = (line_length-1);
     //first sample
     assertClose(5.22f, data[samples*last_line+0], 0.0001);
     //middle sample
@@ -366,7 +366,7 @@ static void test_modify_trace_header() {
     err = segy_binheader( fp, bheader );
     assertTrue( err == 0, "Could not read header" );
     const long trace0 = segy_trace0( bheader );
-    const unsigned int samples = segy_samples( bheader );
+    const int samples = segy_samples( bheader );
     const size_t trace_bsize = segy_trace_bsize( samples );
 
     char traceh[ SEGY_TRACE_HEADER_SIZE ];
@@ -470,7 +470,7 @@ static void test_trace_header_errors() {
     char binheader[ SEGY_BINARY_HEADER_SIZE ];
     err = segy_binheader( fp, binheader );
     assertTrue( err == 0, "Could not read binary header." );
-    const unsigned samples = segy_samples( binheader );
+    const int samples = segy_samples( binheader );
     const unsigned bsize = segy_trace_bsize( samples );
     const long trace0 = segy_trace0( binheader );
 
@@ -508,7 +508,7 @@ static void test_file_error_codes() {
     assertTrue( err == SEGY_FSEEK_ERROR,
                 "Could read binary header from invalid file." );
 
-    const unsigned samples = segy_samples( binheader );
+    const int samples = segy_samples( binheader );
     const unsigned trace_bsize = segy_trace_bsize( samples );
     const long trace0 = segy_trace0( binheader );
 

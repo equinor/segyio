@@ -22,7 +22,7 @@ typedef struct {
     unsigned int offset_count;
 
     double* sample_indexes;
-    unsigned int sample_count;
+    int sample_count;
 
     int trace_sorting_format;
 
@@ -38,7 +38,7 @@ int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, 
 void recreateSpec(SegySpec* spec, const mxArray* mex_spec);
 
 struct segy_file_format {
-    unsigned int samples;
+    int samples;
     long trace0;
     unsigned int trace_bsize;
     size_t traces;
