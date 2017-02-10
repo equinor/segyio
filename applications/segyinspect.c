@@ -77,7 +77,7 @@ int main(int argc, char* argv[]) {
     const int format = segy_format( header );
     const int samples = segy_samples( header );
     const long trace0 = segy_trace0( header );
-    const unsigned int trace_bsize = segy_trace_bsize( samples );
+    const int trace_bsize = segy_trace_bsize( samples );
 
     size_t traces;
     err = segy_traces( fp, &traces, trace0, trace_bsize );

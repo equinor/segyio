@@ -37,7 +37,7 @@ static void test_interpret_file() {
     const int samples = segy_samples( header );
     assertTrue( samples == 50, "Expected 350 samples per trace." );
 
-    const size_t trace_bsize = segy_trace_bsize( samples );
+    const int trace_bsize = segy_trace_bsize( samples );
     assertTrue( trace_bsize == 50 * 4,
                 "Wrong trace byte size. Expected samples * 4-byte float." );
 
@@ -222,7 +222,7 @@ static void testReadInLine_4(){
     assertTrue( 0 == segy_binheader( fp, header ), "Could not read header" );
     const long trace0 = segy_trace0( header );
     const int samples = segy_samples( header );
-    const size_t trace_bsize = segy_trace_bsize( samples );
+    const int trace_bsize = segy_trace_bsize( samples );
     const int format = segy_format( header );
 
     unsigned int inline_indices[ 5 ];
@@ -297,7 +297,7 @@ static void testReadCrossLine_22(){
     assertTrue( 0 == segy_binheader( fp, header ), "Could not read header" );
     const long trace0 = segy_trace0( header );
     const int samples = segy_samples( header );
-    const size_t trace_bsize = segy_trace_bsize( samples );
+    const int trace_bsize = segy_trace_bsize( samples );
     const int format = segy_format( header );
 
     unsigned int crossline_indices[ 5 ];
@@ -367,7 +367,7 @@ static void test_modify_trace_header() {
     assertTrue( err == 0, "Could not read header" );
     const long trace0 = segy_trace0( bheader );
     const int samples = segy_samples( bheader );
-    const size_t trace_bsize = segy_trace_bsize( samples );
+    const int trace_bsize = segy_trace_bsize( samples );
 
     char traceh[ SEGY_TRACE_HEADER_SIZE ];
     err = segy_traceheader( fp, 0, traceh, trace0, trace_bsize );
@@ -471,7 +471,7 @@ static void test_trace_header_errors() {
     err = segy_binheader( fp, binheader );
     assertTrue( err == 0, "Could not read binary header." );
     const int samples = segy_samples( binheader );
-    const unsigned bsize = segy_trace_bsize( samples );
+    const int bsize = segy_trace_bsize( samples );
     const long trace0 = segy_trace0( binheader );
 
     char header[ SEGY_TRACE_HEADER_SIZE ];
@@ -509,7 +509,7 @@ static void test_file_error_codes() {
                 "Could read binary header from invalid file." );
 
     const int samples = segy_samples( binheader );
-    const unsigned trace_bsize = segy_trace_bsize( samples );
+    const int trace_bsize = segy_trace_bsize( samples );
     const long trace0 = segy_trace0( binheader );
 
     char header[ SEGY_TRACE_HEADER_SIZE ];
@@ -575,8 +575,8 @@ static void test_error_codes_sans_file() {
 static void test_file_size_above_4GB(){
     segy_file* fp = segy_open( "4gbfile", "w+b" );
 
-    unsigned int trace = 5000000;
-    unsigned int trace_bsize = 1000;
+    int trace = 5000000;
+    int trace_bsize = 1000;
     long long tracesize = trace_bsize + SEGY_TRACE_HEADER_SIZE;
     long trace0 = 0;
 

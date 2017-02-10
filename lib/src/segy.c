@@ -557,7 +557,8 @@ int segy_samples( const char* buf ) {
     return samples;
 }
 
-unsigned int segy_trace_bsize( int samples ) {
+int segy_trace_bsize( int samples ) {
+    assert( samples >= 0 );
     /* Hard four-byte float assumption */
     return samples * 4;
 }
@@ -573,7 +574,7 @@ long segy_trace0( const char* binheader ) {
 int segy_seek( segy_file* fp,
                int trace,
                long trace0,
-               unsigned int trace_bsize ) {
+               int trace_bsize ) {
 
     trace_bsize += SEGY_TRACE_HEADER_SIZE;
     long long pos = (long long)trace0 + (trace * (long long)trace_bsize);
@@ -613,7 +614,7 @@ int segy_traceheader( segy_file* fp,
                       unsigned int traceno,
                       char* buf,
                       long trace0,
-                      unsigned int trace_bsize ) {
+                      int trace_bsize ) {
 
     const int err = segy_seek( fp, traceno, trace0, trace_bsize );
     if( err != 0 ) return err;
@@ -635,7 +636,7 @@ int segy_write_traceheader( segy_file* fp,
                             unsigned int traceno,
                             const char* buf,
                             long trace0,
-                            unsigned int trace_bsize ) {
+                            int trace_bsize ) {
 
     const int err = segy_seek( fp, traceno, trace0, trace_bsize );
     if( err != 0 ) return err;
@@ -662,14 +663,16 @@ int segy_write_traceheader( segy_file* fp,
 int segy_traces( segy_file* fp,
                  size_t* traces,
                  long trace0,
-                 unsigned int trace_bsize ) {
+                 int trace_bsize ) {
 
     long long fsize;
     int err = file_size( fp->fp, &fsize );
     if( err != 0 ) return err;
 
+    if( trace0 > fsize ) return SEGY_INVALID_ARGS;
+
     trace_bsize += SEGY_TRACE_HEADER_SIZE;
-    const size_t trace_data_size = fsize - trace0;
+    const int trace_data_size = fsize - trace0;
 
     if( trace_data_size % trace_bsize != 0 )
         return SEGY_TRACE_SIZE_MISMATCH;
@@ -690,7 +693,7 @@ int segy_sample_interval( segy_file* fp, double* dt) {
 
     const long trace0 = segy_trace0( bin_header );
     int samples = segy_samples( bin_header );
-    const size_t trace_bsize = segy_trace_bsize( samples );
+    const int trace_bsize = segy_trace_bsize( samples );
 
     err = segy_traceheader(fp, 0, trace_header, trace0, trace_bsize);
     if (err != 0) {
@@ -752,7 +755,7 @@ int segy_sorting( segy_file* fp,
                   int xl,
                   int* sorting,
                   long trace0,
-                  unsigned int trace_bsize ) {
+                  int trace_bsize ) {
     int err;
     char traceheader[ SEGY_TRACE_HEADER_SIZE ];
 
@@ -824,7 +827,7 @@ int segy_offsets( segy_file* fp,
                   unsigned int traces,
                   unsigned int* out,
                   long trace0,
-                  unsigned int trace_bsize ) {
+                  int trace_bsize ) {
     int err;
     int il0, il1, xl0, xl1;
     char header[ SEGY_TRACE_HEADER_SIZE ];
@@ -867,7 +870,7 @@ int segy_offset_indices( segy_file* fp,
                          int offsets,
                          int* out,
                          long trace0,
-                         unsigned int trace_bsize ) {
+                         int trace_bsize ) {
     int err = 0;
     int32_t x = 0;
     char header[ SEGY_TRACE_HEADER_SIZE ];
@@ -893,7 +896,7 @@ static int segy_line_indices( segy_file* fp,
                               unsigned int num_indices,
                               unsigned int* buf,
                               long trace0,
-                              unsigned int trace_bsize ) {
+                              int trace_bsize ) {
 
     if( field_size[ field ] == 0 )
         return SEGY_INVALID_FIELD;
@@ -915,7 +918,7 @@ static int count_lines( segy_file* fp,
                         unsigned int offsets,
                         unsigned int* out,
                         long trace0,
-                        unsigned int trace_bsize ) {
+                        int trace_bsize ) {
 
     int err;
     char header[ SEGY_TRACE_HEADER_SIZE ];
@@ -956,7 +959,7 @@ int segy_count_lines( segy_file* fp,
                       unsigned int* l1out,
                       unsigned int* l2out,
                       long trace0,
-                      unsigned int trace_bsize ) {
+                      int trace_bsize ) {
 
     int err;
     unsigned int l2count;
@@ -984,7 +987,7 @@ int segy_lines_count( segy_file* fp,
                       int* il_count,
                       int* xl_count,
                       long trace0,
-                      unsigned int trace_bsize ) {
+                      int trace_bsize ) {
 
     if( sorting == SEGY_UNKNOWN_SORTING ) return SEGY_INVALID_SORTING;
 
@@ -1027,7 +1030,7 @@ int segy_inline_indices( segy_file* fp,
                          unsigned int offsets,
                          unsigned int* buf,
                          long trace0,
-                         unsigned int trace_bsize) {
+                         int trace_bsize) {
     int err;
 
     if( sorting == SEGY_INLINE_SORTING ) {
@@ -1054,7 +1057,7 @@ int segy_crossline_indices( segy_file* fp,
                             unsigned int offsets,
                             unsigned int* buf,
                             long trace0,
-                            unsigned int trace_bsize ) {
+                            int trace_bsize ) {
 
     int err;
 
@@ -1089,7 +1092,7 @@ int segy_readtrace( segy_file* fp,
                     unsigned int traceno,
                     float* buf,
                     long trace0,
-                    unsigned int trace_bsize ) {
+                    int trace_bsize ) {
     int err;
     err = segy_seek( fp, traceno, trace0, trace_bsize );
     if( err != 0 ) return err;
@@ -1097,13 +1100,16 @@ int segy_readtrace( segy_file* fp,
     err = skip_traceheader( fp );
     if( err != 0 ) return err;
 
+    assert( trace_bsize >= 0 );
+    const size_t bsize = (size_t) trace_bsize;
+
     if( fp->addr ) {
-        memcpy( buf, fp->cur, trace_bsize );
+        memcpy( buf, fp->cur, bsize );
         return SEGY_OK;
     }
 
-    const size_t readc = fread( buf, 1, trace_bsize, fp->fp );
-    if( readc != trace_bsize ) return SEGY_FREAD_ERROR;
+    const size_t readc = fread( buf, 1, bsize, fp->fp );
+    if( readc != bsize ) return SEGY_FREAD_ERROR;
 
     return SEGY_OK;
 
@@ -1113,7 +1119,7 @@ int segy_writetrace( segy_file* fp,
                      unsigned int traceno,
                      const float* buf,
                      long trace0,
-                     unsigned int trace_bsize ) {
+                     int trace_bsize ) {
 
     int err;
     err = segy_seek( fp, traceno, trace0, trace_bsize );
@@ -1122,13 +1128,16 @@ int segy_writetrace( segy_file* fp,
     err = skip_traceheader( fp );
     if( err != 0 ) return err;
 
+    assert( trace_bsize >= 0 );
+    const size_t bsize = (size_t) trace_bsize;
+
     if( fp->addr ) {
-        memcpy( fp->cur, buf, trace_bsize );
+        memcpy( fp->cur, buf, bsize );
         return SEGY_OK;
     }
 
-    const size_t writec = fwrite( buf, 1, trace_bsize, fp->fp );
-    if( writec != trace_bsize )
+    const size_t writec = fwrite( buf, 1, bsize , fp->fp );
+    if( writec != bsize )
         return SEGY_FWRITE_ERROR;
     return SEGY_OK;
 }
@@ -1215,9 +1224,11 @@ int segy_read_line( segy_file* fp,
                     int offsets,
                     float* buf,
                     long trace0,
-                    unsigned int trace_bsize ) {
+                    int trace_bsize ) {
 
-    const size_t trace_data_size = trace_bsize / 4;
+    assert( sizeof( float ) == sizeof( int32_t ) );
+    assert( trace_bsize % 4 == 0 );
+    const int trace_data_size = trace_bsize / 4;
 
     stride *= offsets;
 
@@ -1247,9 +1258,11 @@ int segy_write_line( segy_file* fp,
                      int offsets,
                      const float* buf,
                      long trace0,
-                     unsigned int trace_bsize ) {
+                     int trace_bsize ) {
 
-    const size_t trace_data_size = trace_bsize / 4;
+    assert( sizeof( float ) == sizeof( int32_t ) );
+    assert( trace_bsize % 4 == 0 );
+    const int trace_data_size = trace_bsize / 4;
 
     line_trace0 *= offsets;
     stride *= offsets;
