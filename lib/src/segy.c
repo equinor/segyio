@@ -65,14 +65,14 @@ static unsigned char e2a[256] = {
 
 void ebcdic2ascii( const char* ebcdic, char* ascii ) {
     while( *ebcdic != '\0' )
-        *ascii++ = e2a[ (unsigned char) *ebcdic++ ];
+        *ascii++ = (char)e2a[ (unsigned char) *ebcdic++ ];
 
     *ascii = '\0';
 }
 
 void ascii2ebcdic( const char* ascii, char* ebcdic ) {
     while (*ascii != '\0')
-        *ebcdic++ = a2e[(unsigned char) *ascii++];
+        *ebcdic++ = (char)a2e[(unsigned char) *ascii++];
 
     *ebcdic = '\0';
 }
