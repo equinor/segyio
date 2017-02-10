@@ -36,9 +36,9 @@ written according to specification, but segyio does not mandate this.
 ## Getting started ##
 
 When Segyio is built and installed, you're ready to start programming! For
-examples and documentation, check out the examples in the examples directory.
-If you're using python, pydoc is used, so fire up your favourite python
-interpreter and type `help(segyio)` to get started.
+examples and documentation, check out the examples in the python/examples
+directory.  If you're using python, pydoc is used, so fire up your favourite
+python interpreter and type `help(segyio)` to get started.
 
 ### Requirements ###
 
@@ -80,9 +80,10 @@ It's recommended to build in debug mode to get more warnings and to embed debug
 symbols in the objects. Substituting `Debug` for `Release` in the
 `CMAKE_BUILD_TYPE` is plenty.
 
-Tests are located in the tests directory, and it's highly recommended that new
-features added are demonstrated for correctness and contract by adding a test.
-Feel free to use the tests already written as a guide.
+Tests are located in the language/tests directories, and it's highly
+recommended that new features added are demonstrated for correctness and
+contract by adding a test. Feel free to use the tests already written as a
+guide.
 
 After building Segyio you can run the tests with `ctest`, executed from the
 build directory.

@@ -1,7 +1,7 @@
 #include <string.h>
 #include "mex.h"
 
-#include <../src/segyio/segy.h>
+#include <segyio/segy.h>
 #include "segyutil.h"
 
 mxArray *createPLHSStruct() {
