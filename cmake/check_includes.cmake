@@ -1,4 +1,5 @@
 include(CheckIncludeFile)
+include(CheckFunctionExists)
 
 # Portability checks; look for htons function
 check_include_file("netinet/in.h" HAVE_NETINET_IN_H)
@@ -19,4 +20,14 @@ endif()
 check_include_file("sys/mman.h" HAVE_SYS_MMAN_H)
 if (HAVE_SYS_MMAN_H)
     add_definitions("-DHAVE_MMAP")
+endif()
+
+check_include_file("sys/stat.h" HAVE_SYS_STAT_H)
+if (HAVE_SYS_STAT_H)
+    add_definitions("-DHAVE_SYS_STAT_H")
+
+    check_function_exists(_fstati64 HAVE_FSTATI64)
+    if (HAVE_FSTATI64)
+        add_definitions("-DHAVE_FSTATI64")
+    endif ()
 endif()
