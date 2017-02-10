@@ -261,7 +261,7 @@ static PyObject *py_read_texthdr(PyObject *self, PyObject *args) {
 static PyObject *py_write_texthdr(PyObject *self, PyObject *args) {
     errno = 0;
     PyObject *file_capsule = NULL;
-    unsigned int index;
+    int index;
     char *buffer;
     int size;
 

@@ -1342,9 +1342,11 @@ int segy_read_textheader( segy_file* fp, char *buf) { //todo: Missing position/i
     return SEGY_OK;
 }
 
-int segy_write_textheader( segy_file* fp, unsigned int pos, const char* buf ) {
+int segy_write_textheader( segy_file* fp, int pos, const char* buf ) {
     int err;
     char mbuf[ SEGY_TEXT_HEADER_SIZE + 1 ];
+
+    if( pos < 0 ) return SEGY_INVALID_ARGS;
 
     // TODO: reconsider API, allow non-zero terminated strings
     ascii2ebcdic( buf, mbuf );

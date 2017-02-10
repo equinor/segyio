@@ -76,7 +76,7 @@ int segy_sample_indexes(segy_file* fp, double* buf, double t0, double dt, size_t
 /* text header operations */
 int segy_read_textheader( segy_file*, char *buf);
 int segy_textheader_size();
-int segy_write_textheader( segy_file*, unsigned int pos, const char* buf );
+int segy_write_textheader( segy_file*, int pos, const char* buf );
 
 /* Read the trace header at `traceno` into `buf`. */
 int segy_traceheader( segy_file*,
