@@ -41,7 +41,7 @@ struct segy_file_format {
     int samples;
     long trace0;
     unsigned int trace_bsize;
-    size_t traces;
+    int traces;
     int format;
 };
 

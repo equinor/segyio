@@ -661,7 +661,7 @@ int segy_write_traceheader( segy_file* fp,
  * This function assumes that *all traces* are of the same size.
  */
 int segy_traces( segy_file* fp,
-                 size_t* traces,
+                 int* traces,
                  long trace0,
                  int trace_bsize ) {
 
@@ -778,10 +778,9 @@ int segy_sorting( segy_file* fp,
     segy_get_field( traceheader, xl, &xl0 );
     segy_get_field( traceheader, SEGY_TR_OFFSET, &off0 );
 
-    size_t traces_size_t;
-    err = segy_traces( fp, &traces_size_t, trace0, trace_bsize );
+    int traces;
+    err = segy_traces( fp, &traces, trace0, trace_bsize );
     if( err != 0 ) return err;
-    const int traces = traces_size_t;
     int traceno = 1;
 
     do {
@@ -824,7 +823,7 @@ int segy_sorting( segy_file* fp,
 int segy_offsets( segy_file* fp,
                   int il,
                   int xl,
-                  unsigned int traces,
+                  int traces,
                   unsigned int* out,
                   long trace0,
                   int trace_bsize ) {
@@ -966,7 +965,7 @@ int segy_count_lines( segy_file* fp,
     err = count_lines( fp, field, offsets, &l2count, trace0, trace_bsize );
     if( err != 0 ) return err;
 
-    size_t traces;
+    int traces;
     err = segy_traces( fp, &traces, trace0, trace_bsize );
     if( err != 0 ) return err;
 
@@ -1031,13 +1030,8 @@ int segy_inline_indices( segy_file* fp,
                          unsigned int* buf,
                          long trace0,
                          int trace_bsize) {
-    int err;
 
     if( sorting == SEGY_INLINE_SORTING ) {
-        size_t traces;
-        err = segy_traces( fp, &traces, trace0, trace_bsize );
-        if( err != 0 ) return err;
-
         unsigned int stride = crossline_count * offsets;
         return segy_line_indices( fp, il, 0, stride, inline_count, buf, trace0, trace_bsize );
     }
@@ -1059,17 +1053,11 @@ int segy_crossline_indices( segy_file* fp,
                             long trace0,
                             int trace_bsize ) {
 
-    int err;
-
     if( sorting == SEGY_INLINE_SORTING ) {
         return segy_line_indices( fp, xl, 0, offsets, crossline_count, buf, trace0, trace_bsize );
     }
 
     if( sorting == SEGY_CROSSLINE_SORTING ) {
-        size_t traces;
-        err = segy_traces( fp, &traces, trace0, trace_bsize );
-        if( err != 0 ) return err;
-
         unsigned int stride = inline_count * offsets;
         return segy_line_indices( fp, xl, 0, stride, crossline_count, buf, trace0, trace_bsize );
     }

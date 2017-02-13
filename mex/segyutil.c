@@ -46,7 +46,7 @@ int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, 
     const long trace0 = segy_trace0( header );
 
     spec->trace_bsize = segy_trace_bsize( segy_samples( header ) );
-    size_t traces;
+    int traces;
     errc = segy_traces(fp, &traces, trace0, spec->trace_bsize);
     if (errc != 0) {
         goto CLEANUP;

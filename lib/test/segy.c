@@ -17,7 +17,7 @@ static void test_interpret_file() {
     int err;
     char header[ SEGY_BINARY_HEADER_SIZE ];
     int sorting;
-    size_t traces;
+    int traces;
     unsigned int inlines_sz, crosslines_sz;
     unsigned int offsets, stride;
     unsigned int line_trace0, line_length;
@@ -208,7 +208,7 @@ static void testReadInLine_4(){
     const char *file = "test-data/small.sgy";
 
     int sorting;
-    size_t traces;
+    int traces;
     unsigned int inlines_sz, crosslines_sz;
     unsigned int offsets, stride;
     unsigned int line_trace0, line_length;
@@ -283,7 +283,7 @@ static void testReadCrossLine_22(){
     const char *file = "test-data/small.sgy";
 
     int sorting;
-    size_t traces;
+    int traces;
     unsigned int inlines_sz, crosslines_sz;
     unsigned int offsets, stride;
     unsigned int line_trace0, line_length;
@@ -535,7 +535,7 @@ static void test_file_error_codes() {
     err = segy_read_textheader(fp, NULL);
     assertTrue( err == SEGY_FSEEK_ERROR, "Could seek in invalid file." );
 
-    size_t traces;
+    int traces;
     err = segy_traces( fp, &traces, 3600, 350 );
     assertTrue( err == SEGY_FSEEK_ERROR, "Could seek in invalid file." );
 

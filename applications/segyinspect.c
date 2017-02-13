@@ -79,7 +79,7 @@ int main(int argc, char* argv[]) {
     const long trace0 = segy_trace0( header );
     const int trace_bsize = segy_trace_bsize( samples );
 
-    size_t traces;
+    int traces;
     err = segy_traces( fp, &traces, trace0, trace_bsize );
 
     if( err != 0 ) {

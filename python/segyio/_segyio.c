@@ -522,12 +522,12 @@ static PyObject *py_get_dt(PyObject *self, PyObject *args) {
 static PyObject *py_init_line_metrics(PyObject *self, PyObject *args) {
     errno = 0;
     SEGY_SORTING sorting;
-    unsigned int trace_count;
+    int trace_count;
     unsigned int inline_count;
     unsigned int crossline_count;
     unsigned int offset_count;
 
-    PyArg_ParseTuple(args, "iIIII", &sorting, &trace_count, &inline_count, &crossline_count, &offset_count);
+    PyArg_ParseTuple(args, "iiIII", &sorting, &trace_count, &inline_count, &crossline_count, &offset_count);
 
     unsigned int iline_length = segy_inline_length(crossline_count);
 
@@ -580,7 +580,7 @@ static PyObject *py_init_metrics(PyObject *self, PyObject *args) {
         return py_handle_segy_error_with_fields(error, errno, il_field, xl_field, 2);
     }
 
-    size_t trace_count;
+    int trace_count;
     error = segy_traces(p_FILE, &trace_count, trace0, trace_bsize);
 
     if (error != 0) {
@@ -588,7 +588,7 @@ static PyObject *py_init_metrics(PyObject *self, PyObject *args) {
     }
 
     unsigned int offset_count;
-    error = segy_offsets(p_FILE, il_field, xl_field, (unsigned int) trace_count, &offset_count, trace0, trace_bsize);
+    error = segy_offsets(p_FILE, il_field, xl_field, trace_count, &offset_count, trace0, trace_bsize);
 
     if (error != 0) {
         return py_handle_segy_error_with_fields(error, errno, il_field, xl_field, 2);
@@ -631,7 +631,7 @@ static PyObject *py_init_metrics(PyObject *self, PyObject *args) {
     PyDict_SetItemString(dict, "format", Py_BuildValue("i", format));
     PyDict_SetItemString(dict, "trace_bsize", Py_BuildValue("i", trace_bsize));
     PyDict_SetItemString(dict, "sorting", Py_BuildValue("i", sorting));
-    PyDict_SetItemString(dict, "trace_count", Py_BuildValue("k", trace_count));
+    PyDict_SetItemString(dict, "trace_count", Py_BuildValue("i", trace_count));
     PyDict_SetItemString(dict, "offset_count", Py_BuildValue("I", offset_count));
     PyDict_SetItemString(dict, "iline_count", Py_BuildValue("I", il_count));
     PyDict_SetItemString(dict, "xline_count", Py_BuildValue("I", xl_count));

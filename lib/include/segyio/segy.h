@@ -69,7 +69,7 @@ int segy_trace_bsize( int samples );
 /* byte-offset of the first trace header. */
 long segy_trace0( const char* binheader );
 /* number of traces in this file */
-int segy_traces( segy_file*, size_t*, long trace0, int trace_bsize );
+int segy_traces( segy_file*, int*, long trace0, int trace_bsize );
 
 int segy_sample_indexes(segy_file* fp, double* buf, double t0, double dt, size_t count);
 
@@ -111,7 +111,7 @@ int segy_sorting( segy_file*,
 int segy_offsets( segy_file*,
                   int il,
                   int xl,
-                  unsigned int traces,
+                  int traces,
                   unsigned int* offsets,
                   long trace0,
                   int trace_bsize );
