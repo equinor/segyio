@@ -5,6 +5,7 @@ if (POLICY CMP0042)
     cmake_policy(SET CMP0042 NEW)
 endif ()
 
+option(BUILD_SHARED_LIBS "Build language bindings shared" OFF)
 option(BUILD_PYTHON "Build Python wrappers"     ON)
 option(BUILD_MEX    "Build Matlab mex files"    OFF)
 

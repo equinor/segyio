@@ -201,12 +201,12 @@ macro(mex MEX_NAME )
             CFLAGS="${MEX_CFLAGS}"
             LDFLAGS="${MEX_LDFLAGS}"
             ${OBJECT}
-            $<TARGET_FILE:segyio-shared>
+            $<TARGET_FILE:segyio>
             -outdir ${CMAKE_CURRENT_BINARY_DIR}
             ${MEX_SOURCE_FILE}
             DEPENDS
             ${MEX_SOURCE_FILE}
-            segyio-shared
+            segyio
             segyutil.o
             )
 
