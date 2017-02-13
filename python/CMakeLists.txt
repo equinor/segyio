@@ -61,8 +61,11 @@ add_python_test(python.enum.segy    test/segyioenum.py)
 add_python_test(python.tools        test/tools.py)
 add_python_test(python.context      test/context.py)
 
+configure_file(${CMAKE_SOURCE_DIR}/test-data/small.sgy
+               test-data/write.sgy
+               COPYONLY)
 add_python_example(pysegyio python.example.about         examples/about.py test-data/small.sgy INLINE_3D CROSSLINE_3D)
-add_python_example(pysegyio python.example.write         examples/write.py test-data/small.sgy)
+add_python_example(pysegyio python.example.write         examples/write.py test-data/write.sgy)
 add_python_example(pysegyio python.example.makefile      examples/make-file.py test-data/large-file.sgy 20 1 20 1 20)
 add_python_example(pysegyio python.example.makepsfile    examples/make-ps-file.py test-data/small-prestack.sgy 10 1 5 1 4 1 3)
 add_python_example(pysegyio python.example.subcube       examples/copy-sub-cube.py test-data/small.sgy test-data/copy.sgy)
