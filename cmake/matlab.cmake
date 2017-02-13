@@ -50,7 +50,7 @@ ELSE(WIN32)
 
     # Search for a version of Matlab available, starting from the most modern
     # one to older versions
-      FOREACH(MATVER "R2013b" "R2013a" "R2012b" "R2012a" "R2011b" "R2011a" "R2010b" "R2010a" "R2009b" "R2009a" "R2008b")
+      FOREACH(MATVER "2016b" "2014b" "R2013b" "R2013a" "R2012b" "R2012a" "R2011b" "R2011a" "R2010b" "R2010a" "R2009b" "R2009a" "R2008b")
         IF((NOT DEFINED MATLAB_ROOT) OR ("${MATLAB_ROOT}" STREQUAL ""))
           IF(EXISTS /Applications/MATLAB_${MATVER}.app)
             SET(MATLAB_ROOT /Applications/MATLAB_${MATVER}.app)
@@ -79,6 +79,7 @@ ELSE(WIN32)
     FIND_PROGRAM(MATLAB_MEX
             mex
             PATHS
+            /prog/matlab/R2016B/bin # Statoil location
             /prog/matlab/R2014B/bin # Statoil location
             ${MATLAB_ROOT}/bin
             /opt/matlab/bin
