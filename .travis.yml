@@ -55,11 +55,8 @@ before_script:
   - enabled="-DBUILD_PYTHON=OFF -DBUILD_MEX=OFF"
   - if [[ -n "${PYTHON+1}" ]]; then enabled="$enabled -DBUILD_PYTHON=ON"; fi
   - cmake --version
-
-script:
   - mkdir build
   - pushd build
   - cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE $enabled  ..
-  - make
-  - export LD_LIBRARY_PATH=$PWD
-  - ctest --output-on-failure
+script:
+  - make && ctest --output-on-failure
