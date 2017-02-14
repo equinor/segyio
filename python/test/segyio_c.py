@@ -236,7 +236,7 @@ class _segyioTests(TestCase):
         # Happy Path
         iline_indexes = numpy.zeros(metrics['iline_count'], dtype=numpy.uintc)
         xline_indexes = numpy.zeros(metrics['xline_count'], dtype=numpy.uintc)
-        offsets       = numpy.zeros(metrics['offset_count'], dtype=numpy.uintc)
+        offsets       = numpy.zeros(metrics['offset_count'], dtype=numpy.intc)
         _segyio.init_indices(f, metrics, iline_indexes, xline_indexes, offsets)
 
         self.assertListEqual([1, 2, 3, 4, 5], list(iline_indexes))
@@ -264,7 +264,7 @@ class _segyioTests(TestCase):
 
         iline_indexes = numpy.zeros(metrics['iline_count'], dtype=numpy.uintc)
         xline_indexes = numpy.zeros(metrics['xline_count'], dtype=numpy.uintc)
-        offsets       = numpy.zeros(metrics['offset_count'], dtype=numpy.uintc)
+        offsets       = numpy.zeros(metrics['offset_count'], dtype=numpy.intc)
         _segyio.init_indices(f, metrics, iline_indexes, xline_indexes, offsets)
 
         with self.assertRaises(KeyError):
@@ -398,7 +398,7 @@ class _segyioTests(TestCase):
 
         iline_indexes = numpy.zeros(metrics['iline_count'], dtype=numpy.uintc)
         xline_indexes = numpy.zeros(metrics['xline_count'], dtype=numpy.uintc)
-        offsets       = numpy.zeros(metrics['offset_count'], dtype=numpy.uintc)
+        offsets       = numpy.zeros(metrics['offset_count'], dtype=numpy.intc)
         _segyio.init_indices(f, metrics, iline_indexes, xline_indexes, offsets)
 
         return f, metrics, iline_indexes, xline_indexes

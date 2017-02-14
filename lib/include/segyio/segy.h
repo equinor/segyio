@@ -133,13 +133,13 @@ int segy_offset_indices( segy_file*,
  * buffer sent to write must be converted to target float.
  */
 int segy_readtrace( segy_file*,
-                    unsigned int traceno,
+                    int traceno,
                     float* buf,
                     long trace0,
                     int trace_bsize );
 
 int segy_writetrace( segy_file*,
-                     unsigned int traceno,
+                     int traceno,
                      const float* buf,
                      long trace0,
                      int trace_bsize );
@@ -154,7 +154,7 @@ int segy_from_native( int format,
                       float* buf );
 
 int segy_read_line( segy_file* fp,
-                    unsigned int line_trace0,
+                    int line_trace0,
                     unsigned int line_length,
                     unsigned int stride,
                     int offsets,
@@ -163,7 +163,7 @@ int segy_read_line( segy_file* fp,
                     int trace_bsize );
 
 int segy_write_line( segy_file* fp,
-                    unsigned int line_trace0,
+                    int line_trace0,
                     unsigned int line_length,
                     unsigned int stride,
                     int offsets,
@@ -259,7 +259,7 @@ int segy_line_trace0( unsigned int lineno,
                       int offsets,
                       const unsigned int* linenos,
                       const unsigned int linenos_sz,
-                      unsigned int* traceno );
+                      int* traceno );
 
 /*
  * Find the stride needed for an inline/crossline traversal.

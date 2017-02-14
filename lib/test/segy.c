@@ -210,8 +210,9 @@ static void testReadInLine_4(){
     int sorting;
     int traces;
     unsigned int inlines_sz, crosslines_sz;
-    unsigned int offsets, stride;
-    unsigned int line_trace0, line_length;
+    int offsets, line_trace0;
+    unsigned int stride;
+    unsigned int line_length;
 
     /* test specific consts */
     const int il = SEGY_TR_INLINE, xl = SEGY_TR_CROSSLINE;

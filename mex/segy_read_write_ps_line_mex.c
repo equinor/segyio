@@ -36,7 +36,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
 
     segy_file* fp;
 
-    unsigned int line_trace0;
+    int line_trace0;
     int errc = segy_line_trace0( index, line_length, stride, offsets, line_indexes, line_count, &line_trace0 );
     if( errc != SEGY_OK ) {
         mexErrMsgIdAndTxt( "segy:get_ps_line:wrong_line_number",

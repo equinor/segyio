@@ -1077,7 +1077,7 @@ static int skip_traceheader( segy_file* fp ) {
 }
 
 int segy_readtrace( segy_file* fp,
-                    unsigned int traceno,
+                    int traceno,
                     float* buf,
                     long trace0,
                     int trace_bsize ) {
@@ -1104,7 +1104,7 @@ int segy_readtrace( segy_file* fp,
 }
 
 int segy_writetrace( segy_file* fp,
-                     unsigned int traceno,
+                     int traceno,
                      const float* buf,
                      long trace0,
                      int trace_bsize ) {
@@ -1182,10 +1182,10 @@ int segy_from_native( int format,
  * Determine the position of the element `x` in `xs`.
  * Returns -1 if the value cannot be found
  */
-static long index_of( unsigned int x,
-                      const unsigned int* xs,
-                      unsigned int sz ) {
-    for( unsigned int i = 0; i < sz; i++ ) {
+static int index_of( int x,
+                     const unsigned int* xs,
+                     int sz ) {
+    for( int i = 0; i < sz; i++ ) {
         if( xs[i] == x )
             return i;
     }
@@ -1206,7 +1206,7 @@ static long index_of( unsigned int x,
  * segy_readtrace returns.
  */
 int segy_read_line( segy_file* fp,
-                    unsigned int line_trace0,
+                    int line_trace0,
                     unsigned int line_length,
                     unsigned int stride,
                     int offsets,
@@ -1240,7 +1240,7 @@ int segy_read_line( segy_file* fp,
  * segy_readtrace returns.
  */
 int segy_write_line( segy_file* fp,
-                     unsigned int line_trace0,
+                     int line_trace0,
                      unsigned int line_length,
                      unsigned int stride,
                      int offsets,
@@ -1269,9 +1269,9 @@ int segy_line_trace0( unsigned int lineno,
                       int offsets,
                       const unsigned int* linenos,
                       const unsigned int linenos_sz,
-                      unsigned int* traceno ) {
+                      int* traceno ) {
 
-    long index = index_of( lineno, linenos, linenos_sz );
+    int index = index_of( lineno, linenos, linenos_sz );
 
     if( index < 0 ) return SEGY_MISSING_LINE_INDEX;
 
