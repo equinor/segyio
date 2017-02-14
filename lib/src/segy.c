@@ -596,10 +596,12 @@ int segy_seek( segy_file* fp,
          * to LONG_MAX and seek relative to our cursor rather than absolute on file
          * begin.
          */
+        printf( "Seeking to %lli\n", pos );
         rewind( fp->fp );
         while( pos >= LONG_MAX && err != SEGY_OK ) {
             err = fseek( fp->fp, LONG_MAX, SEEK_CUR );
             pos -= LONG_MAX;
+            printf( "current lefotver pos: %lli\n", pos );
         }
 
         if( err != 0 ) return SEGY_FSEEK_ERROR;
