@@ -1,3 +1,4 @@
+#include <limits.h>
 #include <math.h>
 #include <stdlib.h>
 
@@ -576,11 +577,16 @@ static void test_file_size_above_4GB(){
 
     unsigned int trace = 5000000;
     unsigned int trace_bsize = 1000;
+    long long tracesize = trace_bsize + SEGY_TRACE_HEADER_SIZE;
     long trace0 = 0;
+
     int err = segy_seek( fp, trace, trace0, trace_bsize );
     assertTrue(err==0, "");
+
     long long pos = segy_ftell( fp );
-    assertTrue(pos == (long long)trace*((long long)trace_bsize+SEGY_TRACE_HEADER_SIZE), "seek overflow");
+    assertTrue(pos > (long long)INT_MAX, "pos smaller than INT_MAX. "
+                              "This means there's an overflow somewhere" );
+    assertTrue(pos == trace * tracesize, "seek overflow");
     segy_close(fp);
 }
 

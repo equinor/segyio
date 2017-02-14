@@ -408,11 +408,13 @@ int segy_flush( segy_file* fp, bool async ) {
 }
 
 long long segy_ftell( segy_file* fp ) {
-    return ftello( fp->fp );
-    fpos_t pos;
-    int err = fgetpos( fp->fp, &pos );
-    if( err != 0 ) return -1;
+#ifdef HAVE_FSTATI64
+    // assuming we're on windows
+    return _ftelli64( fp->fp );
+#else
+    assert( sizeof( long ) == sizeof( long long ) );
     return ftell( fp->fp );
+#endif
 }
 
 int segy_close( segy_file* fp ) {
