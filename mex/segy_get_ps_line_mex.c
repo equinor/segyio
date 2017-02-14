@@ -43,7 +43,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
     if( err != SEGY_OK ) goto CLEANUP;
 
     int32_t* plhs0 = (int32_t*)mxGetScalar(plhs[0]);
-    for( unsigned int i = 0; i < spec.sample_count; ++i )
+    for( int i = 0; i < spec.sample_count; ++i )
         plhs0[i] = int_offsets[i];
 
     segy_close(fp);

@@ -112,7 +112,7 @@ int segy_offsets( segy_file*,
                   int il,
                   int xl,
                   int traces,
-                  unsigned int* offsets,
+                  int* offsets,
                   long trace0,
                   int trace_bsize );
 
@@ -155,8 +155,8 @@ int segy_from_native( int format,
 
 int segy_read_line( segy_file* fp,
                     int line_trace0,
-                    unsigned int line_length,
-                    unsigned int stride,
+                    int line_length,
+                    int stride,
                     int offsets,
                     float* buf,
                     long trace0,
@@ -164,8 +164,8 @@ int segy_read_line( segy_file* fp,
 
 int segy_write_line( segy_file* fp,
                     int line_trace0,
-                    unsigned int line_length,
-                    unsigned int stride,
+                    int line_length,
+                    int stride,
                     int offsets,
                     const float* buf,
                     long trace0,
@@ -185,9 +185,9 @@ int segy_write_line( segy_file* fp,
  */
 int segy_count_lines( segy_file*,
                       int field,
-                      unsigned int offsets,
-                      unsigned int* l1out,
-                      unsigned int* l2out,
+                      int offsets,
+                      int* l1out,
+                      int* l2out,
                       long trace0,
                       int trace_bsize );
 
@@ -209,13 +209,15 @@ int segy_lines_count( segy_file*,
 /*
  * Find the `line_length` for the inlines. Assumes all inlines, crosslines and
  * traces don't vary in length.
- * *
+ *
  * `inline_count` and `crossline_count` are the two values obtained with
  * `segy_count_lines`.
+ *
+ * These functions cannot fail and return the length, not an error code.
  */
-unsigned int segy_inline_length(unsigned int crossline_count);
+int segy_inline_length(int crossline_count);
 
-unsigned int segy_crossline_length(unsigned int inline_count);
+int segy_crossline_length(int inline_count);
 
 /*
  * Find the indices of the inlines and write to `buf`. `offsets` are the number
@@ -224,20 +226,20 @@ unsigned int segy_crossline_length(unsigned int inline_count);
 int segy_inline_indices( segy_file*,
                          int il,
                          int sorting,
-                         unsigned int inline_count,
-                         unsigned int crossline_count,
-                         unsigned int offsets,
-                         unsigned int* buf,
+                         int inline_count,
+                         int crossline_count,
+                         int offsets,
+                         int* buf,
                          long trace0,
                          int trace_bsize );
 
 int segy_crossline_indices( segy_file*,
                             int xl,
                             int sorting,
-                            unsigned int inline_count,
-                            unsigned int crossline_count,
-                            unsigned int offsets,
-                            unsigned int* buf,
+                            int inline_count,
+                            int crossline_count,
+                            int offsets,
+                            int* buf,
                             long trace0,
                             int trace_bsize );
 
@@ -253,24 +255,24 @@ int segy_crossline_indices( segy_file*,
  * To read/write an inline, read `line_length` starting at `traceno`,
  * incrementing `traceno` with `stride` `line_length` times.
  */
-int segy_line_trace0( unsigned int lineno,
-                      unsigned int line_length,
-                      unsigned int stride,
+int segy_line_trace0( int lineno,
+                      int line_length,
+                      int stride,
                       int offsets,
-                      const unsigned int* linenos,
-                      const unsigned int linenos_sz,
+                      const int* linenos,
+                      int linenos_sz,
                       int* traceno );
 
 /*
  * Find the stride needed for an inline/crossline traversal.
  */
 int segy_inline_stride( int sorting,
-                        unsigned int inline_count,
-                        unsigned int* stride );
+                        int inline_count,
+                        int* stride );
 
 int segy_crossline_stride( int sorting,
-                           unsigned int crossline_count,
-                           unsigned int* stride );
+                           int crossline_count,
+                           int* stride );
 
 typedef enum {
     SEGY_TR_SEQ_LINE                = 1,

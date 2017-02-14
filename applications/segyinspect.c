@@ -94,14 +94,14 @@ int main(int argc, char* argv[]) {
         exit( err );
     }
 
-    unsigned int offsets;
+    int offsets;
     err = segy_offsets( fp, il_field, xl_field, traces, &offsets, trace0, trace_bsize );
     if( err != 0 ) {
         perror( "Could not determine offsets" );
         exit( err );
     }
 
-    unsigned int inline_count, crossline_count;
+    int inline_count, crossline_count;
     if( sorting == SEGY_INLINE_SORTING ) {
         err = segy_count_lines( fp, xl_field, offsets, &inline_count, &crossline_count, trace0, trace_bsize );
     } else {
@@ -114,8 +114,8 @@ int main(int argc, char* argv[]) {
         exit( err );
     }
 
-    unsigned int* inline_indices = malloc( sizeof( unsigned int ) * inline_count );
-    unsigned int* crossline_indices = malloc( sizeof( unsigned int ) * crossline_count );
+    int* inline_indices = malloc( sizeof( int ) * inline_count );
+    int* crossline_indices = malloc( sizeof( int ) * crossline_count );
 
     err = segy_inline_indices( fp, il_field, sorting, inline_count, crossline_count, offsets, inline_indices, trace0, trace_bsize );
     if( err != 0 ) {
@@ -143,14 +143,14 @@ int main(int argc, char* argv[]) {
     puts("");
     puts("Crossline indexes:");
 
-    for( unsigned int i = 0; i < crossline_count; i++ ) {
+    for( int i = 0; i < crossline_count; i++ ) {
         printf( "%d ", crossline_indices[i] );
     }
 
     puts("\n");
     puts("Inline indexes:");
 
-    for( unsigned int i = 0; i < inline_count; i++ ) {
+    for( int i = 0; i < inline_count; i++ ) {
         printf( "%d ", inline_indices[i] );
     }
 

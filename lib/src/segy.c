@@ -824,13 +824,13 @@ int segy_offsets( segy_file* fp,
                   int il,
                   int xl,
                   int traces,
-                  unsigned int* out,
+                  int* out,
                   long trace0,
                   int trace_bsize ) {
     int err;
     int il0, il1, xl0, xl1;
     char header[ SEGY_TRACE_HEADER_SIZE ];
-    unsigned int offsets = 0;
+    int offsets = 0;
 
     if( traces == 1 ) {
         *out = 1;
@@ -890,10 +890,10 @@ int segy_offset_indices( segy_file* fp,
 
 static int segy_line_indices( segy_file* fp,
                               int field,
-                              unsigned int traceno,
-                              unsigned int stride,
-                              unsigned int num_indices,
-                              unsigned int* buf,
+                              int traceno,
+                              int stride,
+                              int num_indices,
+                              int* buf,
                               long trace0,
                               int trace_bsize ) {
 
@@ -906,7 +906,7 @@ static int segy_line_indices( segy_file* fp,
         int err = segy_traceheader( fp, traceno, header, trace0, trace_bsize );
         if( err != 0 ) return SEGY_FREAD_ERROR;
 
-        segy_get_field( header, field, (int*)buf );
+        segy_get_field( header, field, buf );
     }
 
     return SEGY_OK;
@@ -914,8 +914,8 @@ static int segy_line_indices( segy_file* fp,
 
 static int count_lines( segy_file* fp,
                         int field,
-                        unsigned int offsets,
-                        unsigned int* out,
+                        int offsets,
+                        int* out,
                         long trace0,
                         int trace_bsize ) {
 
@@ -932,8 +932,8 @@ static int count_lines( segy_file* fp,
     err = segy_get_field( header, 37, &first_offset );
     if( err != 0 ) return err;
 
-    unsigned int lines = 1;
-    unsigned int curr = offsets;
+    int lines = 1;
+    int curr = offsets;
 
     while( true ) {
         err = segy_traceheader( fp, curr, header, trace0, trace_bsize );
@@ -954,14 +954,14 @@ static int count_lines( segy_file* fp,
 
 int segy_count_lines( segy_file* fp,
                       int field,
-                      unsigned int offsets,
-                      unsigned int* l1out,
-                      unsigned int* l2out,
+                      int offsets,
+                      int* l1out,
+                      int* l2out,
                       long trace0,
                       int trace_bsize ) {
 
     int err;
-    unsigned int l2count;
+    int l2count;
     err = count_lines( fp, field, offsets, &l2count, trace0, trace_bsize );
     if( err != 0 ) return err;
 
@@ -969,8 +969,8 @@ int segy_count_lines( segy_file* fp,
     err = segy_traces( fp, &traces, trace0, trace_bsize );
     if( err != 0 ) return err;
 
-    const unsigned int line_length = l2count * offsets;
-    const unsigned int l1count = traces / line_length;
+    const int line_length = l2count * offsets;
+    const int l1count = traces / line_length;
 
     *l1out = l1count;
     *l2out = l2count;
@@ -991,7 +991,7 @@ int segy_lines_count( segy_file* fp,
     if( sorting == SEGY_UNKNOWN_SORTING ) return SEGY_INVALID_SORTING;
 
     int field;
-    unsigned int l1out, l2out;
+    int l1out, l2out;
 
     if( sorting == SEGY_INLINE_SORTING ) field = xl;
     else field = il;
@@ -1013,26 +1013,30 @@ int segy_lines_count( segy_file* fp,
     return SEGY_OK;
 }
 
-unsigned int segy_inline_length(unsigned int crossline_count) {
+/* 
+ * segy_*line_length is rather pointless as a computation, but serve a purpose
+ * as an abstraction as the detail on how exactly a length is defined is usually uninteresting
+ */
+int segy_inline_length( int crossline_count ) {
     return crossline_count;
 }
 
-unsigned int segy_crossline_length(unsigned int inline_count) {
+int segy_crossline_length( int inline_count ) {
     return inline_count;
 }
 
 int segy_inline_indices( segy_file* fp,
                          int il,
                          int sorting,
-                         unsigned int inline_count,
-                         unsigned int crossline_count,
-                         unsigned int offsets,
-                         unsigned int* buf,
+                         int inline_count,
+                         int crossline_count,
+                         int offsets,
+                         int* buf,
                          long trace0,
                          int trace_bsize) {
 
     if( sorting == SEGY_INLINE_SORTING ) {
-        unsigned int stride = crossline_count * offsets;
+        int stride = crossline_count * offsets;
         return segy_line_indices( fp, il, 0, stride, inline_count, buf, trace0, trace_bsize );
     }
 
@@ -1046,10 +1050,10 @@ int segy_inline_indices( segy_file* fp,
 int segy_crossline_indices( segy_file* fp,
                             int xl,
                             int sorting,
-                            unsigned int inline_count,
-                            unsigned int crossline_count,
-                            unsigned int offsets,
-                            unsigned int* buf,
+                            int inline_count,
+                            int crossline_count,
+                            int offsets,
+                            int* buf,
                             long trace0,
                             int trace_bsize ) {
 
@@ -1058,7 +1062,7 @@ int segy_crossline_indices( segy_file* fp,
     }
 
     if( sorting == SEGY_CROSSLINE_SORTING ) {
-        unsigned int stride = inline_count * offsets;
+        int stride = inline_count * offsets;
         return segy_line_indices( fp, xl, 0, stride, crossline_count, buf, trace0, trace_bsize );
     }
 
@@ -1183,7 +1187,7 @@ int segy_from_native( int format,
  * Returns -1 if the value cannot be found
  */
 static int index_of( int x,
-                     const unsigned int* xs,
+                     const int* xs,
                      int sz ) {
     for( int i = 0; i < sz; i++ ) {
         if( xs[i] == x )
@@ -1207,8 +1211,8 @@ static int index_of( int x,
  */
 int segy_read_line( segy_file* fp,
                     int line_trace0,
-                    unsigned int line_length,
-                    unsigned int stride,
+                    int line_length,
+                    int stride,
                     int offsets,
                     float* buf,
                     long trace0,
@@ -1241,8 +1245,8 @@ int segy_read_line( segy_file* fp,
  */
 int segy_write_line( segy_file* fp,
                      int line_trace0,
-                     unsigned int line_length,
-                     unsigned int stride,
+                     int line_length,
+                     int stride,
                      int offsets,
                      const float* buf,
                      long trace0,
@@ -1263,12 +1267,12 @@ int segy_write_line( segy_file* fp,
     return SEGY_OK;
 }
 
-int segy_line_trace0( unsigned int lineno,
-                      unsigned int line_length,
-                      unsigned int stride,
+int segy_line_trace0( int lineno,
+                      int line_length,
+                      int stride,
                       int offsets,
-                      const unsigned int* linenos,
-                      const unsigned int linenos_sz,
+                      const int* linenos,
+                      int linenos_sz,
                       int* traceno ) {
 
     int index = index_of( lineno, linenos, linenos_sz );
@@ -1283,8 +1287,8 @@ int segy_line_trace0( unsigned int lineno,
 }
 
 int segy_inline_stride( int sorting,
-                        unsigned int inline_count,
-                        unsigned int* stride ) {
+                        int inline_count,
+                        int* stride ) {
     switch( sorting ) {
         case SEGY_CROSSLINE_SORTING:
             *stride = inline_count;
@@ -1300,8 +1304,8 @@ int segy_inline_stride( int sorting,
 }
 
 int segy_crossline_stride( int sorting,
-                           unsigned int crossline_count,
-                           unsigned int* stride ) {
+                           int crossline_count,
+                           int* stride ) {
     switch( sorting ) {
         case SEGY_CROSSLINE_SORTING:
             *stride = 1;

@@ -62,9 +62,9 @@ int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, 
         goto CLEANUP;
     }
 
-    unsigned int* l1;
-    unsigned int* l2;
-    unsigned int field;
+    int* l1;
+    int* l2;
+    int field;
     if (spec->trace_sorting_format == SEGY_INLINE_SORTING) {
         field = crossline_field;
         l1 = &spec->inline_count;
@@ -83,8 +83,8 @@ int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, 
         goto CLEANUP;
     }
 
-    spec->inline_indexes = malloc(sizeof(unsigned int) * spec->inline_count);
-    spec->crossline_indexes = malloc(sizeof(unsigned int) * spec->crossline_count);
+    spec->inline_indexes = malloc(sizeof(int) * spec->inline_count);
+    spec->crossline_indexes = malloc(sizeof(int) * spec->crossline_count);
 
     errc = segy_inline_indices(fp, inline_field, spec->trace_sorting_format,
                         spec->inline_count, spec->crossline_count, spec->offset_count, spec->inline_indexes,
@@ -143,13 +143,13 @@ static int getMaxDim(mxArray* arr){
 void recreateSpec(SegySpec *spec, const mxArray* mex_spec) {
 
     spec->filename = mxArrayToString(mxGetProperty(mex_spec, 0, "filename"));
-    spec->sample_format = (unsigned int)mxGetScalar(mxGetProperty(mex_spec, 0, "sample_format"));
-    spec->trace_sorting_format = (unsigned int)mxGetScalar(mxGetProperty(mex_spec, 0, "trace_sorting_format"));
-    spec->offset_count = (unsigned int)mxGetScalar(mxGetProperty(mex_spec, 0, "offset_count"));
-    spec->first_trace_pos = (unsigned int)mxGetScalar(mxGetProperty(mex_spec, 0, "first_trace_pos"));
-    spec->il_stride = (unsigned int)mxGetScalar(mxGetProperty(mex_spec, 0, "il_stride"));
-    spec->xl_stride = (unsigned int)mxGetScalar(mxGetProperty(mex_spec, 0, "xl_stride"));
-    spec->trace_bsize = (unsigned int)mxGetScalar(mxGetProperty(mex_spec, 0, "trace_bsize"));
+    spec->sample_format = (int)mxGetScalar(mxGetProperty(mex_spec, 0, "sample_format"));
+    spec->trace_sorting_format = (int)mxGetScalar(mxGetProperty(mex_spec, 0, "trace_sorting_format"));
+    spec->offset_count = (int)mxGetScalar(mxGetProperty(mex_spec, 0, "offset_count"));
+    spec->first_trace_pos = (int)mxGetScalar(mxGetProperty(mex_spec, 0, "first_trace_pos"));
+    spec->il_stride = (int)mxGetScalar(mxGetProperty(mex_spec, 0, "il_stride"));
+    spec->xl_stride = (int)mxGetScalar(mxGetProperty(mex_spec, 0, "xl_stride"));
+    spec->trace_bsize = (int)mxGetScalar(mxGetProperty(mex_spec, 0, "trace_bsize"));
 
     mxArray* crossline_indexes = mxGetProperty(mex_spec, 0, "crossline_indexes");
     spec->crossline_count = getMaxDim(crossline_indexes);

@@ -82,10 +82,10 @@ def create(filename, spec):
     f._tracecount    = len(spec.ilines) * len(spec.xlines) * len(spec.offsets)
 
     f._il            = int(spec.iline)
-    f._ilines        = numpy.copy(numpy.asarray(spec.ilines, dtype=numpy.uintc))
+    f._ilines        = numpy.copy(numpy.asarray(spec.ilines, dtype=numpy.intc))
 
     f._xl            = int(spec.xline)
-    f._xlines        = numpy.copy(numpy.asarray(spec.xlines, dtype=numpy.uintc))
+    f._xlines        = numpy.copy(numpy.asarray(spec.xlines, dtype=numpy.intc))
 
     line_metrics = _segyio.init_line_metrics(f.sorting, f.tracecount, len(f.ilines), len(f.xlines), len(f.offsets))
 

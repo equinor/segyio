@@ -18,9 +18,9 @@ static void test_interpret_file() {
     char header[ SEGY_BINARY_HEADER_SIZE ];
     int sorting;
     int traces;
-    unsigned int inlines_sz, crosslines_sz;
-    unsigned int offsets, stride;
-    unsigned int line_trace0, line_length;
+    int inlines_sz, crosslines_sz;
+    int offsets, stride;
+    int line_trace0, line_length;
     const int il = SEGY_TR_INLINE;
     const int xl = SEGY_TR_CROSSLINE;
 
@@ -68,10 +68,10 @@ static void test_interpret_file() {
     assertTrue( crosslines_sz == 5, "Expected 5 crosslines." );
 
     /* Inline-specific information */
-    unsigned int inline_indices[ 5 ];
+    int inline_indices[ 5 ];
     err = segy_inline_indices( fp, il, sorting, inlines_sz, crosslines_sz, offsets, inline_indices, trace0, trace_bsize );
     assertTrue( err == 0, "Could not determine inline linenos." );
-    for( unsigned int i = 0, ref = 1; i < 5; ++i, ++ref )
+    for( int i = 0, ref = 1; i < 5; ++i, ++ref )
         assertTrue( inline_indices[ i ] == ref,
                     "Inline lineno mismatch, should be [1..5]." );
 
@@ -87,10 +87,10 @@ static void test_interpret_file() {
     assertTrue( line_length == 5, "Inline length should be 5." );
 
     /* Crossline-specific information */
-    unsigned int crossline_indices[ 5 ];
+    int crossline_indices[ 5 ];
     err = segy_crossline_indices( fp, xl, sorting, inlines_sz, crosslines_sz, offsets, crossline_indices, trace0, trace_bsize );
     assertTrue( err == 0, "Could not determine crossline linenos." );
-    for( unsigned int i = 0, ref = 20; i < 5; ++i, ++ref )
+    for( int i = 0, ref = 20; i < 5; ++i, ++ref )
         assertTrue( crossline_indices[ i ] == ref,
                     "Crossline lineno mismatch, should be [20..24]." );
 
@@ -209,10 +209,9 @@ static void testReadInLine_4(){
 
     int sorting;
     int traces;
-    unsigned int inlines_sz, crosslines_sz;
-    int offsets, line_trace0;
-    unsigned int stride;
-    unsigned int line_length;
+    int inlines_sz, crosslines_sz;
+    int offsets, stride;
+    int line_trace0, line_length;
 
     /* test specific consts */
     const int il = SEGY_TR_INLINE, xl = SEGY_TR_CROSSLINE;
@@ -226,8 +225,8 @@ static void testReadInLine_4(){
     const int trace_bsize = segy_trace_bsize( samples );
     const int format = segy_format( header );
 
-    unsigned int inline_indices[ 5 ];
-    const unsigned int inline_length = 5;
+    int inline_indices[ 5 ];
+    const int inline_length = 5;
     float* data = malloc( inline_length * samples * sizeof( float ) );
 
     int ok = 0;
@@ -285,9 +284,9 @@ static void testReadCrossLine_22(){
 
     int sorting;
     int traces;
-    unsigned int inlines_sz, crosslines_sz;
-    unsigned int offsets, stride;
-    unsigned int line_trace0, line_length;
+    int inlines_sz, crosslines_sz;
+    int offsets, stride;
+    int line_length, line_trace0;
 
     /* test specific consts */
     const int il = SEGY_TR_INLINE, xl = SEGY_TR_CROSSLINE;
@@ -301,8 +300,8 @@ static void testReadCrossLine_22(){
     const int trace_bsize = segy_trace_bsize( samples );
     const int format = segy_format( header );
 
-    unsigned int crossline_indices[ 5 ];
-    const unsigned int crossline_length = 5;
+    int crossline_indices[ 5 ];
+    const int crossline_length = 5;
     float* data = malloc( crossline_length * samples * sizeof(float) );
 
     int ok = 0;
@@ -550,7 +549,7 @@ static void test_file_error_codes() {
     err = segy_writetrace( fp, 0, NULL, 3600, 350 );
     assertTrue( err == SEGY_FSEEK_ERROR, "Could seek in invalid file." );
 
-    unsigned int l1, l2;
+    int l1, l2;
     err = segy_count_lines( fp, 0, 1, &l1, &l2, 3600, 350 );
     assertTrue( err == SEGY_FSEEK_ERROR, "Could seek in invalid file." );
 }
@@ -558,12 +557,12 @@ static void test_file_error_codes() {
 static void test_error_codes_sans_file() {
     int err;
 
-    unsigned int linenos[] = { 0, 1, 2 };
+    int linenos[] = { 0, 1, 2 };
     err = segy_line_trace0( 10, 3, 1, 1, linenos, 3, NULL );
     assertTrue( err == SEGY_MISSING_LINE_INDEX,
                 "Found line number that shouldn't exist." );
 
-    unsigned int stride;
+    int stride;
     err = segy_inline_stride( SEGY_INLINE_SORTING + 3, 10, &stride );
     assertTrue( err == SEGY_INVALID_SORTING,
                 "Expected sorting to be invalid." );

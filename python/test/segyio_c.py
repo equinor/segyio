@@ -196,7 +196,7 @@ class _segyioTests(TestCase):
         ilb = 189
         xlb = 193
         metrics = _segyio.init_metrics(f, binary_header, ilb, xlb)
-        dmy = numpy.zeros(2, dtype=numpy.uintc)
+        dmy = numpy.zeros(2, dtype=numpy.intc)
 
         dummy_metrics = {'xline_count':   2,
                          'iline_count':   2,
@@ -224,9 +224,9 @@ class _segyioTests(TestCase):
             fdmy = numpy.zeros(1, dtype=numpy.single)
             _segyio.init_indices(f, dummy_metrics, fdmy, dmy, dmy)
 
-        one = numpy.zeros(1, dtype=numpy.uintc)
-        two = numpy.zeros(2, dtype=numpy.uintc)
-        off = numpy.zeros(1, dtype=numpy.uintc)
+        one = numpy.zeros(1, dtype=numpy.intc)
+        two = numpy.zeros(2, dtype=numpy.intc)
+        off = numpy.zeros(1, dtype=numpy.intc)
         with self.assertRaises(ValueError):
             _segyio.init_indices(f, dummy_metrics, one, two, off)
 
@@ -234,8 +234,8 @@ class _segyioTests(TestCase):
             _segyio.init_indices(f, dummy_metrics, two, one, off)
 
         # Happy Path
-        iline_indexes = numpy.zeros(metrics['iline_count'], dtype=numpy.uintc)
-        xline_indexes = numpy.zeros(metrics['xline_count'], dtype=numpy.uintc)
+        iline_indexes = numpy.zeros(metrics['iline_count'], dtype=numpy.intc)
+        xline_indexes = numpy.zeros(metrics['xline_count'], dtype=numpy.intc)
         offsets       = numpy.zeros(metrics['offset_count'], dtype=numpy.intc)
         _segyio.init_indices(f, metrics, iline_indexes, xline_indexes, offsets)
 
@@ -262,8 +262,8 @@ class _segyioTests(TestCase):
 
         line_metrics = _segyio.init_line_metrics(sorting, trace_count, inline_count, crossline_count, offset_count)
 
-        iline_indexes = numpy.zeros(metrics['iline_count'], dtype=numpy.uintc)
-        xline_indexes = numpy.zeros(metrics['xline_count'], dtype=numpy.uintc)
+        iline_indexes = numpy.zeros(metrics['iline_count'], dtype=numpy.intc)
+        xline_indexes = numpy.zeros(metrics['xline_count'], dtype=numpy.intc)
         offsets       = numpy.zeros(metrics['offset_count'], dtype=numpy.intc)
         _segyio.init_indices(f, metrics, iline_indexes, xline_indexes, offsets)
 
@@ -396,8 +396,8 @@ class _segyioTests(TestCase):
 
         metrics.update(line_metrics)
 
-        iline_indexes = numpy.zeros(metrics['iline_count'], dtype=numpy.uintc)
-        xline_indexes = numpy.zeros(metrics['xline_count'], dtype=numpy.uintc)
+        iline_indexes = numpy.zeros(metrics['iline_count'], dtype=numpy.intc)
+        xline_indexes = numpy.zeros(metrics['xline_count'], dtype=numpy.intc)
         offsets       = numpy.zeros(metrics['offset_count'], dtype=numpy.intc)
         _segyio.init_indices(f, metrics, iline_indexes, xline_indexes, offsets)
 
@@ -451,7 +451,7 @@ class _segyioTests(TestCase):
 
     def test_fread_trace0_for_depth(self):
         elements = list(range(25))
-        indices = numpy.asarray(elements, dtype=numpy.uintc)
+        indices = numpy.asarray(elements, dtype=numpy.intc)
 
         for index in indices:
             d = _segyio.fread_trace0(index, 1, 1, 1, indices, "depth")
