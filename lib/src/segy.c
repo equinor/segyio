@@ -79,7 +79,7 @@ void ascii2ebcdic( const char* ascii, char* ebcdic ) {
 
 void ibm2ieee( void* to, const void* from ) {
     uint32_t fr;      /* fraction */
-    register int exp; /* exponent */
+    int exp;          /* exponent */
     uint32_t sgn;     /* sign */
 
     memcpy( &fr, from, sizeof( uint32_t ) );
@@ -127,7 +127,7 @@ done:
 
 void ieee2ibm( void* to, const void* from ) {
     uint32_t fr;      /* fraction */
-    register int exp; /* exponent */
+    int exp;          /* exponent */
     uint32_t sgn;     /* sign */
 
     /* split into sign, exponent, and fraction */
