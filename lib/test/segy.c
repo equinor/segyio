@@ -574,13 +574,13 @@ static void test_error_codes_sans_file() {
 static void test_file_size_above_4GB(){
     segy_file* fp = segy_open( "4gbfile", "w+b" );
 
-    unsigned int trace = 5e6;
-    unsigned int trace_bsize = 1e3;
+    unsigned int trace = 5000000;
+    unsigned int trace_bsize = 1000;
     long trace0 = 0;
-    int err = segy_seek( fp, trace, trace0, trace_bsize);
+    int err = segy_seek( fp, trace, trace0, trace_bsize );
     assertTrue(err==0, "");
     long pos = segy_ftell( fp );
-    assertTrue(pos == (long)trace*((long)trace_bsize+SEGY_TRACE_HEADER_SIZE), "seek overflow");
+    assertTrue(pos == (long long)trace*((long long)trace_bsize+SEGY_TRACE_HEADER_SIZE), "seek overflow");
     segy_close(fp);
 }
 
