@@ -407,7 +407,7 @@ int segy_flush( segy_file* fp, bool async ) {
     return SEGY_OK;
 }
 
-long segy_ftell( segy_file* fp ) {
+long long segy_ftell( segy_file* fp ) {
     return ftell( fp->fp );
 }
 
