@@ -579,7 +579,7 @@ static void test_file_size_above_4GB(){
     long trace0 = 0;
     int err = segy_seek( fp, trace, trace0, trace_bsize );
     assertTrue(err==0, "");
-    long pos = segy_ftell( fp );
+    long long pos = segy_ftell( fp );
     assertTrue(pos == (long long)trace*((long long)trace_bsize+SEGY_TRACE_HEADER_SIZE), "seek overflow");
     segy_close(fp);
 }
