@@ -484,12 +484,12 @@ static int set_field( char* header, const int* table, int field, int32_t val ) {
 
     switch( bsize ) {
         case 4:
-            buf32 = htonl( val );
+            buf32 = htonl( (uint32_t)val );
             memcpy( header + (field - 1), &buf32, sizeof( buf32 ) );
             return SEGY_OK;
 
         case 2:
-            buf16 = htons( val );
+            buf16 = htons( (uint16_t)val );
             memcpy( header + (field - 1), &buf16, sizeof( buf16 ) );
             return SEGY_OK;
 
