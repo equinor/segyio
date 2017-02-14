@@ -439,12 +439,12 @@ static PyObject *py_empty_trace_header(PyObject *self) {
 static PyObject *py_read_trace_header(PyObject *self, PyObject *args) {
     errno = 0;
     PyObject *file_capsule = NULL;
-    unsigned int traceno;
+    int traceno;
     PyObject *trace_header_capsule = NULL;
     long trace0;
     int trace_bsize;
 
-    PyArg_ParseTuple(args, "OIOli", &file_capsule, &traceno, &trace_header_capsule, &trace0, &trace_bsize);
+    PyArg_ParseTuple(args, "OiOli", &file_capsule, &traceno, &trace_header_capsule, &trace0, &trace_bsize);
 
     segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
 
@@ -467,12 +467,12 @@ static PyObject *py_read_trace_header(PyObject *self, PyObject *args) {
 static PyObject *py_write_trace_header(PyObject *self, PyObject *args) {
     errno = 0;
     PyObject *file_capsule = NULL;
-    unsigned int traceno;
+    int traceno;
     PyObject *trace_header_capsule = NULL;
     long trace0;
     int trace_bsize;
 
-    PyArg_ParseTuple(args, "OIOli", &file_capsule, &traceno, &trace_header_capsule, &trace0, &trace_bsize);
+    PyArg_ParseTuple(args, "OiOli", &file_capsule, &traceno, &trace_header_capsule, &trace0, &trace_bsize);
 
     segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
 

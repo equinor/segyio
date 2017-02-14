@@ -34,7 +34,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
     }
 
     double* itr = headers;
-    for( size_t i = 0; i < fmt.traces; ++i, ++itr ) {
+    for( int i = 0; i < fmt.traces; ++i, ++itr ) {
         err = segy_traceheader( fp, i, traceheader, fmt.trace0, fmt.trace_bsize );
         const int val = *itr;
 

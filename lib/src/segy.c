@@ -611,7 +611,7 @@ int segy_seek( segy_file* fp,
 }
 
 int segy_traceheader( segy_file* fp,
-                      unsigned int traceno,
+                      int traceno,
                       char* buf,
                       long trace0,
                       int trace_bsize ) {
@@ -633,7 +633,7 @@ int segy_traceheader( segy_file* fp,
 }
 
 int segy_write_traceheader( segy_file* fp,
-                            unsigned int traceno,
+                            int traceno,
                             const char* buf,
                             long trace0,
                             int trace_bsize ) {

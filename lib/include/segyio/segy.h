@@ -80,14 +80,14 @@ int segy_write_textheader( segy_file*, int pos, const char* buf );
 
 /* Read the trace header at `traceno` into `buf`. */
 int segy_traceheader( segy_file*,
-                      unsigned int traceno,
+                      int traceno,
                       char* buf,
                       long trace0,
                       int trace_bsize );
 
 /* Read the trace header at `traceno` into `buf`. */
 int segy_write_traceheader( segy_file*,
-                            unsigned int traceno,
+                            int traceno,
                             const char* buf,
                             long trace0,
                             int trace_bsize );
