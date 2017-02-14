@@ -61,6 +61,8 @@ install(FILES
         ${CMAKE_INSTALL_PREFIX}/matlab)
 
 if(BUILD_MEX_TESTS)
-    add_matlab_test(matlab.segyspec test/spec.m test_segyspec_mex)
-    add_matlab_test(matlab.segy     test/segy.m test_segy_mex)
+    configure_file(${testdata}/small.sgy    test/test-data/small.sgy     COPYONLY)
+    configure_file(${testdata}/small-ps.sgy test/test-data/small-ps.sgy  COPYONLY)
+    add_matlab_test(matlab.spec test/segyspec.m)
+    add_matlab_test(matlab.segy test/segy.m)
 endif()

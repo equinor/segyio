@@ -42,6 +42,13 @@ target_include_directories(
     $<INSTALL_INTERFACE:include>
     PRIVATE src)
 
+if (BUILD_SHARED_LIBS)
+    add_library(segyio ALIAS segyio-shared)
+else ()
+    add_library(segyio ALIAS segyio-static)
+    set_property(TARGET segyio-static PROPERTY POSITION_INDEPENDENT_CODE ON)
+endif ()
+
 #
 # install & export
 #

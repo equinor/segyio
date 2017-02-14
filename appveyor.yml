@@ -39,7 +39,7 @@ build_script:
     - IF "%platform%" == "x64" set W64="-GVisual Studio 14 2015 Win64"
     - mkdir build
     - pushd build
-    - cmake C:\projects\SegyIO %W64% %OFF% %LANG% -DCMAKE_BUILD_TYPE=%configuration% -DCMAKE_INSTALL_PREFIX=%INSTALL_DIR%
+    - cmake C:\projects\SegyIO %W64% %OFF% %LANG% -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=%configuration% -DCMAKE_INSTALL_PREFIX=%INSTALL_DIR%
     - cmake --build . --config %configuration% --target install
 
 test_script:

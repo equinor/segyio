@@ -57,6 +57,6 @@ before_script:
   - cmake --version
   - mkdir build
   - pushd build
-  - cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE $enabled  ..
+  - cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBUILD_SHARED_LIBS=ON $enabled  ..
 script:
   - make && ctest --output-on-failure
