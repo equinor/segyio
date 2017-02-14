@@ -409,7 +409,8 @@ int segy_flush( segy_file* fp, bool async ) {
 
 long long segy_ftell( segy_file* fp ) {
 #ifdef HAVE_FSTATI64
-    // assuming we're on windows
+    // assuming we're on windows. This function is a little rough, but only
+    // meant for testing - it's not a part of the public interface.
     return _ftelli64( fp->fp );
 #else
     assert( sizeof( long ) == sizeof( long long ) );
