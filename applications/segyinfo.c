@@ -8,10 +8,10 @@
 
 static void printSegyTraceInfo( const char* buf ) {
     int cdp, tsf, xl, il;
-    segy_get_field( buf, CDP, &cdp );
-    segy_get_field( buf, TRACE_SEQUENCE_FILE, &tsf );
-    segy_get_field( buf, CROSSLINE_3D, &xl );
-    segy_get_field( buf, INLINE_3D, &il );
+    segy_get_field( buf, SEGY_TR_ENSEMBLE, &cdp );
+    segy_get_field( buf, SEGY_TR_SEQ_FILE, &tsf );
+    segy_get_field( buf, SEGY_TR_CROSSLINE, &xl );
+    segy_get_field( buf, SEGY_TR_INLINE, &il );
 
     printf("cdp:               %d\n", cdp );
     printf("TraceSequenceFile: %d\n", tsf );
@@ -53,7 +53,7 @@ int main(int argc, char* argv[]) {
     const long trace0 = segy_trace0( header );
     const unsigned int trace_bsize = segy_trace_bsize( samples );
     int extended_headers;
-    err = segy_get_bfield( header, BIN_ExtendedHeaders, &extended_headers );
+    err = segy_get_bfield( header, SEGY_BIN_EXT_HEADERS, &extended_headers );
 
     if( err != 0 ) {
         perror( "Can't read 'extended headers' field from binary header" );
@@ -111,10 +111,10 @@ int main(int argc, char* argv[]) {
         }
 
         int sample_count;
-        err = segy_get_field( traceh, TRACE_SAMPLE_COUNT, &sample_count );
+        err = segy_get_field( traceh, SEGY_TR_SAMPLE_COUNT, &sample_count );
 
         if( err != 0 ) {
-            fprintf( stderr, "Invalid trace header field: %d\n", TRACE_SAMPLE_COUNT );
+            fprintf( stderr, "Invalid trace header field: %d\n", SEGY_TR_SAMPLE_COUNT );
             exit( err );
         }
 

@@ -7,21 +7,21 @@
 
 static const char* getSampleFormatName( int format ) {
     switch( format ) {
-        case IBM_FLOAT_4_BYTE:
+        case SEGY_IBM_FLOAT_4_BYTE:
             return "IBM Float";         
-        case SIGNED_INTEGER_4_BYTE:
+        case SEGY_SIGNED_INTEGER_4_BYTE:
             return "Int 32";         
-        case SIGNED_SHORT_2_BYTE:
+        case SEGY_SIGNED_SHORT_2_BYTE:
             return "Int 16";         
-        case FIXED_POINT_WITH_GAIN_4_BYTE:
+        case SEGY_FIXED_POINT_WITH_GAIN_4_BYTE:
             return "Fixed Point with gain (Obsolete)";         
-        case IEEE_FLOAT_4_BYTE:
+        case SEGY_IEEE_FLOAT_4_BYTE:
             return "IEEE Float";         
-        case NOT_IN_USE_1:
+        case SEGY_NOT_IN_USE_1:
             return "Not in Use 1";         
-        case NOT_IN_USE_2:
+        case SEGY_NOT_IN_USE_2:
             return "Not in Use 2";         
-        case SIGNED_CHAR_1_BYTE:
+        case SEGY_SIGNED_CHAR_1_BYTE:
             return "Int 8";         
         default:
             return "Unknown";
@@ -29,7 +29,7 @@ static const char* getSampleFormatName( int format ) {
 }
 
 static const char* getFastestDirectionName( int sorting ) {
-    if ( sorting == CROSSLINE_SORTING) {
+    if ( sorting == SEGY_CROSSLINE_SORTING) {
         return "CROSSLINE";
     } else {
         return "INLINE_SORTING";
@@ -45,8 +45,8 @@ int main(int argc, char* argv[]) {
         exit(1);
     }
 
-    int xl_field = CROSSLINE_3D;
-    int il_field = INLINE_3D;
+    int xl_field = SEGY_TR_CROSSLINE;
+    int il_field = SEGY_TR_INLINE;
 
     bool memory_map = argc > 2 && strcmp( argv[ 2 ], "mmap" ) == 0;
 
@@ -102,7 +102,7 @@ int main(int argc, char* argv[]) {
     }
 
     unsigned int inline_count, crossline_count;
-    if( sorting == INLINE_SORTING ) {
+    if( sorting == SEGY_INLINE_SORTING ) {
         err = segy_count_lines( fp, xl_field, offsets, &inline_count, &crossline_count, trace0, trace_bsize );
     } else {
         err = segy_count_lines( fp, il_field, offsets, &crossline_count, &inline_count, trace0, trace_bsize );
