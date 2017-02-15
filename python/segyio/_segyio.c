@@ -72,23 +72,12 @@ static PyObject *py_FILE_open(PyObject *self, PyObject *args) {
         return NULL;
     }
 
-    // append a 'b' if it is not passed by the user; not a problem on unix, but
-    // windows and other platforms fail without it
-    // the heap alloc is expensive, but avoids the risk of local stack
-    // smashing and is C++ compatible
-    char* binary_mode = strcpy( calloc( mode_len + 2, sizeof( char ) ), mode );
-    if( binary_mode[ mode_len - 1 ] != 'b' ) binary_mode[ mode_len ] = 'b';
+    segy_file *p_FILE = segy_open( filename, mode );
 
-     // Account for invalid mode. On unix this is fine, but windows crashes the
-     // process if mode is invalid
-    if( !strstr( "rb" "wb" "ab" "r+b" "w+b" "a+b", binary_mode ) ) {
-        PyErr_Format( PyExc_IOError, "Invalid mode string '%s'", binary_mode );
-        free( binary_mode );
+    if( !p_FILE && !strstr( "rb" "wb" "ab" "r+b" "w+b" "a+b", mode ) ) {
+        PyErr_Format( PyExc_IOError, "Invalid mode string '%s'", mode );
         return NULL;
     }
-
-    segy_file *p_FILE = segy_open( filename, binary_mode );
-    free( binary_mode );
 
     if (p_FILE == NULL) {
         return PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
