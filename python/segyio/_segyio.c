@@ -600,11 +600,11 @@ static PyObject *py_init_metrics(PyObject *self, PyObject *args) {
     unsigned int *l1out;
     unsigned int *l2out;
 
-    if (sorting == CROSSLINE_SORTING) {
+    if (sorting == SEGY_CROSSLINE_SORTING) {
         field = il_field;
         l1out = &xl_count;
         l2out = &il_count;
-    } else if (sorting == INLINE_SORTING) {
+    } else if (sorting == SEGY_INLINE_SORTING) {
         field = xl_field;
         l1out = &il_count;
         l2out = &xl_count;

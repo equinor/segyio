@@ -65,11 +65,11 @@ int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, 
     unsigned int* l1;
     unsigned int* l2;
     unsigned int field;
-    if (spec->trace_sorting_format == INLINE_SORTING) {
+    if (spec->trace_sorting_format == SEGY_INLINE_SORTING) {
         field = crossline_field;
         l1 = &spec->inline_count;
         l2 = &spec->crossline_count;
-    } else if (spec->trace_sorting_format == CROSSLINE_SORTING) {
+    } else if (spec->trace_sorting_format == SEGY_CROSSLINE_SORTING) {
         field = inline_field;
         l2 = &spec->inline_count;
         l1 = &spec->crossline_count;

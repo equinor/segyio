@@ -21,8 +21,8 @@ static void test_interpret_file() {
     unsigned int inlines_sz, crosslines_sz;
     unsigned int offsets, stride;
     unsigned int line_trace0, line_length;
-    const int il = INLINE_3D;
-    const int xl = CROSSLINE_3D;
+    const int il = SEGY_TR_INLINE;
+    const int xl = SEGY_TR_CROSSLINE;
 
     segy_file* fp = segy_open( file, "rb" );
 
@@ -47,11 +47,11 @@ static void test_interpret_file() {
 
     err = segy_sorting( fp, xl, il, &sorting, trace0, trace_bsize );
     assertTrue( err == 0, "Could not figure out file sorting." );
-    assertTrue( sorting == CROSSLINE_SORTING, "Expected crossline sorting." );
+    assertTrue( sorting == SEGY_CROSSLINE_SORTING, "Expected crossline sorting." );
 
     err = segy_sorting( fp, il, xl, &sorting, trace0, trace_bsize );
     assertTrue( err == 0, "Could not figure out file sorting." );
-    assertTrue( sorting == INLINE_SORTING, "Expected inline sorting." );
+    assertTrue( sorting == SEGY_INLINE_SORTING, "Expected inline sorting." );
 
     err = segy_offsets( fp, il, xl, traces, &offsets, trace0, trace_bsize );
     assertTrue( err == 0, "Could not figure out offsets." );
@@ -120,8 +120,8 @@ void test_interpret_file_prestack() {
     unsigned int inlines_sz, crosslines_sz;
     unsigned int offsets, stride;
     unsigned int line_trace0, line_length;
-    const int il = INLINE_3D;
-    const int xl = CROSSLINE_3D;
+    const int il = SEGY_TR_INLINE;
+    const int xl = SEGY_TR_CROSSLINE;
 
     FILE* fp = fopen( file, "r" );
 
@@ -146,11 +146,11 @@ void test_interpret_file_prestack() {
 
     err = segy_sorting( fp, xl, il, &sorting, trace0, trace_bsize );
     assertTrue( err == 0, "Could not figure out file sorting." );
-    assertTrue( sorting == CROSSLINE_SORTING, "Expected crossline sorting." );
+    assertTrue( sorting == SEGY_CROSSLINE_SORTING, "Expected crossline sorting." );
 
     err = segy_sorting( fp, il, xl, &sorting, trace0, trace_bsize );
     assertTrue( err == 0, "Could not figure out file sorting." );
-    assertTrue( sorting == INLINE_SORTING, "Expected inline sorting." );
+    assertTrue( sorting == SEGY_INLINE_SORTING, "Expected inline sorting." );
 
     err = segy_offsets( fp, il, xl, traces, &offsets, trace0, trace_bsize );
     assertTrue( err == 0, "Could not figure out offsets." );
@@ -214,7 +214,7 @@ static void testReadInLine_4(){
     unsigned int line_trace0, line_length;
 
     /* test specific consts */
-    const int il = INLINE_3D, xl = CROSSLINE_3D;
+    const int il = SEGY_TR_INLINE, xl = SEGY_TR_CROSSLINE;
 
     char header[ SEGY_BINARY_HEADER_SIZE ];
 
@@ -289,7 +289,7 @@ static void testReadCrossLine_22(){
     unsigned int line_trace0, line_length;
 
     /* test specific consts */
-    const int il = INLINE_3D, xl = CROSSLINE_3D;
+    const int il = SEGY_TR_INLINE, xl = SEGY_TR_CROSSLINE;
 
     char header[ SEGY_BINARY_HEADER_SIZE ];
 
@@ -374,14 +374,14 @@ static void test_modify_trace_header() {
     assertTrue( err == 0, "Error while reading trace header." );
 
     int ilno;
-    err = segy_get_field( traceh, INLINE_3D, &ilno );
+    err = segy_get_field( traceh, SEGY_TR_INLINE, &ilno );
     assertTrue( err == 0, "Error while reading iline no from field." );
     assertTrue( ilno == 1, "Wrong iline no." );
 
-    err = segy_set_field( traceh, INLINE_3D, ilno + 1 );
+    err = segy_set_field( traceh, SEGY_TR_INLINE, ilno + 1 );
     assertTrue( err == 0, "Error writing to trace header buffer." );
 
-    err = segy_get_field( traceh, INLINE_3D, &ilno );
+    err = segy_get_field( traceh, SEGY_TR_INLINE, &ilno );
     assertTrue( err == 0, "Error while reading iline no from dirty field." );
     assertTrue( ilno == 2, "Wrong iline no." );
 
@@ -390,19 +390,19 @@ static void test_modify_trace_header() {
 
     err = segy_traceheader( fp, 0, traceh, trace0, trace_bsize );
     assertTrue( err == 0, "Error while reading trace header." );
-    err = segy_get_field( traceh, INLINE_3D, &ilno );
+    err = segy_get_field( traceh, SEGY_TR_INLINE, &ilno );
     assertTrue( err == 0, "Error while reading iline no from dirty field." );
     assertTrue( ilno == 2, "Wrong iline no." );
 
-    err = segy_set_field( traceh, INLINE_3D, 1 );
+    err = segy_set_field( traceh, SEGY_TR_INLINE, 1 );
     assertTrue( err == 0, "Error writing to trace header buffer." );
     err = segy_write_traceheader( fp, 0, traceh, trace0, trace_bsize );
     assertTrue( err == 0, "Error writing traceheader." );
 
-    err = segy_set_field( traceh, SourceGroupScalar, -100 );
+    err = segy_set_field( traceh, SEGY_TR_SOURCE_GROUP_SCALAR, -100 );
     assertTrue( err == 0, "Error writing to trace header buffer." );
     int32_t scale;
-    err = segy_get_field( traceh, SourceGroupScalar, &scale );
+    err = segy_get_field( traceh, SEGY_TR_SOURCE_GROUP_SCALAR, &scale );
     assertTrue( err == 0, "Error while reading SourceGroupScalar from dirty field." );
 
     segy_close( fp );
@@ -485,13 +485,13 @@ static void test_trace_header_errors() {
     assertTrue( err == SEGY_INVALID_FIELD, "Reading outside trace header." );
 
     /* Reading between known byte offsets should yield error */
-    err = segy_get_field( header, INLINE_3D + 1, &field );
+    err = segy_get_field( header, SEGY_TR_INLINE + 1, &field );
     assertTrue( err == SEGY_INVALID_FIELD, "Reading between ok byte offsets." );
 
-    err = segy_get_field( header, INLINE_3D, &field );
+    err = segy_get_field( header, SEGY_TR_INLINE, &field );
     assertTrue( err == SEGY_OK, "Reading failed at valid byte offset." );
 
-    err = segy_get_field( header, DayOfYear, &field );
+    err = segy_get_field( header, SEGY_TR_DAY_OF_YEAR, &field );
     assertTrue( err == SEGY_OK, "Reading failed at valid byte offset." );
 
     segy_close( fp );
@@ -523,13 +523,13 @@ static void test_file_error_codes() {
     assertTrue( err == SEGY_INVALID_FIELD, "Reading outside trace header." );
 
     /* Reading between known byte offsets should yield error */
-    err = segy_get_field( header, INLINE_3D + 1, &field );
+    err = segy_get_field( header, SEGY_TR_INLINE + 1, &field );
     assertTrue( err == SEGY_INVALID_FIELD, "Reading between ok byte offsets." );
 
-    err = segy_get_field( header, INLINE_3D, &field );
+    err = segy_get_field( header, SEGY_TR_INLINE, &field );
     assertTrue( err == SEGY_OK, "Reading failed at valid byte offset." );
 
-    err = segy_get_field( header, DayOfYear, &field );
+    err = segy_get_field( header, SEGY_TR_DAY_OF_YEAR, &field );
     assertTrue( err == SEGY_OK, "Reading failed at valid byte offset." );
 
     err = segy_read_textheader(fp, NULL);
@@ -563,11 +563,11 @@ static void test_error_codes_sans_file() {
                 "Found line number that shouldn't exist." );
 
     unsigned int stride;
-    err = segy_inline_stride( INLINE_SORTING + 3, 10, &stride );
+    err = segy_inline_stride( SEGY_INLINE_SORTING + 3, 10, &stride );
     assertTrue( err == SEGY_INVALID_SORTING,
                 "Expected sorting to be invalid." );
 
-    err = segy_crossline_stride( INLINE_SORTING + 3, 10, &stride );
+    err = segy_crossline_stride( SEGY_INLINE_SORTING + 3, 10, &stride );
     assertTrue( err == SEGY_INVALID_SORTING,
                 "Expected sorting to be invalid." );
 }
