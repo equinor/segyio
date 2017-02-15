@@ -681,10 +681,10 @@ int segy_traces( segy_file* fp,
     return SEGY_OK;
 }
 
-int segy_sample_interval( segy_file* fp, double* dt) {
+int segy_sample_interval( segy_file* fp, float* dt ) {
 
     char bin_header[ SEGY_BINARY_HEADER_SIZE ];
-    char trace_header[SEGY_TRACE_HEADER_SIZE];
+    char trace_header[ SEGY_TRACE_HEADER_SIZE ];
 
     int err = segy_binheader( fp, bin_header );
     if (err != 0) {
@@ -725,19 +725,22 @@ int segy_sample_interval( segy_file* fp, double* dt) {
 
 }
 
-int segy_sample_indexes( segy_file* fp, double* buf, double t0, double dt, size_t count) {
+int segy_sample_indices( segy_file* fp,
+                         float t0,
+                         float dt,
+                         int count,
+                         float* buf ) {
 
     int err = segy_sample_interval(fp, &dt);
     if (err != 0) {
         return err;
     }
 
-    for (size_t i = 0; i < count; i++) {
+    for( int i = 0; i < count; i++ ) {
         buf[i] = t0 + i * dt;
     }
 
-    return 0;
-
+    return SEGY_OK;
 }
 
 /*

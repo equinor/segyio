@@ -13,7 +13,7 @@ static char* copyString(const char* path) {
 }
 
 
-int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, unsigned int crossline_field, double t0, double dt) {
+int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, unsigned int crossline_field, float t0, float dt) {
 
     int errc = 0;
 
@@ -23,7 +23,7 @@ int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, 
         return -1;
     }
 
-    spec->sample_indexes = NULL;
+    spec->sample_indices = NULL;
     spec->inline_indexes = NULL;
     spec->crossline_indexes = NULL;
 
@@ -37,8 +37,8 @@ int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, 
     spec->sample_format = segy_format( header );
     spec->sample_count = segy_samples( header );
 
-    spec->sample_indexes = malloc(sizeof(double) * spec->sample_count);
-    errc = segy_sample_indexes(fp, spec->sample_indexes, t0, dt, spec->sample_count);
+    spec->sample_indices = malloc(sizeof(float) * spec->sample_count);
+    errc = segy_sample_indices(fp, t0, dt, spec->sample_count, spec->sample_indices );
     if (errc != 0) {
         goto CLEANUP;
     }
@@ -121,8 +121,7 @@ int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, 
         free(spec->crossline_indexes);
     if (spec->inline_indexes != NULL)
         free(spec->inline_indexes);
-    if (spec->sample_indexes != NULL)
-        free(spec->sample_indexes);
+    free(spec->sample_indices);
     free(spec->filename);
 
     segy_close(fp);
@@ -161,7 +160,7 @@ void recreateSpec(SegySpec *spec, const mxArray* mex_spec) {
 
     mxArray* sample_indexes = mxGetProperty(mex_spec, 0, "sample_indexes");
     spec->sample_count = getMaxDim(sample_indexes);
-    spec->sample_indexes = mxGetData(sample_indexes);
+    spec->sample_indices = mxGetData(sample_indexes);
 
 }
 

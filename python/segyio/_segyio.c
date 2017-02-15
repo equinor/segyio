@@ -506,8 +506,8 @@ static PyObject *py_get_dt(PyObject *self, PyObject *args) {
     errno = 0;
 
     PyObject *file_capsule = NULL;
-    double dt;
-    PyArg_ParseTuple(args, "Od", &file_capsule, &dt);
+    float dt;
+    PyArg_ParseTuple(args, "Of", &file_capsule, &dt);
     segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
 
     if (PyErr_Occurred()) { return NULL; }
@@ -515,7 +515,8 @@ static PyObject *py_get_dt(PyObject *self, PyObject *args) {
     int error = segy_sample_interval(p_FILE, &dt);
     if (error != 0) { return py_handle_segy_error(error, errno); }
 
-    return PyFloat_FromDouble(dt);
+    double ddt = dt;
+    return PyFloat_FromDouble(ddt);
 }
 
 
