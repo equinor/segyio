@@ -11,10 +11,16 @@
 #include <winsock2.h>
 #endif
 
+#ifdef HAVE_SYS_STAT_H
+  #include <sys/types.h>
+  #include <sys/stat.h>
+#endif //HAVE_SYS_STAT_H
+
 #include <assert.h>
+#include <limits.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 
 #include <segyio/segy.h>
 #include <segyio/util.h>
@@ -305,20 +311,27 @@ static int bfield_size[] = {
  * pointer will be reset to wherever it was before this call. If this call
  * fails for some reason, the return value is 0 and the file pointer location
  * will be determined by the behaviour of fseek.
+ *
+ * sys/stat.h is POSIX, but is well enough supported by Windows. The long long
+ * data type is required to support files >4G (as long only guarantees 32 bits).
  */
-static int file_size( FILE* fp, size_t* size ) {
-    const long prev_pos = ftell( fp );
+#ifdef HAVE_SYS_STAT_H
+static int file_size( FILE* fp, long long* size ) {
+#ifdef HAVE_FSTATI64
+    // this means we're on windows where fstat is unreliable for filesizes >2G
+    // because long is only 4 bytes
+    struct _stati64 st;
+    const int err = _fstati64( fileno( fp ), &st );
+#else
+    struct stat st;
+    const int err = fstat( fileno( fp ), &st );
+#endif
 
-    int err = fseek( fp, 0, SEEK_END );
     if( err != 0 ) return SEGY_FSEEK_ERROR;
-
-    const size_t sz = ftell( fp );
-    err = fseek( fp, prev_pos, SEEK_SET );
-    if( err != 0 ) return SEGY_FSEEK_ERROR;
-
-    *size = sz;
+    *size = st.st_size;
     return SEGY_OK;
 }
+#endif //HAVE_SYS_STAT_H
 
 /*
  * addr is NULL if mmap is not found under compilation or if the file is
@@ -355,9 +368,11 @@ int segy_mmap( segy_file* fp ) {
     return SEGY_MMAP_INVALID;
 #else
 
-    int err = file_size( fp->fp, &fp->fsize );
+    long long fsize;
+    int err = file_size( fp->fp, &fsize );
 
     if( err != 0 ) return SEGY_FSEEK_ERROR;
+    fp->fsize = fsize;
 
     bool rw = strstr( fp->mode, "+" ) || strstr( fp->mode, "w" );
     const int prot =  rw ? PROT_READ | PROT_WRITE : PROT_READ;
@@ -392,8 +407,15 @@ int segy_flush( segy_file* fp, bool async ) {
     return SEGY_OK;
 }
 
-long segy_ftell( segy_file* fp ) {
+long long segy_ftell( segy_file* fp ) {
+#ifdef HAVE_FSTATI64
+    // assuming we're on windows. This function is a little rough, but only
+    // meant for testing - it's not a part of the public interface.
+    return _ftelli64( fp->fp );
+#else
+    assert( sizeof( long ) == sizeof( long long ) );
     return ftell( fp->fp );
+#endif
 }
 
 int segy_close( segy_file* fp ) {
@@ -551,12 +573,12 @@ long segy_trace0( const char* binheader ) {
 }
 
 int segy_seek( segy_file* fp,
-               unsigned int trace,
+               int trace,
                long trace0,
                unsigned int trace_bsize ) {
 
     trace_bsize += SEGY_TRACE_HEADER_SIZE;
-    const long pos = trace0 + ( (long)trace * (long)trace_bsize );
+    long long pos = (long long)trace0 + (trace * (long long)trace_bsize);
 
     if( fp->addr ) {
         if( (size_t)pos >= fp->fsize ) return SEGY_FSEEK_ERROR;
@@ -565,7 +587,26 @@ int segy_seek( segy_file* fp,
         return SEGY_OK;
     }
 
-    const int err = fseek( fp->fp, pos, SEEK_SET );
+    int err = SEGY_OK;
+    if( sizeof( long ) == sizeof( long long ) ) {
+        err = fseek( fp->fp, pos, SEEK_SET );
+    } else {
+        /*
+         * If long is 32bit on our platform (hello, windows), we do skips according
+         * to LONG_MAX and seek relative to our cursor rather than absolute on file
+         * begin.
+         */
+        rewind( fp->fp );
+        while( pos >= LONG_MAX && err == SEGY_OK ) {
+            err = fseek( fp->fp, LONG_MAX, SEEK_CUR );
+            pos -= LONG_MAX;
+        }
+
+        if( err != 0 ) return SEGY_FSEEK_ERROR;
+
+        err = fseek( fp->fp, pos, SEEK_CUR );
+    }
+
     if( err != 0 ) return SEGY_FSEEK_ERROR;
     return SEGY_OK;
 }
@@ -625,7 +666,7 @@ int segy_traces( segy_file* fp,
                  long trace0,
                  unsigned int trace_bsize ) {
 
-    size_t fsize;
+    long long fsize;
     int err = file_size( fp->fp, &fsize );
     if( err != 0 ) return err;
 
