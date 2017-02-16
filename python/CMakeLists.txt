@@ -26,6 +26,10 @@ if (NOT PYTHONLIBS_FOUND)
     return()
 endif()
 
+if (NOT MSVC)
+    set(CMAKE_C_FLAGS "-std=c99 ${CMAKE_C_FLAGS}")
+endif()
+
 add_library(_segyio MODULE segyio/_segyio.c)
 target_include_directories(_segyio PRIVATE ${PYTHON_INCLUDE_DIRS})
 target_link_libraries(_segyio segyio ${PYTHON_LIBRARIES})
