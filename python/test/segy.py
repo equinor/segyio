@@ -318,6 +318,14 @@ class TestSegy(TestCase):
             for line in f.xline:
                 pass
 
+    def test_fast_slow_dimensions(self):
+        with segyio.open(self.filename, 'r') as f:
+            for iline, fline in itertools.izip(f.iline, f.fast):
+                self.assertTrue(np.array_equal(iline, fline))
+
+            for xline, sline in itertools.izip(f.xline, f.slow):
+                self.assertTrue(np.array_equal(iline, fline))
+
     def test_traces_raw(self):
         with segyio.open(self.filename, "r") as f:
             gen_traces = np.array(list(map( np.copy, f.trace )), dtype = np.single)

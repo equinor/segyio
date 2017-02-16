@@ -687,6 +687,39 @@ class SegyFile(object):
         return self._shape_buffer(shape, buf)
 
     @property
+    def fast(self):
+        """ Access the 'fast' dimension
+
+        This mode yields iline or xline mode, depending on which one is laid
+        out "faster", i.e. the line with linear disk layout. Use this mode if
+        the inline/crossline distinction isn't as interesting as traversing in
+        a fast manner (typically when you want to apply a function to the whole
+        file, line-by-line).
+        """
+        if self.sorting == TraceSortingFormat.INLINE_SORTING:
+            return self.iline
+        elif self.sorting == TraceSortingFormat.CROSSLINE_SORTING:
+            return self.xline
+        else:
+            raise RuntimeError("Unknown sorting.")
+
+    @property
+    def slow(self):
+        """ Access the 'slow' dimension
+
+        This mode yields iline or xline mode, depending on which one is laid
+        out "slower", i.e. the line with strided disk layout. Use this mode if
+        the inline/crossline distinction isn't as interesting as traversing in
+        the slower direction.
+        """
+        if self.sorting == TraceSortingFormat.INLINE_SORTING:
+            return self.xline
+        elif self.sorting == TraceSortingFormat.CROSSLINE_SORTING:
+            return self.iline
+        else:
+            raise RuntimeError("Unknown sorting.")
+
+    @property
     def depth_slice(self):
         """ Interact with segy in depth slice mode.
 
