@@ -27,7 +27,9 @@ segy_sorting
 segy_offsets
 segy_offset_indices
 segy_readtrace
+segy_readsubtr
 segy_writetrace
+segy_writesubtr
 segy_to_native
 segy_from_native
 segy_read_line
