@@ -344,7 +344,23 @@ struct segy_file_handle {
 };
 
 segy_file* segy_open( const char* path, const char* mode ) {
-    FILE* fp = fopen( path, mode );
+
+    if( !path || !mode ) return NULL;
+
+    // append a 'b' if it is not passed by the user; not a problem on unix, but
+    // windows and other platforms fail without it
+    char binary_mode[ 4 ] = { 0 };
+    strncpy( binary_mode, mode, 3 );
+
+    size_t mode_len = strlen( binary_mode );
+    if( binary_mode[ mode_len - 1 ] != 'b' ) binary_mode[ mode_len ] = 'b';
+
+     // Account for invalid mode. On unix this is fine, but windows crashes the
+     // process if mode is invalid
+    if( !strstr( "rb" "wb" "ab" "r+b" "w+b" "a+b", binary_mode ) )
+        return NULL;
+
+    FILE* fp = fopen( path, binary_mode );
 
     if( !fp ) return NULL;
 
@@ -356,7 +372,7 @@ segy_file* segy_open( const char* path, const char* mode ) {
     }
 
     file->fp = fp;
-    strncpy( file->mode, mode, 3 );
+    strcpy( file->mode, binary_mode );
 
     return file;
 }
