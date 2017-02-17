@@ -681,19 +681,19 @@ int segy_traces( segy_file* fp,
                  long trace0,
                  int trace_bsize ) {
 
-    long long fsize;
-    int err = file_size( fp->fp, &fsize );
+    long long size;
+    int err = file_size( fp->fp, &size );
     if( err != 0 ) return err;
 
-    if( trace0 > fsize ) return SEGY_INVALID_ARGS;
+    if( trace0 > size ) return SEGY_INVALID_ARGS;
 
+    size -= trace0;
     trace_bsize += SEGY_TRACE_HEADER_SIZE;
-    const int trace_data_size = fsize - trace0;
 
-    if( trace_data_size % trace_bsize != 0 )
+    if( size % trace_bsize != 0 )
         return SEGY_TRACE_SIZE_MISMATCH;
 
-    *traces = trace_data_size / trace_bsize;
+    *traces = size / trace_bsize;
     return SEGY_OK;
 }
 
