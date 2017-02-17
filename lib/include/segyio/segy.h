@@ -151,8 +151,8 @@ int segy_writetrace( segy_file*,
 /*
  * read/write sub traces, with the same assumption and requirements as
  * segy_readtrace. fst and lst are *indices*, not byte offsets, so
- * segy_readsubtr(fp, traceno, 0, 12, ...) reads samples 0 through 12, and not
- * 0 throuh 3.
+ * segy_readsubtr(fp, traceno, 10, 12, ...) reads samples 10 through 12, and
+ * not bytes 10 through 12.
  */
 int segy_readsubtr( segy_file*,
                     int traceno,
