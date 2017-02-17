@@ -1098,11 +1098,10 @@ static inline int subtr_seek( segy_file* fp,
      * Optimistically assume that indices are correct by the time they're given
      * to subtr_seek.
      */
-    assert( fst > lst || fst < 0 );
+    assert( lst >= fst && fst >= 0 );
     assert( sizeof( float ) == 4 );
-    assert( (lst - fst) * sizeof( float ) <= trace_bsize );
+    assert( (lst - fst) * sizeof( float ) <= (size_t)trace_bsize );
 
-    int err;
     // skip the trace header and skip everything before fst.
     trace0 += (fst * sizeof( float )) + SEGY_TRACE_HEADER_SIZE;
     return segy_seek( fp, traceno, trace0, trace_bsize );
@@ -1128,9 +1127,6 @@ int segy_readsubtr( segy_file* fp,
 
     int err = subtr_seek( fp, traceno, fst, lst, trace0, trace_bsize );
     if( err != SEGY_OK ) return err;
-
-    assert( trace_bsize >= 0 );
-    const size_t bsize = (size_t) trace_bsize;
 
     if( fp->addr ) {
         memcpy( buf, fp->cur, sizeof( float ) * ( lst - fst ) );
@@ -1163,9 +1159,6 @@ int segy_writesubtr( segy_file* fp,
 
     int err = subtr_seek( fp, traceno, fst, lst, trace0, trace_bsize );
     if( err != SEGY_OK ) return err;
-
-    assert( trace_bsize >= 0 );
-    const size_t bsize = (size_t) trace_bsize;
 
     if( fp->addr ) {
         memcpy( fp->cur, buf, sizeof( float ) * ( lst - fst ) );
