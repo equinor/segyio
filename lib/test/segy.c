@@ -550,6 +550,18 @@ static void test_file_error_codes() {
     assertTrue( err == SEGY_FSEEK_ERROR, "Could seek in invalid file." );
 
     int l1, l2;
+    err = segy_readsubtr( fp, 0, 2, 0, NULL, 3600, 350 );
+    assertTrue( err == SEGY_INVALID_ARGS, "Could pass fst larger than lst" );
+
+    err = segy_readsubtr( fp, 0, -1, 10, NULL, 3600, 350 );
+    assertTrue( err == SEGY_INVALID_ARGS, "Could pass negative fst" );
+
+    err = segy_writesubtr( fp, 0, 2, 0, NULL, 3600, 350 );
+    assertTrue( err == SEGY_INVALID_ARGS, "Could pass fst larger than lst" );
+
+    err = segy_writesubtr( fp, 0, -1, 10, NULL, 3600, 350 );
+    assertTrue( err == SEGY_INVALID_ARGS, "Could pass negative fst" );
+
     err = segy_count_lines( fp, 0, 1, &l1, &l2, 3600, 350 );
     assertTrue( err == SEGY_FSEEK_ERROR, "Could seek in invalid file." );
 }

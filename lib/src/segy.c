@@ -1088,42 +1088,55 @@ int segy_crossline_indices( segy_file* fp,
     return SEGY_INVALID_SORTING;
 }
 
+static inline int subtr_seek( segy_file* fp,
+                              int traceno,
+                              int fst,
+                              int lst,
+                              long trace0,
+                              int trace_bsize ) {
+    /*
+     * Optimistically assume that indices are correct by the time they're given
+     * to subtr_seek.
+     */
+    assert( lst >= fst && fst >= 0 );
+    assert( sizeof( float ) == 4 );
+    assert( (lst - fst) * sizeof( float ) <= (size_t)trace_bsize );
 
-static int skip_traceheader( segy_file* fp ) {
-    if( fp->addr ) {
-        fp->cur = (char*)fp->cur + SEGY_TRACE_HEADER_SIZE;
-        return SEGY_OK;
-    }
-    const int err = fseek( fp->fp, SEGY_TRACE_HEADER_SIZE, SEEK_CUR );
-    if( err != 0 ) return SEGY_FSEEK_ERROR;
-    return SEGY_OK;
+    // skip the trace header and skip everything before fst.
+    trace0 += (fst * sizeof( float )) + SEGY_TRACE_HEADER_SIZE;
+    return segy_seek( fp, traceno, trace0, trace_bsize );
 }
+
 
 int segy_readtrace( segy_file* fp,
                     int traceno,
                     float* buf,
                     long trace0,
                     int trace_bsize ) {
-    int err;
-    err = segy_seek( fp, traceno, trace0, trace_bsize );
-    if( err != 0 ) return err;
+    const int lst = trace_bsize / sizeof( float );
+    return segy_readsubtr( fp, traceno, 0, lst, buf, trace0, trace_bsize );
+}
 
-    err = skip_traceheader( fp );
-    if( err != 0 ) return err;
+int segy_readsubtr( segy_file* fp,
+                    int traceno,
+                    int fst,
+                    int lst,
+                    float* buf,
+                    long trace0,
+                    int trace_bsize ) {
 
-    assert( trace_bsize >= 0 );
-    const size_t bsize = (size_t) trace_bsize;
+    int err = subtr_seek( fp, traceno, fst, lst, trace0, trace_bsize );
+    if( err != SEGY_OK ) return err;
 
     if( fp->addr ) {
-        memcpy( buf, fp->cur, bsize );
+        memcpy( buf, fp->cur, sizeof( float ) * ( lst - fst ) );
         return SEGY_OK;
     }
 
-    const size_t readc = fread( buf, 1, bsize, fp->fp );
-    if( readc != bsize ) return SEGY_FREAD_ERROR;
+    const size_t readc = fread( buf, sizeof( float ), lst - fst, fp->fp );
+    if( readc != lst - fst ) return SEGY_FREAD_ERROR;
 
     return SEGY_OK;
-
 }
 
 int segy_writetrace( segy_file* fp,
@@ -1132,24 +1145,29 @@ int segy_writetrace( segy_file* fp,
                      long trace0,
                      int trace_bsize ) {
 
-    int err;
-    err = segy_seek( fp, traceno, trace0, trace_bsize );
-    if( err != 0 ) return err;
+    const int lst = trace_bsize / sizeof( float );
+    return segy_writesubtr( fp, traceno, 0, lst, buf, trace0, trace_bsize );
+}
 
-    err = skip_traceheader( fp );
-    if( err != 0 ) return err;
+int segy_writesubtr( segy_file* fp,
+                     int traceno,
+                     int fst,
+                     int lst,
+                     const float* buf,
+                     long trace0,
+                     int trace_bsize ) {
 
-    assert( trace_bsize >= 0 );
-    const size_t bsize = (size_t) trace_bsize;
+    int err = subtr_seek( fp, traceno, fst, lst, trace0, trace_bsize );
+    if( err != SEGY_OK ) return err;
 
     if( fp->addr ) {
-        memcpy( fp->cur, buf, bsize );
+        memcpy( fp->cur, buf, sizeof( float ) * ( lst - fst ) );
         return SEGY_OK;
     }
 
-    const size_t writec = fwrite( buf, 1, bsize , fp->fp );
-    if( writec != bsize )
-        return SEGY_FWRITE_ERROR;
+    const size_t writec = fwrite( buf, sizeof( float ), lst - fst, fp->fp );
+    if( writec != lst - fst ) return SEGY_FWRITE_ERROR;
+
     return SEGY_OK;
 }
 

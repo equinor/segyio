@@ -148,6 +148,28 @@ int segy_writetrace( segy_file*,
                      long trace0,
                      int trace_bsize );
 
+/*
+ * read/write sub traces, with the same assumption and requirements as
+ * segy_readtrace. fst and lst are *indices*, not byte offsets, so
+ * segy_readsubtr(fp, traceno, 10, 12, ...) reads samples 10 through 12, and
+ * not bytes 10 through 12.
+ */
+int segy_readsubtr( segy_file*,
+                    int traceno,
+                    int fst,
+                    int lst,
+                    float* buf,
+                    long trace0,
+                    int trace_bsize );
+
+int segy_writesubtr( segy_file*,
+                     int traceno,
+                     int fst,
+                     int lst,
+                     const float* buf,
+                     long trace0,
+                     int trace_bsize );
+
 /* convert to/from native float from segy formats (likely IBM or IEEE) */
 int segy_to_native( int format,
                     int size,

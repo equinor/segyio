@@ -981,17 +981,16 @@ static PyObject *py_read_depth_slice(PyObject *self, PyObject *args) {
 
     Py_ssize_t trace_no = 0;
     int error = 0;
-    float* trace_buffer = malloc(trace_bsize * samples);
     float* buf = buffer.buf;
 
     for(trace_no = 0; error == 0 && trace_no < count; ++trace_no) {
-        error = segy_readtrace(p_FILE, trace_no * offsets, trace_buffer, trace0, trace_bsize);
-
-        if (!error) {
-            buf[trace_no] = trace_buffer[depth];
-        }
+        error = segy_readsubtr(p_FILE,
+                               trace_no * offsets,
+                               depth,
+                               depth + 1,
+                               buf++,
+                               trace0, trace_bsize);
     }
-    free(trace_buffer);
 
     if (error != 0) {
         PyBuffer_Release( &buffer );
