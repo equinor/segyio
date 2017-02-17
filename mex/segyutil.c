@@ -13,7 +13,7 @@ static char* copyString(const char* path) {
 }
 
 
-int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, unsigned int crossline_field, double t0, double dt) {
+int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, unsigned int crossline_field, float t0, float dt) {
 
     int errc = 0;
 
@@ -23,7 +23,7 @@ int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, 
         return -1;
     }
 
-    spec->sample_indexes = NULL;
+    spec->sample_indices = NULL;
     spec->inline_indexes = NULL;
     spec->crossline_indexes = NULL;
 
@@ -37,8 +37,8 @@ int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, 
     spec->sample_format = segy_format( header );
     spec->sample_count = segy_samples( header );
 
-    spec->sample_indexes = malloc(sizeof(double) * spec->sample_count);
-    errc = segy_sample_indexes(fp, spec->sample_indexes, t0, dt, spec->sample_count);
+    spec->sample_indices = malloc(sizeof(float) * spec->sample_count);
+    errc = segy_sample_indices(fp, t0, dt, spec->sample_count, spec->sample_indices );
     if (errc != 0) {
         goto CLEANUP;
     }
@@ -46,7 +46,7 @@ int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, 
     const long trace0 = segy_trace0( header );
 
     spec->trace_bsize = segy_trace_bsize( segy_samples( header ) );
-    size_t traces;
+    int traces;
     errc = segy_traces(fp, &traces, trace0, spec->trace_bsize);
     if (errc != 0) {
         goto CLEANUP;
@@ -62,9 +62,9 @@ int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, 
         goto CLEANUP;
     }
 
-    unsigned int* l1;
-    unsigned int* l2;
-    unsigned int field;
+    int* l1;
+    int* l2;
+    int field;
     if (spec->trace_sorting_format == SEGY_INLINE_SORTING) {
         field = crossline_field;
         l1 = &spec->inline_count;
@@ -83,8 +83,8 @@ int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, 
         goto CLEANUP;
     }
 
-    spec->inline_indexes = malloc(sizeof(unsigned int) * spec->inline_count);
-    spec->crossline_indexes = malloc(sizeof(unsigned int) * spec->crossline_count);
+    spec->inline_indexes = malloc(sizeof(int) * spec->inline_count);
+    spec->crossline_indexes = malloc(sizeof(int) * spec->crossline_count);
 
     errc = segy_inline_indices(fp, inline_field, spec->trace_sorting_format,
                         spec->inline_count, spec->crossline_count, spec->offset_count, spec->inline_indexes,
@@ -121,8 +121,7 @@ int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, 
         free(spec->crossline_indexes);
     if (spec->inline_indexes != NULL)
         free(spec->inline_indexes);
-    if (spec->sample_indexes != NULL)
-        free(spec->sample_indexes);
+    free(spec->sample_indices);
     free(spec->filename);
 
     segy_close(fp);
@@ -143,13 +142,13 @@ static int getMaxDim(mxArray* arr){
 void recreateSpec(SegySpec *spec, const mxArray* mex_spec) {
 
     spec->filename = mxArrayToString(mxGetProperty(mex_spec, 0, "filename"));
-    spec->sample_format = (unsigned int)mxGetScalar(mxGetProperty(mex_spec, 0, "sample_format"));
-    spec->trace_sorting_format = (unsigned int)mxGetScalar(mxGetProperty(mex_spec, 0, "trace_sorting_format"));
-    spec->offset_count = (unsigned int)mxGetScalar(mxGetProperty(mex_spec, 0, "offset_count"));
-    spec->first_trace_pos = (unsigned int)mxGetScalar(mxGetProperty(mex_spec, 0, "first_trace_pos"));
-    spec->il_stride = (unsigned int)mxGetScalar(mxGetProperty(mex_spec, 0, "il_stride"));
-    spec->xl_stride = (unsigned int)mxGetScalar(mxGetProperty(mex_spec, 0, "xl_stride"));
-    spec->trace_bsize = (unsigned int)mxGetScalar(mxGetProperty(mex_spec, 0, "trace_bsize"));
+    spec->sample_format = (int)mxGetScalar(mxGetProperty(mex_spec, 0, "sample_format"));
+    spec->trace_sorting_format = (int)mxGetScalar(mxGetProperty(mex_spec, 0, "trace_sorting_format"));
+    spec->offset_count = (int)mxGetScalar(mxGetProperty(mex_spec, 0, "offset_count"));
+    spec->first_trace_pos = (int)mxGetScalar(mxGetProperty(mex_spec, 0, "first_trace_pos"));
+    spec->il_stride = (int)mxGetScalar(mxGetProperty(mex_spec, 0, "il_stride"));
+    spec->xl_stride = (int)mxGetScalar(mxGetProperty(mex_spec, 0, "xl_stride"));
+    spec->trace_bsize = (int)mxGetScalar(mxGetProperty(mex_spec, 0, "trace_bsize"));
 
     mxArray* crossline_indexes = mxGetProperty(mex_spec, 0, "crossline_indexes");
     spec->crossline_count = getMaxDim(crossline_indexes);
@@ -161,7 +160,7 @@ void recreateSpec(SegySpec *spec, const mxArray* mex_spec) {
 
     mxArray* sample_indexes = mxGetProperty(mex_spec, 0, "sample_indexes");
     spec->sample_count = getMaxDim(sample_indexes);
-    spec->sample_indexes = mxGetData(sample_indexes);
+    spec->sample_indices = mxGetData(sample_indexes);
 
 }
 

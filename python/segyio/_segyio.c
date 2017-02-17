@@ -250,7 +250,7 @@ static PyObject *py_read_texthdr(PyObject *self, PyObject *args) {
 static PyObject *py_write_texthdr(PyObject *self, PyObject *args) {
     errno = 0;
     PyObject *file_capsule = NULL;
-    unsigned int index;
+    int index;
     char *buffer;
     int size;
 
@@ -272,7 +272,7 @@ static PyObject *py_write_texthdr(PyObject *self, PyObject *args) {
 }
 
 // ------------ Binary and Trace Header ------------
-static char *get_header_pointer_from_capsule(PyObject *capsule, unsigned int *length) {
+static char *get_header_pointer_from_capsule(PyObject *capsule, int *length) {
     if (PyCapsule_IsValid(capsule, "BinaryHeader=char*")) {
         if (length) {
             *length = segy_binheader_size();
@@ -297,7 +297,7 @@ static PyObject *py_get_field(PyObject *self, PyObject *args) {
 
     PyArg_ParseTuple(args, "Oi", &header_capsule, &field);
 
-    unsigned int length;
+    int length;
     char *header = get_header_pointer_from_capsule(header_capsule, &length);
 
     if (PyErr_Occurred()) { return NULL; }
@@ -325,7 +325,7 @@ static PyObject *py_set_field(PyObject *self, PyObject *args) {
 
     PyArg_ParseTuple(args, "Oii", &header_capsule, &field, &value);
 
-    unsigned int length;
+    int length;
     char *header = get_header_pointer_from_capsule(header_capsule, &length);
 
     if (PyErr_Occurred()) { return NULL; }
@@ -428,12 +428,12 @@ static PyObject *py_empty_trace_header(PyObject *self) {
 static PyObject *py_read_trace_header(PyObject *self, PyObject *args) {
     errno = 0;
     PyObject *file_capsule = NULL;
-    unsigned int traceno;
+    int traceno;
     PyObject *trace_header_capsule = NULL;
     long trace0;
-    unsigned int trace_bsize;
+    int trace_bsize;
 
-    PyArg_ParseTuple(args, "OIOlI", &file_capsule, &traceno, &trace_header_capsule, &trace0, &trace_bsize);
+    PyArg_ParseTuple(args, "OiOli", &file_capsule, &traceno, &trace_header_capsule, &trace0, &trace_bsize);
 
     segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
 
@@ -456,12 +456,12 @@ static PyObject *py_read_trace_header(PyObject *self, PyObject *args) {
 static PyObject *py_write_trace_header(PyObject *self, PyObject *args) {
     errno = 0;
     PyObject *file_capsule = NULL;
-    unsigned int traceno;
+    int traceno;
     PyObject *trace_header_capsule = NULL;
     long trace0;
-    unsigned int trace_bsize;
+    int trace_bsize;
 
-    PyArg_ParseTuple(args, "OIOlI", &file_capsule, &traceno, &trace_header_capsule, &trace0, &trace_bsize);
+    PyArg_ParseTuple(args, "OiOli", &file_capsule, &traceno, &trace_header_capsule, &trace0, &trace_bsize);
 
     segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
 
@@ -482,21 +482,21 @@ static PyObject *py_write_trace_header(PyObject *self, PyObject *args) {
 
 static PyObject *py_trace_bsize(PyObject *self, PyObject *args) {
     errno = 0;
-    unsigned int sample_count;
+    int sample_count;
 
-    PyArg_ParseTuple(args, "I", &sample_count);
+    PyArg_ParseTuple(args, "i", &sample_count);
 
-    unsigned int byte_count = segy_trace_bsize(sample_count);
+    int byte_count = segy_trace_bsize(sample_count);
 
-    return Py_BuildValue("I", byte_count);
+    return Py_BuildValue("i", byte_count);
 }
 
 static PyObject *py_get_dt(PyObject *self, PyObject *args) {
     errno = 0;
 
     PyObject *file_capsule = NULL;
-    double dt;
-    PyArg_ParseTuple(args, "Od", &file_capsule, &dt);
+    float dt;
+    PyArg_ParseTuple(args, "Of", &file_capsule, &dt);
     segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
 
     if (PyErr_Occurred()) { return NULL; }
@@ -504,37 +504,38 @@ static PyObject *py_get_dt(PyObject *self, PyObject *args) {
     int error = segy_sample_interval(p_FILE, &dt);
     if (error != 0) { return py_handle_segy_error(error, errno); }
 
-    return PyFloat_FromDouble(dt);
+    double ddt = dt;
+    return PyFloat_FromDouble(ddt);
 }
 
 
 static PyObject *py_init_line_metrics(PyObject *self, PyObject *args) {
     errno = 0;
     SEGY_SORTING sorting;
-    unsigned int trace_count;
-    unsigned int inline_count;
-    unsigned int crossline_count;
-    unsigned int offset_count;
+    int trace_count;
+    int inline_count;
+    int crossline_count;
+    int offset_count;
 
-    PyArg_ParseTuple(args, "iIIII", &sorting, &trace_count, &inline_count, &crossline_count, &offset_count);
+    PyArg_ParseTuple(args, "iiiii", &sorting, &trace_count, &inline_count, &crossline_count, &offset_count);
 
-    unsigned int iline_length = segy_inline_length(crossline_count);
+    int iline_length = segy_inline_length(crossline_count);
 
-    unsigned int xline_length = segy_crossline_length(inline_count);
+    int xline_length = segy_crossline_length(inline_count);
 
-    unsigned int iline_stride;
+    int iline_stride;
     int error = segy_inline_stride(sorting, inline_count, &iline_stride);
     //Only check first call since the only error that can occur is SEGY_INVALID_SORTING
     if( error ) { return py_handle_segy_error( error, errno ); }
 
-    unsigned int xline_stride;
+    int xline_stride;
     segy_crossline_stride(sorting, crossline_count, &xline_stride);
 
     PyObject *dict = PyDict_New();
-    PyDict_SetItemString(dict, "xline_length", Py_BuildValue("I", xline_length));
-    PyDict_SetItemString(dict, "xline_stride", Py_BuildValue("I", xline_stride));
-    PyDict_SetItemString(dict, "iline_length", Py_BuildValue("I", iline_length));
-    PyDict_SetItemString(dict, "iline_stride", Py_BuildValue("I", iline_stride));
+    PyDict_SetItemString(dict, "xline_length", Py_BuildValue("i", xline_length));
+    PyDict_SetItemString(dict, "xline_stride", Py_BuildValue("i", xline_stride));
+    PyDict_SetItemString(dict, "iline_length", Py_BuildValue("i", iline_length));
+    PyDict_SetItemString(dict, "iline_stride", Py_BuildValue("i", iline_stride));
 
     return Py_BuildValue("O", dict);
 }
@@ -558,9 +559,9 @@ static PyObject *py_init_metrics(PyObject *self, PyObject *args) {
     if (PyErr_Occurred()) { return NULL; }
 
     long trace0 = segy_trace0(binary_header);
-    unsigned int sample_count = segy_samples(binary_header);
+    int sample_count = segy_samples(binary_header);
     int format = segy_format(binary_header);
-    unsigned int trace_bsize = segy_trace_bsize(sample_count);
+    int trace_bsize = segy_trace_bsize(sample_count);
 
     int sorting;
     int error = segy_sorting(p_FILE, il_field, xl_field, &sorting, trace0, trace_bsize);
@@ -569,25 +570,25 @@ static PyObject *py_init_metrics(PyObject *self, PyObject *args) {
         return py_handle_segy_error_with_fields(error, errno, il_field, xl_field, 2);
     }
 
-    size_t trace_count;
+    int trace_count;
     error = segy_traces(p_FILE, &trace_count, trace0, trace_bsize);
 
     if (error != 0) {
         return py_handle_segy_error(error, errno);
     }
 
-    unsigned int offset_count;
-    error = segy_offsets(p_FILE, il_field, xl_field, (unsigned int) trace_count, &offset_count, trace0, trace_bsize);
+    int offset_count;
+    error = segy_offsets(p_FILE, il_field, xl_field, trace_count, &offset_count, trace0, trace_bsize);
 
     if (error != 0) {
         return py_handle_segy_error_with_fields(error, errno, il_field, xl_field, 2);
     }
 
     int field;
-    unsigned int xl_count;
-    unsigned int il_count;
-    unsigned int *l1out;
-    unsigned int *l2out;
+    int xl_count;
+    int il_count;
+    int *l1out;
+    int *l2out;
 
     if (sorting == SEGY_CROSSLINE_SORTING) {
         field = il_field;
@@ -616,14 +617,14 @@ static PyObject *py_init_metrics(PyObject *self, PyObject *args) {
     PyDict_SetItemString(dict, "xline_field", Py_BuildValue("i", xl_field));
     PyDict_SetItemString(dict, "offset_field", Py_BuildValue("i", 37));
     PyDict_SetItemString(dict, "trace0", Py_BuildValue("l", trace0));
-    PyDict_SetItemString(dict, "sample_count", Py_BuildValue("I", sample_count));
+    PyDict_SetItemString(dict, "sample_count", Py_BuildValue("i", sample_count));
     PyDict_SetItemString(dict, "format", Py_BuildValue("i", format));
-    PyDict_SetItemString(dict, "trace_bsize", Py_BuildValue("I", trace_bsize));
+    PyDict_SetItemString(dict, "trace_bsize", Py_BuildValue("i", trace_bsize));
     PyDict_SetItemString(dict, "sorting", Py_BuildValue("i", sorting));
-    PyDict_SetItemString(dict, "trace_count", Py_BuildValue("k", trace_count));
-    PyDict_SetItemString(dict, "offset_count", Py_BuildValue("I", offset_count));
-    PyDict_SetItemString(dict, "iline_count", Py_BuildValue("I", il_count));
-    PyDict_SetItemString(dict, "xline_count", Py_BuildValue("I", xl_count));
+    PyDict_SetItemString(dict, "trace_count", Py_BuildValue("i", trace_count));
+    PyDict_SetItemString(dict, "offset_count", Py_BuildValue("i", offset_count));
+    PyDict_SetItemString(dict, "iline_count", Py_BuildValue("i", il_count));
+    PyDict_SetItemString(dict, "xline_count", Py_BuildValue("i", xl_count));
 
     return Py_BuildValue("O", dict);
 }
@@ -637,13 +638,13 @@ static Py_buffer check_and_get_buffer(PyObject *object, const char *name, unsign
     }
     PyObject_GetBuffer(object, &buffer, PyBUF_FORMAT | PyBUF_C_CONTIGUOUS | PyBUF_WRITEABLE);
 
-    if (strcmp(buffer.format, "I") != 0) {
-        PyErr_Format(PyExc_TypeError, "The destination for %s is not a buffer object of type 'uintc'", name);
+    if (strcmp(buffer.format, "i") != 0) {
+        PyErr_Format(PyExc_TypeError, "The destination for %s is not a buffer object of type 'intc'", name);
         PyBuffer_Release(&buffer);
         return buffer;
     }
 
-    size_t buffer_len = buffer.len;
+    size_t buffer_len = (size_t)buffer.len;
     if (buffer_len < expected * sizeof(unsigned int)) {
         PyErr_Format(PyExc_ValueError, "The destination for %s is too small. ", name);
         PyBuffer_Release(&buffer);
@@ -674,12 +675,12 @@ static PyObject *py_init_indices(PyObject *self, PyObject *args) {
         return NULL;
     }
 
-    unsigned int iline_count;
-    unsigned int xline_count;
-    unsigned int offset_count;
-    PyArg_Parse(PyDict_GetItemString(metrics, "iline_count"), "I", &iline_count);
-    PyArg_Parse(PyDict_GetItemString(metrics, "xline_count"), "I", &xline_count);
-    PyArg_Parse(PyDict_GetItemString(metrics, "offset_count"), "I", &offset_count);
+    int iline_count;
+    int xline_count;
+    int offset_count;
+    PyArg_Parse(PyDict_GetItemString(metrics, "iline_count"), "i", &iline_count);
+    PyArg_Parse(PyDict_GetItemString(metrics, "xline_count"), "i", &xline_count);
+    PyArg_Parse(PyDict_GetItemString(metrics, "offset_count"), "i", &offset_count);
 
     if (PyErr_Occurred()) { return NULL; }
 
@@ -707,14 +708,14 @@ static PyObject *py_init_indices(PyObject *self, PyObject *args) {
     int offset_field;
     int sorting;
     long trace0;
-    unsigned int trace_bsize;
+    int trace_bsize;
 
     PyArg_Parse(PyDict_GetItemString(metrics, "iline_field"), "i", &il_field);
     PyArg_Parse(PyDict_GetItemString(metrics, "xline_field"), "i", &xl_field);
     PyArg_Parse(PyDict_GetItemString(metrics, "offset_field"), "i", &offset_field);
     PyArg_Parse(PyDict_GetItemString(metrics, "sorting"), "i", &sorting);
     PyArg_Parse(PyDict_GetItemString(metrics, "trace0"), "l", &trace0);
-    PyArg_Parse(PyDict_GetItemString(metrics, "trace_bsize"), "I", &trace_bsize);
+    PyArg_Parse(PyDict_GetItemString(metrics, "trace_bsize"), "i", &trace_bsize);
 
     int error = segy_inline_indices(p_FILE, il_field, sorting, iline_count, xline_count, offset_count, iline_buffer.buf,
                                     trace0, trace_bsize);
@@ -747,14 +748,14 @@ static PyObject *py_init_indices(PyObject *self, PyObject *args) {
 
 static PyObject *py_fread_trace0(PyObject *self, PyObject *args) {
     errno = 0;
-    unsigned int lineno;
-    unsigned int other_line_length;
-    unsigned int stride;
+    int lineno;
+    int other_line_length;
+    int stride;
     int offsets;
     PyObject *indices_object;
     char *type_name;
 
-    PyArg_ParseTuple(args, "IIIiOs", &lineno, &other_line_length, &stride, &offsets, &indices_object, &type_name);
+    PyArg_ParseTuple(args, "iiiiOs", &lineno, &other_line_length, &stride, &offsets, &indices_object, &type_name);
 
     Py_buffer buffer;
     if (!PyObject_CheckBuffer(indices_object)) {
@@ -763,8 +764,8 @@ static PyObject *py_fread_trace0(PyObject *self, PyObject *args) {
     }
     PyObject_GetBuffer(indices_object, &buffer, PyBUF_FORMAT | PyBUF_C_CONTIGUOUS);
 
-    unsigned int trace_no;
-    unsigned int linenos_sz = (unsigned int) PyObject_Length(indices_object);
+    int trace_no;
+    int linenos_sz = PyObject_Length(indices_object);
     int error = segy_line_trace0(lineno, other_line_length, stride, offsets, buffer.buf, linenos_sz, &trace_no);
     PyBuffer_Release( &buffer );
 
@@ -772,7 +773,7 @@ static PyObject *py_fread_trace0(PyObject *self, PyObject *args) {
         return py_handle_segy_error_with_index_and_name(error, errno, lineno, type_name);
     }
 
-    return Py_BuildValue("I", trace_no);
+    return Py_BuildValue("i", trace_no);
 }
 
 static PyObject *py_read_trace(PyObject *self, PyObject *args) {
@@ -782,11 +783,11 @@ static PyObject *py_read_trace(PyObject *self, PyObject *args) {
     PyObject *buffer_out;
     int trace_count;
     long trace0;
-    unsigned int trace_bsize;
+    int trace_bsize;
     int format;
-    unsigned int samples;
+    int samples;
 
-    PyArg_ParseTuple(args, "OOiOlIiI", &file_capsule, &trace_no, &trace_count, &buffer_out, &trace0, &trace_bsize, &format, &samples);
+    PyArg_ParseTuple(args, "OOiOliii", &file_capsule, &trace_no, &trace_count, &buffer_out, &trace0, &trace_bsize, &format, &samples);
 
     segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
 
@@ -854,14 +855,14 @@ static PyObject *py_read_trace(PyObject *self, PyObject *args) {
 static PyObject *py_write_trace(PyObject *self, PyObject *args) {
     errno = 0;
     PyObject *file_capsule = NULL;
-    unsigned int trace_no;
+    int trace_no;
     PyObject *buffer_in;
     long trace0;
-    unsigned int trace_bsize;
+    int trace_bsize;
     int format;
-    unsigned int samples;
+    int samples;
 
-    PyArg_ParseTuple(args, "OIOlIiI", &file_capsule, &trace_no, &buffer_in, &trace0, &trace_bsize, &format, &samples);
+    PyArg_ParseTuple(args, "OiOliii", &file_capsule, &trace_no, &buffer_in, &trace0, &trace_bsize, &format, &samples);
 
     segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
 
@@ -900,17 +901,17 @@ static PyObject *py_write_trace(PyObject *self, PyObject *args) {
 static PyObject *py_read_line(PyObject *self, PyObject *args) {
     errno = 0;
     PyObject *file_capsule = NULL;
-    unsigned int line_trace0;
-    unsigned int line_length;
-    unsigned int stride;
+    int line_trace0;
+    int line_length;
+    int stride;
     int offsets;
     PyObject *buffer_in;
     long trace0;
-    unsigned int trace_bsize;
+    int trace_bsize;
     int format;
-    unsigned int samples;
+    int samples;
 
-    PyArg_ParseTuple(args, "OIIIiOlIiI", &file_capsule,
+    PyArg_ParseTuple(args, "OiiiiOliii", &file_capsule,
                                          &line_trace0,
                                          &line_length, &stride, &offsets,
                                          &buffer_in,
@@ -955,11 +956,11 @@ static PyObject *py_read_depth_slice(PyObject *self, PyObject *args) {
     int offsets;
     PyObject *buffer_out;
     long trace0;
-    unsigned int trace_bsize;
+    int trace_bsize;
     int format;
-    unsigned int samples;
+    int samples;
 
-    PyArg_ParseTuple(args, "OiiiOlIiI", &file_capsule,
+    PyArg_ParseTuple(args, "OiiiOliii", &file_capsule,
                                         &depth,
                                         &count,
                                         &offsets,

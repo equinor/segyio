@@ -122,7 +122,7 @@ void mexFunction( int nlhs, mxArray *plhs[],
     mxArray *mx_sample_indexes = mxCreateDoubleMatrix(spec.sample_count,1, mxREAL);
     double *mx_sample_indexes_ptr = mxGetPr(mx_sample_indexes);
     for (int i = 0; i < spec.sample_count; i++) {
-        mx_sample_indexes_ptr[i] = spec.sample_indexes[i];
+        mx_sample_indexes_ptr[i] = spec.sample_indices[i];
     }
     mxSetFieldByNumber(plhs[0], 0, 4, mx_sample_indexes);
 
@@ -137,8 +137,7 @@ void mexFunction( int nlhs, mxArray *plhs[],
         free(spec.crossline_indexes);
     if (spec.inline_indexes != NULL)
         free(spec.inline_indexes);
-    if (spec.sample_indexes != NULL)
-        free(spec.sample_indexes);
+    free(spec.sample_indices);
     if (spec.filename != NULL)
         free(spec.filename);
     mxFree(filename);

@@ -27,7 +27,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
 
     char header[ SEGY_TRACE_HEADER_SIZE ];
 
-    for( size_t i = 0; i < fmt.traces; ++i ) {
+    for( int i = 0; i < fmt.traces; ++i ) {
         int32_t f;
         err = segy_traceheader( fp, i, header, fmt.trace0, fmt.trace_bsize );
 

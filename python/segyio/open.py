@@ -67,9 +67,9 @@ def open(filename, mode="r", iline=189, xline=193):
         line_metrics = segyio._segyio.init_line_metrics(f.sorting, f.tracecount,
                                                         iline_count, xline_count, offset_count)
 
-        f._ilines  = numpy.zeros(iline_count, dtype=numpy.uintc)
-        f._xlines  = numpy.zeros(xline_count, dtype=numpy.uintc)
-        f._offsets = numpy.zeros(offset_count, dtype = numpy.uintc)
+        f._ilines  = numpy.zeros(iline_count, dtype=numpy.intc)
+        f._xlines  = numpy.zeros(xline_count, dtype=numpy.intc)
+        f._offsets = numpy.zeros(offset_count, dtype = numpy.intc)
         segyio._segyio.init_indices(f.xfd, metrics, f.ilines, f.xlines, f.offsets)
 
         f._iline_length = line_metrics['iline_length']

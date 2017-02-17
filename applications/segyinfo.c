@@ -51,7 +51,7 @@ int main(int argc, char* argv[]) {
     const int format = segy_format( header );
     const int samples = segy_samples( header );
     const long trace0 = segy_trace0( header );
-    const unsigned int trace_bsize = segy_trace_bsize( samples );
+    const int trace_bsize = segy_trace_bsize( samples );
     int extended_headers;
     err = segy_get_bfield( header, SEGY_BIN_EXT_HEADERS, &extended_headers );
 
@@ -60,7 +60,7 @@ int main(int argc, char* argv[]) {
         exit( err );
     }
 
-    size_t traces;
+    int traces;
     err = segy_traces( fp, &traces, trace0, trace_bsize );
 
     if( err != 0 ) {
@@ -70,7 +70,7 @@ int main(int argc, char* argv[]) {
 
     printf( "Sample format: %d\n", format );
     printf( "Samples per trace: %d\n", samples );
-    printf( "Traces: %zu\n", traces );
+    printf( "Traces: %d\n", traces );
     printf("Extended text header count: %d\n", extended_headers );
     puts("");
 
@@ -103,7 +103,7 @@ int main(int argc, char* argv[]) {
 
     int min_sample_count = 999999999;
     int max_sample_count = 0;
-    for( int i = 0; i < (int)traces; ++i ) {
+    for( int i = 0; i < traces; ++i ) {
         err = segy_traceheader( fp, i, traceh, trace0, trace_bsize );
         if( err != 0 ) {
             perror( "Unable to read trace" );

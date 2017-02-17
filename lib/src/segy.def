@@ -17,7 +17,7 @@ segy_set_bfield
 segy_trace_bsize
 segy_trace0
 segy_traces
-segy_sample_indexes
+segy_sample_indices
 segy_read_textheader
 segy_textheader_size
 segy_write_textheader

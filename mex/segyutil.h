@@ -11,37 +11,37 @@
 typedef struct {
     char* filename;
 
-    unsigned int sample_format;
+    int sample_format;
 
-    unsigned int* crossline_indexes;
-    unsigned int crossline_count;
+    int* crossline_indexes;
+    int crossline_count;
 
-    unsigned int* inline_indexes;
-    unsigned int inline_count;
+    int* inline_indexes;
+    int inline_count;
 
-    unsigned int offset_count;
+    int offset_count;
 
-    double* sample_indexes;
-    unsigned int sample_count;
+    float* sample_indices;
+    int sample_count;
 
     int trace_sorting_format;
 
-    unsigned int il_stride;
-    unsigned int xl_stride;
-    unsigned int first_trace_pos;
-    unsigned int trace_bsize;
+    int il_stride;
+    int xl_stride;
+    long first_trace_pos;
+    int trace_bsize;
 
 } SegySpec;
 
-int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, unsigned int crossline_field, double t0, double dt);
+int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, unsigned int crossline_field, float t0, float dt);
 
 void recreateSpec(SegySpec* spec, const mxArray* mex_spec);
 
 struct segy_file_format {
-    unsigned int samples;
+    int samples;
     long trace0;
-    unsigned int trace_bsize;
-    size_t traces;
+    int trace_bsize;
+    int traces;
     int format;
 };
 

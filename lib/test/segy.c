@@ -17,10 +17,10 @@ static void test_interpret_file() {
     int err;
     char header[ SEGY_BINARY_HEADER_SIZE ];
     int sorting;
-    size_t traces;
-    unsigned int inlines_sz, crosslines_sz;
-    unsigned int offsets, stride;
-    unsigned int line_trace0, line_length;
+    int traces;
+    int inlines_sz, crosslines_sz;
+    int offsets, stride;
+    int line_trace0, line_length;
     const int il = SEGY_TR_INLINE;
     const int xl = SEGY_TR_CROSSLINE;
 
@@ -34,10 +34,10 @@ static void test_interpret_file() {
     assertTrue( trace0 == 3600,
                 "Wrong byte offset of the first trace header. Expected 3600." );
 
-    const unsigned int samples = segy_samples( header );
+    const int samples = segy_samples( header );
     assertTrue( samples == 50, "Expected 350 samples per trace." );
 
-    const size_t trace_bsize = segy_trace_bsize( samples );
+    const int trace_bsize = segy_trace_bsize( samples );
     assertTrue( trace_bsize == 50 * 4,
                 "Wrong trace byte size. Expected samples * 4-byte float." );
 
@@ -68,10 +68,10 @@ static void test_interpret_file() {
     assertTrue( crosslines_sz == 5, "Expected 5 crosslines." );
 
     /* Inline-specific information */
-    unsigned int inline_indices[ 5 ];
+    int inline_indices[ 5 ];
     err = segy_inline_indices( fp, il, sorting, inlines_sz, crosslines_sz, offsets, inline_indices, trace0, trace_bsize );
     assertTrue( err == 0, "Could not determine inline linenos." );
-    for( unsigned int i = 0, ref = 1; i < 5; ++i, ++ref )
+    for( int i = 0, ref = 1; i < 5; ++i, ++ref )
         assertTrue( inline_indices[ i ] == ref,
                     "Inline lineno mismatch, should be [1..5]." );
 
@@ -87,10 +87,10 @@ static void test_interpret_file() {
     assertTrue( line_length == 5, "Inline length should be 5." );
 
     /* Crossline-specific information */
-    unsigned int crossline_indices[ 5 ];
+    int crossline_indices[ 5 ];
     err = segy_crossline_indices( fp, xl, sorting, inlines_sz, crosslines_sz, offsets, crossline_indices, trace0, trace_bsize );
     assertTrue( err == 0, "Could not determine crossline linenos." );
-    for( unsigned int i = 0, ref = 20; i < 5; ++i, ++ref )
+    for( int i = 0, ref = 20; i < 5; ++i, ++ref )
         assertTrue( crossline_indices[ i ] == ref,
                     "Crossline lineno mismatch, should be [20..24]." );
 
@@ -208,10 +208,10 @@ static void testReadInLine_4(){
     const char *file = "test-data/small.sgy";
 
     int sorting;
-    size_t traces;
-    unsigned int inlines_sz, crosslines_sz;
-    unsigned int offsets, stride;
-    unsigned int line_trace0, line_length;
+    int traces;
+    int inlines_sz, crosslines_sz;
+    int offsets, stride;
+    int line_trace0, line_length;
 
     /* test specific consts */
     const int il = SEGY_TR_INLINE, xl = SEGY_TR_CROSSLINE;
@@ -221,12 +221,12 @@ static void testReadInLine_4(){
     segy_file* fp = segy_open( file, "rb" );
     assertTrue( 0 == segy_binheader( fp, header ), "Could not read header" );
     const long trace0 = segy_trace0( header );
-    const unsigned int samples = segy_samples( header );
-    const size_t trace_bsize = segy_trace_bsize( samples );
+    const int samples = segy_samples( header );
+    const int trace_bsize = segy_trace_bsize( samples );
     const int format = segy_format( header );
 
-    unsigned int inline_indices[ 5 ];
-    const unsigned int inline_length = 5;
+    int inline_indices[ 5 ];
+    const int inline_length = 5;
     float* data = malloc( inline_length * samples * sizeof( float ) );
 
     int ok = 0;
@@ -255,7 +255,7 @@ static void testReadInLine_4(){
     assertClose(4.20049f, data[samples-1], 0.0001f);
 
     //middle xline
-    size_t middle_line = 2;
+    int middle_line = 2;
     //first sample
     assertClose(4.22f, data[samples*middle_line+0], 0.0001);
     //middle sample
@@ -264,7 +264,7 @@ static void testReadInLine_4(){
     assertClose(4.22049f, data[samples*middle_line+samples-1], 0.0001);
 
     //last xline
-    size_t last_line = (crosslines_sz-1);
+    int last_line = (crosslines_sz-1);
     //first sample
     assertClose(4.24f, data[samples*last_line+0], 0);
     //middle sample
@@ -283,10 +283,10 @@ static void testReadCrossLine_22(){
     const char *file = "test-data/small.sgy";
 
     int sorting;
-    size_t traces;
-    unsigned int inlines_sz, crosslines_sz;
-    unsigned int offsets, stride;
-    unsigned int line_trace0, line_length;
+    int traces;
+    int inlines_sz, crosslines_sz;
+    int offsets, stride;
+    int line_length, line_trace0;
 
     /* test specific consts */
     const int il = SEGY_TR_INLINE, xl = SEGY_TR_CROSSLINE;
@@ -296,12 +296,12 @@ static void testReadCrossLine_22(){
     segy_file* fp = segy_open( file, "rb" );
     assertTrue( 0 == segy_binheader( fp, header ), "Could not read header" );
     const long trace0 = segy_trace0( header );
-    const unsigned int samples = segy_samples( header );
-    const size_t trace_bsize = segy_trace_bsize( samples );
+    const int samples = segy_samples( header );
+    const int trace_bsize = segy_trace_bsize( samples );
     const int format = segy_format( header );
 
-    unsigned int crossline_indices[ 5 ];
-    const unsigned int crossline_length = 5;
+    int crossline_indices[ 5 ];
+    const int crossline_length = 5;
     float* data = malloc( crossline_length * samples * sizeof(float) );
 
     int ok = 0;
@@ -330,7 +330,7 @@ static void testReadCrossLine_22(){
     assertClose(1.22049f, data[samples-1], 0.0001);
 
     //middle inline
-    size_t middle_line = 2;
+    int middle_line = 2;
     //first sample
     assertClose(3.22f, data[samples*middle_line+0], 0.0001);
     //middle sample
@@ -339,7 +339,7 @@ static void testReadCrossLine_22(){
     assertClose(3.22049f, data[samples*middle_line+samples-1], 0.0001);
 
     //last inline
-    size_t last_line = (line_length-1);
+    int last_line = (line_length-1);
     //first sample
     assertClose(5.22f, data[samples*last_line+0], 0.0001);
     //middle sample
@@ -366,8 +366,8 @@ static void test_modify_trace_header() {
     err = segy_binheader( fp, bheader );
     assertTrue( err == 0, "Could not read header" );
     const long trace0 = segy_trace0( bheader );
-    const unsigned int samples = segy_samples( bheader );
-    const size_t trace_bsize = segy_trace_bsize( samples );
+    const int samples = segy_samples( bheader );
+    const int trace_bsize = segy_trace_bsize( samples );
 
     char traceh[ SEGY_TRACE_HEADER_SIZE ];
     err = segy_traceheader( fp, 0, traceh, trace0, trace_bsize );
@@ -470,8 +470,8 @@ static void test_trace_header_errors() {
     char binheader[ SEGY_BINARY_HEADER_SIZE ];
     err = segy_binheader( fp, binheader );
     assertTrue( err == 0, "Could not read binary header." );
-    const unsigned samples = segy_samples( binheader );
-    const unsigned bsize = segy_trace_bsize( samples );
+    const int samples = segy_samples( binheader );
+    const int bsize = segy_trace_bsize( samples );
     const long trace0 = segy_trace0( binheader );
 
     char header[ SEGY_TRACE_HEADER_SIZE ];
@@ -508,8 +508,8 @@ static void test_file_error_codes() {
     assertTrue( err == SEGY_FSEEK_ERROR,
                 "Could read binary header from invalid file." );
 
-    const unsigned samples = segy_samples( binheader );
-    const unsigned trace_bsize = segy_trace_bsize( samples );
+    const int samples = segy_samples( binheader );
+    const int trace_bsize = segy_trace_bsize( samples );
     const long trace0 = segy_trace0( binheader );
 
     char header[ SEGY_TRACE_HEADER_SIZE ];
@@ -535,7 +535,7 @@ static void test_file_error_codes() {
     err = segy_read_textheader(fp, NULL);
     assertTrue( err == SEGY_FSEEK_ERROR, "Could seek in invalid file." );
 
-    size_t traces;
+    int traces;
     err = segy_traces( fp, &traces, 3600, 350 );
     assertTrue( err == SEGY_FSEEK_ERROR, "Could seek in invalid file." );
 
@@ -549,7 +549,7 @@ static void test_file_error_codes() {
     err = segy_writetrace( fp, 0, NULL, 3600, 350 );
     assertTrue( err == SEGY_FSEEK_ERROR, "Could seek in invalid file." );
 
-    unsigned int l1, l2;
+    int l1, l2;
     err = segy_count_lines( fp, 0, 1, &l1, &l2, 3600, 350 );
     assertTrue( err == SEGY_FSEEK_ERROR, "Could seek in invalid file." );
 }
@@ -557,12 +557,12 @@ static void test_file_error_codes() {
 static void test_error_codes_sans_file() {
     int err;
 
-    unsigned int linenos[] = { 0, 1, 2 };
+    int linenos[] = { 0, 1, 2 };
     err = segy_line_trace0( 10, 3, 1, 1, linenos, 3, NULL );
     assertTrue( err == SEGY_MISSING_LINE_INDEX,
                 "Found line number that shouldn't exist." );
 
-    unsigned int stride;
+    int stride;
     err = segy_inline_stride( SEGY_INLINE_SORTING + 3, 10, &stride );
     assertTrue( err == SEGY_INVALID_SORTING,
                 "Expected sorting to be invalid." );
@@ -575,8 +575,8 @@ static void test_error_codes_sans_file() {
 static void test_file_size_above_4GB(){
     segy_file* fp = segy_open( "4gbfile", "w+b" );
 
-    unsigned int trace = 5000000;
-    unsigned int trace_bsize = 1000;
+    int trace = 5000000;
+    int trace_bsize = 1000;
     long long tracesize = trace_bsize + SEGY_TRACE_HEADER_SIZE;
     long trace0 = 0;
 

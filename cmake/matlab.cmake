@@ -79,9 +79,9 @@ ELSE(WIN32)
     FIND_PROGRAM(MATLAB_MEX
             mex
             PATHS
+            ${MATLAB_ROOT}/bin
             /prog/matlab/R2016B/bin # Statoil location
             /prog/matlab/R2014B/bin # Statoil location
-            ${MATLAB_ROOT}/bin
             /opt/matlab/bin
             /usr/local/matlab/bin
             $ENV{HOME}/matlab/bin

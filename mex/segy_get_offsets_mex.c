@@ -43,7 +43,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
     if( errc != SEGY_OK ) goto CLEANUP;
 
     int32_t* plhs0 = (int32_t*)mxGetData(plhs[0]);
-    for( unsigned int i = 0; i < spec.offset_count; ++i )
+    for( int i = 0; i < spec.offset_count; ++i )
         plhs0[i] = int_offsets[i];
 
     mxFree( int_offsets );
