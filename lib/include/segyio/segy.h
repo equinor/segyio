@@ -150,23 +150,44 @@ int segy_writetrace( segy_file*,
 
 /*
  * read/write sub traces, with the same assumption and requirements as
- * segy_readtrace. fst and lst are *indices*, not byte offsets, so
+ * segy_readtrace. start and stop are *indices*, not byte offsets, so
  * segy_readsubtr(fp, traceno, 10, 12, ...) reads samples 10 through 12, and
  * not bytes 10 through 12.
+ *
+ * start and stop are in the range [start,stop), so start=0, stop=5, step=2
+ * yields [0, 2, 4], whereas stop=4 yields [0, 2]
+ *
+ * When step is negative, the subtrace will be read in reverse. If step is
+ * negative and [0,n) is desired, pass use -1 for stop. Other negative values
+ * are undefined. If the range [n, m) where m is larger than the samples is
+ * considered undefined. Any [n, m) where distance(n,m) > samples is undefined.
+ *
+ * The parameter rangebuf is a pointer to a buffer of at least abs(stop-start)
+ * size. This is largely intended for script-C boundaries. In code paths where
+ * step is not 1 or -1, and mmap is not activated, these functions will
+ * *allocate* a buffer to read data from file in chunks. This is a significant
+ * speedup over multiple fread calls, at the cost of a clunkier interface. This
+ * is a tradeoff, since this function is often called in an inner loop. If
+ * you're fine with these functions allocating and freeing this buffer for you,
+ * rangebuf can be NULL.
  */
 int segy_readsubtr( segy_file*,
                     int traceno,
-                    int fst,
-                    int lst,
+                    int start,
+                    int stop,
+                    int step,
                     float* buf,
+                    float* rangebuf,
                     long trace0,
                     int trace_bsize );
 
 int segy_writesubtr( segy_file*,
                      int traceno,
-                     int fst,
-                     int lst,
+                     int start,
+                     int stop,
+                     int step,
                      const float* buf,
+                     float* rangebuf,
                      long trace0,
                      int trace_bsize );
 

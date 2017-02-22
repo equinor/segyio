@@ -1032,7 +1032,7 @@ int segy_lines_count( segy_file* fp,
     return SEGY_OK;
 }
 
-/* 
+/*
  * segy_*line_length is rather pointless as a computation, but serve a purpose
  * as an abstraction as the detail on how exactly a length is defined is usually uninteresting
  */
@@ -1090,52 +1090,119 @@ int segy_crossline_indices( segy_file* fp,
 
 static inline int subtr_seek( segy_file* fp,
                               int traceno,
-                              int fst,
-                              int lst,
+                              int start,
+                              int stop,
                               long trace0,
                               int trace_bsize ) {
     /*
      * Optimistically assume that indices are correct by the time they're given
      * to subtr_seek.
      */
-    assert( lst >= fst && fst >= 0 );
+    int min = start < stop ? start : stop + 1;
     assert( sizeof( float ) == 4 );
-    assert( (lst - fst) * sizeof( float ) <= (size_t)trace_bsize );
+    assert( start >= 0 );
+    assert( stop >= -1 );
+    assert( abs(stop - start) * (int)sizeof( float ) <= trace_bsize );
 
-    // skip the trace header and skip everything before fst.
-    trace0 += (fst * sizeof( float )) + SEGY_TRACE_HEADER_SIZE;
+    // skip the trace header and skip everything before min
+    trace0 += (min * (int)sizeof( float )) + SEGY_TRACE_HEADER_SIZE;
     return segy_seek( fp, traceno, trace0, trace_bsize );
 }
 
+static int slicelength( int start, int stop, int step ) {
+    if( ( step < 0 && stop >= start ) ||
+        ( step > 0 && start >= stop ) ) return 0;
+
+    if( step < 0 ) return (stop - start + 1) / step + 1;
+
+    return (stop - start - 1) / step + 1;
+}
+
+static int reverse( float* arr, int elems ) {
+    float tmp;
+    const int last = elems - 1;
+    for( int i = 0; i < elems / 2; ++i ) {
+        tmp = arr[ i ];
+        arr[ i ] = arr[ last - i ];
+        arr[ last - i ] = tmp;
+    }
+
+    return SEGY_OK;
+}
 
 int segy_readtrace( segy_file* fp,
                     int traceno,
                     float* buf,
                     long trace0,
                     int trace_bsize ) {
-    const int lst = trace_bsize / sizeof( float );
-    return segy_readsubtr( fp, traceno, 0, lst, buf, trace0, trace_bsize );
+    const int stop = trace_bsize / sizeof( float );
+    return segy_readsubtr( fp, traceno, 0, stop, 1, buf, NULL, trace0, trace_bsize );
 }
 
 int segy_readsubtr( segy_file* fp,
                     int traceno,
-                    int fst,
-                    int lst,
+                    int start,
+                    int stop,
+                    int step,
                     float* buf,
+                    float* rangebuf,
                     long trace0,
                     int trace_bsize ) {
 
-    int err = subtr_seek( fp, traceno, fst, lst, trace0, trace_bsize );
+    int err = subtr_seek( fp, traceno, start, stop, trace0, trace_bsize );
     if( err != SEGY_OK ) return err;
 
-    if( fp->addr ) {
-        memcpy( buf, fp->cur, sizeof( float ) * ( lst - fst ) );
+    const size_t elems = abs( stop - start );
+
+    // most common case: step == abs(1), reading contiguously
+    if( step == 1 || step == -1 ) {
+
+        if( fp->addr ) {
+            memcpy( buf, fp->cur, sizeof( float ) * elems );
+        } else {
+            const size_t readc = fread( buf, sizeof( float ), elems, fp->fp );
+            if( readc != elems ) return SEGY_FREAD_ERROR;
+        }
+
+        if( step == -1 ) reverse( buf, elems );
+
         return SEGY_OK;
     }
 
-    const size_t readc = fread( buf, sizeof( float ), lst - fst, fp->fp );
-    if( readc != lst - fst ) return SEGY_FREAD_ERROR;
+    // step != 1, i.e. do strided reads
+    int defstart = start < stop ? 0 : elems - 1;
+    int slicelen = slicelength( start, stop, step );
 
+    if( fp->addr ) {
+        float* cur = (float*)fp->cur + defstart;
+        for( ; slicelen > 0; cur += step, ++buf, --slicelen )
+            *buf = *cur;
+
+        return SEGY_OK;
+    }
+
+    /*
+     * fread fallback: read the full chunk [start, stop) to avoid multiple
+     * fread calls (which are VERY expensive, measured to about 10x the cost of
+     * a single read when reading every other trace). If rangebuf is NULL, the
+     * caller has not supplied a buffer for us to use (likely if it's a
+     * one-off, and we heap-alloc a buffer. This way the function is safer to
+     * use, but with a significant performance penalty when no buffer is
+     * supplied.
+     */
+    float* tracebuf = rangebuf ? rangebuf : malloc( elems * sizeof( float ) );
+
+    const size_t readc = fread( tracebuf, sizeof( float ), elems, fp->fp );
+    if( readc != elems ) {
+        free( tracebuf );
+        return SEGY_FREAD_ERROR;
+    }
+
+    float* cur = tracebuf + defstart;
+    for( ; slicelen > 0; cur += step, --slicelen, ++buf )
+        *buf = *cur;
+
+    free( tracebuf );
     return SEGY_OK;
 }
 
@@ -1145,28 +1212,73 @@ int segy_writetrace( segy_file* fp,
                      long trace0,
                      int trace_bsize ) {
 
-    const int lst = trace_bsize / sizeof( float );
-    return segy_writesubtr( fp, traceno, 0, lst, buf, trace0, trace_bsize );
+    const int stop = trace_bsize / sizeof( float );
+    return segy_writesubtr( fp, traceno, 0, stop, 1, buf, NULL, trace0, trace_bsize );
 }
 
 int segy_writesubtr( segy_file* fp,
                      int traceno,
-                     int fst,
-                     int lst,
+                     int start,
+                     int stop,
+                     int step,
                      const float* buf,
+                     float* rangebuf,
                      long trace0,
                      int trace_bsize ) {
 
-    int err = subtr_seek( fp, traceno, fst, lst, trace0, trace_bsize );
+    int err = subtr_seek( fp, traceno, start, stop, trace0, trace_bsize );
     if( err != SEGY_OK ) return err;
 
-    if( fp->addr ) {
-        memcpy( fp->cur, buf, sizeof( float ) * ( lst - fst ) );
+    const size_t elems = abs( stop - start );
+
+    if( step == 1 ) {
+        /*
+         * most common case: step == 1, writing contiguously
+         * -1 is not covered here as it would require reversing the input buffer
+         * (which is const), which in turn may require a memory allocation. It will
+         * be handled by the stride-aware code path
+         */
+        if( fp->addr ) {
+            memcpy( fp->cur, buf, sizeof( float ) * elems );
+        } else {
+            const size_t writec = fwrite( buf, sizeof( float ), elems, fp->fp );
+            if( writec != elems ) return SEGY_FWRITE_ERROR;
+        }
+
         return SEGY_OK;
     }
 
-    const size_t writec = fwrite( buf, sizeof( float ), lst - fst, fp->fp );
-    if( writec != lst - fst ) return SEGY_FWRITE_ERROR;
+    // step != 1, i.e. do strided reads
+    int defstart = start < stop ? 0 : elems - 1;
+    int slicelen = slicelength( start, stop, step );
+
+    if( fp->addr ) {
+        /* if mmap is on, strided write is trivial and fast */
+        float* cur = (float*)fp->cur + defstart;
+        for( ; slicelen > 0; cur += step, ++buf, --slicelen )
+            *cur = *buf;
+
+        return SEGY_OK;
+    }
+
+    const int elemsize = elems * sizeof( float );
+    float* tracebuf = rangebuf ? rangebuf : malloc( elemsize );
+
+    // like in readsubtr, read a larger chunk and then step through that
+    const size_t readc = fread( tracebuf, sizeof( float ), elems, fp->fp );
+    if( readc != elems ) { free( tracebuf ); return SEGY_FREAD_ERROR; }
+    /* rewind, because fread advances the file pointer */
+    err = fseek( fp->fp, -elemsize, SEEK_CUR );
+    if( err != 0 ) { free( tracebuf ); return SEGY_FSEEK_ERROR; }
+
+    float* cur = tracebuf + defstart;
+    for( ; slicelen > 0; cur += step, --slicelen, ++buf )
+        *cur = *buf;
+
+    const size_t writec = fwrite( tracebuf, sizeof( float ), elems, fp->fp );
+    free( tracebuf );
+
+    if( writec != elems ) return SEGY_FWRITE_ERROR;
 
     return SEGY_OK;
 }
