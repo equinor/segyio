@@ -170,13 +170,17 @@ int segy_writesubtr( segy_file*,
                      long trace0,
                      int trace_bsize );
 
-/* convert to/from native float from segy formats (likely IBM or IEEE) */
+/*
+ * convert to/from native float from segy formats (likely IBM or IEEE).  Size
+ * parameter is long long because it needs to know the number of *samples*,
+ * which can be very large for bulk conversion of a collection of traces.
+ */
 int segy_to_native( int format,
-                    int size,
+                    long long size,
                     float* buf );
 
 int segy_from_native( int format,
-                      int size,
+                      long long size,
                       float* buf );
 
 int segy_read_line( segy_file* fp,

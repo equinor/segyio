@@ -29,6 +29,9 @@ void mexFunction(int nlhs, mxArray *plhs[],
     if( last_trace == -1 )
         last_trace = fmt.traces - 1;
 
+    int traces = 1 + (last_trace - first_trace);
+    long long bufsize = (long long)fmt.samples * traces;
+
     if( first_trace > last_trace ) {
         msg1 = "segy:get_traces:bounds";
         msg2 = "first trace must be smaller than last trace";
@@ -52,15 +55,14 @@ void mexFunction(int nlhs, mxArray *plhs[],
     }
 
     segy_close( fp );
-
-    segy_to_native( fmt.format, fmt.samples * fmt.traces, out );
-
+    segy_to_native( fmt.format, bufsize, out );
     plhs[ 1 ] = mxCreateDoubleScalar( fmt.format );
 
     return;
 
 cleanup:
     segy_close( fp );
+    segy_to_native( fmt.format, bufsize, out );
 
     mexErrMsgIdAndTxt( msg1, msg2 );
 }

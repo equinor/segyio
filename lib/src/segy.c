@@ -1172,7 +1172,7 @@ int segy_writesubtr( segy_file* fp,
 }
 
 int segy_to_native( int format,
-                    int size,
+                    long long size,
                     float* buf ) {
 
     assert( sizeof( float ) == sizeof( uint32_t ) );
@@ -1196,7 +1196,7 @@ int segy_to_native( int format,
 }
 
 int segy_from_native( int format,
-                      int size,
+                      long long size,
                       float* buf ) {
 
     assert( sizeof( float ) == sizeof( uint32_t ) );

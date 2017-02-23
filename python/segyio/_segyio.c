@@ -835,13 +835,13 @@ static PyObject *py_read_trace(PyObject *self, PyObject *args) {
         error = segy_readtrace(p_FILE, start + (i * step), buf, trace0, trace_bsize);
     }
 
-    int conv_error = segy_to_native(format, length * samples, buffer.buf);
+    long long bufsize = (long long) length * samples;
+    int conv_error = segy_to_native(format, bufsize, buffer.buf);
     PyBuffer_Release( &buffer );
 
     if (error != 0) {
         return py_handle_segy_error_with_index_and_name(error, errno, start + (i * step), "Trace");
     }
-
 
     if (conv_error != 0) {
         PyErr_SetString(PyExc_TypeError, "Unable to convert buffer to native format.");
