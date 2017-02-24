@@ -232,6 +232,47 @@ class TestSegy(TestCase):
                 self.assertEqual(f.header[1][xl], 13)
                 self.assertEqual(f.header[2][xl], 2)
 
+    def test_attributes(self):
+        with segyio.open(self.filename) as f:
+            il = TraceField.INLINE_3D
+            xl = TraceField.CROSSLINE_3D
+
+            self.assertEqual(1,  f.attributes(il)[0])
+            self.assertEqual(20, f.attributes(xl)[0])
+
+            ils = [(i // 5) + 1 for i in range(25)]
+            attrils = list(map(int, f.attributes(il)[:]))
+            self.assertListEqual(ils, attrils)
+
+            xls = [(i % 5) + 20 for i in range(25)]
+            attrxls = list(map(int, f.attributes(xl)[:]))
+            self.assertListEqual(xls, attrxls)
+
+            ils = [(i // 5) + 1 for i in range(25)][::-1]
+            attrils = list(map(int, f.attributes(il)[::-1]))
+            self.assertListEqual(ils, attrils)
+
+            xls = [(i % 5) + 20 for i in range(25)][::-1]
+            attrxls = list(map(int, f.attributes(xl)[::-1]))
+            self.assertListEqual(xls, attrxls)
+
+            ils = [(i // 5) + 1 for i in range(25)][1:21:3]
+            attrils = list(map(int, f.attributes(il)[1:21:3]))
+            self.assertListEqual(ils, attrils)
+
+            xls = [(i % 5) + 20 for i in range(25)][2:17:5]
+            attrxls = list(map(int, f.attributes(xl)[2:17:5]))
+            self.assertListEqual(xls, attrxls)
+
+            ils = [1, 2, 3, 4, 5]
+            attrils = list(map(int, f.attributes(il)[[0, 5, 11, 17, 23]]))
+            self.assertListEqual(ils, attrils)
+
+            ils = [1, 2, 3, 4, 5]
+            indices = np.asarray([0, 5, 11, 17, 23])
+            attrils = list(map(int, f.attributes(il)[indices]))
+            self.assertListEqual(ils, attrils)
+
     def test_iline_offset(self):
         with segyio.open(self.prestack, "r") as f:
 

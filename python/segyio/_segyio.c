@@ -480,6 +480,126 @@ static PyObject *py_write_trace_header(PyObject *self, PyObject *args) {
     }
 }
 
+static PyObject *py_field_forall(PyObject *self, PyObject *args ) {
+    errno = 0;
+    PyObject *file_capsule = NULL;
+    PyObject *buffer_out;
+    int start, stop, step;
+    long trace0;
+    int trace_bsize;
+    int field;
+
+    PyArg_ParseTuple(args, "OOiiiili", &file_capsule,
+                                       &buffer_out,
+                                       &start,
+                                       &stop,
+                                       &step,
+                                       &field,
+                                       &trace0,
+                                       &trace_bsize );
+
+    segy_file* fp = get_FILE_pointer_from_capsule(file_capsule);
+
+    if (PyErr_Occurred()) { return NULL; }
+
+    if (!PyObject_CheckBuffer(buffer_out)) {
+        PyErr_SetString(PyExc_TypeError, "The destination buffer is not of the correct type.");
+        return NULL;
+    }
+
+    Py_buffer buffer;
+    PyObject_GetBuffer(buffer_out, &buffer, PyBUF_FORMAT | PyBUF_C_CONTIGUOUS | PyBUF_WRITEABLE);
+
+    int error = segy_field_forall( fp,
+                                   field,
+                                   start,
+                                   stop,
+                                   step,
+                                   buffer.buf,
+                                   trace0,
+                                   trace_bsize );
+
+    int errorno = errno;
+
+    PyBuffer_Release( &buffer );
+    if( error != SEGY_OK ) {
+        return py_handle_segy_error( error, errno );
+    }
+
+    Py_IncRef(buffer_out);
+    return buffer_out;
+}
+
+static PyObject *py_field_foreach(PyObject *self, PyObject *args ) {
+    errno = 0;
+    PyObject *file_capsule = NULL;
+    PyObject *buffer_out;
+    PyObject *indices;
+    int field;
+    long trace0;
+    int trace_bsize;
+
+    PyArg_ParseTuple(args, "OOOili", &file_capsule,
+                                     &buffer_out,
+                                     &indices,
+                                     &field,
+                                     &trace0,
+                                     &trace_bsize );
+
+    segy_file* fp = get_FILE_pointer_from_capsule(file_capsule);
+
+    if (PyErr_Occurred()) { return NULL; }
+
+    if (!PyObject_CheckBuffer(buffer_out)) {
+        PyErr_SetString(PyExc_TypeError, "The destination buffer is not of the correct type.");
+        return NULL;
+    }
+
+    if (!PyObject_CheckBuffer(indices)) {
+        PyErr_SetString(PyExc_TypeError, "The indices buffer is not of the correct type.");
+        return NULL;
+    }
+
+    Py_buffer bufout;
+    PyObject_GetBuffer(buffer_out, &bufout, PyBUF_FORMAT | PyBUF_C_CONTIGUOUS | PyBUF_WRITEABLE);
+
+    Py_buffer bufindices;
+    PyObject_GetBuffer(indices, &bufindices, PyBUF_FORMAT | PyBUF_C_CONTIGUOUS);
+
+    int len = bufindices.len / bufindices.itemsize;
+    if( bufout.len / bufout.itemsize != len ) {
+        PyErr_SetString(PyExc_ValueError, "Attributes array length != indices" );
+        PyBuffer_Release( &bufout );
+        PyBuffer_Release( &bufindices );
+        return NULL;
+    }
+
+    int err = 0;
+    const int* ind = bufindices.buf;
+    int* out = bufout.buf;
+    for( int i = 0; i < len; ++i ) {
+        err = segy_field_forall( fp, field,
+                                 ind[ i ],
+                                 ind[ i ] + 1,
+                                 1,
+                                 out + i,
+                                 trace0,
+                                 trace_bsize );
+
+        if( err != SEGY_OK ) {
+            PyBuffer_Release( &bufout );
+            PyBuffer_Release( &bufindices );
+            return py_handle_segy_error( err, errno );
+        }
+    }
+
+    PyBuffer_Release( &bufout );
+    PyBuffer_Release( &bufindices );
+
+    Py_IncRef(buffer_out);
+    return buffer_out;
+}
+
 static PyObject *py_trace_bsize(PyObject *self, PyObject *args) {
     errno = 0;
     int sample_count;
@@ -1031,6 +1151,8 @@ static PyMethodDef SegyMethods[] = {
         {"empty_traceheader",  (PyCFunction) py_empty_trace_header, METH_NOARGS,  "Create empty trace header for a segy file."},
         {"read_traceheader",   (PyCFunction) py_read_trace_header,  METH_VARARGS, "Read a trace header from a segy file."},
         {"write_traceheader",  (PyCFunction) py_write_trace_header, METH_VARARGS, "Write a trace header to a segy file."},
+        {"field_forall",       (PyCFunction) py_field_forall,       METH_VARARGS, "Read a single attribute from a set of headers."},
+        {"field_foreach",      (PyCFunction) py_field_foreach,      METH_VARARGS, "Read a single attribute from a set of headers, given by a list of indices."},
 
         {"trace_bsize",        (PyCFunction) py_trace_bsize,        METH_VARARGS, "Returns the number of bytes in a trace."},
         {"get_field",          (PyCFunction) py_get_field,          METH_VARARGS, "Get a header field."},

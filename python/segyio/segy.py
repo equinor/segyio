@@ -290,6 +290,59 @@ class SegyFile(object):
         for i, v in zip(range(self.tracecount), val):
             h[i, buf] = v
 
+    def attributes(self, field):
+        """ File-wide attribute (header word) reading
+
+        A range-oriented function that reads some attribute for all the
+        specified headers file-wide. Supports index lookup, slices and
+        numpy-style list-of-indices.
+
+        Examples:
+            Read all unique sweep frequency end::
+                >>> end = segyio.TraceField.SweepFrequencyEnd
+                >>> sfe = np.unique(f.attributes( end )[:])
+
+            Discover the first traces of each unique sweep frequency end::
+                >>> end = segyio.TraceField.SweepFrequencyEnd
+                >>> attrs = f.attributes(end)
+                >>> sfe, tracenos = np.unique(attrs[:], return_index = True)
+
+            Scatter plot group x/y-coordinates with SFEs (using matplotlib)::
+                >>> end = segyio.TraceField.SweepFrequencyEnd
+                >>> attrs = f.attributes(end)
+                >>> _, tracenos = np.unique(attrs[:], return_index = True)
+                >>> gx = f.attributes(segyio.TraceField.GroupX)[tracenos]
+                >>> gy = f.attributes(segyio.TraceField.GroupY)[tracenos]
+                >>> scatter(gx, gy)
+        """
+        class attr:
+            def __getitem__(inner, rng):
+                try: iter(rng)
+                except TypeError: pass
+                else: return inner._getitem_list(rng)
+
+                if not isinstance(rng, slice):
+                    rng = slice(rng, rng + 1, 1)
+
+                traces = self.tracecount
+                start, stop, step = rng.indices(traces)
+                attrs = np.empty(len(range(*rng.indices(traces))), dtype = np.intc)
+                return _segyio.field_forall(self.xfd, attrs,
+                                            start, stop, step, field,
+                                            self._tr0, self._bsz)
+
+            def _getitem_list(inner, xs):
+                if not isinstance(xs, np.ndarray):
+                    xs = np.asarray(xs, dtype = np.intc)
+
+                xs = xs.astype(dtype = np.intc, order = 'C', copy = False)
+                attrs = np.empty(len(xs), dtype = np.intc)
+                return _segyio.field_foreach(self.xfd, attrs, xs, field,
+                                          self._tr0, self._bsz)
+
+        return attr()
+
+
     @property
     def trace(self):
         """ Interact with segy in trace mode.
