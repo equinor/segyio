@@ -34,6 +34,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
         last_trace = fmt.traces - 1;
 
     int traces = 1 + (last_trace - first_trace);
+    long long bufsize = (long long)fmt.samples * traces;
 
     plhs[0] = mxCreateNumericMatrix( fmt.samples, traces, mxSINGLE_CLASS, mxREAL );
     float* out = mxGetData( plhs[ 0 ] );
@@ -60,7 +61,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
     if( notype != -1 )
         fmt.format = notype;
 
-    segy_to_native( fmt.format, fmt.samples * traces, mxGetData( plhs[ 0 ] ) );
+    segy_to_native( fmt.format, bufsize, mxGetData( plhs[ 0 ] ) );
 
     int interval;
     segy_get_bfield( binary, SEGY_BIN_INTERVAL, &interval );
