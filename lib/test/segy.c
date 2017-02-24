@@ -193,12 +193,11 @@ static void test_read_subtr( bool mmap ) {
 static void test_write_subtr( bool mmap ) {
     const char *file = "test-data/write-subtr.sgy";
     segy_file* fp = segy_open( file, "w+b" );
-
-    const int format = SEGY_IBM_FLOAT_4_BYTE;
     int trace0 = 3600;
     int trace_bsize = 50 * 4;
     int err = 0;
 
+    const int format = SEGY_IBM_FLOAT_4_BYTE;
     if( mmap ) segy_mmap( fp );
 
     // since write-subtr.segy is an empty file we must pre-write a full trace
@@ -291,6 +290,94 @@ static void test_write_subtr( bool mmap ) {
     assertClose( 2.2, buf[ 2 ], 1e-6 );
     assertClose( 2.3, buf[ 1 ], 1e-6 );
     assertClose( 2.4, buf[ 0 ], 1e-6 );
+
+    segy_close( fp );
+}
+
+static const int inlines[] = {
+    1, 1, 1, 1, 1,
+    2, 2, 2, 2, 2,
+    3, 3, 3, 3, 3,
+    4, 4, 4, 4, 4,
+    5, 5, 5, 5, 5,
+};
+
+static const int crosslines[] = {
+    20, 21, 22, 23, 24,
+    20, 21, 22, 23, 24,
+    20, 21, 22, 23, 24,
+    20, 21, 22, 23, 24,
+    20, 21, 22, 23, 24,
+};
+
+static void test_scan_headers( bool mmap ) {
+    const char *file = "test-data/small.sgy";
+    segy_file* fp = segy_open( file, "rb" );
+
+    int trace0 = 3600;
+    int trace_bsize = 50 * 4;
+    int err = 0;
+
+    if( mmap) segy_mmap( fp );
+
+    int full[ 25 ];
+    err = segy_field_forall( fp,
+                           SEGY_TR_INLINE,
+                           0,        /* start */
+                           25,       /* stop */
+                           1,        /* step */
+                           full,
+                           trace0,
+                           trace_bsize );
+    assertTrue( err == 0, "Unable to correctly scan headers" );
+    assertTrue( memcmp( full, inlines, sizeof( full ) ) == 0,
+                "Mismatching inline numbers." );
+
+    err = segy_field_forall( fp,
+                             SEGY_TR_CROSSLINE,
+                             0,        /* start */
+                             25,       /* stop */
+                             1,        /* step */
+                             full,
+                             trace0,
+                             trace_bsize );
+    assertTrue( err == 0, "Unable to correctly scan headers" );
+    assertTrue( memcmp( full, crosslines, sizeof( full ) ) == 0,
+                "Mismatching inline numbers." );
+
+    const int xlines_skip[] = {
+        crosslines[ 1 ],  crosslines[ 4 ],  crosslines[ 7 ],  crosslines[ 10 ],
+        crosslines[ 13 ], crosslines[ 16 ], crosslines[ 19 ], crosslines[ 22 ],
+    };
+
+    int xlbuf[ sizeof( xlines_skip ) / sizeof( int ) ];
+    err = segy_field_forall( fp,
+                             SEGY_TR_CROSSLINE,
+                             1,        /* start */
+                             25,       /* stop */
+                             3,        /* step */
+                             xlbuf,
+                             trace0,
+                             trace_bsize );
+    assertTrue( err == 0, "Unable to correctly scan headers" );
+    assertTrue( memcmp( xlbuf, xlines_skip, sizeof( xlbuf ) ) == 0,
+                "Mismatching skipped crossline numbers." );
+
+    const int xlines_skip_rev[] = {
+        crosslines[ 22 ], crosslines[ 19 ], crosslines[ 16 ], crosslines[ 13 ],
+        crosslines[ 10 ], crosslines[ 7 ],  crosslines[ 4 ],  crosslines[ 1 ],
+    };
+    err = segy_field_forall( fp,
+                             SEGY_TR_CROSSLINE,
+                             22,      /* start */
+                             0,       /* stop */
+                             -3,      /* step */
+                             xlbuf,
+                             trace0,
+                             trace_bsize );
+    assertTrue( err == 0, "Unable to correctly scan headers" );
+    assertTrue( memcmp( xlbuf, xlines_skip_rev, sizeof( xlbuf ) ) == 0,
+                "Mismatching reverse skipped crossline numbers." );
 
     segy_close( fp );
 }
@@ -817,6 +904,12 @@ int main() {
      */
     puts("test writesubtr(no-mmap)");
     test_write_subtr( false );
+
+    puts("test scan headers(mmap)");
+    test_scan_headers( true );
+
+    puts("test scan headers(no-mmap)");
+    test_scan_headers( false );
     /*
      * due to its barely-defined behavorial nature, this test is commented out
      * for most runs, as it would trip up the memcheck test
