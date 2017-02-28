@@ -988,7 +988,9 @@ static PyObject *py_read_depth_slice(PyObject *self, PyObject *args) {
                                trace_no * offsets,
                                depth,
                                depth + 1,
+                               1,
                                buf++,
+                               NULL,
                                trace0, trace_bsize);
     }
 
