@@ -61,6 +61,15 @@ int segy_get_bfield( const char* binheader, int field, int32_t* f );
 int segy_set_field( char* traceheader, int field, int32_t val );
 int segy_set_bfield( char* binheader, int field, int32_t val );
 
+int segy_field_forall( segy_file*,
+                       int field,
+                       int start,
+                       int stop,
+                       int step,
+                       int* buf,
+                       long trace0,
+                       int trace_bsize );
+
 /*
  * exception: segy_trace_bsize computes the size of the traces in bytes. Cannot
  * fail.

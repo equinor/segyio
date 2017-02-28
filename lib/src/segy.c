@@ -531,6 +531,65 @@ int segy_set_bfield( char* binheader, int field, int val ) {
     return set_field( binheader, bfield_size, field, val );
 }
 
+static int slicelength( int start, int stop, int step ) {
+    if( ( step < 0 && stop >= start ) ||
+        ( step > 0 && start >= stop ) ) return 0;
+
+    if( step < 0 ) return (stop - start + 1) / step + 1;
+
+    return (stop - start - 1) / step + 1;
+}
+
+int segy_field_forall( segy_file* fp,
+                       int field,
+                       int start,
+                       int stop,
+                       int step,
+                       int* buf,
+                       long trace0,
+                       int trace_bsize ) {
+    int err;
+    // do a dummy-read of a zero-init'd buffer to check args
+    int32_t f;
+    char header[ SEGY_TRACE_HEADER_SIZE ] = { 0 };
+    err = segy_get_field( header, field, &f );
+    if( err != SEGY_OK ) return SEGY_INVALID_ARGS;
+
+    int slicelen = slicelength( start, stop, step );
+
+    if( fp->addr ) {
+        for( int i = start; slicelen > 0; i += step, ++buf, --slicelen ) {
+            err = segy_seek( fp, i, trace0, trace_bsize );
+            if( err != 0 ) return SEGY_FSEEK_ERROR;
+
+            segy_get_field( fp->cur, field, &f );
+            *buf = f;
+        }
+
+        return SEGY_OK;
+    }
+
+    /*
+     * non-mmap path. Doing multiple freads is slow, so instead the *actual*
+     * offset is computed, not just the start of the header, and that's copied
+     * into the correct offset in our local buffer.
+     *
+     * Always read 4 bytes to be sure, there's no significant cost difference.
+     */
+    size_t readc;
+    for( int i = start; slicelen > 0; i += step, ++buf, --slicelen ) {
+        err = segy_seek( fp, i, trace0 + field, trace_bsize );
+        if( err != 0 ) return SEGY_FSEEK_ERROR;
+        readc = fread( header + field, sizeof( uint32_t ), 1, fp->fp );
+        if( readc != 1 ) return SEGY_FREAD_ERROR;
+
+        segy_get_field( header, field, &f );
+        *buf = f;
+    }
+
+    return SEGY_OK;
+}
+
 int segy_binheader( segy_file* fp, char* buf ) {
     if(fp == NULL) {
         return SEGY_INVALID_ARGS;
@@ -1107,15 +1166,6 @@ static inline int subtr_seek( segy_file* fp,
     // skip the trace header and skip everything before min
     trace0 += (min * (int)sizeof( float )) + SEGY_TRACE_HEADER_SIZE;
     return segy_seek( fp, traceno, trace0, trace_bsize );
-}
-
-static int slicelength( int start, int stop, int step ) {
-    if( ( step < 0 && stop >= start ) ||
-        ( step > 0 && start >= stop ) ) return 0;
-
-    if( step < 0 ) return (stop - start + 1) / step + 1;
-
-    return (stop - start - 1) / step + 1;
 }
 
 static int reverse( float* arr, int elems ) {

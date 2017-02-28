@@ -14,6 +14,7 @@ segy_get_field
 segy_get_bfield
 segy_set_field
 segy_set_bfield
+segy_field_forall
 segy_trace_bsize
 segy_trace0
 segy_traces

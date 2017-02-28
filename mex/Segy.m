@@ -49,7 +49,7 @@ classdef Segy
         end
 
         % Goal:
-        %   Fast reading of trace header words in segy filenamele.
+        %   Fast reading of trace header words in segy file.
         %
         % Algorithm:
         %   Use keyword as specified in available_headers. If byte location is
