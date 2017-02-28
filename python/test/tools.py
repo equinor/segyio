@@ -10,6 +10,7 @@ import segyio
 class ToolsTest(TestCase):
     def setUp(self):
         self.filename = "test-data/small.sgy"
+        self.prestack = "test-data/small-ps.sgy"
 
     def test_dt_fallback(self):
         with TestContext("dt_fallback") as context:
@@ -74,3 +75,21 @@ class ToolsTest(TestCase):
             filetr = np.frombuffer(filetr, dtype = np.single)
             self.assertFalse(np.array_equal(segytr, filetr))
             self.assertTrue(np.array_equal(segytr, segyio.tools.native(filetr)))
+
+    def test_cube_filename(self):
+        with segyio.open(self.filename) as f:
+            c1 = segyio.tools.cube(f)
+            c2 = segyio.tools.cube(self.filename)
+            self.assertTrue(np.all(c1 == c2))
+
+    def test_cube_identity(self):
+        with segyio.open(self.filename) as f:
+            x = segyio.tools.collect(f.trace[:])
+            x = x.reshape((len(f.ilines), len(f.xlines), f.samples))
+            self.assertTrue(np.all(x == segyio.tools.cube(f)))
+
+    def test_cube_identity_prestack(self):
+        with segyio.open(self.prestack) as f:
+            dims = (len(f.ilines), len(f.xlines), len(f.offsets), f.samples)
+            x = segyio.tools.collect(f.trace[:]).reshape(dims)
+            self.assertTrue(np.all(x == segyio.tools.cube(f)))
