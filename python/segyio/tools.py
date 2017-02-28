@@ -50,3 +50,29 @@ def create_text_header(lines):
 
     rows = ''.join(rows)
     return rows
+
+def native(data,
+           format = segyio.SegySampleFormat.IBM_FLOAT_4_BYTE,
+           copy = True):
+    """ Convert numpy array to native float
+
+    :type data: numpy.ndarray
+    :type format: int|segyio.SegySampleFormat
+    :type copy: bool
+    :rtype: numpy.ndarray
+
+    Converts a numpy array from raw segy trace data to native floats. Works for numpy ndarrays.
+
+    Examples:
+        Convert mmap'd trace to native float:
+        >>> d = np.memmap('file.sgy', offset = 3600, dtype = np.uintc)
+        >>> samples = 1500
+        >>> trace = segyio.tools.native(d[240:240+samples])
+    """
+
+    data = data.view( dtype = np.single )
+    if copy:
+        data = np.copy( data )
+
+    format = int(segyio.SegySampleFormat(format))
+    return segyio._segyio.native(data, format)

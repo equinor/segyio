@@ -64,3 +64,13 @@ class ToolsTest(TestCase):
         for line_no in range(0, 40):
             line = text_header[line_no * 80: (line_no + 1) * 80]
             self.assertEqual(line, "C{0:>2} {1:76}".format(line_no + 1, chr(64 + line_no) * 76))
+
+    def test_native(self):
+        with open(self.filename, 'rb') as f, segyio.open(self.filename) as sgy:
+            f.read(3600+240)
+            filetr = f.read(4 * sgy.samples)
+            segytr = sgy.trace[0]
+
+            filetr = np.frombuffer(filetr, dtype = np.single)
+            self.assertFalse(np.array_equal(segytr, filetr))
+            self.assertTrue(np.array_equal(segytr, segyio.tools.native(filetr)))

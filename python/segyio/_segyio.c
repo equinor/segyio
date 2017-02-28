@@ -1011,6 +1011,30 @@ static PyObject *py_read_depth_slice(PyObject *self, PyObject *args) {
     return buffer_out;
 }
 
+static PyObject * py_format(PyObject *self, PyObject *args) {
+    PyObject *out;
+    int format;
+
+    PyArg_ParseTuple( args, "Oi", &out, &format );
+
+    Py_buffer buffer;
+    PyObject_GetBuffer( out, &buffer,
+                        PyBUF_FORMAT | PyBUF_C_CONTIGUOUS | PyBUF_WRITEABLE );
+
+    int err = segy_to_native( format, buffer.len / buffer.itemsize, buffer.buf );
+
+    PyBuffer_Release( &buffer );
+
+    if( err != SEGY_OK ) {
+        PyErr_SetString( PyExc_RuntimeError, "Unable to convert to native float." );
+        return NULL;
+    }
+
+    Py_IncRef( out );
+    return out;
+}
+
+
 /*  define functions in module */
 static PyMethodDef SegyMethods[] = {
         {"open",               (PyCFunction) py_FILE_open,          METH_VARARGS, "Opens a file."},
@@ -1045,9 +1069,9 @@ static PyMethodDef SegyMethods[] = {
         {"read_line",          (PyCFunction) py_read_line,          METH_VARARGS, "Read a xline/iline from file."},
         {"depth_slice",        (PyCFunction) py_read_depth_slice,   METH_VARARGS, "Read a depth slice."},
         {"get_dt",             (PyCFunction) py_get_dt,             METH_VARARGS, "Read dt from file."},
+        {"native",             (PyCFunction) py_format,             METH_VARARGS, "Convert to native float."},
         {NULL, NULL, 0, NULL}
 };
-
 
 /* module initialization */
 #ifdef IS_PY3K
