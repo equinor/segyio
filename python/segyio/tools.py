@@ -76,3 +76,47 @@ def native(data,
 
     format = int(segyio.SegySampleFormat(format))
     return segyio._segyio.native(data, format)
+
+def collect(itr):
+    """ Collect traces or lines into one ndarray
+
+    Eagerly copy a series of traces, lines or depths into one numpy ndarray. If
+    collecting traces or fast-direction over a post-stacked file, reshaping the
+    resulting array is equivalent to calling `tools.cube`.
+
+    Examples:
+
+    collect-cube identity::
+        >>> f = segyio.open('post-stack.sgy')
+        >>> x = segyio.tools.collect(f.traces[:])
+        >>> x = x.reshape((len(f.ilines), len(f.xlines), f.samples))
+        >>> numpy.all(x == segyio.tools.cube(f))
+
+    :type itr: iterable[numpy.ndarray]
+    :rtype: numpy.ndarray
+    """
+    return np.stack([np.copy(x) for x in itr])
+
+def cube(f):
+    """ Read a full cube from a file
+
+    Takes an open segy file (created with segyio.open) or a file name.
+
+    If the file is a prestack file, the cube returned has the dimensions
+    (fast,slow,offset,sample). If it is post-stack (i.e. only the one offset),
+    the dimensions are normalised to (fast,slow,sample)
+
+    :type f: SegyFile|str
+    :rtype numpy.ndarray
+    """
+
+    if not isinstance(f, segyio.SegyFile):
+        with segyio.open(f) as fl:
+            return cube(fl)
+
+    ilsort = f.sorting == segyio.TraceSortingFormat.INLINE_SORTING
+    fast = f.ilines if ilsort else f.xlines
+    slow = f.xlines if ilsort else f.ilines
+    fast, slow, offs, samples = len(fast), len(slow), len(f.offsets), f.samples
+    dims = (fast, slow, samples) if offs == 1 else (fast, slow, offs, samples)
+    return f.trace.raw[:].reshape(dims)

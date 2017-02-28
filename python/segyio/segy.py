@@ -116,7 +116,7 @@ class SegyFile(object):
         _segyio.flush(self.xfd)
 
     def close(self):
-        """Close the file.#
+        """Close the file.
 
         This method is mostly useful for testing.
 
@@ -926,11 +926,6 @@ class SegyFile(object):
                 return d[self._fmt]
 
         return fmt()
-
-    def free(self):
-        """Internal."""
-        pass
-
 
 class spec:
     def __init__(self):
