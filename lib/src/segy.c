@@ -557,12 +557,18 @@ int segy_field_forall( segy_file* fp,
 
     int slicelen = slicelength( start, stop, step );
 
+    // check *once* that we don't look past the end-of-file
+    // checking seek error inside the loop is a performance killer
+    err = segy_seek( fp, start, trace0, trace_bsize );
+    if( err != SEGY_OK ) return err;
+    const int end = start + step * (slicelen - 1);
+    err = segy_seek( fp, end, trace0, trace_bsize );
+    if( err != SEGY_OK ) return err;
+
     if( fp->addr ) {
         for( int i = start; slicelen > 0; i += step, ++buf, --slicelen ) {
-            err = segy_seek( fp, i, trace0, trace_bsize );
-            if( err != 0 ) return SEGY_FSEEK_ERROR;
-
-            segy_get_field( fp->cur, field, &f );
+            segy_seek( fp, i, trace0, trace_bsize );
+            get_field( fp->cur, field_size, field, &f );
             *buf = f;
         }
 
