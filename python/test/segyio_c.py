@@ -124,7 +124,11 @@ class _segyioTests(TestCase):
         binary_header = _segyio.read_binaryheader(f)
         ilb = 189
         xlb = 193
-        metrics = _segyio.init_metrics(f, binary_header, ilb, xlb)
+        metrics = _segyio.init_metrics(f, binary_header)
+        metrics.update(_segyio.init_cube_metrics(f, ilb, xlb,
+                                                 metrics['trace_count'],
+                                                 metrics['trace0'],
+                                                 metrics['trace_bsize']))
         _segyio.close(f)
 
         sorting = metrics['sorting']
@@ -162,18 +166,24 @@ class _segyioTests(TestCase):
         xlb = 193
 
         with self.assertRaises(TypeError):
-            metrics = _segyio.init_metrics("?", binary_header, ilb, xlb)
+            metrics = _segyio.init_metrics("?", binary_header)
 
         with self.assertRaises(TypeError):
-            metrics = _segyio.init_metrics(f, "?", ilb, xlb)
+            metrics = _segyio.init_metrics(f, "?")
 
         with self.assertRaises(IndexError):
-            metrics = _segyio.init_metrics(f, binary_header, ilb + 1, xlb)
+            metrics = _segyio.init_metrics(f, binary_header)
+            metrics.update(_segyio.init_cube_metrics(f, ilb + 1, xlb,
+                                                     metrics['trace_count'],
+                                                     metrics['trace0'],
+                                                     metrics['trace_bsize']))
 
-        metrics = _segyio.init_metrics(f, binary_header, ilb, xlb)
+        metrics = _segyio.init_metrics(f, binary_header)
+        metrics.update(_segyio.init_cube_metrics(f, ilb, xlb,
+                                                 metrics['trace_count'],
+                                                 metrics['trace0'],
+                                                 metrics['trace_bsize']))
 
-        self.assertEqual(metrics['iline_field'], ilb)
-        self.assertEqual(metrics['xline_field'], xlb)
         self.assertEqual(metrics['trace0'], _segyio.textheader_size() + _segyio.binheader_size())
         self.assertEqual(metrics['sample_count'], 50)
         self.assertEqual(metrics['format'], 1)
@@ -187,7 +197,7 @@ class _segyioTests(TestCase):
         _segyio.close(f)
 
         with self.assertRaises(IOError):
-            metrics = _segyio.init_metrics(f, binary_header, ilb, xlb)
+            metrics = _segyio.init_metrics(f, binary_header)
 
     def test_indices(self):
         f = _segyio.open(self.filename, "r")
@@ -195,7 +205,7 @@ class _segyioTests(TestCase):
         binary_header = _segyio.read_binaryheader(f)
         ilb = 189
         xlb = 193
-        metrics = _segyio.init_metrics(f, binary_header, ilb, xlb)
+        metrics = _segyio.init_metrics(f, binary_header)
         dmy = numpy.zeros(2, dtype=numpy.intc)
 
         dummy_metrics = {'xline_count':   2,
@@ -233,6 +243,11 @@ class _segyioTests(TestCase):
         with self.assertRaises(ValueError):
             _segyio.init_indices(f, dummy_metrics, two, one, off)
 
+        metrics.update(_segyio.init_cube_metrics(f, ilb, xlb,
+                                                 metrics['trace_count'],
+                                                 metrics['trace0'],
+                                                 metrics['trace_bsize']))
+
         # Happy Path
         iline_indexes = numpy.zeros(metrics['iline_count'], dtype=numpy.intc)
         xline_indexes = numpy.zeros(metrics['xline_count'], dtype=numpy.intc)
@@ -252,7 +267,11 @@ class _segyioTests(TestCase):
         ilb = 189
         xlb = 193
 
-        metrics = _segyio.init_metrics(f, binary_header, ilb, xlb)
+        metrics = _segyio.init_metrics(f, binary_header)
+        metrics.update(_segyio.init_cube_metrics(f, ilb, xlb,
+                                                 metrics['trace_count'],
+                                                 metrics['trace0'],
+                                                 metrics['trace_bsize']))
 
         sorting = metrics['sorting']
         trace_count = metrics['trace_count']
@@ -318,7 +337,7 @@ class _segyioTests(TestCase):
             binary_header = _segyio.read_binaryheader(f)
             ilb = 189
             xlb = 193
-            metrics = _segyio.init_metrics(f, binary_header, ilb, xlb)
+            metrics = _segyio.init_metrics(f, binary_header)
 
             empty = _segyio.empty_traceheader()
 
@@ -384,7 +403,11 @@ class _segyioTests(TestCase):
         ilb = 189
         xlb = 193
 
-        metrics = _segyio.init_metrics(f, binary_header, ilb, xlb)
+        metrics = _segyio.init_metrics(f, binary_header)
+        metrics.update(_segyio.init_cube_metrics(f, ilb, xlb,
+                                                 metrics['trace_count'],
+                                                 metrics['trace0'],
+                                                 metrics['trace_bsize']))
 
         sorting = metrics['sorting']
         trace_count = metrics['trace_count']

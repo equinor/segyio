@@ -3,7 +3,7 @@ import numpy
 import segyio
 
 
-def open(filename, mode="r", iline=189, xline=193):
+def open(filename, mode="r", iline=189, xline=193, strict = True):
     """Open a segy file.
 
     Opens a segy file and tries to figure out its sorting, inline numbers,
@@ -20,6 +20,12 @@ def open(filename, mode="r", iline=189, xline=193):
     automatically be closed when the routine completes or an exception is
     raised.
 
+    By default, segyio tries to open in 'strict' mode. This means the file will
+    be assumed to represent a geometry with consistent inline, crosslines and
+    offsets. If strict is False, segyio will still try to establish a geometry,
+    but it won't abort if it fails. When in non-strict mode is opened,
+    geometry-dependent modes such as iline will raise an error.
+
     Args:
         filename (str): Path to file to open.
         mode (str, optional): File access mode, defaults to "r".
@@ -27,6 +33,8 @@ def open(filename, mode="r", iline=189, xline=193):
                             to 189 as per the SEGY specification.
         xline (TraceField): Crossline number field in the trace headers.
                             Defaults to 193 as per the SEGY specification.
+        strict (bool, optional): Abort if a geometry cannot be inferred.
+                                 Defaults to True.
 
     Examples:
         Open a file in read-only mode::
@@ -48,29 +56,36 @@ def open(filename, mode="r", iline=189, xline=193):
     f = segyio.SegyFile(filename, mode, iline, xline)
 
     try:
-        header = f.bin.buf
-        metrics = segyio._segyio.init_metrics(f.xfd, header, iline, xline)
+        metrics = segyio._segyio.init_metrics(f.xfd, f.bin.buf)
 
         f._samples = metrics['sample_count']
         f._tr0 = metrics['trace0']
         f._fmt = metrics['format']
         f._bsz = metrics['trace_bsize']
         f._ext_headers = (f._tr0 - 3600) // 3200  # should probably be from C
-
         f._tracecount = metrics['trace_count']
 
-        f._sorting = metrics['sorting']
+    except:
+        f.close()
+        raise
+    try:
+        cube_metrics = segyio._segyio.init_cube_metrics(f.xfd,
+                                                        iline,
+                                                        xline,
+                                                        f.tracecount,
+                                                        f._tr0,
+                                                        f._bsz)
+        f._sorting   = cube_metrics['sorting']
+        iline_count  = cube_metrics['iline_count']
+        xline_count  = cube_metrics['xline_count']
+        offset_count = cube_metrics['offset_count']
+        metrics.update(cube_metrics)
 
-        iline_count, xline_count = metrics['iline_count'], metrics['xline_count']
-        offset_count = metrics['offset_count']
-
-        line_metrics = segyio._segyio.init_line_metrics(f.sorting, f.tracecount,
-                                                        iline_count, xline_count, offset_count)
-
-        f._ilines  = numpy.zeros(iline_count, dtype=numpy.intc)
-        f._xlines  = numpy.zeros(xline_count, dtype=numpy.intc)
-        f._offsets = numpy.zeros(offset_count, dtype = numpy.intc)
-        segyio._segyio.init_indices(f.xfd, metrics, f.ilines, f.xlines, f.offsets)
+        line_metrics = segyio._segyio.init_line_metrics(f.sorting,
+                                                        f.tracecount,
+                                                        iline_count,
+                                                        xline_count,
+                                                        offset_count)
 
         f._iline_length = line_metrics['iline_length']
         f._iline_stride = line_metrics['iline_stride']
@@ -78,8 +93,24 @@ def open(filename, mode="r", iline=189, xline=193):
         f._xline_length = line_metrics['xline_length']
         f._xline_stride = line_metrics['xline_stride']
 
+        f._ilines  = numpy.zeros(iline_count,  dtype = numpy.intc)
+        f._xlines  = numpy.zeros(xline_count,  dtype = numpy.intc)
+        f._offsets = numpy.zeros(offset_count, dtype = numpy.intc)
+        segyio._segyio.init_indices(f.xfd, metrics, f.ilines, f.xlines, f.offsets)
+
+        if numpy.unique(f.ilines).size != f.ilines.size:
+            raise ValueError( "Inlines inconsistent - expect all inlines to be unique")
+
+        if numpy.unique(f.xlines).size != f.xlines.size:
+            raise ValueError( "Crosslines inconsistent - expect all crosslines to be unique")
+
     except:
-        f.close()
-        raise
+        if not strict:
+            f._ilines  = None
+            f._xlines  = None
+            f._offsets = None
+        else:
+            f.close()
+            raise
 
     return f
