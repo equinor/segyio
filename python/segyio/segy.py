@@ -30,6 +30,9 @@ try:
 except ImportError:  # will be 3.x series
     pass
 
+try: xrange
+except NameError: pass
+else: range = xrange
 
 class SegyFile(object):
 
