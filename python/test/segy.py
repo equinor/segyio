@@ -559,7 +559,7 @@ class TestSegy(TestCase):
             # operations that don't rely on geometry still works
             self.assertEqual(f.header[2][189], 1)
             self.assertListEqual(list(f.attributes(189)[:]),
-                                 [(i / 5) + 1 for i in range(len(f.trace))])
+                                 [(i // 5) + 1 for i in range(len(f.trace))])
 
     def test_create_sgy(self):
         with TestContext("create_sgy") as context:
