@@ -778,21 +778,21 @@ static Py_buffer check_and_get_buffer(PyObject *object, const char *name, unsign
     Py_buffer buffer = zero_buffer;
     if (!PyObject_CheckBuffer(object)) {
         PyErr_Format(PyExc_TypeError, "The destination for %s is not a buffer object", name);
-        return buffer;
+        return zero_buffer;
     }
     PyObject_GetBuffer(object, &buffer, PyBUF_FORMAT | PyBUF_C_CONTIGUOUS | PyBUF_WRITEABLE);
 
     if (strcmp(buffer.format, "i") != 0) {
         PyErr_Format(PyExc_TypeError, "The destination for %s is not a buffer object of type 'intc'", name);
         PyBuffer_Release(&buffer);
-        return buffer;
+        return zero_buffer;
     }
 
     size_t buffer_len = (size_t)buffer.len;
     if (buffer_len < expected * sizeof(unsigned int)) {
         PyErr_Format(PyExc_ValueError, "The destination for %s is too small. ", name);
         PyBuffer_Release(&buffer);
-        return buffer;
+        return zero_buffer;
     }
 
     return buffer;
@@ -866,6 +866,7 @@ static PyObject *py_init_indices(PyObject *self, PyObject *args) {
 
     if (error != 0) {
         py_handle_segy_error_with_fields(error, errno, il_field, xl_field, 2);
+        goto cleanup;
     }
 
     error = segy_crossline_indices(p_FILE, xl_field, sorting, iline_count, xline_count, offset_count, xline_buffer.buf,
@@ -873,6 +874,7 @@ static PyObject *py_init_indices(PyObject *self, PyObject *args) {
 
     if (error != 0) {
         py_handle_segy_error_with_fields(error, errno, il_field, xl_field, 2);
+        goto cleanup;
     }
 
     error = segy_offset_indices( p_FILE, offset_field, offset_count,
@@ -881,12 +883,19 @@ static PyObject *py_init_indices(PyObject *self, PyObject *args) {
 
     if (error != 0) {
         py_handle_segy_error_with_fields(error, errno, il_field, xl_field, 2);
+        goto cleanup;
     }
 
     PyBuffer_Release(&offsets_buffer);
     PyBuffer_Release(&xline_buffer);
     PyBuffer_Release(&iline_buffer);
     return Py_BuildValue("");
+
+cleanup:
+    PyBuffer_Release(&offsets_buffer);
+    PyBuffer_Release(&xline_buffer);
+    PyBuffer_Release(&iline_buffer);
+    return NULL;
 }
 
 
@@ -960,8 +969,10 @@ static PyObject *py_read_trace(PyObject *self, PyObject *args) {
                                         trace_count,
                                         &start, &stop, &step,
                                         &length );
-        if( err != 0 ) return NULL;
-
+        if( err != 0 ) {
+            PyBuffer_Release( &buffer );
+            return NULL;
+        }
     }
     else {
         start = convert_integer( trace_no );
@@ -1023,6 +1034,7 @@ static PyObject *py_write_trace(PyObject *self, PyObject *args) {
 
     if (error != 0) {
         PyErr_SetString(PyExc_TypeError, "Unable to convert buffer from native format.");
+        PyBuffer_Release( &buffer );
         return NULL;
     }
 
