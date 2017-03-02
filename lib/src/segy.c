@@ -77,92 +77,63 @@ void ascii2ebcdic( const char* ascii, char* ebcdic ) {
     *ebcdic = '\0';
 }
 
+#define IEEEMAX 0x7FFFFFFF
+#define IEMAXIB 0x611FFFFF
+#define IEMINIB 0x21200000
+
+static inline void ibm_native( void* buf ) {
+    static int it[8] = { 0x21800000, 0x21400000, 0x21000000, 0x21000000,
+                         0x20c00000, 0x20c00000, 0x20c00000, 0x20c00000 };
+    static int mt[8] = { 8, 4, 2, 2, 1, 1, 1, 1 };
+    unsigned int manthi, iexp, inabs;
+    int ix;
+    uint32_t u;
+
+    memcpy( &u, buf, sizeof( u ) );
+
+    manthi = u & 0x00ffffff;
+    ix     = manthi >> 21;
+    iexp   = ( ( u & 0x7f000000 ) - it[ix] ) << 1;
+    manthi = manthi * mt[ix] + iexp;
+    inabs  = u & 0x7fffffff;
+    if ( inabs > IEMAXIB ) manthi = IEEEMAX;
+    manthi = manthi | ( u & 0x80000000 );
+    u = ( inabs < IEMINIB ) ? 0 : manthi;
+    memcpy( buf, &u, sizeof( u ) );
+}
+
+static inline void native_ibm( void* buf ) {
+    static int it[4] = { 0x21200000, 0x21400000, 0x21800000, 0x22100000 };
+    static int mt[4] = { 2, 4, 8, 1 };
+    unsigned int manthi, iexp, ix;
+    uint32_t u;
+
+    memcpy( &u, buf, sizeof( u ) );
+
+    ix     = ( u & 0x01800000 ) >> 23;
+    iexp   = ( ( u & 0x7e000000 ) >> 1 ) + it[ix];
+    manthi = ( mt[ix] * ( u & 0x007fffff) ) >> 3;
+    manthi = ( manthi + iexp ) | ( u & 0x80000000 );
+    u      = ( u & 0x7fffffff ) ? manthi : 0;
+    memcpy( buf, &u, sizeof( u ) );
+}
+
 void ibm2ieee( void* to, const void* from ) {
-    uint32_t fr;      /* fraction */
-    int exp;          /* exponent */
-    uint32_t sgn;     /* sign */
+    uint32_t u;
+    memcpy( &u, from, sizeof( u ) );
+    u = ntohl( u );
 
-    memcpy( &fr, from, sizeof( uint32_t ) );
-    /* split into sign, exponent, and fraction */
-    fr = ntohl( fr ); /* pick up value */
-    sgn = fr >> 31; /* save sign */
-    fr <<= 1; /* shift sign out */
-    exp = fr >> 25; /* save exponent */
-    fr <<= 7; /* shift exponent out */
-
-    if (fr == 0) { /* short-circuit for zero */
-        exp = 0;
-        goto done;
-    }
-
-    /* adjust exponent from base 16 offset 64 radix point before first digit
-     * to base 2 offset 127 radix point after first digit
-     * (exp - 64) * 4 + 127 - 1 == exp * 4 - 256 + 126 == (exp << 2) - 130 */
-    exp = (exp << 2) - 130;
-
-    /* (re)normalize */
-    while (fr < 0x80000000) { /* 3 times max for normalized input */
-        --exp;
-        fr <<= 1;
-    }
-
-    if (exp <= 0) { /* underflow */
-        if (exp < -24) /* complete underflow - return properly signed zero */
-            fr = 0;
-        else /* partial underflow - return denormalized number */
-            fr >>= -exp;
-        exp = 0;
-    } else if (exp >= 255) { /* overflow - return infinity */
-        fr = 0;
-        exp = 255;
-    } else { /* just a plain old number - remove the assumed high bit */
-        fr <<= 1;
-    }
-
-done:
-    /* put the pieces back together and return it */
-    fr = (fr >> 9) | (exp << 23) | (sgn << 31);
-    memcpy( to, &fr, sizeof( uint32_t ) );
+    ibm_native( &u );
+    memcpy( to, &u, sizeof( u ) );
 }
 
 void ieee2ibm( void* to, const void* from ) {
-    uint32_t fr;      /* fraction */
-    int exp;          /* exponent */
-    uint32_t sgn;     /* sign */
+    uint32_t u;
+    memcpy( &u, from, sizeof( u ) );
 
-    /* split into sign, exponent, and fraction */
-    memcpy( &fr, from, sizeof( uint32_t ) ); /* pick up value */
-    sgn = fr >> 31; /* save sign */
-    fr <<= 1; /* shift sign out */
-    exp = fr >> 24; /* save exponent */
-    fr <<= 8; /* shift exponent out */
-
-    if (exp == 255) { /* infinity (or NAN) - map to largest */
-        fr = 0xffffff00;
-        exp = 0x7f;
-        goto done;
-    }
-    else if (exp > 0) /* add assumed digit */
-        fr = (fr >> 1) | 0x80000000;
-    else if (fr == 0) /* short-circuit for zero */
-        goto done;
-
-    /* adjust exponent from base 2 offset 127 radix point after first digit
-     * to base 16 offset 64 radix point before first digit */
-    exp += 130;
-    fr >>= -exp & 3;
-    exp = (exp + 3) >> 2;
-
-    /* (re)normalize */
-    while (fr < 0x10000000) { /* never executed for normalized input */
-        --exp;
-        fr <<= 4;
-    }
-
-done:
-    /* put the pieces back together and return it */
-    fr = htonl( (fr >> 8) | (exp << 24) | (sgn << 31) );
-    memcpy( to, &fr, sizeof( uint32_t ) );
+    native_ibm( &u );
+    u = htonl( u );
+    memcpy( to, &u, sizeof( u ) );
 }
 
 /* Lookup table for field sizes. All values not explicitly set are 0 */
@@ -1340,18 +1311,15 @@ int segy_to_native( int format,
     assert( sizeof( float ) == sizeof( uint32_t ) );
 
     uint32_t u;
-    if( format == SEGY_IEEE_FLOAT_4_BYTE ) {
-        while( size-- ) {
-            memcpy( &u, buf, sizeof( float ) );
-            u = ntohl( u );
-            memcpy( buf++, &u, sizeof( float ) );
-        }
+    for( long long i = 0; i < size; ++i ) {
+        memcpy( &u, buf + i, sizeof( uint32_t ) );
+        u = ntohl( u );
+        memcpy( buf + i, &u, sizeof( uint32_t ) );
     }
-    else {
-        while( size-- ) {
-            ibm2ieee( &u, buf );
-            memcpy( buf++, &u, sizeof( float ) );
-        }
+
+    if( format == SEGY_IBM_FLOAT_4_BYTE ) {
+        for( long long i = 0; i < size; ++i )
+            ibm_native( buf + i );
     }
 
     return SEGY_OK;
@@ -1364,18 +1332,16 @@ int segy_from_native( int format,
     assert( sizeof( float ) == sizeof( uint32_t ) );
 
     uint32_t u;
-    if( format == SEGY_IEEE_FLOAT_4_BYTE ) {
-        while( size-- ) {
-            memcpy( &u, buf, sizeof( float ) );
-            u = htonl( u );
-            memcpy( buf++, &u, sizeof( float ) );
-        }
+
+    if( format == SEGY_IBM_FLOAT_4_BYTE ) {
+        for( long long i = 0; i < size; ++i )
+            native_ibm( buf + i );
     }
-    else {
-        while( size-- ) {
-            ieee2ibm( &u, buf );
-            memcpy( buf++, &u, sizeof( float ) );
-        }
+
+    for( long long i = 0; i < size; ++i ) {
+        memcpy( &u, buf + i, sizeof( uint32_t ) );
+        u = htonl( u );
+        memcpy( buf + i, &u, sizeof( uint32_t ) );
     }
 
     return SEGY_OK;
