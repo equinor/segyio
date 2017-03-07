@@ -523,7 +523,7 @@ static PyObject *py_field_forall(PyObject *self, PyObject *args ) {
 
     PyBuffer_Release( &buffer );
     if( error != SEGY_OK ) {
-        return py_handle_segy_error( error, errno );
+        return py_handle_segy_error( error, errorno );
     }
 
     Py_IncRef(buffer_out);
