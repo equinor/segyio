@@ -639,24 +639,26 @@ int segy_seek( segy_file* fp,
     }
 
     int err = SEGY_OK;
-    if( sizeof( long ) == sizeof( long long ) ) {
-        err = fseek( fp->fp, pos, SEEK_SET );
-    } else {
-        /*
-         * If long is 32bit on our platform (hello, windows), we do skips according
-         * to LONG_MAX and seek relative to our cursor rather than absolute on file
-         * begin.
-         */
-        rewind( fp->fp );
-        while( pos >= LONG_MAX && err == SEGY_OK ) {
-            err = fseek( fp->fp, LONG_MAX, SEEK_CUR );
-            pos -= LONG_MAX;
-        }
-
-        if( err != 0 ) return SEGY_FSEEK_ERROR;
-
-        err = fseek( fp->fp, pos, SEEK_CUR );
+#if LONG_MAX == LLONG_MAX
+    assert( pos <= LONG_MAX );
+    err = fseek( fp->fp, (long)pos, SEEK_SET );
+#else
+   /*
+    * If long is 32bit on our platform (hello, windows), we do skips according
+    * to LONG_MAX and seek relative to our cursor rather than absolute on file
+    * begin.
+    */
+    rewind( fp->fp );
+    while( pos >= LONG_MAX && err == SEGY_OK ) {
+        err = fseek( fp->fp, LONG_MAX, SEEK_CUR );
+        pos -= LONG_MAX;
     }
+
+    if( err != 0 ) return SEGY_FSEEK_ERROR;
+
+    assert( pos <= LONG_MAX );
+    err = fseek( fp->fp, (long)pos, SEEK_CUR );
+#endif
 
     if( err != 0 ) return SEGY_FSEEK_ERROR;
     return SEGY_OK;
