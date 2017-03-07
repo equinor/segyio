@@ -1533,6 +1533,6 @@ int segy_textheader_size() {
     return SEGY_TEXT_HEADER_SIZE + 1;
 }
 
-unsigned int segy_binheader_size() {
+int segy_binheader_size() {
     return SEGY_BINARY_HEADER_SIZE;
 }

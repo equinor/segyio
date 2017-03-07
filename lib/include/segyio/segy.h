@@ -43,9 +43,9 @@ int segy_close( segy_file* );
 /* binary header operations */
 /*
  * The binheader buffer passed to these functions must be of *at least*
- * `segy_binheader_size`.
+ * `segy_binheader_size`. Returns size, not an error code.
  */
-unsigned int segy_binheader_size();
+int segy_binheader_size();
 int segy_binheader( segy_file*, char* buf );
 int segy_write_binheader( segy_file*, const char* buf );
 /*
