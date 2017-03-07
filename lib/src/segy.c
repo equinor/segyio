@@ -729,6 +729,8 @@ int segy_traces( segy_file* fp,
     if( size % trace_bsize != 0 )
         return SEGY_TRACE_SIZE_MISMATCH;
 
+    assert( size / trace_bsize <= (long long)INT_MAX );
+
     *traces = size / trace_bsize;
     return SEGY_OK;
 }
