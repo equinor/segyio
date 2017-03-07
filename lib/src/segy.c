@@ -762,8 +762,8 @@ int segy_sample_interval( segy_file* fp, float* dt ) {
     segy_get_field(trace_header, SEGY_TR_SAMPLE_INTER, &trace_header_dt_us);
 
     // milliseconds: ms
-    double binary_header_dt_ms = binary_header_dt_us/1000.0;
-    double trace_header_dt_ms = trace_header_dt_us/1000.0;
+    float binary_header_dt_ms = binary_header_dt_us/1000.0;
+    float trace_header_dt_ms = trace_header_dt_us/1000.0;
 
     if (trace_header_dt_us==0 && binary_header_dt_us==0) {
         //noop
