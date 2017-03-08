@@ -1,6 +1,6 @@
 import segyio
 import numpy as np
-
+import itertools as itr
 
 def dt(segyfile, fallback_dt=4):
     """
@@ -121,3 +121,33 @@ def cube(f):
     smps = len(f.samples)
     dims = (fast, slow, smps) if offs == 1 else (fast, slow, offs, smps)
     return f.trace.raw[:].reshape(dims)
+
+def scale_samples(samples):
+    """ Guess unit and scale of the sample intervals
+
+    :type samples: iterable[int]
+    :rtype: tuple[numpy.ndarray,str]
+
+    Attempt to figure out if the sample values represent depth (in meters) or
+    time (in milliseconds).
+    """
+
+    samples = np.array(samples)
+
+    # this is VERY unlikely, but in the case of a file with only one sample per
+    # trace, assume depth (meter)
+    if len(samples) == 1:
+        return (samples, 'm')
+
+    # heuristic: since the spec suggests microseconds for step between samples,
+    # and 4ms is *very* common for step size, any large difference between two
+    # values probably means that the unit is time. A step size of 100 meters is
+    # quite unlikely, but this threshold is arbitrary and might require tuning
+    # in the future
+    depth = abs(samples[0] - samples[1]) < 100
+
+    if not depth:
+        samples = samples / 1000
+
+    unit = 'm' if depth else 'ms'
+    return (samples, unit)

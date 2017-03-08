@@ -737,7 +737,7 @@ int segy_traces( segy_file* fp,
     return SEGY_OK;
 }
 
-int segy_sample_interval( segy_file* fp, float* dt ) {
+int segy_sample_interval( segy_file* fp, float fallback, float* dt ) {
 
     char bin_header[ SEGY_BINARY_HEADER_SIZE ];
     char trace_header[ SEGY_TRACE_HEADER_SIZE ];
@@ -756,29 +756,34 @@ int segy_sample_interval( segy_file* fp, float* dt ) {
         return err;
     }
 
-    // microseconds: us
-    int binary_header_dt_us;
-    int trace_header_dt_us;
+    int bindt;
+    int trdt;
 
-    segy_get_bfield(bin_header, SEGY_BIN_INTERVAL, &binary_header_dt_us);
-    segy_get_field(trace_header, SEGY_TR_SAMPLE_INTER, &trace_header_dt_us);
+    segy_get_bfield( bin_header, SEGY_BIN_INTERVAL, &bindt );
+    segy_get_field( trace_header, SEGY_TR_SAMPLE_INTER, &trdt );
 
-    // milliseconds: ms
-    float binary_header_dt_ms = binary_header_dt_us/1000.0;
-    float trace_header_dt_ms = trace_header_dt_us/1000.0;
+    float binary_header_dt = bindt;
+    float trace_header_dt = trdt;
 
-    if (trace_header_dt_us==0 && binary_header_dt_us==0) {
-        //noop
-    } else if (binary_header_dt_us == 0) {
-        *dt = trace_header_dt_ms;
-    } else if (trace_header_dt_us == 0) {
-        *dt = binary_header_dt_ms;
-    } else if (trace_header_dt_us == binary_header_dt_us) {
-        *dt = trace_header_dt_ms;
-    }
+    /*
+     * 3 cases:
+     * * When the trace header and binary header disagree on a (non-zero)
+     *   sample interval; choose neither and opt for the fallback.
+     * * When both sample intervals are zero: opt for the fallback.
+     * * Otherwise, choose the interval from the non-zero header.
+     */
 
-    return 0;
+    *dt = fallback;
+    if( binary_header_dt == 0 && trace_header_dt != 0 )
+        *dt = trace_header_dt;
 
+    if( trace_header_dt == 0 && binary_header_dt != 0 )
+        *dt = binary_header_dt;
+
+    if( trace_header_dt == binary_header_dt && trace_header_dt != 0 )
+        *dt = trace_header_dt;
+
+    return SEGY_OK;
 }
 
 int segy_sample_indices( segy_file* fp,
@@ -787,7 +792,7 @@ int segy_sample_indices( segy_file* fp,
                          int count,
                          float* buf ) {
 
-    int err = segy_sample_interval(fp, &dt);
+    int err = segy_sample_interval(fp, dt, &dt);
     if (err != 0) {
         return err;
     }
