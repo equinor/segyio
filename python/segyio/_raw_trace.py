@@ -13,7 +13,7 @@ class RawTrace(object):
             start, stop, step = index.indices(f.tracecount)
             mstart, mstop = min(start, stop), max(start, stop)
             length = max(0, (mstop - mstart + (step - (1 if step > 0 else -1))))
-            buf = np.zeros(shape = (length, f.samples), dtype = np.single)
+            buf = np.zeros(shape = (length, len(f.samples)), dtype = np.single)
 
         return self.trace._readtr(index, buf)
 

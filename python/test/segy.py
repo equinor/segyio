@@ -25,7 +25,7 @@ def mklines(fname):
     spec = segyio.spec()
     spec.format  = 5
     spec.sorting = 2
-    spec.samples = 10
+    spec.samples = range(10)
     spec.ilines  = range(1, 11)
     spec.xlines  = range(1, 6)
 
@@ -62,7 +62,7 @@ class TestSegy(TestCase):
     def test_inline_4(self):
         with segyio.open(self.filename, "r") as f:
 
-            sample_count = f.samples
+            sample_count = len(f.samples)
             self.assertEqual(50, sample_count)
 
             data = f.iline[4]
@@ -96,31 +96,33 @@ class TestSegy(TestCase):
 
             data = f.xline[22]
 
+            size = len(f.samples)
+
             # first iline
             # first sample
             self.assertAlmostEqual(1.22, data[0, 0], places = 5)
             # middle sample
-            self.assertAlmostEqual(1.22024, data[0, f.samples//2-1], places = 6)
+            self.assertAlmostEqual(1.22024, data[0, size//2-1], places = 6)
             # last sample
-            self.assertAlmostEqual(1.22049, data[0, f.samples-1], places = 6)
+            self.assertAlmostEqual(1.22049, data[0, size-1], places = 6)
 
             # middle iline
             middle_line = 2
             # first sample
             self.assertAlmostEqual(3.22, data[middle_line, 0], places = 5)
             # middle sample
-            self.assertAlmostEqual(3.22024, data[middle_line, f.samples//2-1], places = 6)
+            self.assertAlmostEqual(3.22024, data[middle_line, size//2-1], places = 6)
             # last sample
-            self.assertAlmostEqual(3.22049, data[middle_line, f.samples-1], places = 6)
+            self.assertAlmostEqual(3.22049, data[middle_line, size-1], places = 6)
 
             # last iline
             last_line = len(f.ilines)-1
             # first sample
             self.assertAlmostEqual(5.22, data[last_line, 0], places = 5)
             # middle sample
-            self.assertAlmostEqual(5.22024, data[last_line, f.samples//2-1], places = 6)
+            self.assertAlmostEqual(5.22024, data[last_line, size//2-1], places = 6)
             # last sample
-            self.assertAlmostEqual(5.22049, data[last_line, f.samples-1], places = 6)
+            self.assertAlmostEqual(5.22049, data[last_line, size-1], places = 6)
 
     def test_iline_slicing(self):
         with segyio.open(self.filename, "r") as f:
@@ -169,7 +171,7 @@ class TestSegy(TestCase):
             self.assertEqual(ilines, list(f.ilines))
             self.assertEqual(25, f.tracecount)
             self.assertEqual(len(f.trace), f.tracecount)
-            self.assertEqual(50, f.samples)
+            self.assertEqual(50, len(f.samples))
 
     def test_open_nostrict(self):
         with segyio.open(self.filename, strict = False):
@@ -606,7 +608,7 @@ class TestSegy(TestCase):
                 spec = segyio.spec()
                 spec.format  = int(src.format)
                 spec.sorting = int(src.sorting)
-                spec.samples = 20 # reduces samples per trace
+                spec.samples = src.samples[:20] # reduces samples per trace
                 spec.ilines  = src.ilines
                 spec.xlines  = src.xlines
 
@@ -626,7 +628,7 @@ class TestSegy(TestCase):
                         dst.xline[lineno] = src.xline[lineno]
 
                 with segyio.open(dst_file, "r") as dst:
-                    self.assertEqual(20, dst.samples)
+                    self.assertEqual(20, len(dst.samples))
                     self.assertEqual([x + 100 for x in src.ilines], list(dst.ilines))
 
     def test_create_from_naught(self):
@@ -635,7 +637,7 @@ class TestSegy(TestCase):
             spec = segyio.spec()
             spec.format  = 5
             spec.sorting = 2
-            spec.samples = 150
+            spec.samples = range(150)
             spec.ilines  = range(1, 11)
             spec.xlines  = range(1, 6)
 
@@ -669,7 +671,7 @@ class TestSegy(TestCase):
             spec = segyio.spec()
             spec.format  = 5
             spec.sorting = 2
-            spec.samples = 7
+            spec.samples = range(7)
             spec.ilines  = range(1, 4)
             spec.xlines  = range(1, 3)
             spec.offsets = range(1, 6)
@@ -760,7 +762,7 @@ class TestSegy(TestCase):
             self.assertIsInstance(f.sorting, int)
             self.assertIsInstance(f.ext_headers, int)
             self.assertIsInstance(f.tracecount, int)
-            self.assertIsInstance(f.samples, int)
+            self.assertIsInstance(f.samples, np.ndarray)
 
             self.assertIsInstance(f.depth_slice, Line)
             self.assertIsInstance(f.depth_slice[1], np.ndarray)
@@ -800,9 +802,9 @@ class TestSegy(TestCase):
 
     def test_depth_slice_reading(self):
         with segyio.open(self.filename, "r") as f:
-            self.assertEqual(len(f.depth_slice), f.samples)
+            self.assertEqual(len(f.depth_slice), len(f.samples))
 
-            for depth_sample in range(f.samples):
+            for depth_sample in range(len(f.samples)):
                 depth_slice = f.depth_slice[depth_sample]
                 self.assertIsInstance(depth_slice, np.ndarray)
                 self.assertEqual(depth_slice.shape, (5, 5))
@@ -820,7 +822,7 @@ class TestSegy(TestCase):
                     self.assertAlmostEqual(depth_slice[i][j], f.iline[x][j][index], places=6)
 
         with self.assertRaises(KeyError):
-            slice = f.depth_slice[f.samples]
+            slice = f.depth_slice[len(f.samples)]
 
     def test_depth_slice_writing(self):
         with TestContext("depth_slice_writing") as context:

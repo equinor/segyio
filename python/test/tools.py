@@ -43,13 +43,13 @@ class ToolsTest(TestCase):
     def test_sample_indexes(self):
         with segyio.open(self.filename, "r") as f:
             indexes = segyio.sample_indexes(f)
-            self.assertListEqual(indexes, [t * 4.0 for t in range(f.samples)])
+            self.assertListEqual(indexes, [t * 4.0 for t in range(len(f.samples))])
 
             indexes = segyio.sample_indexes(f, t0=1.5)
-            self.assertListEqual(indexes, [1.5 + t * 4.0 for t in range(f.samples)])
+            self.assertListEqual(indexes, [1.5 + t * 4.0 for t in range(len(f.samples))])
 
             indexes = segyio.sample_indexes(f, t0=1.5, dt_override=3.21)
-            self.assertListEqual(indexes, [1.5 + t * 3.21 for t in range(f.samples)])
+            self.assertListEqual(indexes, [1.5 + t * 3.21 for t in range(len(f.samples))])
 
     def test_empty_text_header_creation(self):
         text_header = segyio.create_text_header({})
@@ -69,7 +69,7 @@ class ToolsTest(TestCase):
     def test_native(self):
         with open(self.filename, 'rb') as f, segyio.open(self.filename) as sgy:
             f.read(3600+240)
-            filetr = f.read(4 * sgy.samples)
+            filetr = f.read(4 * len(sgy.samples))
             segytr = sgy.trace[0]
 
             filetr = np.frombuffer(filetr, dtype = np.single)
@@ -85,11 +85,11 @@ class ToolsTest(TestCase):
     def test_cube_identity(self):
         with segyio.open(self.filename) as f:
             x = segyio.tools.collect(f.trace[:])
-            x = x.reshape((len(f.ilines), len(f.xlines), f.samples))
+            x = x.reshape((len(f.ilines), len(f.xlines), len(f.samples)))
             self.assertTrue(np.all(x == segyio.tools.cube(f)))
 
     def test_cube_identity_prestack(self):
         with segyio.open(self.prestack) as f:
-            dims = (len(f.ilines), len(f.xlines), len(f.offsets), f.samples)
+            dims = (len(f.ilines), len(f.xlines), len(f.offsets), len(f.samples))
             x = segyio.tools.collect(f.trace[:]).reshape(dims)
             self.assertTrue(np.all(x == segyio.tools.cube(f)))

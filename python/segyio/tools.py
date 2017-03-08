@@ -27,7 +27,7 @@ def sample_indexes(segyfile, t0=0.0, dt_override=None):
     if dt_override is None:
         dt_override = dt(segyfile)
 
-    return [t0 + t * dt_override for t in range(segyfile.samples)]
+    return [t0 + t * dt_override for t in range(len(segyfile.samples))]
 
 
 def create_text_header(lines):
@@ -117,6 +117,7 @@ def cube(f):
     ilsort = f.sorting == segyio.TraceSortingFormat.INLINE_SORTING
     fast = f.ilines if ilsort else f.xlines
     slow = f.xlines if ilsort else f.ilines
-    fast, slow, offs, samples = len(fast), len(slow), len(f.offsets), f.samples
-    dims = (fast, slow, samples) if offs == 1 else (fast, slow, offs, samples)
+    fast, slow, offs = len(fast), len(slow), len(f.offsets)
+    smps = len(f.samples)
+    dims = (fast, slow, smps) if offs == 1 else (fast, slow, offs, smps)
     return f.trace.raw[:].reshape(dims)

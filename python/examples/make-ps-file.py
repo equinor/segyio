@@ -20,7 +20,7 @@ def main():
     # N-by-M volume with K offsets volume
     spec.sorting = 2
     spec.format = 1
-    spec.samples = int(sys.argv[2])
+    spec.samples = range(int(sys.argv[2]))
     spec.ilines = range(*map(int, sys.argv[3:5]))
     spec.xlines = range(*map(int, sys.argv[5:7]))
     spec.offsets = range(*map(int, sys.argv[7:9]))
@@ -37,14 +37,14 @@ def main():
         # looking up an inline's i's jth crosslines' k should be roughly equal
         # to (offset*100) + i.j0k.
         trace = np.arange(start = start,
-                          stop  = start + step * spec.samples,
+                          stop  = start + step * len(spec.samples),
                           step  = step,
                           dtype = np.single)
 
         nx, no = len(spec.xlines), len(spec.offsets)
         # one inline is N traces concatenated. We fill in the xline number
         line = np.concatenate([trace + (xl / 100.0) for xl in spec.xlines])
-        line = line.reshape( (nx, spec.samples) )
+        line = line.reshape( (nx, len(spec.samples)) )
 
         for ilindex, ilno in enumerate(spec.ilines):
             iline = line + ilno

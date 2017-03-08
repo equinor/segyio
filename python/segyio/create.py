@@ -45,7 +45,7 @@ def create(filename, spec):
             >>> spec = segyio.spec()
             >>> spec.ilines  = [1, 2, 3, 4]
             >>> spec.xlines  = [11, 12, 13]
-            >>> spec.samples = 50
+            >>> spec.samples = list(range(50))
             >>> spec.sorting = 2
             >>> spec.format  = 1
             >>> with segyio.create(path, spec) as f:
@@ -57,7 +57,7 @@ def create(filename, spec):
             ...     spec = segyio.spec()
             ...     spec.sorting = src.sorting
             ...     spec.format = src.format
-            ...     spec.samples = src.samples - 50
+            ...     spec.samples = src.samples[:len(src.samples) - 50]
             ...     spec.ilines = src.ilines
             ...     spec.xline = src.xlines
             ...     with segyio.create(dstpath, spec) as dst:
@@ -69,9 +69,9 @@ def create(filename, spec):
     """
     f = segyio.SegyFile(filename, "w+")
 
-    f._samples       = spec.samples
+    f._samples       = numpy.asarray(spec.samples, dtype = numpy.intc)
     f._ext_headers   = spec.ext_headers
-    f._bsz           = _segyio.trace_bsize(f.samples)
+    f._bsz           = _segyio.trace_bsize(len(f.samples))
 
     txt_hdr_sz       = _segyio.textheader_size()
     bin_hdr_sz       = _segyio.binheader_size()
@@ -99,7 +99,7 @@ def create(filename, spec):
     f.bin     = {
         3213: f.tracecount,
         3217: 4000,
-        3221: f.samples,
+        3221: len(f.samples),
         3225: f.format,
         3505: f.ext_headers,
     }

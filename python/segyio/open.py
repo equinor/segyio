@@ -58,12 +58,17 @@ def open(filename, mode="r", iline=189, xline=193, strict = True):
     try:
         metrics = segyio._segyio.init_metrics(f.xfd, f.bin.buf)
 
-        f._samples = metrics['sample_count']
         f._tr0 = metrics['trace0']
         f._fmt = metrics['format']
         f._bsz = metrics['trace_bsize']
-        f._ext_headers = (f._tr0 - 3600) // 3200  # should probably be from C
         f._tracecount = metrics['trace_count']
+        f._ext_headers = (f._tr0 - 3600) // 3200  # should probably be from C
+
+        dt = segyio.tools.dt(f, fallback_dt = 4000.0)
+        t0 = f.header[0][segyio.TraceField.DelayRecordingTime]
+        sample_count = metrics['sample_count']
+        f._samples = numpy.array([t0 + i * dt for i in range(sample_count)],
+                                 dtype = numpy.intc)
 
     except:
         f.close()

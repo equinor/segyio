@@ -16,7 +16,7 @@ def main():
     # the absolute minimal specification for a N-by-M volume
     spec.sorting = 2
     spec.format = 1
-    spec.samples = int(sys.argv[2])
+    spec.samples = range(int(sys.argv[2]))
     spec.ilines = range(*map(int, sys.argv[3:5]))
     spec.xlines = range(*map(int, sys.argv[5:7]))
 
@@ -31,13 +31,13 @@ def main():
         # looking up an inline's i's jth crosslines' k should be roughly equal
         # to i.j0k
         trace = np.arange(start = start,
-                          stop  = start + step * spec.samples,
+                          stop  = start + step * len(spec.samples),
                           step  = step,
                           dtype = np.single)
 
         # one inline is N traces concatenated. We fill in the xline number
         line = np.concatenate([trace + (xl / 100.0) for xl in spec.xlines])
-        line = line.reshape( (len(spec.xlines), spec.samples) )
+        line = line.reshape( (len(spec.xlines), len(spec.samples)) )
 
         # write the line itself to the file
         # write the inline number in all this line's headers
