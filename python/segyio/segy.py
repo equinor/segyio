@@ -36,6 +36,8 @@ else: range = xrange
 
 class SegyFile(object):
 
+    _unstructured_errmsg = "File opened in unstructured mode."
+
     def __init__(self, filename, mode, iline=189, xline=193):
         """
         Constructor, internal.
@@ -70,16 +72,23 @@ class SegyFile(object):
 
     def __str__(self):
         f = "SegyFile {}:".format(self._filename)
-        il =  "  inlines: {} [{}, {}]".format(len(self.ilines), self.ilines[0], self.ilines[-1])
-        xl =  "  crosslines: {} [{}, {}]".format(len(self.xlines), self.xlines[0], self.xlines[-1])
+
+        if self.unstructured:
+            il =  "  inlines: None"
+            xl =  "  crosslines: None"
+            of =  "  offsets: None"
+        else:
+            il =  "  inlines: {} [{}, {}]".format(len(self.ilines), self.ilines[0], self.ilines[-1])
+            xl =  "  crosslines: {} [{}, {}]".format(len(self.xlines), self.xlines[0], self.xlines[-1])
+            of =  "  offsets: {} [{}, {}]".format(len(self.offsets), self.offsets[0], self.offsets[-1])
+
         tr =  "  traces: {}".format(self.tracecount)
         sm =  "  samples: {}".format(self.samples)
-        of =  "  offsets: {} [{}, {}]".format(len(self.offsets), self.offsets[0], self.offsets[-1])
         fmt = "  float representation: {}".format(self.format)
 
         props = [f, il, xl, tr, sm]
 
-        if len(self.offsets) > 1:
+        if self.offsets is not None and len(self.offsets) > 1:
             props.append(of)
 
         props.append(fmt)
@@ -181,6 +190,9 @@ class SegyFile(object):
         """ :rtype: int """
         return self._ext_headers
 
+    @property
+    def unstructured(self):
+        return self.ilines is None
 
     @property
     def header(self):
@@ -582,6 +594,10 @@ class SegyFile(object):
             Copy an iline from f to g at g's offset 200::
                 >>> g.iline[12, 200] = f.iline[21]
         """
+
+        if self.unstructured:
+            raise ValueError(self._unstructured_errmsg)
+
         il_len, il_stride = self._iline_length, self._iline_stride
         lines = self.ilines
         other_lines = self.xlines
@@ -711,6 +727,10 @@ class SegyFile(object):
             Copy an xline from f to g at g's offset 200::
                 >>> g.xline[12, 200] = f.xline[21]
         """
+
+        if self.unstructured:
+            raise ValueError(self._unstructured_errmsg)
+
         xl_len, xl_stride = self._xline_length, self._xline_stride
         lines = self.xlines
         other_lines = self.ilines
@@ -832,6 +852,10 @@ class SegyFile(object):
             Copy every other depth slices from a different file::
                 >>> f.depth_slice = g.depth_slice[::2]
         """
+
+        if self.unstructured:
+            raise ValueError(self._unstructured_errmsg)
+
         indices = np.asarray(list(range(self.samples)), dtype=np.uintc)
         other_indices = np.asarray([0], dtype=np.uintc)
         buffn = self._depth_buffer

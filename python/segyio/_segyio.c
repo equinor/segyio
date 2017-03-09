@@ -665,10 +665,8 @@ static PyObject *py_init_metrics(PyObject *self, PyObject *args) {
     errno = 0;
     PyObject *file_capsule = NULL;
     PyObject *binary_header_capsule = NULL;
-    int il_field;
-    int xl_field;
 
-    PyArg_ParseTuple(args, "OOii", &file_capsule, &binary_header_capsule, &il_field, &xl_field);
+    PyArg_ParseTuple(args, "OO", &file_capsule, &binary_header_capsule);
 
     segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
 
@@ -683,18 +681,49 @@ static PyObject *py_init_metrics(PyObject *self, PyObject *args) {
     int format = segy_format(binary_header);
     int trace_bsize = segy_trace_bsize(sample_count);
 
+    int trace_count;
+    int error = segy_traces(p_FILE, &trace_count, trace0, trace_bsize);
+
+    if (error != 0) {
+        return py_handle_segy_error(error, errno);
+    }
+
+    PyObject *dict = PyDict_New();
+    PyDict_SetItemString(dict, "trace0", Py_BuildValue("l", trace0));
+    PyDict_SetItemString(dict, "sample_count", Py_BuildValue("i", sample_count));
+    PyDict_SetItemString(dict, "format", Py_BuildValue("i", format));
+    PyDict_SetItemString(dict, "trace_bsize", Py_BuildValue("i", trace_bsize));
+    PyDict_SetItemString(dict, "trace_count", Py_BuildValue("i", trace_count));
+
+    return Py_BuildValue("O", dict);
+}
+
+static PyObject *py_init_cube_metrics(PyObject *self, PyObject *args) {
+    errno = 0;
+
+    PyObject *file_capsule = NULL;
+    int il_field;
+    int xl_field;
+    int trace_count;
+    long trace0;
+    int trace_bsize;
+
+    PyArg_ParseTuple(args, "Oiiili", &file_capsule,
+                                     &il_field,
+                                     &xl_field,
+                                     &trace_count,
+                                     &trace0,
+                                     &trace_bsize);
+
+    segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
+
+    if (PyErr_Occurred()) { return NULL; }
+
     int sorting;
     int error = segy_sorting(p_FILE, il_field, xl_field, &sorting, trace0, trace_bsize);
 
     if (error != 0) {
         return py_handle_segy_error_with_fields(error, errno, il_field, xl_field, 2);
-    }
-
-    int trace_count;
-    error = segy_traces(p_FILE, &trace_count, trace0, trace_bsize);
-
-    if (error != 0) {
-        return py_handle_segy_error(error, errno);
     }
 
     int offset_count;
@@ -733,18 +762,13 @@ static PyObject *py_init_metrics(PyObject *self, PyObject *args) {
     }
 
     PyObject *dict = PyDict_New();
-    PyDict_SetItemString(dict, "iline_field", Py_BuildValue("i", il_field));
-    PyDict_SetItemString(dict, "xline_field", Py_BuildValue("i", xl_field));
+    PyDict_SetItemString(dict, "sorting",      Py_BuildValue("i", sorting));
+    PyDict_SetItemString(dict, "iline_field",  Py_BuildValue("i", il_field));
+    PyDict_SetItemString(dict, "xline_field",  Py_BuildValue("i", xl_field));
     PyDict_SetItemString(dict, "offset_field", Py_BuildValue("i", 37));
-    PyDict_SetItemString(dict, "trace0", Py_BuildValue("l", trace0));
-    PyDict_SetItemString(dict, "sample_count", Py_BuildValue("i", sample_count));
-    PyDict_SetItemString(dict, "format", Py_BuildValue("i", format));
-    PyDict_SetItemString(dict, "trace_bsize", Py_BuildValue("i", trace_bsize));
-    PyDict_SetItemString(dict, "sorting", Py_BuildValue("i", sorting));
-    PyDict_SetItemString(dict, "trace_count", Py_BuildValue("i", trace_count));
     PyDict_SetItemString(dict, "offset_count", Py_BuildValue("i", offset_count));
-    PyDict_SetItemString(dict, "iline_count", Py_BuildValue("i", il_count));
-    PyDict_SetItemString(dict, "xline_count", Py_BuildValue("i", xl_count));
+    PyDict_SetItemString(dict, "iline_count",  Py_BuildValue("i", il_count));
+    PyDict_SetItemString(dict, "xline_count",  Py_BuildValue("i", xl_count));
 
     return Py_BuildValue("O", dict);
 }
@@ -1183,6 +1207,7 @@ static PyMethodDef SegyMethods[] = {
         {"set_field",          (PyCFunction) py_set_field,          METH_VARARGS, "Set a header field."},
 
         {"init_line_metrics",  (PyCFunction) py_init_line_metrics,  METH_VARARGS, "Find the length and stride of inline and crossline."},
+        {"init_cube_metrics",  (PyCFunction) py_init_cube_metrics,  METH_VARARGS, "Find the cube properties sorting, number of ilines, crosslines and offsets."},
         {"init_metrics",       (PyCFunction) py_init_metrics,       METH_VARARGS, "Find most metrics for a segy file."},
         {"init_indices",       (PyCFunction) py_init_indices,       METH_VARARGS, "Find the indices for inline, crossline and offsets."},
         {"fread_trace0",       (PyCFunction) py_fread_trace0,       METH_VARARGS, "Find trace0 of a line."},

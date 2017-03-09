@@ -171,6 +171,10 @@ class TestSegy(TestCase):
             self.assertEqual(len(f.trace), f.tracecount)
             self.assertEqual(50, f.samples)
 
+    def test_open_nostrict(self):
+        with segyio.open(self.filename, strict = False):
+            pass
+
     def test_traces_slicing(self):
         with segyio.open(self.filename, "r") as f:
 
@@ -223,7 +227,7 @@ class TestSegy(TestCase):
                 f.header.iline[1,2] = { il: 11 }
                 f.header.iline[1,2] = { xl: 13 }
 
-            with segyio.open("small-ps.sgy", "r") as f:
+            with segyio.open("small-ps.sgy", "r", strict = False) as f:
                 self.assertEqual(f.header[0][il], 1)
                 self.assertEqual(f.header[1][il], 11)
                 self.assertEqual(f.header[2][il], 1)
@@ -517,10 +521,16 @@ class TestSegy(TestCase):
             with segyio.open(self.filename, "r", 2) as f:
                 pass
 
+        with segyio.open(self.filename, "r", 2, strict = False) as f:
+            pass
+
     def test_open_wrong_crossline(self):
         with self.assertRaises(IndexError):
             with segyio.open(self.filename, "r", 189, 2) as f:
                 pass
+
+        with segyio.open(self.filename, "r", 189, 2, strict = False) as f:
+            pass
 
     def test_wonky_dimensions(self):
         with segyio.open(self.fileMx1) as f:
@@ -531,6 +541,25 @@ class TestSegy(TestCase):
 
         with segyio.open(self.file1x1) as f:
             pass
+
+    def test_open_fails_unstructured(self):
+        with segyio.open(self.filename, "r", 37, strict = False) as f:
+            with self.assertRaises(ValueError):
+                f.iline[10]
+
+            with self.assertRaises(ValueError):
+                f.iline[:,:]
+
+            with self.assertRaises(ValueError):
+                f.xline[:,:]
+
+            with self.assertRaises(ValueError):
+                f.depth_slice[2]
+
+            # operations that don't rely on geometry still works
+            self.assertEqual(f.header[2][189], 1)
+            self.assertListEqual(list(f.attributes(189)[:]),
+                                 [(i // 5) + 1 for i in range(len(f.trace))])
 
     def test_create_sgy(self):
         with TestContext("create_sgy") as context:
