@@ -549,15 +549,18 @@ int segy_field_forall( segy_file* fp,
     /*
      * non-mmap path. Doing multiple freads is slow, so instead the *actual*
      * offset is computed, not just the start of the header, and that's copied
-     * into the correct offset in our local buffer.
+     * into the correct offset in our local buffer. Note that byte offsets are
+     * exposed 1-indexed (to stay consistent with the specification), but the
+     * buffers are 0-indexed.
      *
      * Always read 4 bytes to be sure, there's no significant cost difference.
      */
     size_t readc;
+    const int zfield = field - 1;
     for( int i = start; slicelen > 0; i += step, ++buf, --slicelen ) {
-        err = segy_seek( fp, i, trace0 + field, trace_bsize );
+        err = segy_seek( fp, i, trace0 + zfield, trace_bsize );
         if( err != 0 ) return SEGY_FSEEK_ERROR;
-        readc = fread( header + field, sizeof( uint32_t ), 1, fp->fp );
+        readc = fread( header + zfield, sizeof( uint32_t ), 1, fp->fp );
         if( readc != 1 ) return SEGY_FREAD_ERROR;
 
         segy_get_field( header, field, &f );
