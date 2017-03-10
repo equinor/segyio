@@ -262,6 +262,10 @@ class TestSegy(TestCase):
             attrxls = list(map(int, f.attributes(xl)[::-1]))
             self.assertListEqual(xls, attrxls)
 
+            self.assertEqual(f.header[0][il], f.attributes(il)[0])
+            f.mmap()
+            self.assertEqual(f.header[0][il], f.attributes(il)[0])
+
             ils = [(i // 5) + 1 for i in range(25)][1:21:3]
             attrils = list(map(int, f.attributes(il)[1:21:3]))
             self.assertListEqual(ils, attrils)
