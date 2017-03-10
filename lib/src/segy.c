@@ -639,24 +639,26 @@ int segy_seek( segy_file* fp,
     }
 
     int err = SEGY_OK;
-    if( sizeof( long ) == sizeof( long long ) ) {
-        err = fseek( fp->fp, pos, SEEK_SET );
-    } else {
-        /*
-         * If long is 32bit on our platform (hello, windows), we do skips according
-         * to LONG_MAX and seek relative to our cursor rather than absolute on file
-         * begin.
-         */
-        rewind( fp->fp );
-        while( pos >= LONG_MAX && err == SEGY_OK ) {
-            err = fseek( fp->fp, LONG_MAX, SEEK_CUR );
-            pos -= LONG_MAX;
-        }
-
-        if( err != 0 ) return SEGY_FSEEK_ERROR;
-
-        err = fseek( fp->fp, pos, SEEK_CUR );
+#if LONG_MAX == LLONG_MAX
+    assert( pos <= LONG_MAX );
+    err = fseek( fp->fp, (long)pos, SEEK_SET );
+#else
+   /*
+    * If long is 32bit on our platform (hello, windows), we do skips according
+    * to LONG_MAX and seek relative to our cursor rather than absolute on file
+    * begin.
+    */
+    rewind( fp->fp );
+    while( pos >= LONG_MAX && err == SEGY_OK ) {
+        err = fseek( fp->fp, LONG_MAX, SEEK_CUR );
+        pos -= LONG_MAX;
     }
+
+    if( err != 0 ) return SEGY_FSEEK_ERROR;
+
+    assert( pos <= LONG_MAX );
+    err = fseek( fp->fp, (long)pos, SEEK_CUR );
+#endif
 
     if( err != 0 ) return SEGY_FSEEK_ERROR;
     return SEGY_OK;
@@ -729,6 +731,8 @@ int segy_traces( segy_file* fp,
     if( size % trace_bsize != 0 )
         return SEGY_TRACE_SIZE_MISMATCH;
 
+    assert( size / trace_bsize <= (long long)INT_MAX );
+
     *traces = size / trace_bsize;
     return SEGY_OK;
 }
@@ -760,8 +764,8 @@ int segy_sample_interval( segy_file* fp, float* dt ) {
     segy_get_field(trace_header, SEGY_TR_SAMPLE_INTER, &trace_header_dt_us);
 
     // milliseconds: ms
-    double binary_header_dt_ms = binary_header_dt_us/1000.0;
-    double trace_header_dt_ms = trace_header_dt_us/1000.0;
+    float binary_header_dt_ms = binary_header_dt_us/1000.0;
+    float trace_header_dt_ms = trace_header_dt_us/1000.0;
 
     if (trace_header_dt_us==0 && binary_header_dt_us==0) {
         //noop
@@ -1533,6 +1537,6 @@ int segy_textheader_size() {
     return SEGY_TEXT_HEADER_SIZE + 1;
 }
 
-unsigned int segy_binheader_size() {
+int segy_binheader_size() {
     return SEGY_BINARY_HEADER_SIZE;
 }
