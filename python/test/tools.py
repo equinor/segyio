@@ -38,18 +38,19 @@ class ToolsTest(TestCase):
                 f.bin[BinField.Interval] = dt_us
                 f.header[0][TraceField.TRACE_SAMPLE_INTERVAL] = dt_us
                 f.flush()
-                np.testing.assert_almost_equal(segyio.dt(f), dt_us / 1000)
+                np.testing.assert_almost_equal(segyio.dt(f), dt_us)
 
     def test_sample_indexes(self):
         with segyio.open(self.filename, "r") as f:
             indexes = segyio.sample_indexes(f)
-            self.assertListEqual(indexes, [t * 4.0 for t in range(f.samples)])
+            step = 4000.0
+            self.assertListEqual(indexes, [t * step for t in range(len(f.samples))])
 
             indexes = segyio.sample_indexes(f, t0=1.5)
-            self.assertListEqual(indexes, [1.5 + t * 4.0 for t in range(f.samples)])
+            self.assertListEqual(indexes, [1.5 + t * step for t in range(len(f.samples))])
 
             indexes = segyio.sample_indexes(f, t0=1.5, dt_override=3.21)
-            self.assertListEqual(indexes, [1.5 + t * 3.21 for t in range(f.samples)])
+            self.assertListEqual(indexes, [1.5 + t * 3.21 for t in range(len(f.samples))])
 
     def test_empty_text_header_creation(self):
         text_header = segyio.create_text_header({})
@@ -69,7 +70,7 @@ class ToolsTest(TestCase):
     def test_native(self):
         with open(self.filename, 'rb') as f, segyio.open(self.filename) as sgy:
             f.read(3600+240)
-            filetr = f.read(4 * sgy.samples)
+            filetr = f.read(4 * len(sgy.samples))
             segytr = sgy.trace[0]
 
             filetr = np.frombuffer(filetr, dtype = np.single)
@@ -85,11 +86,30 @@ class ToolsTest(TestCase):
     def test_cube_identity(self):
         with segyio.open(self.filename) as f:
             x = segyio.tools.collect(f.trace[:])
-            x = x.reshape((len(f.ilines), len(f.xlines), f.samples))
+            x = x.reshape((len(f.ilines), len(f.xlines), len(f.samples)))
             self.assertTrue(np.all(x == segyio.tools.cube(f)))
 
     def test_cube_identity_prestack(self):
         with segyio.open(self.prestack) as f:
-            dims = (len(f.ilines), len(f.xlines), len(f.offsets), f.samples)
+            dims = (len(f.ilines), len(f.xlines), len(f.offsets), len(f.samples))
             x = segyio.tools.collect(f.trace[:]).reshape(dims)
             self.assertTrue(np.all(x == segyio.tools.cube(f)))
+
+    def test_scale_samples(self):
+        with segyio.open(self.filename) as f:
+            samples, unit = segyio.tools.scale_samples(f.samples)
+            self.assertEqual('ms', unit)
+            self.assertListEqual([4.0 * i for i in range(len(samples))],
+                                 list(samples))
+
+            meters = [10 * i for i in range(len(samples))]
+            f._samples = np.array(meters)
+            samples, unit = segyio.tools.scale_samples(f.samples)
+            self.assertEqual('m', unit)
+            self.assertListEqual(meters, list(samples))
+
+    def test_scale_samples_pylist(self):
+        sampleslist = [10 * i for i in range(10)]
+        samplesnp = np.array(sampleslist)
+        eq = np.all(samplesnp == segyio.tools.scale_samples(samplesnp)[0])
+        self.assertTrue(eq)

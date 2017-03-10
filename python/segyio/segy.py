@@ -477,12 +477,16 @@ class SegyFile(object):
         return buf
 
     def _line_buffer(self, length, buf=None):
-        shape = (length, self.samples)
+        shape = (length, len(self.samples))
         return self._shape_buffer(shape, buf)
 
     def _fread_line(self, trace0, length, stride, buf):
         offsets = len(self.offsets)
-        return _segyio.read_line(self.xfd, trace0, length, stride, offsets, buf, self._tr0, self._bsz, self._fmt, self.samples)
+        return _segyio.read_line(self.xfd, trace0,
+                                length, stride, offsets,
+                                buf,
+                                self._tr0, self._bsz,
+                                self._fmt, len(self.samples))
 
     @property
     def ilines(self):
@@ -856,8 +860,8 @@ class SegyFile(object):
         if self.unstructured:
             raise ValueError(self._unstructured_errmsg)
 
-        indices = np.asarray(list(range(self.samples)), dtype=np.uintc)
-        other_indices = np.asarray([0], dtype=np.uintc)
+        indices = np.asarray(list(range(len(self.samples))), dtype=np.intc)
+        other_indices = np.asarray([0], dtype=np.intc)
         buffn = self._depth_buffer
 
         slice_trace_count = self._iline_length * self._xline_length
@@ -865,10 +869,14 @@ class SegyFile(object):
         tr0 = self._tr0
         bsz = self._bsz
         fmt = self._fmt
-        samples = self.samples
 
         def readfn(depth, length, stride, buf):
-            _segyio.depth_slice(self.xfd, depth, slice_trace_count, offsets, buf, tr0, bsz, fmt, samples)
+            _segyio.depth_slice(self.xfd, depth,
+                                slice_trace_count, offsets,
+                                buf,
+                                tr0, bsz,
+                                fmt,
+                                len(self.samples))
             return buf
 
         def writefn(depth, length, stride, val):
@@ -880,7 +888,7 @@ class SegyFile(object):
                 trace_buf[depth] = buf_view[i]
                 self.trace[i] = trace_buf
 
-        return Line(self, self.samples, 1, indices, other_indices, buffn, readfn, writefn, "Depth")
+        return Line(self, len(self.samples), 1, indices, other_indices, buffn, readfn, writefn, "Depth")
 
     @depth_slice.setter
     def depth_slice(self, value):

@@ -615,17 +615,17 @@ static PyObject *py_get_dt(PyObject *self, PyObject *args) {
     errno = 0;
 
     PyObject *file_capsule = NULL;
-    float dt;
-    PyArg_ParseTuple(args, "Of", &file_capsule, &dt);
+    float fallback;
+    PyArg_ParseTuple(args, "Of", &file_capsule, &fallback);
     segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
 
     if (PyErr_Occurred()) { return NULL; }
 
-    int error = segy_sample_interval(p_FILE, &dt);
+    float dt;
+    int error = segy_sample_interval(p_FILE, fallback, &dt);
     if (error != 0) { return py_handle_segy_error(error, errno); }
 
-    double ddt = dt;
-    return PyFloat_FromDouble(ddt);
+    return PyFloat_FromDouble( dt );
 }
 
 

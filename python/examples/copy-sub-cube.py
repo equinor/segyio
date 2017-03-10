@@ -14,7 +14,7 @@ def main():
         spec = segyio.spec()
         spec.sorting = int(src.sorting)
         spec.format  = int(src.format)
-        spec.samples = 50
+        spec.samples = range(50)
         spec.ilines = src.ilines[:5]
         spec.xlines = src.xlines[:5]
 

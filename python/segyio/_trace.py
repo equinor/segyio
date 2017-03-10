@@ -41,7 +41,7 @@ class Trace:
         if val.dtype != np.single:
             raise TypeError("Numpy array must be of type single")
 
-        shape = (self._file.samples,)
+        shape = (len(self._file.samples),)
 
         if val.shape[0] < shape[0]:
             raise TypeError("Array wrong shape. Expected minimum %s, was %s" % (shape, val.shape))
@@ -66,14 +66,14 @@ class Trace:
         return "Trace(traces = {}, samples = {})".format(len(self), self._file.samples)
 
     def _trace_buffer(self, buf=None):
-        samples = self._file.samples
+        shape = self._file.samples.shape
 
         if buf is None:
-            buf = np.empty(shape=samples, dtype=np.single)
+            buf = np.empty(shape=shape, dtype=np.single)
         elif not isinstance(buf, np.ndarray):
             raise TypeError("Buffer must be None or numpy.ndarray")
         elif buf.dtype != np.single:
-            buf = np.empty(shape=samples, dtype=np.single)
+            buf = np.empty(shape=shape, dtype=np.single)
 
         return buf
 
@@ -84,8 +84,8 @@ class Trace:
         trace0 = self._file._tr0
         bsz = self._file._bsz
         fmt = self._file._fmt
-        samples = self._file.samples
-        return segyio._segyio.read_trace(self._file.xfd, traceno, tracecount, buf, trace0, bsz, fmt, samples)
+        smp = len(self._file.samples)
+        return segyio._segyio.read_trace(self._file.xfd, traceno, tracecount, buf, trace0, bsz, fmt, smp)
 
     def _writetr(self, traceno, buf):
         self.write_trace(traceno, buf, self._file)
@@ -97,7 +97,10 @@ class Trace:
         :type buf: ?
         :type segy: segyio.SegyFile
         """
-        segyio._segyio.write_trace(segy.xfd, traceno, buf, segy._tr0, segy._bsz, segy._fmt, segy.samples)
+        segyio._segyio.write_trace(segy.xfd, traceno,
+                                   buf,
+                                   segy._tr0, segy._bsz,
+                                   segy._fmt, len(segy.samples))
 
     @property
     def raw(self):

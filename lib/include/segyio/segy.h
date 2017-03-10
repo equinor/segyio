@@ -53,7 +53,7 @@ int segy_write_binheader( segy_file*, const char* buf );
  * allocates 2 octets for this, so it comfortably sits inside an int
  */
 int segy_samples( const char* binheader );
-int segy_sample_interval( segy_file*, float* dt );
+int segy_sample_interval( segy_file*, float fallback , float* dt );
 /* exception: the int returned is an enum, SEGY_SORTING, not an error code */
 int segy_format( const char* binheader );
 int segy_get_field( const char* traceheader, int field, int32_t* f );
