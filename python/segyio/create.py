@@ -69,7 +69,7 @@ def create(filename, spec):
     """
     f = segyio.SegyFile(filename, "w+")
 
-    f._samples       = numpy.asarray(spec.samples, dtype = numpy.intc)
+    f._samples       = numpy.asarray(spec.samples, dtype = numpy.single)
     f._ext_headers   = spec.ext_headers
     f._bsz           = _segyio.trace_bsize(len(f.samples))
 

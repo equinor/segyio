@@ -94,22 +94,3 @@ class ToolsTest(TestCase):
             dims = (len(f.ilines), len(f.xlines), len(f.offsets), len(f.samples))
             x = segyio.tools.collect(f.trace[:]).reshape(dims)
             self.assertTrue(np.all(x == segyio.tools.cube(f)))
-
-    def test_scale_samples(self):
-        with segyio.open(self.filename) as f:
-            samples, unit = segyio.tools.scale_samples(f.samples)
-            self.assertEqual('ms', unit)
-            self.assertListEqual([4.0 * i for i in range(len(samples))],
-                                 list(samples))
-
-            meters = [10 * i for i in range(len(samples))]
-            f._samples = np.array(meters)
-            samples, unit = segyio.tools.scale_samples(f.samples)
-            self.assertEqual('m', unit)
-            self.assertListEqual(meters, list(samples))
-
-    def test_scale_samples_pylist(self):
-        sampleslist = [10 * i for i in range(10)]
-        samplesnp = np.array(sampleslist)
-        eq = np.all(samplesnp == segyio.tools.scale_samples(samplesnp)[0])
-        self.assertTrue(eq)
