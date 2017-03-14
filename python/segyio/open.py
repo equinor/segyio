@@ -68,7 +68,7 @@ def open(filename, mode="r", iline=189, xline=193, strict = True):
         t0 = f.header[0][segyio.TraceField.DelayRecordingTime]
         sample_count = metrics['sample_count']
         f._samples = numpy.array([t0 + i * dt for i in range(sample_count)],
-                                 dtype = numpy.intc)
+                                 dtype = numpy.single) / 1000.0
 
     except:
         f.close()
