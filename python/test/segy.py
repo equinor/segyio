@@ -177,6 +177,11 @@ class TestSegy(TestCase):
         with segyio.open(self.filename, strict = False):
             pass
 
+    def test_open_ignore_geometry(self):
+        with segyio.open(self.filename, ignore_geometry = True) as f:
+            with self.assertRaises(ValueError):
+                f.iline[0]
+
     def test_traces_slicing(self):
         with segyio.open(self.filename, "r") as f:
 
