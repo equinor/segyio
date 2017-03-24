@@ -3,7 +3,10 @@ import numpy
 import segyio
 
 
-def open(filename, mode="r", iline=189, xline=193, strict = True):
+def open(filename, mode="r", iline = 189,
+                             xline = 193,
+                             strict = True,
+                             ignore_geometry = False):
     """Open a segy file.
 
     Opens a segy file and tries to figure out its sorting, inline numbers,
@@ -26,6 +29,11 @@ def open(filename, mode="r", iline=189, xline=193, strict = True):
     but it won't abort if it fails. When in non-strict mode is opened,
     geometry-dependent modes such as iline will raise an error.
 
+    If 'ignore_geometry' is set to True, segyio will *not* try to build
+    iline/xline or other geometry related structures, which leads to faster
+    opens. This is essentially the same as using strict = False on a file that
+    has no geometry.
+
     Args:
         filename (str): Path to file to open.
         mode (str, optional): File access mode, defaults to "r".
@@ -35,6 +43,9 @@ def open(filename, mode="r", iline=189, xline=193, strict = True):
                             Defaults to 193 as per the SEGY specification.
         strict (bool, optional): Abort if a geometry cannot be inferred.
                                  Defaults to True.
+        ignore_geometry (bool, optional): Opt out on building geometry
+                                          information, useful for e.g. shot
+                                          organised files. Defaults to False.
 
     Examples:
         Open a file in read-only mode::
@@ -73,6 +84,10 @@ def open(filename, mode="r", iline=189, xline=193, strict = True):
     except:
         f.close()
         raise
+
+    if ignore_geometry:
+        return f
+
     try:
         cube_metrics = segyio._segyio.init_cube_metrics(f.xfd,
                                                         iline,
