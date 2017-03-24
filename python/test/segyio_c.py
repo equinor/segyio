@@ -383,12 +383,12 @@ class _segyioTests(TestCase):
 
             buf = numpy.zeros(25, dtype=numpy.single)
 
-            _segyio.read_trace(f, 0, 25, buf, 0, 100, 1, 25)
+            _segyio.read_trace(f, buf, 0, 1, 1, 1, 25, 0, 100)
 
             self.assertAlmostEqual(buf[10], 1.0, places=4)
             self.assertAlmostEqual(buf[11], 3.1415, places=4)
 
-            _segyio.read_trace(f, 1, 25, buf, 0, 100, 1, 25)
+            _segyio.read_trace(f, buf, 1, 1, 1, 1, 25, 0, 100)
 
             self.assertAlmostEqual(sum(buf), 42.0 * 25, places=4)
 

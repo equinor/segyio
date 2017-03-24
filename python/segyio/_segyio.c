@@ -932,29 +932,26 @@ static PyObject *py_fread_trace0(PyObject *self, PyObject *args) {
 static PyObject *py_read_trace(PyObject *self, PyObject *args) {
     errno = 0;
     PyObject *file_capsule = NULL;
-    PyObject *trace_no;
     PyObject *buffer_out;
-    int trace_count;
+    int start, length, step;
     long trace0;
     int trace_bsize;
     int format;
     int samples;
 
-    PyArg_ParseTuple(args, "OOiOliii", &file_capsule, &trace_no, &trace_count, &buffer_out, &trace0, &trace_bsize, &format, &samples);
+    PyArg_ParseTuple(args, "OOiiiiili", &file_capsule,
+                                        &buffer_out,
+                                        &start,
+                                        &step,
+                                        &length,
+                                        &format,
+                                        &samples,
+                                        &trace0,
+                                        &trace_bsize );
 
     segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
 
     if (PyErr_Occurred()) { return NULL; }
-
-    if( !trace_no || trace_no == Py_None ) {
-        PyErr_SetString(PyExc_TypeError, "Trace number must be int or slice." );
-        return NULL;
-    }
-
-    if( !integer_check( trace_no ) && !PySlice_Check( trace_no ) ) {
-        PyErr_SetString(PyExc_TypeError, "Trace number must be int or slice." );
-        return NULL;
-    }
 
     if (!PyObject_CheckBuffer(buffer_out)) {
         PyErr_SetString(PyExc_TypeError, "The destination buffer is not of the correct type.");
@@ -962,25 +959,6 @@ static PyObject *py_read_trace(PyObject *self, PyObject *args) {
     }
     Py_buffer buffer;
     PyObject_GetBuffer(buffer_out, &buffer, PyBUF_FORMAT | PyBUF_C_CONTIGUOUS | PyBUF_WRITEABLE);
-
-    Py_ssize_t start, stop, step, length;
-    if( PySlice_Check( trace_no ) ) {
-        int err = PySlice_GetIndicesEx( (PySliceObject*)trace_no,
-                                        trace_count,
-                                        &start, &stop, &step,
-                                        &length );
-        if( err != 0 ) {
-            PyBuffer_Release( &buffer );
-            return NULL;
-        }
-    }
-    else {
-        start = convert_integer( trace_no );
-        if( start < 0 ) start += trace_count;
-        step = 1;
-        stop = start + step;
-        length = 1;
-    }
 
     int error = 0;
     float* buf = buffer.buf;

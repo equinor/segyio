@@ -572,6 +572,17 @@ class TestSegy(TestCase):
             self.assertListEqual(list(f.attributes(189)[:]),
                                  [(i // 5) + 1 for i in range(len(f.trace))])
 
+    def test_traceaccess_from_array(self):
+        a = np.arange(10, dtype = np.int)
+        b = np.arange(10, dtype = np.int32)
+        c = np.arange(10, dtype = np.int64)
+        d = np.arange(10, dtype = np.intc)
+        with segyio.open(self.filename) as f:
+            f.trace[a[0]]
+            f.trace[b[1]]
+            f.trace[c[2]]
+            f.trace[d[3]]
+
     def test_create_sgy(self):
         with TestContext("create_sgy") as context:
             context.copy_file(self.filename)
