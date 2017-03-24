@@ -15,21 +15,19 @@ class Trace:
 
         buf = self._trace_buffer(buf)
 
-        if isinstance(index, int):
-            if not 0 <= abs(index) < len(self):
-                raise IndexError("Trace %d not in range (-%d,%d)", (index, len(self), len(self)))
-
-            return self._readtr(index, buf)
-
-        elif isinstance(index, slice):
+        if isinstance(index, slice):
             def gen():
                 for i in range(*index.indices(len(self))):
-                    yield self._readtr(i, buf)
+                    yield self._readtr(i, 1, 1, buf)
 
             return gen()
 
-        else:
-            raise TypeError("Key must be int, slice, (int,np.ndarray) or (slice,np.ndarray)")
+        if not 0 <= abs(index) < len(self):
+            raise IndexError("Trace %d not in range (-%d,%d)", (index, len(self), len(self)))
+
+        # map negative a negative to the corresponding positive value
+        start = (index + len(self)) % len(self)
+        return self._readtr(start, 1, 1, buf)
 
     def __setitem__(self, index, val):
         if not 0 <= abs(index) < len(self):
@@ -46,15 +44,11 @@ class Trace:
         if val.shape[0] < shape[0]:
             raise TypeError("Array wrong shape. Expected minimum %s, was %s" % (shape, val.shape))
 
-        if isinstance(index, int):
-            self._writetr(index, val)
+        if not isinstance(index, slice):
+            index = slice(index, index + 1, 1)
 
-        elif isinstance(index, slice):
-            for i, buf in range(*index.indices(len(self))), val:
-                self._writetr(i, val)
-
-        else:
-            raise KeyError("Wrong shape of index")
+        for i in range(*index.indices(len(self))):
+            self._writetr(i, val)
 
     def __len__(self):
         return self._file.tracecount
@@ -77,18 +71,23 @@ class Trace:
 
         return buf
 
-    def _readtr(self, traceno, buf=None):
+    def _readtr(self, start, step, length, buf=None):
         buf = self._trace_buffer(buf)
 
-        tracecount = self._file.tracecount
         trace0 = self._file._tr0
         bsz = self._file._bsz
         fmt = self._file._fmt
         smp = len(self._file.samples)
-        return segyio._segyio.read_trace(self._file.xfd, traceno, tracecount, buf, trace0, bsz, fmt, smp)
+        return segyio._segyio.read_trace(self._file.xfd, buf,
+                                         start, step, length,
+                                         fmt, smp,
+                                         trace0, bsz)
 
     def _writetr(self, traceno, buf):
-        self.write_trace(traceno, buf, self._file)
+        if int(traceno) != traceno:
+            raise TypeError("Trace index must be integer type")
+
+        self.write_trace(int(traceno), buf, self._file)
 
     @classmethod
     def write_trace(cls, traceno, buf, segy):
