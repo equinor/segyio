@@ -963,20 +963,14 @@ static int segy_line_indices( segy_file* fp,
                               int* buf,
                               long trace0,
                               int trace_bsize ) {
-
-    if( field_size[ field ] == 0 )
-        return SEGY_INVALID_FIELD;
-
-    char header[ SEGY_TRACE_HEADER_SIZE ];
-    for( ; num_indices--; traceno += stride, ++buf ) {
-
-        int err = segy_traceheader( fp, traceno, header, trace0, trace_bsize );
-        if( err != 0 ) return SEGY_FREAD_ERROR;
-
-        segy_get_field( header, field, buf );
-    }
-
-    return SEGY_OK;
+    return segy_field_forall( fp,
+                              field,
+                              traceno,                          /* start */
+                              traceno + (num_indices * stride), /* stop */
+                              stride,                           /* step */
+                              buf,
+                              trace0,
+                              trace_bsize );
 }
 
 static int count_lines( segy_file* fp,
