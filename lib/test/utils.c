@@ -72,12 +72,9 @@ static void check(float f1, double * epsm) {
 }
 
 static void testIBMFloat() {
-    int i;
-    float f1;
-
     double epsm = 0.0;
-    for (i = 0; i < MAX; i++) {
-        f1 = rand();
+    for( int i = 0; i < MAX; i++) {
+        const float f1 = rand();
         check(f1, &epsm);
         check(-f1, &epsm);
     }
