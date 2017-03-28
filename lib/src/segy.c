@@ -555,12 +555,11 @@ int segy_field_forall( segy_file* fp,
      *
      * Always read 4 bytes to be sure, there's no significant cost difference.
      */
-    size_t readc;
     const int zfield = field - 1;
     for( int i = start; slicelen > 0; i += step, ++buf, --slicelen ) {
         err = segy_seek( fp, i, trace0 + zfield, trace_bsize );
         if( err != 0 ) return SEGY_FSEEK_ERROR;
-        readc = fread( header + zfield, sizeof( uint32_t ), 1, fp->fp );
+        size_t readc = fread( header + zfield, sizeof( uint32_t ), 1, fp->fp );
         if( readc != 1 ) return SEGY_FREAD_ERROR;
 
         segy_get_field( header, field, &f );
@@ -641,7 +640,7 @@ int segy_seek( segy_file* fp,
         return SEGY_OK;
     }
 
-    int err = SEGY_OK;
+    int err;
 #if LONG_MAX == LLONG_MAX
     assert( pos <= LONG_MAX );
     err = fseek( fp->fp, (long)pos, SEEK_SET );
@@ -651,6 +650,7 @@ int segy_seek( segy_file* fp,
     * to LONG_MAX and seek relative to our cursor rather than absolute on file
     * begin.
     */
+    err = SEGY_OK;
     rewind( fp->fp );
     while( pos >= LONG_MAX && err == SEGY_OK ) {
         err = fseek( fp->fp, LONG_MAX, SEEK_CUR );
@@ -937,7 +937,6 @@ int segy_offset_indices( segy_file* fp,
                          int* out,
                          long trace0,
                          int trace_bsize ) {
-    int err = 0;
     int32_t x = 0;
     char header[ SEGY_TRACE_HEADER_SIZE ];
 
@@ -945,7 +944,7 @@ int segy_offset_indices( segy_file* fp,
         return SEGY_INVALID_FIELD;
 
     for( int i = 0; i < offsets; ++i ) {
-        err = segy_traceheader( fp, i, header, trace0, trace_bsize );
+        const int err = segy_traceheader( fp, i, header, trace0, trace_bsize );
         if( err != SEGY_OK ) return err;
 
         segy_get_field( header, offset_field, &x );
@@ -1158,10 +1157,9 @@ static inline int subtr_seek( segy_file* fp,
 }
 
 static int reverse( float* arr, int elems ) {
-    float tmp;
     const int last = elems - 1;
     for( int i = 0; i < elems / 2; ++i ) {
-        tmp = arr[ i ];
+        const float tmp = arr[ i ];
         arr[ i ] = arr[ last - i ];
         arr[ last - i ] = tmp;
     }
