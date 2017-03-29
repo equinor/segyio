@@ -366,6 +366,51 @@ class TestSegy(TestCase):
             self.assertEqual((offs // 2) * (ils // 2), sum(1 for _ in f.iline[::2, ::-2]))
             self.assertEqual((offs // 2) * (ils // 2), sum(1 for _ in f.iline[::-2, ::2]))
 
+
+    def test_gather_mode(self):
+        with segyio.open(self.prestack) as f:
+            empty = np.empty(0, dtype = np.single)
+            # should raise
+            with self.assertRaises(KeyError):
+                self.assertTrue(np.array_equal(empty, f.gather[2, 3, 3]))
+
+            with self.assertRaises(KeyError):
+                self.assertTrue(np.array_equal(empty, f.gather[2, 5, 1]))
+
+            with self.assertRaises(KeyError):
+                self.assertTrue(np.array_equal(empty, f.gather[5, 2, 1]))
+
+            self.assertTrue(np.array_equal(f.trace[10], f.gather[2, 3, 1]))
+            self.assertTrue(np.array_equal(f.trace[11], f.gather[2, 3, 2]))
+
+            traces = segyio.tools.collect(f.trace[10:12])
+            gather = f.gather[2,3,:]
+            self.assertTrue(np.array_equal(traces, gather))
+            self.assertTrue(np.array_equal(traces, f.gather[2,3]))
+            self.assertTrue(np.array_equal(empty,  f.gather[2,3,1:0]))
+            self.assertTrue(np.array_equal(empty,  f.gather[2,3,3:4]))
+
+            for g, line in zip(f.gather[1:3, 3, 1], f.iline[1:3]):
+                self.assertEqual(10, len(g))
+                self.assertEqual((10,), g.shape)
+                self.assertTrue(np.array_equal(line[2], g))
+
+            for g, line in zip(f.gather[1:3, 3, :], f.iline[1:3]):
+                self.assertEqual(2, len(g))
+                self.assertEqual((2, 10), g.shape)
+                self.assertTrue(np.array_equal(line[2], g[0]))
+
+            for g, line in zip(f.gather[1, 1:3, 1], f.xline[1:3]):
+                self.assertEqual(10, len(g))
+                self.assertEqual((10,), g.shape)
+                self.assertTrue(np.array_equal(line[0], g))
+
+            for g, line in zip(f.gather[1, 1:3, :], f.xline[1:3]):
+                self.assertEqual(2, len(g))
+                self.assertEqual((2, 10), g.shape)
+                self.assertTrue(np.array_equal(line[0], g[0]))
+
+
     def test_line_generators(self):
         with segyio.open(self.filename, "r") as f:
             for line in f.iline:

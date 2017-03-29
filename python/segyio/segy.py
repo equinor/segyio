@@ -18,6 +18,7 @@ import itertools
 import numpy as np
 
 from segyio._header import Header
+from segyio._gather import Gather
 from segyio._line import Line
 from segyio._trace import Trace
 from segyio._field import Field
@@ -893,6 +894,43 @@ class SegyFile(object):
     @depth_slice.setter
     def depth_slice(self, value):
         self.depth_slice[:] = value
+
+    @property
+    def gather(self):
+        """ Interact with segy in gather mode
+
+        A gather is in this context the intersection of lines in a cube, i.e.
+        all the offsets at some iline/xline intersection. The primary data type
+        is the numpy ndarray, with dimensions depending on the range of offsets
+        specified. Offsets uses the line and offset numbers (names), not
+        0-based indices.
+
+        When using ranges over lines, a generator is returned.
+
+        Examples:
+
+            Read one offset at an intersection::
+                >>> f.gather[200, 241, 25] # returns a samples-long 1d-array
+
+            Read all offsets at an intersection::
+                >>> f.gather[200, 241, :] # returns offsets x samples ndarray
+                >>> # If no offset is specified, this is implicitly (:)
+                >>> f.gather[200, 241, :] == f.gather[200, 241]
+
+            All offsets for a set of ilines, intersecting one crossline::
+                >>> f.gather[200:300, 241, :]
+
+            Some offsets for a set of ilines, interescting one crossline::
+                >>> f.gather[200:300, 241, 10:25:5]
+
+            Some offsets for a set of ilines and xlines. This effectively yields a subcube::
+                >>> f.gather[200:300, 241:248, 1:10]
+        """
+        if self.unstructured:
+            raise ValueError(self._unstructured_errmsg)
+
+        return Gather(self.trace, self.iline, self.xline,
+                      self.offsets, self.sorting)
 
     @property
     def text(self):
