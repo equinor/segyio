@@ -38,6 +38,8 @@ static const char* getFastestDirectionName( int sorting ) {
 
 int main(int argc, char* argv[]) {
 
+    int err;
+
     if( argc < 2 ) {
         puts("Missing argument, expected run signature:");
         printf("  %s <segy_file> [mmap] [INLINE_BYTE CROSSLINE_BYTE]\n", argv[0]);
@@ -65,7 +67,13 @@ int main(int argc, char* argv[]) {
         exit( SEGY_FOPEN_ERROR );
     }
 
-    int err;
+    if( memory_map ) {
+        err = segy_mmap( fp );
+        if( err != SEGY_OK )
+            fputs( "Could not mmap file. Using fstream fallback.", stderr );
+    }
+
+
     char header[ SEGY_BINARY_HEADER_SIZE ];
     err = segy_binheader( fp, header );
 

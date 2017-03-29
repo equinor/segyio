@@ -36,8 +36,11 @@ int main(int argc, char* argv[]) {
         exit( 3 );
     }
 
-    if( argc > 2 && strcmp( argv[ 2 ], "mmap" ) == 0 )
-        segy_mmap( fp );
+    if( argc > 2 && strcmp( argv[ 2 ], "mmap" ) == 0 ) {
+        int err = segy_mmap( fp );
+        if( err != SEGY_OK )
+            fputs( "Could not mmap file. Using fstream fallback.", stderr );
+    }
 
     int err;
     char header[ SEGY_BINARY_HEADER_SIZE ];
