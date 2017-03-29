@@ -25,7 +25,12 @@ Additionally, the aim is not to support the full standard or all exotic (but
 correctly) formatted files out there. Some assumptions are made, such as:
 
  * All traces in a file are assumed to be of the same sample size.
- * It is assumed all lines have the same number of traces.
+
+At this stage three different type of segy files can be read and written:
+
+ * Post-stack 3D volumes, sorted with respect to two header words (generally INLINE and CROSSLINE)
+ * Pre-stack 4D volumes, sorted with respect to three header words (generally INLINE, CROSSLINE, and OFFSET)
+ * Unstructured data
 
 The writing functionality in Segyio is largely meant to *modify* or adapt
 files. A file created from scratch is not necessarily a to-spec SEG-Y file, as
@@ -116,6 +121,179 @@ python examples/make-ps-file.py small-ps.sgy 10 1 5 1 4 1 3
 
 If you have have small data files with a free license, feel free to submit it
 to the project!
+
+
+## Working examples ##
+
+### Python ###
+
+Import useful libraries:
+
+```
+import segyio
+import numpy as np
+from shutil import copyfile
+```
+
+Open segy file and inspect it:
+
+```
+filename='name_of_your_file.sgy'
+segyfile=segyio.open(filename, "r" )
+
+# Memory map file for faster reading (especially if file is big...)
+segyfile.mmap()
+
+# Print binary header info
+print segyfile.bin
+print segyfile.bin[segyio.BinField.Traces]
+
+# Read headerword inline for trace 10
+print segyfile.header[10][segyio.TraceField.INLINE_3D]
+
+# Print inline and crossline axis
+print segyfile.xlines
+print segyfile.ilines
+```
+
+Read post-stack data cube contained in segy file:
+
+```
+# Read data along first xline
+data  = segyfile.xline[segyfile.xlines[1]]
+
+# Read data along last iline
+data  = segyfile.iline[segyfile.ilines[-1]]
+
+# Read data along 100th time slice
+data  = segyfile.depth_slice[100]
+
+# Read data cube
+data = segyio.tools.cube(filename)
+
+# Close file
+segyfile.close()
+```
+
+Read pre-stack data cube contained in segy file:
+
+```
+filename='name_of_your_prestack_file.sgy'
+segyfile=segyio.open( filename, "r" )
+
+# Print offsets
+print segyfile.offset
+
+# Read data along first iline and offset 100:  data [nxl x nt]
+data=segyfile.iline[0,100]
+
+# Read data along first iline and all offsets gath:  data [noff x nxl x nt]
+data=np.asarray([np.copy(x) for x in segyfile.iline[0:1,:]]
+
+# Read data along first 5 ilines and all offsets gath:  data [noff nil x nxl x nt]
+data=np.asarray([np.copy(x) for x in segyfile.iline[0:5,:]]
+
+# Read data along first xline and all offsets gath:  data [noff x nil x nt]
+data=np.asarray([np.copy(x) for x in segyfile.xline[0:1,:]])
+```
+
+Read and understand fairly 'unstructured' data (e.g., data sorted in common shot gathers):
+
+```
+filename='name_of_your_prestack_file.sgy'
+segyfile=segyio.open( filename, "r" ,ignore_geometry=True)
+segyfile.mmap()
+
+# Extract header word for all traces
+segyfile.attributes(segyio.TraceField.SourceX)[:]
+
+# Scatter plot sources and receivers color-coded on their number
+ plt.figure()
+ plt.scatter(segyfile.attributes(segyio.TraceField.SourceX)[:], segyfile.attributes(segyio.TraceField.SourceY)[:], c=segyfile.attributes(segyio.TraceField.NSummedTraces)[:],  edgecolor='none')
+ plt.scatter(segyfile.attributes(segyio.TraceField.GroupX)[:],  segyfile.attributes(segyio.TraceField.GroupY)[:],  c=segyfile.attributes(segyio.TraceField.NStackedTraces)[:], edgecolor='none',
+```
+
+Write segy file using same header of another file but multiply data by *2
+
+```
+input_file='name_of_your_input_file.sgy'
+output_file='name_of_your_output_file.sgy'
+
+copyfile(input_file, output_file)
+
+with segyio.open( output_file, "r+" ) as src:
+
+    # multiply data by 2
+    for i in src.ilines:
+        src.iline[i] = 2*src.iline[i]
+```
+
+Make segy file from sctrach
+
+```
+spec = segyio.spec()
+filename='name_of_your_file.sgy'
+
+spec = segyio.spec()
+file_out = 'test1.sgy'
+
+spec.sorting = 2
+spec.format  = 1
+spec.samples = 30
+spec.ilines  = np.arange(10)
+spec.xlines  = np.arange(20)
+
+with segyio.create(filename , spec) as f:
+
+    # write the line itself to the file and the inline number in all this line's headers
+    for ilno in spec.ilines:
+        f.iline[ilno] = np.zeros((len(spec.xlines),spec.samples),dtype=np.single)+ilno
+        f.header.iline[ilno] = { segyio.TraceField.INLINE_3D: ilno,
+                                 segyio.TraceField.offset: 0
+                               }
+
+    # then do the same for xlines
+    for xlno in spec.xlines:
+        f.header.xline[xlno] = { segyio.TraceField.CROSSLINE_3D: xlno,
+                                 segyio.TraceField.TRACE_SAMPLE_INTERVAL: 4000
+                                }
+```
+
+Visualize data using sibling tool [SegyViewer](https://github.com/Statoil/segyviewer):
+
+```
+from PyQt4.QtGui import QApplication
+import segyviewlib
+qapp = QApplication([])
+l= segyviewlib.segyviewwidget.SegyViewWidget('filename.sgy')
+l.show()
+```
+
+### MATLAB ###
+
+```
+filename='name_of_your_file.sgy'
+
+% Inspect segy
+Segy_struct=SegySpec(filename,189,193,1);
+
+% Read headerword inline for each trace
+Segy.get_header(filename,'Inline3D')
+
+%Read data along first xline
+data= Segy.readCrossLine(Segy_struct,Segy_struct.crossline_indexes(1));
+
+%Read cube
+data=Segy.get_cube(Segy_struct);
+
+%Write segy, use same header but multiply data by *2
+input_file='input_file.sgy';
+output_file='output_file.sgy';
+copyfile(input_file,output_file)
+data = Segy.get_traces(input_file);
+data1 = 2*data;
+Segy.put_traces(output_file, data1);
+```
 
 ## History ##
 Segyio was initially written and is maintained by [Statoil
