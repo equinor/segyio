@@ -20,7 +20,7 @@ static void testAssertionFailed(const char *message, const char *file, int line)
 
 static void testAssertTrue(bool value, const char *message, const char *file, int line) {
     if (!value) {
-        if (message && strlen(message) == 0) {
+        if (!message) {
             message = "The expression did not evaluate to true!";
         }
         testAssertionFailed(message, file, line);
