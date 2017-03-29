@@ -660,6 +660,7 @@ static void test_modify_trace_header() {
     assertTrue( ilno == 2, "Wrong iline no." );
 
     err = segy_write_traceheader( fp, 0, traceh, trace0, trace_bsize );
+    assertTrue( err == 0, "Error writing trace header." );
     segy_flush( fp, false );
 
     err = segy_traceheader( fp, 0, traceh, trace0, trace_bsize );
