@@ -360,18 +360,18 @@ int segy_mmap( segy_file* fp ) {
     int err = file_size( fp->fp, &fsize );
 
     if( err != 0 ) return SEGY_FSEEK_ERROR;
-    fp->fsize = fsize;
 
     bool rw = strstr( fp->mode, "+" ) || strstr( fp->mode, "w" );
     const int prot =  rw ? PROT_READ | PROT_WRITE : PROT_READ;
 
     int fd = fileno( fp->fp );
-    void* addr = mmap( NULL, fp->fsize, prot, MAP_SHARED, fd, 0 );
+    void* addr = mmap( NULL, fsize, prot, MAP_SHARED, fd, 0 );
 
     if( addr == MAP_FAILED )
         return SEGY_MMAP_ERROR;
 
     fp->addr = fp->cur = addr;
+    fp->fsize = fsize;
     return SEGY_OK;
 #endif //HAVE_MMAP
 }
