@@ -353,6 +353,9 @@ int segy_mmap( segy_file* fp ) {
     return SEGY_MMAP_INVALID;
 #else
 
+    /* don't re-map; i.e. multiple consecutive calls should be no-ops */
+    if( fp->addr ) return SEGY_OK;
+
     long long fsize;
     int err = file_size( fp->fp, &fsize );
 
