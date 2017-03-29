@@ -23,8 +23,11 @@ matrix:
 
 addons:
     apt:
+      sources:
+        - sourceline: 'ppa:sisib/ci-backports'
       packages:
         - valgrind
+        - cppcheck
 
 install:
   # Valgrind is experimental(ish) on MacOS with false positives on among others printf
@@ -34,6 +37,7 @@ install:
   #  fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
       export CONDA_OS=MacOSX;
+      brew update && brew install cppcheck;
     else
       export CONDA_OS=Linux;
     fi
@@ -57,6 +61,15 @@ before_script:
   - cmake --version
   - mkdir build
   - pushd build
-  - cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBUILD_SHARED_LIBS=ON $enabled  ..
+  - cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBUILD_SHARED_LIBS=ON $enabled  ..
+  - cppcheck --language=c
+             --std=c99
+             --enable=style,portability,performance,warning
+             --library=posix
+             --library=$TRAVIS_BUILD_DIR/cppcheck/segyio.cfg
+             --suppressions-list=$TRAVIS_BUILD_DIR/cppcheck/suppressions.txt
+             --inline-suppr
+             --project=compile_commands.json
+             --error-exitcode=1
 script:
   - make && ctest --output-on-failure
