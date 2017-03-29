@@ -367,8 +367,8 @@ int segy_mmap( segy_file* fp ) {
     int fd = fileno( fp->fp );
     void* addr = mmap( NULL, fsize, prot, MAP_SHARED, fd, 0 );
 
-    if( addr == MAP_FAILED )
-        return SEGY_MMAP_ERROR;
+    // cppcheck-suppress memleak
+    if( addr == MAP_FAILED ) return SEGY_MMAP_ERROR;
 
     fp->addr = fp->cur = addr;
     fp->fsize = fsize;
@@ -401,6 +401,7 @@ long long segy_ftell( segy_file* fp ) {
     // meant for testing - it's not a part of the public interface.
     return _ftelli64( fp->fp );
 #else
+    // cppcheck-suppress duplicateExpression
     assert( sizeof( long ) == sizeof( long long ) );
     return ftell( fp->fp );
 #endif
