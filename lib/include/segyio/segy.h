@@ -125,7 +125,7 @@ int segy_offsets( segy_file*,
                   int il,
                   int xl,
                   int traces,
-                  int* offsets,
+                  int* out,
                   long trace0,
                   int trace_bsize );
 

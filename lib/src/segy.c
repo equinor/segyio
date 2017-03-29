@@ -599,15 +599,15 @@ int segy_write_binheader( segy_file* fp, const char* buf ) {
     return SEGY_OK;
 }
 
-int segy_format( const char* buf ) {
+int segy_format( const char* binheader ) {
     int format;
-    segy_get_bfield( buf, SEGY_BIN_FORMAT, &format );
+    segy_get_bfield( binheader, SEGY_BIN_FORMAT, &format );
     return format;
 }
 
-int segy_samples( const char* buf ) {
+int segy_samples( const char* binheader ) {
     int32_t samples;
-    segy_get_bfield( buf, SEGY_BIN_SAMPLES, &samples );
+    segy_get_bfield( binheader, SEGY_BIN_SAMPLES, &samples );
     return samples;
 }
 
