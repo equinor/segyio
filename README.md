@@ -123,13 +123,13 @@ If you have have small data files with a free license, feel free to submit it
 to the project!
 
 
-## Working examples ##
+## Examples ##
 
 ### Python ###
 
 Import useful libraries:
 
-```
+```python
 import segyio
 import numpy as np
 from shutil import copyfile
@@ -137,7 +137,7 @@ from shutil import copyfile
 
 Open segy file and inspect it:
 
-```
+```python
 filename='name_of_your_file.sgy'
 segyfile=segyio.open(filename, "r" )
 
@@ -158,7 +158,7 @@ print segyfile.ilines
 
 Read post-stack data cube contained in segy file:
 
-```
+```python
 # Read data along first xline
 data  = segyfile.xline[segyfile.xlines[1]]
 
@@ -177,7 +177,7 @@ segyfile.close()
 
 Read pre-stack data cube contained in segy file:
 
-```
+```python
 filename='name_of_your_prestack_file.sgy'
 segyfile=segyio.open( filename, "r" )
 
@@ -199,7 +199,7 @@ data=np.asarray([np.copy(x) for x in segyfile.xline[0:1,:]])
 
 Read and understand fairly 'unstructured' data (e.g., data sorted in common shot gathers):
 
-```
+```python
 filename='name_of_your_prestack_file.sgy'
 segyfile=segyio.open( filename, "r" ,ignore_geometry=True)
 segyfile.mmap()
@@ -215,7 +215,7 @@ segyfile.attributes(segyio.TraceField.SourceX)[:]
 
 Write segy file using same header of another file but multiply data by *2
 
-```
+```python
 input_file='name_of_your_input_file.sgy'
 output_file='name_of_your_output_file.sgy'
 
@@ -230,7 +230,7 @@ with segyio.open( output_file, "r+" ) as src:
 
 Make segy file from sctrach
 
-```
+```python
 spec = segyio.spec()
 filename='name_of_your_file.sgy'
 
@@ -261,7 +261,7 @@ with segyio.create(filename , spec) as f:
 
 Visualize data using sibling tool [SegyViewer](https://github.com/Statoil/segyviewer):
 
-```
+```python
 from PyQt4.QtGui import QApplication
 import segyviewlib
 qapp = QApplication([])
