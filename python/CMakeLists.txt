@@ -39,6 +39,7 @@ add_python_package(pysegyio segyio
                     TARGETS _segyio
                     SOURCES segyio/__init__.py
                             segyio/_header.py
+                            segyio/_gather.py
                             segyio/_line.py
                             segyio/_field.py
                             segyio/_trace.py
