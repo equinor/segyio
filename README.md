@@ -139,78 +139,75 @@ Open segy file and inspect it:
 
 ```python
 filename='name_of_your_file.sgy'
-segyfile=segyio.open(filename, "r" )
+with segyio.open(filename, "r" ) as segyfile:
 
-# Memory map file for faster reading (especially if file is big...)
-segyfile.mmap()
+    # Memory map file for faster reading (especially if file is big...)
+    segyfile.mmap()
 
-# Print binary header info
-print segyfile.bin
-print segyfile.bin[segyio.BinField.Traces]
+    # Print binary header info
+    print segyfile.bin
+    print segyfile.bin[segyio.BinField.Traces]
 
-# Read headerword inline for trace 10
-print segyfile.header[10][segyio.TraceField.INLINE_3D]
+    # Read headerword inline for trace 10
+    print segyfile.header[10][segyio.TraceField.INLINE_3D]
 
-# Print inline and crossline axis
-print segyfile.xlines
-print segyfile.ilines
+    # Print inline and crossline axis
+    print segyfile.xlines
+    print segyfile.ilines
 ```
 
 Read post-stack data cube contained in segy file:
 
 ```python
-# Read data along first xline
-data  = segyfile.xline[segyfile.xlines[1]]
+    # Read data along first xline
+    data  = segyfile.xline[segyfile.xlines[1]]
 
-# Read data along last iline
-data  = segyfile.iline[segyfile.ilines[-1]]
+    # Read data along last iline
+    data  = segyfile.iline[segyfile.ilines[-1]]
 
-# Read data along 100th time slice
-data  = segyfile.depth_slice[100]
+    # Read data along 100th time slice
+    data  = segyfile.depth_slice[100]
 
-# Read data cube
-data = segyio.tools.cube(filename)
-
-# Close file
-segyfile.close()
+    # Read data cube
+    data = segyio.tools.cube(filename)
 ```
 
 Read pre-stack data cube contained in segy file:
 
 ```python
 filename='name_of_your_prestack_file.sgy'
-segyfile=segyio.open( filename, "r" )
+with segyio.open( filename, "r" ) as segyfile:
 
-# Print offsets
-print segyfile.offset
+    # Print offsets
+    print segyfile.offset
 
-# Read data along first iline and offset 100:  data [nxl x nt]
-data=segyfile.iline[0,100]
+    # Read data along first iline and offset 100:  data [nxl x nt]
+    data=segyfile.iline[0,100]
 
-# Read data along first iline and all offsets gath:  data [noff x nxl x nt]
-data=np.asarray([np.copy(x) for x in segyfile.iline[0:1,:]]
+    # Read data along first iline and all offsets gath:  data [noff x nxl x nt]
+    data=np.asarray([np.copy(x) for x in segyfile.iline[0:1,:]]
 
-# Read data along first 5 ilines and all offsets gath:  data [noff nil x nxl x nt]
-data=np.asarray([np.copy(x) for x in segyfile.iline[0:5,:]]
+    # Read data along first 5 ilines and all offsets gath:  data [noff nil x nxl x nt]
+    data=np.asarray([np.copy(x) for x in segyfile.iline[0:5,:]]
 
-# Read data along first xline and all offsets gath:  data [noff x nil x nt]
-data=np.asarray([np.copy(x) for x in segyfile.xline[0:1,:]])
+    # Read data along first xline and all offsets gath:  data [noff x nil x nt]
+    data=np.asarray([np.copy(x) for x in segyfile.xline[0:1,:]])
 ```
 
 Read and understand fairly 'unstructured' data (e.g., data sorted in common shot gathers):
 
 ```python
 filename='name_of_your_prestack_file.sgy'
-segyfile=segyio.open( filename, "r" ,ignore_geometry=True)
-segyfile.mmap()
+with segyio.open( filename, "r" ,ignore_geometry=True) as segyfile:
+    segyfile.mmap()
 
-# Extract header word for all traces
-segyfile.attributes(segyio.TraceField.SourceX)[:]
+    # Extract header word for all traces
+    segyfile.attributes(segyio.TraceField.SourceX)[:]
 
-# Scatter plot sources and receivers color-coded on their number
- plt.figure()
- plt.scatter(segyfile.attributes(segyio.TraceField.SourceX)[:], segyfile.attributes(segyio.TraceField.SourceY)[:], c=segyfile.attributes(segyio.TraceField.NSummedTraces)[:],  edgecolor='none')
- plt.scatter(segyfile.attributes(segyio.TraceField.GroupX)[:],  segyfile.attributes(segyio.TraceField.GroupY)[:],  c=segyfile.attributes(segyio.TraceField.NStackedTraces)[:], edgecolor='none',
+    # Scatter plot sources and receivers color-coded on their number
+    plt.figure()
+    plt.scatter(segyfile.attributes(segyio.TraceField.SourceX)[:], segyfile.attributes(segyio.TraceField.SourceY)[:], c=segyfile.attributes(segyio.TraceField.NSummedTraces)[:],  edgecolor='none')
+    plt.scatter(segyfile.attributes(segyio.TraceField.GroupX)[:],  segyfile.attributes(segyio.TraceField.GroupY)[:],  c=segyfile.attributes(segyio.TraceField.NStackedTraces)[:], edgecolor='none')
 ```
 
 Write segy file using same header of another file but multiply data by *2
