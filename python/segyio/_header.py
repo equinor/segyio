@@ -24,12 +24,15 @@ class Header(object):
         if isinstance(traceno, tuple):
             return self.__getitem__(traceno[0], traceno[1])
 
-        if isinstance(traceno, slice):
-            gen_buf = self._header_buffer(buf)
+        buf = self._header_buffer(buf)
 
+        if isinstance(traceno, slice):
             def gen():
+                buf1, buf2 = self._header_buffer(), self._header_buffer()
                 for i in range(*traceno.indices(self.segy.tracecount)):
-                    yield self.__getitem__(i, gen_buf)
+                    x = self.__getitem__(i, buf1)
+                    buf2, buf1 = buf1, buf2
+                    yield x
 
             return gen()
 
@@ -52,13 +55,16 @@ class Header(object):
     def __repr__(self):
         return "Header(traces = {})".format(self.segy.samples)
 
-    def readfn(self, t0, length, stride, buf):
+    def readfn(self, t0, length, stride, *_):
         def gen():
+            buf1, buf2 = self._header_buffer(), self._header_buffer()
             start = t0
             step = stride * len(self.segy.offsets)
             stop = t0 + (length * step)
             for i in range(start, stop, step):
-                yield Field.trace(buf, traceno=i, segy=self.segy)
+                x = Field.trace(buf1, traceno=i, segy=self.segy)
+                buf2, buf1 = buf1, buf2
+                yield x
 
         return gen()
 

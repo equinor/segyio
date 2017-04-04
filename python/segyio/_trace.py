@@ -16,9 +16,16 @@ class Trace:
         buf = self._trace_buffer(buf)
 
         if isinstance(index, slice):
+            # always read the trace into a second buffer. This is to provide
+            # exception safety: if an exception is raised and at least one
+            # array has already been yielded to the caller, failing to read the
+            # next trace won't make the already-returned array garbage
             def gen():
+                buf1 = buf
+                buf2 = self._trace_buffer(None)
                 for i in range(*index.indices(len(self))):
-                    yield self._readtr(i, 1, 1, buf)
+                    buf1, buf2 = self._readtr(i, 1, 1, buf1, buf2)
+                    yield buf1
 
             return gen()
 
@@ -27,7 +34,7 @@ class Trace:
 
         # map negative a negative to the corresponding positive value
         start = (index + len(self)) % len(self)
-        return self._readtr(start, 1, 1, buf)
+        return self._readtr(start, 1, 1, buf)[0]
 
     def __setitem__(self, index, val):
         if not 0 <= abs(index) < len(self):
@@ -71,17 +78,21 @@ class Trace:
 
         return buf
 
-    def _readtr(self, start, step, length, buf=None):
-        buf = self._trace_buffer(buf)
+    def _readtr(self, start, step, length, buf, buf1 = None):
+        if buf1 is None:
+            buf1 = buf
 
         trace0 = self._file._tr0
         bsz = self._file._bsz
         fmt = self._file._fmt
         smp = len(self._file.samples)
-        return segyio._segyio.read_trace(self._file.xfd, buf,
+
+        buf1 = segyio._segyio.read_trace(self._file.xfd, buf1,
                                          start, step, length,
                                          fmt, smp,
                                          trace0, bsz)
+
+        return buf1, buf
 
     def _writetr(self, traceno, buf):
         if int(traceno) != traceno:

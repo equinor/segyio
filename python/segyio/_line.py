@@ -110,9 +110,12 @@ class Line:
 
     def _get_iter(self, lineno, off, buf):
         """ :rtype: collections.Iterable[numpy.ndarray]"""
+        buf1, buf2 = buf, self.buffn()
 
         for line, offset in itertools.product(*self._indices(lineno, off)):
-            yield self._get(line, offset, buf)
+            buf1 = self._get(line, offset, buf1)
+            buf2, buf1 = buf1, buf2
+            yield buf2
 
     def __getitem__(self, lineno, offset=None):
         """ :rtype: numpy.ndarray|collections.Iterable[numpy.ndarray]"""
