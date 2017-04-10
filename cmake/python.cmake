@@ -147,6 +147,6 @@ function(add_python_example pkg TESTNAME PYTHON_TEST_FILE)
             COMMAND ${PYTHON_EXECUTABLE} ${PYTHON_TEST_FILE} ${ARGN})
 
     get_target_property(buildpath ${pkg} PACKAGE_BUILD_PATH)
-    to_path_list(pythonpath "$ENV{PYTHONPATH}" ${buildpath})
+    to_path_list(pythonpath "${buildpath} $ENV{PYTHONPATH}")
     set_tests_properties(${TESTNAME} PROPERTIES ENVIRONMENT "PYTHONPATH=${pythonpath}")
 endfunction()
