@@ -75,11 +75,10 @@ def open(filename, mode="r", iline = 189,
         f._tracecount = metrics['trace_count']
         f._ext_headers = (f._tr0 - 3600) // 3200  # should probably be from C
 
-        dt = segyio.tools.dt(f, fallback_dt = 4000.0)
+        dt = segyio.tools.dt(f, fallback_dt = 4000.0) / 1000.0
         t0 = f.header[0][segyio.TraceField.DelayRecordingTime]
-        sample_count = metrics['sample_count']
-        f._samples = numpy.array([t0 + i * dt for i in range(sample_count)],
-                                 dtype = numpy.single) / 1000.0
+        samples = metrics['sample_count']
+        f._samples = (numpy.arange(samples, dtype = numpy.single) * dt) + t0
 
     except:
         f.close()

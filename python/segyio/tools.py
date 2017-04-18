@@ -3,7 +3,7 @@ import numpy as np
 import itertools as itr
 
 
-def dt(segyfile, fallback_dt=4000):
+def dt(segyfile, fallback_dt=4000.0):
     """
     Find a *dt* value in the SegyFile. If none is found use the provided *fallback_dt* value.
 
