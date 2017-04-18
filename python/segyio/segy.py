@@ -67,6 +67,12 @@ class SegyFile(object):
         self._tr0 = None
         self._bsz = None
 
+        self._trace = Trace(self)
+        self._header = Header(self)
+        self._iline = None
+        self._xline = None
+        self._gather = None
+
         self.xfd = _segyio.open(filename, mode)
 
         super(SegyFile, self).__init__()
@@ -295,7 +301,7 @@ class SegyFile(object):
 
         :rtype: segyio._header.Header
         """
-        return Header(self)
+        return self._header
 
     @header.setter
     def header(self, val):
@@ -456,7 +462,7 @@ class SegyFile(object):
                 >>> f.trace.raw[::2]
         """
 
-        return Trace(self)
+        return self._trace
 
     @trace.setter
     def trace(self, val):
@@ -603,6 +609,9 @@ class SegyFile(object):
         if self.unstructured:
             raise ValueError(self._unstructured_errmsg)
 
+        if self._iline is not None:
+            return self._iline
+
         il_len, il_stride = self._iline_length, self._iline_stride
         lines = self.ilines
         other_lines = self.xlines
@@ -615,7 +624,8 @@ class SegyFile(object):
             for i, v in zip(range(t0, t0 + (step * length), step), val):
                 Trace.write_trace(i, v, self)
 
-        return Line(self, il_len, il_stride, lines, other_lines, buffn, readfn, writefn, "Inline")
+        self._iline = Line(self, il_len, il_stride, lines, other_lines, buffn, readfn, writefn, "Inline")
+        return self._iline
 
     @iline.setter
     def iline(self, value):
@@ -732,9 +742,11 @@ class SegyFile(object):
             Copy an xline from f to g at g's offset 200::
                 >>> g.xline[12, 200] = f.xline[21]
         """
-
         if self.unstructured:
             raise ValueError(self._unstructured_errmsg)
+
+        if self._xline is not None:
+            return self._xline
 
         xl_len, xl_stride = self._xline_length, self._xline_stride
         lines = self.xlines
@@ -748,7 +760,8 @@ class SegyFile(object):
             for i, v in zip(range(t0, t0 + step * length, step), val):
                 Trace.write_trace(i, v, self)
 
-        return Line(self, xl_len, xl_stride, lines, other_lines, buffn, readfn, writefn, "Crossline")
+        self._xline = Line(self, xl_len, xl_stride, lines, other_lines, buffn, readfn, writefn, "Crossline")
+        return self._xline
 
     @xline.setter
     def xline(self, value):
@@ -929,8 +942,11 @@ class SegyFile(object):
         if self.unstructured:
             raise ValueError(self._unstructured_errmsg)
 
-        return Gather(self.trace, self.iline, self.xline,
-                      self.offsets, self.sorting)
+        if self._gather is not None:
+            return self._gather
+
+        self._gather = Gather(self.trace, self.iline, self.xline, self.offsets, self.sorting)
+        return self._gather
 
     @property
     def text(self):
