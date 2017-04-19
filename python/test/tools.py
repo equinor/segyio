@@ -59,6 +59,11 @@ class ToolsTest(TestCase):
             line = text_header[line_no * 80: (line_no + 1) * 80]
             self.assertEqual(line, "C{0:>2} {1:76}".format(line_no + 1, ""))
 
+    def test_wrap(self):
+        with segyio.open(self.filename, "r") as f:
+            segyio.tools.wrap(f.text[0])
+            segyio.tools.wrap(f.text[0], 90)
+
     def test_values_text_header_creation(self):
         lines = {i + 1: chr(64 + i) * 76 for i in range(40)}
         text_header = segyio.create_text_header(lines)
