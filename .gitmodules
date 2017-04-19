@@ -1,0 +1,3 @@
+[submodule "pycmake"]
+	path = pycmake
+	url = https://github.com/statoil/pycmake

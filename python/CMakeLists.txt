@@ -4,7 +4,10 @@ if (NOT BUILD_PYTHON)
     return()
 endif()
 
-include(python)
+find_package(PythonInterp REQUIRED)
+find_package(PythonLibs REQUIRED)
+include(FindPythonModule)
+include(PythonPackage)
 
 if (NOT DEFINED PYTHON_EXECUTABLE)
     message("Python interpreter not found - Python wrappers not enabled")

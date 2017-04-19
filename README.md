@@ -59,7 +59,7 @@ To build and use Segyio you need:
 To build and install Segyio, perform the following actions in your console:
 
 ```
-git clone https://github.com/Statoil/segyio
+git clone --recursive https://github.com/Statoil/segyio
 cd segyio
 mkdir build
 cd build
@@ -70,7 +70,8 @@ make install
 
 Make install must be done as root for a system install; if you want to install
 in your home directory, add `-DCMAKE_INSTALL_PREFIX=~/` or some other
-appropriate directory. Remember to update your $PATH!
+appropriate directory. Remember to update your $PATH! By default, only the
+python bindings are built.
 
 ##### Matlab support #####
 

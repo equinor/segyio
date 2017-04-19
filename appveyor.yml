@@ -28,6 +28,7 @@ init:
     - INSTALL_DIR: C:\projects\segyio-install
 
 install:
+  - git submodule update --init --recursive
   - IF DEFINED PYTHON (IF "%platform%" == "x64" SET PYTHON=%PYTHON%-x64)
   - IF DEFINED PYTHON %PYTHON%\python -m pip install --user numpy
 
