@@ -1,6 +1,6 @@
 import segyio
 import numpy as np
-import itertools as itr
+import textwrap
 
 
 def dt(segyfile, fallback_dt=4000.0):
@@ -51,6 +51,17 @@ def create_text_header(lines):
 
     rows = ''.join(rows)
     return rows
+
+def wrap(s, width=80):
+    """
+    Formats the text input with newlines given the user specified width for each line
+
+    :type s: str
+    :type width: int
+    :rtype: str
+    """
+    return '\n'.join(textwrap.wrap(str(s), width=width))
+
 
 def native(data,
            format = segyio.SegySampleFormat.IBM_FLOAT_4_BYTE,
