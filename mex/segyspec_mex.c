@@ -97,7 +97,7 @@ void mexFunction( int nlhs, mxArray *plhs[],
     double dt = mxGetScalar(prhs[4]);
 
     SegySpec spec;
-    int errc = segyCreateSpec(&spec, filename, il, xl, t0, dt);
+    int errc = segyCreateSpec(&spec, filename, il, xl, t0 * 1000.0, dt);
     if (errc != 0) {
         goto FAILURE;
     }

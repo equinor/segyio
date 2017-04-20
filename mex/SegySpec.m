@@ -33,7 +33,7 @@ classdef SegySpec
 
             obj.sample_format = uint32(SegySampleFormat(spec.sample_format));
             obj.trace_sorting_format = TraceSortingFormat(spec.trace_sorting_format);
-            obj.sample_indexes = spec.sample_indexes;
+            obj.sample_indexes = spec.sample_indexes / 1000.0;
             obj.crossline_indexes = uint32(spec.crossline_indexes);
             obj.inline_indexes = uint32(spec.inline_indexes);
             obj.offset_count = uint32(spec.offset_count);
