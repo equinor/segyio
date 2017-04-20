@@ -4,7 +4,10 @@ if (NOT BUILD_PYTHON)
     return()
 endif()
 
-include(python)
+find_package(PythonInterp REQUIRED)
+find_package(PythonLibs REQUIRED)
+include(FindPythonModule)
+include(PythonPackage)
 
 if (NOT DEFINED PYTHON_EXECUTABLE)
     message("Python interpreter not found - Python wrappers not enabled")
@@ -33,7 +36,7 @@ endif()
 add_library(_segyio MODULE segyio/_segyio.c)
 target_include_directories(_segyio PRIVATE ${PYTHON_INCLUDE_DIRS})
 target_link_libraries(_segyio segyio ${PYTHON_LIBRARIES})
-export(TARGETS _segyio segyio-shared segyio-static FILE segyio-config.cmake)
+export(TARGETS _segyio segyio-shared segyio-static APPEND FILE segyio-config.cmake)
 
 add_python_package(pysegyio segyio
                     TARGETS _segyio
