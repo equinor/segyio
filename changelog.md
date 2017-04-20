@@ -1,3 +1,20 @@
+# 2017.03
+* Float conversions (ibm <-> native) has been optimised and is much faster
+* `segy_binheader_size` returns signed int like its friends
+* `sample_interval` steps are now floats
+* Multiple internal bug fixes
+* Some buffer leaks are plugged
+* segyio has learned to deal with files without good geometry.
+  If `strict = False` is passed to segyio.open, and a file is without
+  well-sorted inlines/crosslines, open will return a file handle, but with
+  geometry-dependent modes disabled
+* `file.samples` returns a list of samples, not number of samples
+* Readme has been improved.
+* `trace[int]` is more robust w.r.t. inputs
+* A new mode has been added; gather. gather depends on a good geometry, and its
+  getitem `[il, xl, slice(offsets)]` returns all offsets for an
+  inline/crossline intersection
+
 # 2017.02
 * segyio has learned to deal with large files (>4G) on more platforms
 * segyio can read quickly attributes (trace header words) over the full file
