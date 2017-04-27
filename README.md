@@ -14,6 +14,7 @@ contributions of all kinds are very welcome.
  * Read and write binary and textual headers.
  * Read and write traces, trace headers.
  * Easy to use and native-feeling python interface with numpy integration.
+ * xarray integration with netcdf_segy
 
 ## Project goals ##
 
@@ -106,6 +107,13 @@ feature requests and documentation. The preferred way of submitting a
 contribution is to either make an
 [issue](https://github.com/Statoil/SegyIO/issues) on github or by forking the
 project on github and making a pull request.
+
+## xarray integration ##
+
+[Alan Richardson](https://github.com/ar4) has written a great little tool for
+using [xarray](http://xarray.pydata.org/en/stable/) with segy files, which he
+demos in this
+[notebook](https://github.com/ar4/netcdf_segy/blob/master/notebooks/netcdf_segy.ipynb)
 
 ## Reproducing the test data ##
 
