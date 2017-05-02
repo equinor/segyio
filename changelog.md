@@ -1,3 +1,14 @@
+# 2017.04
+* Examples in the readme
+* Delay recording time (t0) is interpreted as milliseconds, not microseconds
+* Some minor optimisations
+* segy_mmap is more exception safe
+* The applications warn if mmap fails
+* Support for static analysis with cppcheck
+* The statoil/pycmake repo is used for python integration in cmake
+* Minor milli/microsecond bugfixes in mex bindings
+* tools.wrap added for printing textual headers to screen or file
+
 # 2017.03
 * Float conversions (ibm <-> native) has been optimised and is much faster
 * `segy_binheader_size` returns signed int like its friends
