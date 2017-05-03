@@ -74,6 +74,11 @@ in your home directory, add `-DCMAKE_INSTALL_PREFIX=~/` or some other
 appropriate directory. Remember to update your $PATH! By default, only the
 python bindings are built.
 
+Passing recursive to `git clone` also fetches statoil/pycmake and
+matthew-brett/multibuild. The former is cmake features for managing python
+packages, and the latter tools for building OS X and linux binary packages for
+pip.
+
 ##### Matlab support #####
 
 To build the matlab bindings, invoke CMake with the option `-DBUILD_MEX=ON`. In

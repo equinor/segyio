@@ -1,3 +1,6 @@
 [submodule "pycmake"]
 	path = pycmake
 	url = https://github.com/statoil/pycmake
+[submodule "multibuild"]
+	path = multibuild
+	url = https://github.com/matthew-brett/multibuild.git
