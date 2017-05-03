@@ -16,7 +16,7 @@ if (NOT DEFINED PYTHON_EXECUTABLE)
 endif()
 
 
-python_module(numpy REQUIRED 1.6)
+python_module(numpy REQUIRED 1.10)
 if (NOT DEFINED PY_numpy)
     message("numpy module not found - Python wrappers not enabled")
     unset(BUILD_PYTHON)
