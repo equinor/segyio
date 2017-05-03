@@ -617,6 +617,19 @@ class TestSegy(TestCase):
             self.assertListEqual(list(f.attributes(189)[:]),
                                  [(i // 5) + 1 for i in range(len(f.trace))])
 
+    def test_assign_all_traces(self):
+        with TestContext("assign_all_traces") as context:
+            context.copy_file(self.filename, target = 'dst')
+            context.copy_file(self.filename)
+            with segyio.open('small.sgy') as f:
+                traces = f.trace.raw[:] * 2.0
+
+            with segyio.open('dst/small.sgy', 'r+') as f:
+                f.trace[:] = traces[:]
+
+            with segyio.open('dst/small.sgy') as f:
+                self.assertTrue(np.array_equal(f.trace.raw[:], traces))
+
     def test_traceaccess_from_array(self):
         a = np.arange(10, dtype = np.int)
         b = np.arange(10, dtype = np.int32)

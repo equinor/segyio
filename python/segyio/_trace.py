@@ -1,6 +1,13 @@
 import numpy as np
 import segyio
 from segyio._raw_trace import RawTrace
+import itertools
+
+try:
+    from itertools import izip as zip
+    from itertools import imap as map
+except ImportError:  # will be 3.x series
+    pass
 
 
 class Trace:
@@ -37,25 +44,19 @@ class Trace:
         return self._readtr(start, 1, 1, buf)[0]
 
     def __setitem__(self, index, val):
+        if isinstance(index, slice):
+            for i, x in zip(range(*index.indices(len(self))), val):
+                self.write_trace(i, x, self._file)
+            return
+
+        if int(index) != index:
+            raise TypeError("Trace index must be integer type")
+
         if not 0 <= abs(index) < len(self):
-            raise IndexError("Trace %d not in range (-%d,%d)", (index, len(self), len(self)))
+            raise IndexError("Trace %d not in range (-%d,%d)",
+                             (index, len(self), len(self)))
 
-        if not isinstance(val, np.ndarray):
-            raise TypeError("Value must be numpy.ndarray")
-
-        if val.dtype != np.single:
-            raise TypeError("Numpy array must be of type single")
-
-        shape = (len(self._file.samples),)
-
-        if val.shape[0] < shape[0]:
-            raise TypeError("Array wrong shape. Expected minimum %s, was %s" % (shape, val.shape))
-
-        if not isinstance(index, slice):
-            index = slice(index, index + 1, 1)
-
-        for i in range(*index.indices(len(self))):
-            self._writetr(i, val)
+        self.write_trace(index, val, self._file)
 
     def __len__(self):
         return self._file.tracecount
@@ -94,12 +95,6 @@ class Trace:
 
         return buf1, buf
 
-    def _writetr(self, traceno, buf):
-        if int(traceno) != traceno:
-            raise TypeError("Trace index must be integer type")
-
-        self.write_trace(int(traceno), buf, self._file)
-
     @classmethod
     def write_trace(cls, traceno, buf, segy):
         """
@@ -107,6 +102,9 @@ class Trace:
         :type buf: ?
         :type segy: segyio.SegyFile
         """
+        if isinstance(buf, np.ndarray) and buf.dtype != np.single:
+            raise TypeError("Numpy array must be of type single")
+
         segyio._segyio.write_trace(segy.xfd, traceno,
                                    buf,
                                    segy._tr0, segy._bsz,
