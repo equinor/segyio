@@ -1537,10 +1537,10 @@ int segy_write_textheader( segy_file* fp, int pos, const char* buf ) {
     return SEGY_OK;
 }
 
-int segy_textheader_size() {
+int segy_textheader_size( void ) {
     return SEGY_TEXT_HEADER_SIZE + 1;
 }
 
-int segy_binheader_size() {
+int segy_binheader_size( void ) {
     return SEGY_BINARY_HEADER_SIZE;
 }
