@@ -23,6 +23,7 @@ static void test_interpret_file() {
     int line_trace0, line_length;
     const int il = SEGY_TR_INLINE;
     const int xl = SEGY_TR_CROSSLINE;
+    const int of = SEGY_TR_OFFSET;
 
     segy_file* fp = segy_open( file, "rb" );
 
@@ -45,11 +46,11 @@ static void test_interpret_file() {
     assertTrue( err == 0, "Could not determine number of traces in this file." );
     assertTrue( traces == 25, "Expected 25 traces in the file." );
 
-    err = segy_sorting( fp, xl, il, &sorting, trace0, trace_bsize );
+    err = segy_sorting( fp, xl, il, of, &sorting, trace0, trace_bsize );
     assertTrue( err == 0, "Could not figure out file sorting." );
     assertTrue( sorting == SEGY_CROSSLINE_SORTING, "Expected crossline sorting." );
 
-    err = segy_sorting( fp, il, xl, &sorting, trace0, trace_bsize );
+    err = segy_sorting( fp, il, xl, of, &sorting, trace0, trace_bsize );
     assertTrue( err == 0, "Could not figure out file sorting." );
     assertTrue( sorting == SEGY_INLINE_SORTING, "Expected inline sorting." );
 
@@ -489,6 +490,7 @@ static void testReadInLine_4(){
 
     /* test specific consts */
     const int il = SEGY_TR_INLINE, xl = SEGY_TR_CROSSLINE;
+    const int of = SEGY_TR_OFFSET;
 
     char header[ SEGY_BINARY_HEADER_SIZE ];
 
@@ -505,7 +507,7 @@ static void testReadInLine_4(){
 
     int ok = 0;
     ok = !segy_traces( fp, &traces, trace0, trace_bsize )
-      && !segy_sorting( fp, il, xl, &sorting, trace0, trace_bsize )
+      && !segy_sorting( fp, il, xl, of, &sorting, trace0, trace_bsize )
       && !segy_offsets( fp, il, xl, traces, &offsets, trace0, trace_bsize )
       && !segy_count_lines( fp, xl, offsets, &inlines_sz, &crosslines_sz, trace0, trace_bsize )
       && !segy_inline_indices( fp, il, sorting, inlines_sz, crosslines_sz, offsets, inline_indices, trace0, trace_bsize )
@@ -564,6 +566,7 @@ static void testReadCrossLine_22(){
 
     /* test specific consts */
     const int il = SEGY_TR_INLINE, xl = SEGY_TR_CROSSLINE;
+    const int of = SEGY_TR_OFFSET;
 
     char header[ SEGY_BINARY_HEADER_SIZE ];
 
@@ -580,7 +583,7 @@ static void testReadCrossLine_22(){
 
     int ok = 0;
     ok = !segy_traces( fp, &traces, trace0, trace_bsize )
-      && !segy_sorting( fp, il, xl, &sorting, trace0, trace_bsize )
+      && !segy_sorting( fp, il, xl, of, &sorting, trace0, trace_bsize )
       && !segy_offsets( fp, il, xl, traces, &offsets, trace0, trace_bsize )
       && !segy_count_lines( fp, xl, offsets, &inlines_sz, &crosslines_sz, trace0, trace_bsize )
       && !segy_crossline_indices( fp, xl, sorting, inlines_sz, crosslines_sz, offsets, crossline_indices, trace0, trace_bsize )
@@ -815,7 +818,7 @@ static void test_file_error_codes() {
     assertTrue( err == SEGY_FSEEK_ERROR, "Could seek in invalid file." );
 
     int sorting;
-    err = segy_sorting( fp, 0, 0, &sorting, 3600, 350 );
+    err = segy_sorting( fp, 0, 0, 0, &sorting, 3600, 350 );
     assertTrue( err == SEGY_FSEEK_ERROR, "Could seek in invalid file." );
 
     err = segy_readtrace( fp, 0, NULL, 3600, 350 );

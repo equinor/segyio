@@ -57,7 +57,11 @@ int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, 
         goto CLEANUP;
     }
 
-    errc = segy_sorting(fp, inline_field, crossline_field, &spec->trace_sorting_format, trace0, spec->trace_bsize);
+    errc = segy_sorting(fp, inline_field,
+                            crossline_field,
+                            SEGY_TR_OFFSET,
+                            &spec->trace_sorting_format,
+                            trace0, spec->trace_bsize);
     if (errc != 0) {
         goto CLEANUP;
     }

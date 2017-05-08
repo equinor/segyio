@@ -720,7 +720,11 @@ static PyObject *py_init_cube_metrics(PyObject *self, PyObject *args) {
     if (PyErr_Occurred()) { return NULL; }
 
     int sorting;
-    int error = segy_sorting(p_FILE, il_field, xl_field, &sorting, trace0, trace_bsize);
+    int error = segy_sorting(p_FILE, il_field,
+                                     xl_field,
+                                     SEGY_TR_OFFSET,
+                                     &sorting,
+                                     trace0, trace_bsize);
 
     if (error != 0) {
         return py_handle_segy_error_with_fields(error, errno, il_field, xl_field, 2);
