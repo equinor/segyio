@@ -1,10 +1,6 @@
 #ifndef SEGYIO_SEGY_H
 #define SEGYIO_SEGY_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif // __cplusplus
-
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -12,6 +8,10 @@ extern "C" {
 #define SEGY_BINARY_HEADER_SIZE 400
 #define SEGY_TEXT_HEADER_SIZE 3200
 #define SEGY_TRACE_HEADER_SIZE 240
+
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
 
 /*
  * About signatures:
