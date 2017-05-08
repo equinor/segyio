@@ -1,3 +1,5 @@
+#define _POSIX_SOURCE /* fileno */
+
 #ifdef HAVE_MMAP
   #define _POSIX_SOURCE
   #include <sys/mman.h>
