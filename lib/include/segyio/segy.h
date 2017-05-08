@@ -45,7 +45,7 @@ int segy_close( segy_file* );
  * The binheader buffer passed to these functions must be of *at least*
  * `segy_binheader_size`. Returns size, not an error code.
  */
-int segy_binheader_size();
+int segy_binheader_size( void );
 int segy_binheader( segy_file*, char* buf );
 int segy_write_binheader( segy_file*, const char* buf );
 /*
@@ -88,7 +88,7 @@ int segy_sample_indices( segy_file*,
 
 /* text header operations */
 int segy_read_textheader( segy_file*, char *buf);
-int segy_textheader_size();
+int segy_textheader_size( void );
 int segy_write_textheader( segy_file*, int pos, const char* buf );
 
 /* Read the trace header at `traceno` into `buf`. */
