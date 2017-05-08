@@ -399,7 +399,7 @@ int segy_flush( segy_file* fp, bool async ) {
 }
 
 long long segy_ftell( segy_file* fp ) {
-#ifdef HAVE_FSTATI64
+#ifdef HAVE_FTELLI64
     // assuming we're on windows. This function is a little rough, but only
     // meant for testing - it's not a part of the public interface.
     return _ftelli64( fp->fp );
