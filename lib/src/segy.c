@@ -824,6 +824,7 @@ int segy_sample_indices( segy_file* fp,
 int segy_sorting( segy_file* fp,
                   int il,
                   int xl,
+                  int tr_offset,
                   int* sorting,
                   long trace0,
                   int trace_bsize ) {
@@ -847,7 +848,7 @@ int segy_sorting( segy_file* fp,
 
     segy_get_field( traceheader, il, &il0 );
     segy_get_field( traceheader, xl, &xl0 );
-    segy_get_field( traceheader, SEGY_TR_OFFSET, &off0 );
+    segy_get_field( traceheader, tr_offset, &off0 );
 
     int traces;
     err = segy_traces( fp, &traces, trace0, trace_bsize );
@@ -860,7 +861,7 @@ int segy_sorting( segy_file* fp,
 
         segy_get_field( traceheader, il, &il1 );
         segy_get_field( traceheader, xl, &xl1 );
-        segy_get_field( traceheader, SEGY_TR_OFFSET, &off1 );
+        segy_get_field( traceheader, tr_offset, &off1 );
         ++traceno;
     } while( off0 != off1 && traceno < traces );
 
