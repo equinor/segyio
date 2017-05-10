@@ -453,6 +453,7 @@ class TestSegy(TestCase):
         with segyio.open(self.filename, "r") as f:
             self.assertEqual(1, f.header[0][189])
             self.assertEqual(1, f.header[1][TraceField.INLINE_3D])
+            self.assertEqual(1, f.header[1][segyio.su.iline])
 
             with self.assertRaises(IndexError):
                 f.header[0][188] # between byte offsets
@@ -493,8 +494,8 @@ class TestSegy(TestCase):
 
                 f.flush()
                 self.assertEqual(43, f.header[1][TraceField.INLINE_3D])
-                self.assertEqual(11, f.header[1][TraceField.CROSSLINE_3D])
-                self.assertEqual(15, f.header[1][TraceField.offset])
+                self.assertEqual(11, f.header[1][segyio.su.xline])
+                self.assertEqual(15, f.header[1][segyio.su.offset])
 
                 # looking up multiple values at once returns a { TraceField: value } dict
                 self.assertEqual(d, f.header[1][TraceField.INLINE_3D, TraceField.CROSSLINE_3D, TraceField.offset])
@@ -545,8 +546,8 @@ class TestSegy(TestCase):
                 f.bin = d
 
                 f.flush()
-                self.assertEqual(43, f.bin[BinField.Traces])
-                self.assertEqual(11, f.bin[BinField.SweepFrequencyStart])
+                self.assertEqual(43, f.bin[segyio.su.ntrpr])
+                self.assertEqual(11, f.bin[segyio.su.hsfs])
 
                 # looking up multiple values at once returns a { TraceField: value } dict
                 self.assertEqual(d, f.bin[BinField.Traces, BinField.SweepFrequencyStart])

@@ -51,8 +51,9 @@ add_python_package(pysegyio segyio
                             segyio/tracefield.py
                             segyio/binfield.py
                             segyio/open.py
-                            segyio/tools.py
                             segyio/create.py
+                            segyio/tools.py
+                            segyio/su.py
                             segyio/segysampleformat.py
                             segyio/tracesortingformat.py)
 

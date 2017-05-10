@@ -83,6 +83,7 @@ from .segysampleformat import SegySampleFormat
 from .tracesortingformat import TraceSortingFormat
 from .tracefield import TraceField
 from .binfield import BinField
+from .su import su
 from .open import open
 from .create import create
 from .segy import SegyFile, spec
