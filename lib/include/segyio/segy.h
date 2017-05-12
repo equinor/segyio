@@ -106,13 +106,13 @@ int segy_write_traceheader( segy_file*,
                             int trace_bsize );
 
 /*
- * Number of traces in this file. The sorting type will be written to `sorting`
- * if the function can figure out how the file is sorted. If not, some error
- * code will be returned and `out` will not be modified.
+ * The sorting type will be written to `sorting` if the function can figure out
+ * how the file is sorted.
  */
 int segy_sorting( segy_file*,
                   int il,
                   int xl,
+                  int tr_offset,
                   int* sorting,
                   long trace0,
                   int trace_bsize );
