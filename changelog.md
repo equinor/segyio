@@ -1,3 +1,9 @@
+# 2017.05
+* Requirements for the shape of the right hand side of `f.trace[:] =`
+  expressions are relaxed and accepts more inputs
+* C interface slightly cleaned up for C99 compliance
+* C library can reason on arbitrary header words for offsets, not just 37
+
 # 2017.04
 * Examples in the readme
 * Delay recording time (t0) is interpreted as milliseconds, not microseconds
