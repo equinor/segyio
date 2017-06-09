@@ -119,6 +119,8 @@ class SegyFile(object):
     def flush(self):
         """Flush a file - write the library buffers to disk.
 
+        Since v1.1
+
         This method is mostly useful for testing.
 
         It is not necessary to call this method unless you want to observe your
@@ -137,6 +139,8 @@ class SegyFile(object):
     def close(self):
         """Close the file.
 
+        Since v1.1
+
         This method is mostly useful for testing.
 
         It is not necessary to call this method if you're using the `with`
@@ -147,6 +151,8 @@ class SegyFile(object):
     def mmap(self):
         """Memory map the file
         :rtype: bool
+
+        Since v1.1
 
         Memory map the file. This is an advanced feature for speed and
         optimization; however, it is no silver bullet. If your file is smaller
@@ -204,6 +210,8 @@ class SegyFile(object):
     @property
     def header(self):
         """ Interact with segy in header mode.
+
+        Since v1.1
 
         This mode gives access to reading and writing functionality of headers,
         both in individual (trace) mode and line mode. Individual headers are
@@ -315,6 +323,8 @@ class SegyFile(object):
     def attributes(self, field):
         """ File-wide attribute (header word) reading
 
+        Since v1.1
+
         A range-oriented function that reads some attribute for all the
         specified headers file-wide. Supports index lookup, slices and
         numpy-style list-of-indices.
@@ -368,6 +378,8 @@ class SegyFile(object):
     @property
     def trace(self):
         """ Interact with segy in trace mode.
+
+        Since v1.1
 
         This mode gives access to reading and writing functionality for traces.
         The primary data type is the numpy ndarray. Traces can be accessed
@@ -504,6 +516,8 @@ class SegyFile(object):
     def iline(self):
         """ Interact with segy in inline mode.
 
+        Since v1.1
+
         This mode gives access to reading and writing functionality for inlines.
         The primary data type is the numpy ndarray. Inlines can be accessed
         individually or with python slices, and writing is done via assignment.
@@ -639,6 +653,8 @@ class SegyFile(object):
     @property
     def xline(self):
         """ Interact with segy in crossline mode.
+
+        Since v1.1
 
         This mode gives access to reading and writing functionality for crosslines.
         The primary data type is the numpy ndarray. crosslines can be accessed
@@ -784,6 +800,8 @@ class SegyFile(object):
     def fast(self):
         """ Access the 'fast' dimension
 
+        Since v1.1
+
         This mode yields iline or xline mode, depending on which one is laid
         out "faster", i.e. the line with linear disk layout. Use this mode if
         the inline/crossline distinction isn't as interesting as traversing in
@@ -801,6 +819,8 @@ class SegyFile(object):
     def slow(self):
         """ Access the 'slow' dimension
 
+        Since v1.1
+
         This mode yields iline or xline mode, depending on which one is laid
         out "slower", i.e. the line with strided disk layout. Use this mode if
         the inline/crossline distinction isn't as interesting as traversing in
@@ -816,6 +836,8 @@ class SegyFile(object):
     @property
     def depth_slice(self):
         """ Interact with segy in depth slice mode.
+
+        Since v1.1
 
         This mode gives access to reading and writing functionality for depth slices.
         The primary data type is the numpy ndarray. Depth slices can be accessed
@@ -912,6 +934,8 @@ class SegyFile(object):
     def gather(self):
         """ Interact with segy in gather mode
 
+        Since v1.1
+
         A gather is in this context the intersection of lines in a cube, i.e.
         all the offsets at some iline/xline intersection. The primary data type
         is the numpy ndarray, with dimensions depending on the range of offsets
@@ -951,6 +975,8 @@ class SegyFile(object):
     @property
     def text(self):
         """ Interact with segy in text mode.
+
+        Since v1.1
 
         This mode gives access to reading and writing functionality for textual
         headers.
@@ -1004,6 +1030,8 @@ class SegyFile(object):
     @property
     def bin(self):
         """ Interact with segy in binary mode.
+
+        Since v1.1
 
         This mode gives access to reading and writing functionality for the
         binary header. Please note that using numeric binary offsets uses the

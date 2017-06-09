@@ -3,7 +3,7 @@ from segyio import TraceField as tf
 from segyio import BinField as bf
 
 class su(Enum):
-    """
+    """ Since v1.1
         Seismic Unix style aliases for binary and trace header fields.
 
     About names:
@@ -14,7 +14,7 @@ class su(Enum):
         and in conflicts take presedence after some time. If there are no
         conflicts, segyio names are considered for deprecation on a
         case-by-case basis, but will most likely be supported along with the
-        Seismic Unix name-
+        Seismic Unix name.
     """
 # trace
     tracl  = tf.TRACE_SEQUENCE_LINE

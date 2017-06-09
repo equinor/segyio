@@ -9,6 +9,8 @@ def open(filename, mode="r", iline = 189,
                              ignore_geometry = False):
     """Open a segy file.
 
+    Since v1.1
+
     Opens a segy file and tries to figure out its sorting, inline numbers,
     crossline numbers, and offsets, and enables reading and writing to this
     file in a simple manner.

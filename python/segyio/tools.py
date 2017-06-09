@@ -4,7 +4,7 @@ import textwrap
 
 
 def dt(segyfile, fallback_dt=4000.0):
-    """
+    """Since v1.1
     Find a *dt* value in the SegyFile. If none is found use the provided *fallback_dt* value.
 
     :type segyfile: segyio.SegyFile
@@ -15,7 +15,8 @@ def dt(segyfile, fallback_dt=4000.0):
 
 
 def sample_indexes(segyfile, t0=0.0, dt_override=None):
-    """
+    """Since v1.1
+
     Creates a list of values representing the samples in a trace at depth or time.
     The list starts at *t0* and is incremented with am*dt* for the number of samples.
     If a *dt_override* is not provided it will try to find a *dt* in the file.
@@ -53,7 +54,7 @@ def create_text_header(lines):
     return rows
 
 def wrap(s, width=80):
-    """
+    """Since v1.1
     Formats the text input with newlines given the user specified width for each line
 
     :type s: str
@@ -67,6 +68,8 @@ def native(data,
            format = segyio.SegySampleFormat.IBM_FLOAT_4_BYTE,
            copy = True):
     """ Convert numpy array to native float
+
+    Since v1.1
 
     :type data: numpy.ndarray
     :type format: int|segyio.SegySampleFormat
@@ -92,6 +95,8 @@ def native(data,
 def collect(itr):
     """ Collect traces or lines into one ndarray
 
+    Since v1.1
+
     Eagerly copy a series of traces, lines or depths into one numpy ndarray. If
     collecting traces or fast-direction over a post-stacked file, reshaping the
     resulting array is equivalent to calling `tools.cube`.
@@ -111,6 +116,8 @@ def collect(itr):
 
 def cube(f):
     """ Read a full cube from a file
+
+    Since v1.1
 
     Takes an open segy file (created with segyio.open) or a file name.
 
