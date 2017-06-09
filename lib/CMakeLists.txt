@@ -26,7 +26,7 @@ target_include_directories(
     segyio-static PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
-    PRIVATE src)
+    PRIVATE src include)
 
 #
 # dynamic build
@@ -40,7 +40,7 @@ target_include_directories(
     segyio-shared PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
-    PRIVATE src)
+    PRIVATE src include)
 
 if (BUILD_SHARED_LIBS)
     add_library(segyio ALIAS segyio-shared)

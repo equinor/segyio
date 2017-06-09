@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 2.8.11)
 project(segyio)
 
+set(segyio_MAJOR 1)
+set(segyio_MINOR 1)
+set(segyio_PATCH 0)
+set(segyio_VERSION ${segyio_MAJOR}.${segyio_MINOR}.${segyio_PATCH})
+
 if (POLICY CMP0042)
     cmake_policy(SET CMP0042 NEW)
 endif ()

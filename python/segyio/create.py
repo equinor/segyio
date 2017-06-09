@@ -23,6 +23,8 @@ def default_text_header(iline, xline, offset):
 def create(filename, spec):
     """Create a new segy file.
 
+    Since v1.1
+
     Create a new segy file with the geometry and properties given by `spec`.
     This enables creating SEGY files from your data. The created file supports
     all segyio modes, but has an emphasis on writing. The spec must be

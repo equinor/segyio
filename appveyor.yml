@@ -3,7 +3,6 @@ version: 1.0.{build}
 clone_depth: 1
 
 configuration:
-    - Debug
     - Release
 
 os: Visual Studio 2015
@@ -14,12 +13,22 @@ platform:
     - x64
 
 environment:
-    OFF: -DBUILD_PYTHON=OFF -DBUILD_MEX=OFF
+    MEX: -DBUILD_MEX=OFF
+    SHARED: OFF
     matrix:
         - PYTHON: C:\Python27
           LANG: -DBUILD_PYTHON=ON
+          PYTHON_VERSION: 27
         - PYTHON: C:\Python35
           LANG: -DBUILD_PYTHON=ON
+          PYTHON_VERSION: 35
+        - PYTHON: C:\Python36
+          LANG: -DBUILD_PYTHON=ON
+          PYTHON_VERSION: 36
+        - PYTHON: C:\Python36
+          LANG: -DBUILD_PYTHON=ON
+          PYTHON_VERSION: 36
+          SHARED: ON
 
 matrix:
     fast_finish: true
@@ -28,21 +37,61 @@ init:
     - INSTALL_DIR: C:\projects\segyio-install
 
 install:
-  - git submodule update --init --recursive
-  - IF DEFINED PYTHON (IF "%platform%" == "x64" SET PYTHON=%PYTHON%-x64)
-  - IF DEFINED PYTHON %PYTHON%\python -m pip install --user numpy
+    - git submodule update --init --recursive
+    - IF DEFINED PYTHON (IF "%platform%" == "x64" SET PYTHON=%PYTHON%-x64)
+    - IF DEFINED PYTHON SET PATH=%PYTHON%;%PYTHON%\Scripts;%PATH%
+    - IF DEFINED PYTHON pip install twine wheel numpy
 
 before_build:
-    - IF DEFINED PYTHON SET LANG=%LANG% -DPYTHON_EXECUTABLE=%PYTHON%\python.exe
+    - IF DEFINED PYTHON SET LANG=%LANG% -DPYTHON_EXECUTABLE=%PYTHON%\python
 
+# python extensions with setup.py typically requires building with the same
+# compiler as python itself, but it seems that the extern C does a reasonable
+# job of keeping it binary compatible. For python < 3.0, copy the shared lib
+# into the build directory (because otherwise visual c++ 9.0 is invoked, and it
+# supports no C99. For newer pythons, setup.py is capable of building segyio
 build_script:
     - cmake --version
     - IF "%platform%" == "x64" set W64="-GVisual Studio 14 2015 Win64"
     - mkdir build
-    - pushd build
-    - cmake C:\projects\SegyIO %W64% %OFF% %LANG% -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=%configuration% -DCMAKE_INSTALL_PREFIX=%INSTALL_DIR%
-    - cmake --build . --config %configuration% --target install
+    - ps: pushd build
+    - cmake %APPVEYOR_BUILD_FOLDER% %W64% %MEX% %LANG% -DBUILD_SHARED_LIBS=%SHARED% -DCMAKE_INSTALL_PREFIX=%INSTALL_DIR%
+    - cmake --build . --config "%configuration%" --target install
+    - ps: pushd python
+    - cat setup.py
+    - IF DEFINED PYTHON python setup.py build_py
+    - IF DEFINED PYTHON ( IF %PYTHON_VERSION% == 27
+        cp segyio/_segyio.pyd build/*/segyio/
+      )
+    - IF DEFINED PYTHON python setup.py bdist_wheel
+    - ps: popd
+    - ps: popd
 
 test_script:
     - set PATH=%INSTALL_DIR%\bin;%PATH%
+    - ps: pushd build
     - ctest -C %configuration% --output-on-failure
+    - ps: pushd python
+    - IF DEFINED PYTHON FOR /F "tokens=*" %%G IN ('dir /b dist\*.whl') DO
+        pip install dist/%%G
+    - ps: popd
+    - IF DEFINED PYTHON python -c
+        "import segyio;f=segyio.open('python/test-data/small.sgy');print(f.ilines)"
+    - ps: popd
+    - IF DEFINED PYTHON python -m unittest discover -vs build/python/test -p *.py
+
+before_deploy:
+    - ps: pushd build/python
+
+after_deploy:
+    - ps: popd
+
+deploy_script:
+    - ps: |
+          If ($env:APPVEYOR_PULL_REQUEST_NUMBER) { return }
+          If ($env:SHARED -eq "ON") { return }
+          If ($env:APPVEYOR_REPO_BRANCH -ne "master") { return }
+          If (!$env:APPVEYOR_REPO_TAG ) { return }
+
+          Invoke-Expression "twine upload -u statoil-travis -p $env:pypipassword --skip-existing dist/*"
+          If ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode) }

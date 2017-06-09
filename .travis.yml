@@ -1,11 +1,14 @@
-language: generic
+language: python
 
 env:
-  - BUILD_TYPE=RELEASE; PYTHON=2.7;
-  - BUILD_TYPE=RELEASE; PYTHON=3.5;
-  - BUILD_TYPE=DEBUG; PYTHON=2.7;
-  - BUILD_TYPE=DEBUG; PYTHON=3.5;
-
+    global:
+        - UNICODE_WIDTH=32
+        - PLAT=x86_64
+    matrix:
+        - MB_PYTHON_VERSION=2.7
+        - MB_PYTHON_VERSION=3.4
+        - MB_PYTHON_VERSION=3.5
+        - MB_PYTHON_VERSION=3.6
 os:
   - linux
   - osx
@@ -14,54 +17,69 @@ compiler:
   - gcc
   - clang
 
+services: docker
+sudo: required
+
 matrix:
+    fast_finish: true
     exclude:
         - os: osx
-          compiler: gcc
         - os: linux
           compiler: clang
+    include:
+        - os: osx
+          language: generic
+          env: MB_PYTHON_VERSION=2.7
+        - os: osx
+          language: generic
+          env: MB_PYTHON_VERSION=3.4
+        - os: osx
+          language: generic
+          env: MB_PYTHON_VERSION=3.5
+        - os: osx
+          language: generic
+          env: MB_PYTHON_VERSION=3.6
 
 addons:
     apt:
       sources:
         - sourceline: 'ppa:sisib/ci-backports'
+        - george-edison55-precise-backports # cmake 3
       packages:
         - valgrind
         - cppcheck
+        - cmake
+        - cmake-data
+
+before_install:
+    - source multibuild/common_utils.sh
+    - source multibuild/travis_steps.sh
+    - before_install
 
 install:
-  # Valgrind is experimental(ish) on MacOS with false positives on among others printf
-  #- if [[ "$TRAVIS_OS_NAME" == "osx" && "$BUILD_TYPE" == "DEBUG" ]]; then
-  #    brew update;
-  #    brew install --HEAD valgrind;
-  #  fi
+  # on os x, python is set up in a virtualenv, but cmake tends to find a
+  # system-installed, incompatible python lib.
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-      export CONDA_OS=MacOSX;
-      brew update && brew install cppcheck;
-    else
-      export CONDA_OS=Linux;
+        brew update && brew install cppcheck;
+        if [[ -n "${MB_PYTHON_VERSION+1}" ]]; then
+            prefix=`python-config --prefix`;
+            pypath=$prefix/lib/libpython$MB_PYTHON_VERSION.dylib;
+            pylib="-DPYTHON_LIBRARY=$pypath";
+        fi
     fi
-  - if [[ "$PYTHON" == "2.7" ]]; then
-        wget https://repo.continuum.io/miniconda/Miniconda2-latest-${CONDA_OS}-x86_64.sh -O miniconda.sh;
-    else
-        wget https://repo.continuum.io/miniconda/Miniconda3-latest-${CONDA_OS}-x86_64.sh -O miniconda.sh;
-    fi
-  - bash miniconda.sh -b -p $HOME/miniconda
-  - export PATH="$HOME/miniconda/bin:$PATH"
-  - hash -r
-  - conda config --set always_yes yes --set changeps1 no
-  - conda update -q conda
-  - conda info -a
-
-  - conda install numpy cmake
+  - pip install numpy --upgrade
 
 before_script:
   - enabled="-DBUILD_PYTHON=OFF -DBUILD_MEX=OFF"
-  - if [[ -n "${PYTHON+1}" ]]; then enabled="$enabled -DBUILD_PYTHON=ON"; fi
+  - if [[ -n "${MB_PYTHON_VERSION+1}" ]]; then
+        enabled="$enabled -DBUILD_PYTHON=ON";
+    fi
   - cmake --version
   - mkdir build
   - pushd build
-  - cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBUILD_SHARED_LIBS=ON $enabled  ..
+  - cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+          -DBUILD_SHARED_LIBS=ON
+          $pylib $enabled ..
   - cppcheck --language=c
              --std=c99
              --enable=style,portability,performance,warning
@@ -71,5 +89,39 @@ before_script:
              --inline-suppr
              --project=compile_commands.json
              --error-exitcode=1
+  - popd
 script:
+  - pushd build
   - make && ctest --output-on-failure
+  - cat python/setup.py
+  - popd
+  - BUILD_COMMANDS=build_bdist_wheel build_wheel build/python
+  - install_run $PLAT
+  - mv wheelhouse build/python/dist
+
+before_deploy:
+    - pushd build/python
+
+after_deploy:
+    - popd
+
+deploy:
+    - provider: pypi # source distribution (done from linux python 3.6 only)
+      skip_cleanup: true
+      skip_upload_docs: true
+      user: statoil-travis
+      password:
+        secure: WHeA5x2iiXzjYXdgZeJU6l4fawRi/umqH1713QAj0RPZBAnD+9m8Zrpn2UWn9+1dtx6xUMkNg3ZTueVKTKo0f2i/4o0xkzQ5BW11cetCWusV2Dku1btPTA5Fhs+dvPDlL3m496a3Bq/A/fRDj5JLDiiPibvpM01lEBxFKYooWGQ75HVuhnAt57vabD45gDpIE7N23+So4+9bsG/nT/ZlgoaS01uLTdlnf6tjNgP0/UBkonmedC62iVvCu7itfHZMTY2rSeww7KBMI3s7Gz+cyx9IbI3shbDpdJGHpM8Qe+1oFi31Z+DylWQA5SkpHlLMUP+zjMKLF+1hXGNUeJuyadIFrxzbS3vTV2yRPa6ol8q+bX7YLy0xNLSE8aMm54LKgXfRKLc3G8d3I33oEfyk5hygY8iEX728r2TsARslYxOF3sZqJvY8lx4GBEDiXxX2GJvGCPy/Uby786uWnZlFFkDERk3nawE0W68zY0GElbutq6HMSk6v49J7em9Rg/QLptjoa0uF2A9Cy+BAJcnfauIawOG3UPXZ8kD60PTbu8tqtwtXO5lzTSIOr1lt3+6R8GmCc2hz2YXELKvdnZWYCXAjnNuC4eESlp7zxmzhpOVkb2Jy1v6rGKpcxVMggLQbOjOGWPLg9q4+OZQBw5bhMGmVGQhSBuxzEb/wBRy9XV8=
+      on:
+        condition: $TRAVIS_OS_NAME == linux && $MB_PYTHON_VERSION == 3.6
+        tags: true
+
+    - provider: pypi # upload built wheels
+      skip_cleanup: true
+      skip_upload_docs: true
+      user: statoil-travis
+      distributions: build
+      password:
+        secure: WHeA5x2iiXzjYXdgZeJU6l4fawRi/umqH1713QAj0RPZBAnD+9m8Zrpn2UWn9+1dtx6xUMkNg3ZTueVKTKo0f2i/4o0xkzQ5BW11cetCWusV2Dku1btPTA5Fhs+dvPDlL3m496a3Bq/A/fRDj5JLDiiPibvpM01lEBxFKYooWGQ75HVuhnAt57vabD45gDpIE7N23+So4+9bsG/nT/ZlgoaS01uLTdlnf6tjNgP0/UBkonmedC62iVvCu7itfHZMTY2rSeww7KBMI3s7Gz+cyx9IbI3shbDpdJGHpM8Qe+1oFi31Z+DylWQA5SkpHlLMUP+zjMKLF+1hXGNUeJuyadIFrxzbS3vTV2yRPa6ol8q+bX7YLy0xNLSE8aMm54LKgXfRKLc3G8d3I33oEfyk5hygY8iEX728r2TsARslYxOF3sZqJvY8lx4GBEDiXxX2GJvGCPy/Uby786uWnZlFFkDERk3nawE0W68zY0GElbutq6HMSk6v49J7em9Rg/QLptjoa0uF2A9Cy+BAJcnfauIawOG3UPXZ8kD60PTbu8tqtwtXO5lzTSIOr1lt3+6R8GmCc2hz2YXELKvdnZWYCXAjnNuC4eESlp7zxmzhpOVkb2Jy1v6rGKpcxVMggLQbOjOGWPLg9q4+OZQBw5bhMGmVGQhSBuxzEb/wBRy9XV8=
+      on:
+        tags: true

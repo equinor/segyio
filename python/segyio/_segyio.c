@@ -574,17 +574,16 @@ static PyObject *py_field_foreach(PyObject *self, PyObject *args ) {
         return NULL;
     }
 
-    int err = 0;
     const int* ind = bufindices.buf;
     int* out = bufout.buf;
     for( int i = 0; i < len; ++i ) {
-        err = segy_field_forall( fp, field,
-                                 ind[ i ],
-                                 ind[ i ] + 1,
-                                 1,
-                                 out + i,
-                                 trace0,
-                                 trace_bsize );
+        int err = segy_field_forall( fp, field,
+                                     ind[ i ],
+                                     ind[ i ] + 1,
+                                     1,
+                                     out + i,
+                                     trace0,
+                                     trace_bsize );
 
         if( err != SEGY_OK ) {
             PyBuffer_Release( &bufout );
