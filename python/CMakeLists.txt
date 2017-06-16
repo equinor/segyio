@@ -30,7 +30,7 @@ if (NOT PYTHONLIBS_FOUND)
 endif()
 
 add_library(_segyio MODULE segyio/_segyio.c)
-target_link_libraries(_segyio PUBLIC segyio ${PYTHON_LIBRARIES})
+target_link_libraries(_segyio PUBLIC segyio)
 target_include_directories(_segyio PRIVATE ${PYTHON_INCLUDE_DIRS})
 export(TARGETS _segyio segyio-shared segyio-static APPEND FILE segyio-config.cmake)
 
