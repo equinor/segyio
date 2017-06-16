@@ -56,9 +56,9 @@ endif ()
 #
 install(TARGETS segyio-static segyio-shared
         EXPORT segyio
-        ARCHIVE DESTINATION lib
-        LIBRARY DESTINATION lib
-        RUNTIME DESTINATION bin)
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(DIRECTORY include/ DESTINATION include)
 install(EXPORT segyio DESTINATION share/segyio/cmake FILE segyio-config.cmake)
 export(TARGETS segyio-static segyio-shared FILE segyio-config.cmake)

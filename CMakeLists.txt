@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8.11)
 project(segyio)
 
+include(GNUInstallDirs)
+
 set(segyio_MAJOR 1)
 set(segyio_MINOR 1)
 set(segyio_PATCH 0)
