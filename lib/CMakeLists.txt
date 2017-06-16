@@ -34,6 +34,8 @@ target_include_directories(
 add_library(segyio-shared SHARED ${SOURCE_FILES} ${DLL_EXPORT_FILES})
 target_link_libraries(segyio-shared ${SEGYIO_LIBRARIES})
 set_target_properties(segyio-shared PROPERTIES
+                      SOVERSION   ${segyio_MAJOR}
+                      VERSION     ${segyio_MAJOR}
                       OUTPUT_NAME segyio
                       CLEAN_DIRECT_OUTPUT 1)
 target_include_directories(
