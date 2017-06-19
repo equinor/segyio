@@ -34,7 +34,9 @@ target_link_libraries(_segyio PUBLIC segyio)
 target_include_directories(_segyio PRIVATE ${PYTHON_INCLUDE_DIRS})
 export(TARGETS _segyio segyio-shared segyio-static APPEND FILE segyio-config.cmake)
 
-if(NOT MSVC)
+if(MSVC)
+    target_link_libraries(_segyio PRIVATE ${PYTHON_LIBRARIES})
+else()
     target_compile_options(_segyio PUBLIC "-std=c99")
 endif ()
 
