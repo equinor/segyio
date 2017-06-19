@@ -25,10 +25,6 @@ environment:
         - PYTHON: C:\Python36
           LANG: -DBUILD_PYTHON=ON
           PYTHON_VERSION: 36
-        - PYTHON: C:\Python36
-          LANG: -DBUILD_PYTHON=ON
-          PYTHON_VERSION: 36
-          SHARED: ON
 
 matrix:
     fast_finish: true
