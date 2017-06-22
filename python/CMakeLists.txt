@@ -89,4 +89,5 @@ add_python_example(pysegyio python.example.write         examples/write.py test-
 add_python_example(pysegyio python.example.makefile      examples/make-file.py test-data/large-file.sgy 20 1 20 1 20)
 add_python_example(pysegyio python.example.makepsfile    examples/make-ps-file.py test-data/small-prestack.sgy 10 1 5 1 4 1 3)
 add_python_example(pysegyio python.example.subcube       examples/copy-sub-cube.py test-data/small.sgy test-data/copy.sgy)
+add_python_example(pysegyio python.example.rotate        examples/make-rotated-copies.py test-data/small.sgy)
 add_python_example(pysegyio python.example.scan_min_max  examples/scan_min_max.py test-data/small.sgy)

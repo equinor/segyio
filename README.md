@@ -125,12 +125,13 @@ demos in this
 Small SEG Y formatted files are included in the repository for test purposes.
 Phyiscally speaking the data is non-sensical, but it is reproducible by using
 Segyio. The tests file are located in the tests/test-data directory. To
-reproduce the data file, build Segyio and run the test program `make-file.py`
-and `make-ps-file.py` as such:
+reproduce the data file, build Segyio and run the test program `make-file.py`,
+`make-ps-file.py`, and `make-rotated-copies.py` as such:
 
 ```
 python examples/make-file.py small.sgy 50 1 6 20 25
 python examples/make-ps-file.py small-ps.sgy 10 1 5 1 4 1 3
+python examples/make-rotated-copies.py small.sgy
 ```
 
 If you have have small data files with a free license, feel free to submit it
