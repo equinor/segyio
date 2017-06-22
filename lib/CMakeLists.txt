@@ -14,11 +14,15 @@ if(WINDOWS)
     set(DLL_EXPORT_FILES src/segy.def)
 endif()
 
+if(NOT MSVC)
+    set(math "m")
+endif()
+
 #
 # static build
 #
 add_library(segyio-static STATIC ${SOURCE_FILES})
-target_link_libraries(segyio-static ${SEGYIO_LIBRARIES})
+target_link_libraries(segyio-static ${math} ${ws2})
 set_target_properties(segyio-static PROPERTIES
                       OUTPUT_NAME ${STATIC_NAME}
                       CLEAN_DIRECT_OUTPUT 1)
@@ -32,7 +36,7 @@ target_include_directories(
 # dynamic build
 #
 add_library(segyio-shared SHARED ${SOURCE_FILES} ${DLL_EXPORT_FILES})
-target_link_libraries(segyio-shared ${SEGYIO_LIBRARIES})
+target_link_libraries(segyio-shared ${math} ${ws2})
 set_target_properties(segyio-shared PROPERTIES
                       SOVERSION   ${segyio_MAJOR}
                       VERSION     ${segyio_MAJOR}
@@ -70,13 +74,9 @@ configure_file(${testdata}/small.sgy test-data/small.sgy             COPYONLY)
 configure_file(${testdata}/small.sgy test-data/small-traceheader.sgy COPYONLY)
 configure_file(${testdata}/text.sgy  test-data/text.sgy              COPYONLY)
 
-if(NOT MSVC)
-    set(math "m")
-endif()
-
 foreach (src segy utils)
     add_executable(test${src} test/${src}.c)
-    target_link_libraries(test${src} segyio-shared ${math})
+    target_link_libraries(test${src} segyio-shared)
     target_include_directories(test${src} PRIVATE src)
     add_test(c.${src} test${src})
     add_memcheck_test(test${src} test${src})

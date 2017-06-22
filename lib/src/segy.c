@@ -20,6 +20,7 @@
 
 #include <assert.h>
 #include <limits.h>
+#include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -1547,4 +1548,72 @@ int segy_textheader_size( void ) {
 
 int segy_binheader_size( void ) {
     return SEGY_BINARY_HEADER_SIZE;
+}
+
+static int scaled_cdp( segy_file* fp,
+                       int traceno,
+                       float* cdpx,
+                       float* cdpy,
+                       long trace0,
+                       int trace_bsize ) {
+    int32_t x, y, scalar;
+    char trheader[ SEGY_TRACE_HEADER_SIZE ];
+
+    int err = segy_traceheader( fp, traceno, trheader, trace0, trace_bsize );
+    if( err != 0 ) return err;
+
+    err = segy_get_field( trheader, SEGY_TR_CDP_X, &x );
+    if( err != 0 ) return err;
+    err = segy_get_field( trheader, SEGY_TR_CDP_Y, &y );
+    if( err != 0 ) return err;
+    err = segy_get_field( trheader, SEGY_TR_SOURCE_GROUP_SCALAR, &scalar );
+    if( err != 0 ) return err;
+
+    float scale = scalar;
+    if( scalar == 0 ) scale = 1.0;
+    if( scalar < 0 )  scale = -1.0 / scale;
+
+    *cdpx = x * scale;
+    *cdpy = y * scale;
+
+    return SEGY_OK;
+}
+
+int segy_rotation_cw( segy_file* fp,
+                      int line_length,
+                      int stride,
+                      int offsets,
+                      const int* linenos,
+                      int linenos_sz,
+                      float* rotation,
+                      long trace0,
+                      int trace_bsize ) {
+
+    struct coord { float x, y; } nw, sw;
+
+    int err;
+    int traceno;
+    err = segy_line_trace0( linenos[0], line_length,
+                                        stride,
+                                        offsets,
+                                        linenos,
+                                        linenos_sz,
+                                        &traceno );
+    if( err != 0 ) return err;
+
+    err = scaled_cdp( fp, traceno, &sw.x, &sw.y, trace0, trace_bsize );
+    if( err != 0 ) return err;
+
+    /* read the last trace in the line */
+    traceno += (line_length - 1) * stride * offsets;
+    err = scaled_cdp( fp, traceno, &nw.x, &nw.y, trace0, trace_bsize );
+    if( err != 0 ) return err;
+
+    float x = nw.x - sw.x;
+    float y = nw.y - sw.y;
+    float radians = x || y ? atan2( x, y ) : 0;
+    if( radians < 0 ) radians += 2 * acos(-1);
+
+    *rotation = radians;
+    return SEGY_OK;
 }

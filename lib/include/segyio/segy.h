@@ -324,6 +324,41 @@ int segy_line_trace0( int lineno,
                       int* traceno );
 
 /*
+ * Find the `rotation` of the survey in radians.
+ *
+ * Returns the clock-wise rotation around north, i.e. the angle between the
+ * first line given and north axis. In this context, north is the direction
+ * that yields a higher CDP-Y coordinate, and east is the direction that yields
+ * a higher CDP-X coordinate.
+ *
+ * N
+ * |
+ * |
+ * | +
+ * | |~~/``````/
+ * | | /------/
+ * | |/,,,,,,/
+ * |
+ * +--------------- E
+ *
+ *
+ * When the survey is as depicted, and the first line is starting in the
+ * south-west corner and goes north, the angle (~~) is < pi/4. If the first
+ * line is parallel with equator moving east, the angle is pi/2.
+ *
+ * The return value is in the domain [0, 2pi)
+ */
+int segy_rotation_cw( segy_file*,
+                      int line_length,
+                      int stride,
+                      int offsets,
+                      const int* linenos,
+                      int linenos_sz,
+                      float* rotation,
+                      long trace0,
+                      int trace_bsize );
+
+/*
  * Find the stride needed for an inline/crossline traversal.
  */
 int segy_inline_stride( int sorting,
