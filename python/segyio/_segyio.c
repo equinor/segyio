@@ -1171,6 +1171,52 @@ static PyObject * py_format(PyObject *self, PyObject *args) {
     return out;
 }
 
+static PyObject* py_rotation(PyObject *self, PyObject* args) {
+    PyObject* file = NULL;
+    int line_length;
+    int stride;
+    int offsets;
+    PyObject* linenos;
+    long trace0;
+    int trace_bsize;
+
+    PyArg_ParseTuple( args, "OiiiOli", &file,
+                                       &line_length,
+                                       &stride,
+                                       &offsets,
+                                       &linenos,
+                                       &trace0,
+                                       &trace_bsize );
+
+    segy_file* fp = get_FILE_pointer_from_capsule( file );
+    if( PyErr_Occurred() ) { return NULL; }
+
+    if ( !PyObject_CheckBuffer( linenos ) ) {
+        PyErr_SetString(PyExc_TypeError, "The linenos object is not a correct buffer object");
+        return NULL;
+    }
+
+    Py_buffer buffer;
+    PyObject_GetBuffer(linenos, &buffer, PyBUF_FORMAT | PyBUF_C_CONTIGUOUS);
+    int linenos_sz = PyObject_Length( linenos );
+
+    errno = 0;
+    float rotation;
+    int err = segy_rotation_cw( fp, line_length,
+                                    stride,
+                                    offsets,
+                                    (const int*)buffer.buf,
+                                    linenos_sz,
+                                    &rotation,
+                                    trace0,
+                                    trace_bsize );
+    int errn = errno;
+    PyBuffer_Release( &buffer );
+
+    if( err != 0 ) return py_handle_segy_error_with_index_and_name( err, errn, 0, "Inline" );
+    return PyFloat_FromDouble( rotation );
+}
+
 
 /*  define functions in module */
 static PyMethodDef SegyMethods[] = {
@@ -1210,6 +1256,7 @@ static PyMethodDef SegyMethods[] = {
         {"depth_slice",        (PyCFunction) py_read_depth_slice,   METH_VARARGS, "Read a depth slice."},
         {"get_dt",             (PyCFunction) py_get_dt,             METH_VARARGS, "Read dt from file."},
         {"native",             (PyCFunction) py_format,             METH_VARARGS, "Convert to native float."},
+        {"rotation",           (PyCFunction) py_rotation,           METH_VARARGS, "Find survey clock-wise rotation in radians"},
         {NULL, NULL, 0, NULL}
 };
 
