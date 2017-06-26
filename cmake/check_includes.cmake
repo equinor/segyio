@@ -3,8 +3,10 @@ include(CheckFunctionExists)
 
 # Portability checks; look for htons function
 check_include_file("netinet/in.h" HAVE_NETINET_IN_H)
-check_include_file("arpa/inet.h" HAVE_ARPA_INET_H)
-check_include_file("winsock2.h" HAVE_WINSOCK2_H)
+check_include_file("arpa/inet.h"  HAVE_ARPA_INET_H)
+check_include_file("winsock2.h"   HAVE_WINSOCK2_H)
+check_include_file("getopt.h"     HAVE_GETOPT_H)
+check_function_exists(getopt_long HAVE_GETOPT_LONG)
 
 if (HAVE_NETINET_IN_H)
     add_definitions("-DHAVE_NETINET_IN_H")
