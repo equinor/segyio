@@ -1504,17 +1504,27 @@ int segy_crossline_stride( int sorting,
     }
 }
 
-int segy_read_textheader( segy_file* fp, char *buf) { //todo: Missing position/index support
-    if(fp == NULL) {
-        return SEGY_FSEEK_ERROR;
-    }
-    rewind( fp->fp );
+int segy_read_textheader( segy_file* fp, char *buf) {
+    return segy_read_ext_textheader(fp, -1, buf );
+}
 
-    const size_t read = fread( buf, 1, SEGY_TEXT_HEADER_SIZE, fp->fp );
+int segy_read_ext_textheader( segy_file* fp, int pos, char *buf) {
+    if( pos < -1 ) return SEGY_INVALID_ARGS;
+    if( !fp ) return SEGY_FSEEK_ERROR;
+
+    const long offset = pos == -1 ? 0 :
+                        SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE +
+                        ((pos-1) * SEGY_TEXT_HEADER_SIZE);
+
+    int err = fseek( fp->fp, offset, SEEK_SET );
+    if( err != 0 ) return SEGY_FSEEK_ERROR;
+
+    char localbuf[ SEGY_TEXT_HEADER_SIZE + 1 ];
+    const size_t read = fread( localbuf, 1, SEGY_TEXT_HEADER_SIZE, fp->fp );
     if( read != SEGY_TEXT_HEADER_SIZE ) return SEGY_FREAD_ERROR;
 
-    buf[ SEGY_TEXT_HEADER_SIZE ] = '\0';
-    ebcdic2ascii( buf, buf );
+    localbuf[ SEGY_TEXT_HEADER_SIZE ] = '\0';
+    ebcdic2ascii( localbuf, buf );
     return SEGY_OK;
 }
 

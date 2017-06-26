@@ -235,7 +235,9 @@ static PyObject *py_read_texthdr(PyObject *self, PyObject *args) {
 
     char *buffer = malloc(sizeof(char) * (segy_textheader_size()));
 
-    int error = segy_read_textheader(p_FILE, buffer);
+    int error = index == 0
+              ? segy_read_textheader(p_FILE, buffer)
+              : segy_read_ext_textheader(p_FILE, index - 1, buffer);
 
     if (error != 0) {
         free(buffer);

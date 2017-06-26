@@ -89,6 +89,12 @@ int segy_sample_indices( segy_file*,
 /* text header operations */
 int segy_read_textheader( segy_file*, char *buf);
 int segy_textheader_size( void );
+/*
+ * read the extended textual headers. `pos = 0` gives the first *extended*
+ * header, i.e. the first textual header following the binary header.
+ * Behaviour is undefined if the file does not have extended headers
+ */
+int segy_read_ext_textheader( segy_file*, int pos, char* buf );
 int segy_write_textheader( segy_file*, int pos, const char* buf );
 
 /* Read the trace header at `traceno` into `buf`. */

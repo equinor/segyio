@@ -21,6 +21,7 @@ segy_traces
 segy_sample_indices
 segy_read_textheader
 segy_textheader_size
+segy_read_ext_textheader
 segy_write_textheader
 segy_traceheader
 segy_write_traceheader
