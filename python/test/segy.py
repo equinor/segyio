@@ -226,6 +226,23 @@ class TestSegy(TestCase):
             self.assertEqual(f.header[0][xl], f.header[1][xl])
             self.assertNotEqual(f.header[1][xl], f.header[2][xl])
 
+    def test_header_dict_methods(self):
+        with segyio.open(self.filename, "r") as f:
+            self.assertEqual(89, len(list(f.header[0].keys())))
+            self.assertEqual(89, len(list(f.header[1].values())))
+            self.assertEqual(89, len(list(f.header[2].items())))
+            self.assertEqual(89, len(list(f.header[3])))
+            self.assertTrue(0 not in f.header[0])
+            self.assertTrue(1 in f.header[0])
+            self.assertTrue(segyio.su.cdpx in f.header[0])
+            iter(f.header[0])
+
+            self.assertEqual(30, len(f.bin.keys()))
+            self.assertEqual(30, len(list(f.bin.values())))
+            self.assertEqual(30, len(list(f.bin.items())))
+            self.assertEqual(30, len(f.bin))
+            iter(f.bin)
+
     def test_headers_line_offset(self):
         with TestContext("headers_line_offset") as context:
             context.copy_file(self.prestack)
