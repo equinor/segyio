@@ -140,3 +140,50 @@ def cube(f):
     smps = len(f.samples)
     dims = (fast, slow, smps) if offs == 1 else (fast, slow, offs, smps)
     return f.trace.raw[:].reshape(dims)
+
+def rotation(f, line = 'fast'):
+    """ Find rotation of the survey
+
+    Since v1.2
+
+    Find the clock-wise rotation and origin of `line` as (rot,cdp-x,cdp-y)
+
+    The clock-wise rotation is defined as the angle in radians between line
+    given by the first and last trace of the first line and the axis that gives
+    increasing CDP-Y, in the direction that gives increasing CDP-X.
+
+    By default, the first line is the 'fast' direction, which is inlines if the
+    file is inline sorted, and crossline if it's crossline sorted. `line`
+    should be any of 'fast', 'slow', 'iline', and 'xline'.
+
+    :type f: SegyFile
+    :type line: str
+    :rtype (float, int, int)
+    """
+
+    if f.unstructured:
+        raise ValueError("Rotation requires a structured file")
+
+    lines = { 'fast': f.fast,
+              'slow': f.slow,
+              'iline': f.iline,
+              'xline': f.xline,
+            }
+
+    if line not in lines:
+        error = "Unknown line '%s'" % line
+        solution = "Must be any of: " % ' '.join(lines.keys())
+        raise ValueError('%s. %s' % (error, solution))
+
+    l = lines[line]
+    origin = f.header[0][segyio.su.cdpx, segyio.su.cdpy]
+    cdpx, cdpy = origin[segyio.su.cdpx], origin[segyio.su.cdpy]
+
+    rot = segyio._segyio.rotation(f.xfd,
+                                  l.len,
+                                  l.stride,
+                                  len(f.offsets),
+                                  l.lines,
+                                  f._tr0,
+                                  f._bsz)
+    return rot, cdpx, cdpy

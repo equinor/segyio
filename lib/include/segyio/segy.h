@@ -89,6 +89,12 @@ int segy_sample_indices( segy_file*,
 /* text header operations */
 int segy_read_textheader( segy_file*, char *buf);
 int segy_textheader_size( void );
+/*
+ * read the extended textual headers. `pos = 0` gives the first *extended*
+ * header, i.e. the first textual header following the binary header.
+ * Behaviour is undefined if the file does not have extended headers
+ */
+int segy_read_ext_textheader( segy_file*, int pos, char* buf );
 int segy_write_textheader( segy_file*, int pos, const char* buf );
 
 /* Read the trace header at `traceno` into `buf`. */
@@ -322,6 +328,41 @@ int segy_line_trace0( int lineno,
                       const int* linenos,
                       int linenos_sz,
                       int* traceno );
+
+/*
+ * Find the `rotation` of the survey in radians.
+ *
+ * Returns the clock-wise rotation around north, i.e. the angle between the
+ * first line given and north axis. In this context, north is the direction
+ * that yields a higher CDP-Y coordinate, and east is the direction that yields
+ * a higher CDP-X coordinate.
+ *
+ * N
+ * |
+ * |
+ * | +
+ * | |~~/``````/
+ * | | /------/
+ * | |/,,,,,,/
+ * |
+ * +--------------- E
+ *
+ *
+ * When the survey is as depicted, and the first line is starting in the
+ * south-west corner and goes north, the angle (~~) is < pi/4. If the first
+ * line is parallel with equator moving east, the angle is pi/2.
+ *
+ * The return value is in the domain [0, 2pi)
+ */
+int segy_rotation_cw( segy_file*,
+                      int line_length,
+                      int stride,
+                      int offsets,
+                      const int* linenos,
+                      int linenos_sz,
+                      float* rotation,
+                      long trace0,
+                      int trace_bsize );
 
 /*
  * Find the stride needed for an inline/crossline traversal.

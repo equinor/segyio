@@ -1,9 +1,11 @@
 cmake_minimum_required(VERSION 2.8.11)
 project(segyio)
 
-set(segyio_MAJOR 1)
-set(segyio_MINOR 1)
-set(segyio_PATCH 0)
+include(GNUInstallDirs)
+
+set(segyio_MAJOR 1 CACHE STRING "")
+set(segyio_MINOR 2 CACHE STRING "")
+set(segyio_PATCH 0 CACHE STRING "")
 set(segyio_VERSION ${segyio_MAJOR}.${segyio_MINOR}.${segyio_PATCH})
 
 if (POLICY CMP0042)
@@ -28,17 +30,6 @@ include(check_includes)
 include(default_warnings)
 include(segyio_testing)
 enable_testing()
-
-if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-    set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install"
-        CACHE PATH "Default install path" FORCE)
-endif ()
-
-if (NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "Release"
-        CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel."
-        FORCE)
-endif(NOT CMAKE_BUILD_TYPE)
 
 set(testdata ${CMAKE_CURRENT_SOURCE_DIR}/test-data)
 

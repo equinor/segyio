@@ -25,10 +25,6 @@ environment:
         - PYTHON: C:\Python36
           LANG: -DBUILD_PYTHON=ON
           PYTHON_VERSION: 36
-        - PYTHON: C:\Python36
-          LANG: -DBUILD_PYTHON=ON
-          PYTHON_VERSION: 36
-          SHARED: ON
 
 matrix:
     fast_finish: true
@@ -57,6 +53,7 @@ build_script:
     - ps: pushd build
     - cmake %APPVEYOR_BUILD_FOLDER% %W64% %MEX% %LANG% -DBUILD_SHARED_LIBS=%SHARED% -DCMAKE_INSTALL_PREFIX=%INSTALL_DIR%
     - cmake --build . --config "%configuration%" --target install
+    - ctest -C "%configuration%" --output-on-failure
     - ps: pushd python
     - cat setup.py
     - IF DEFINED PYTHON python setup.py build_py

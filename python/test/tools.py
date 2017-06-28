@@ -1,5 +1,7 @@
+from __future__ import division
 from unittest import TestCase
 
+import math
 from segyio import BinField
 from segyio import TraceField
 import numpy as np
@@ -99,3 +101,29 @@ class ToolsTest(TestCase):
             dims = (len(f.ilines), len(f.xlines), len(f.offsets), len(f.samples))
             x = segyio.tools.collect(f.trace[:]).reshape(dims)
             self.assertTrue(np.all(x == segyio.tools.cube(f)))
+
+    def test_unstructured_rotation(self):
+        with self.assertRaises(ValueError):
+            with segyio.open(self.filename, ignore_geometry = True) as f:
+                segyio.tools.rotation(f)
+
+    def test_rotation(self):
+        names = ['normal', 'acute', 'right', 'obtuse',
+                 'straight', 'reflex', 'left', 'inv-acute']
+        angles = [0.000, 0.785, 1.571, 2.356,
+                  3.142, 3.927, 4.712, 5.498]
+        rights = [1.571, 2.356, 3.142, 3.927,
+                  4.712, 5.498, 0.000, 0.785 ]
+
+        def rotation(x, **kwargs): return segyio.tools.rotation(x, **kwargs)[0]
+        close = self.assertAlmostEqual
+
+        for name, angle, right in zip(names, angles, rights):
+            src = self.filename.replace('/', '/' + name + '-')
+
+            with segyio.open(src) as f:
+                close(angle, rotation(f), places = 3)
+                close(angle, rotation(f, line = 'fast'),  places = 3)
+                close(angle, rotation(f, line = 'iline'), places = 3)
+                close(right, rotation(f, line = 'slow'),  places = 3)
+                close(right, rotation(f, line = 'xline'), places = 3)

@@ -2,23 +2,35 @@ import segyio
 from segyio import BinField
 from segyio import TraceField
 
+class Field(object):
+    _bin_keys = [x for x in BinField.enums()
+                 if  x != BinField.Unassigned1
+                 and x != BinField.Unassigned2]
 
-class Field:
-    def __init__(self, buf, write, field_type, traceno=None):
+    _tr_keys = [x for x in TraceField.enums()
+                if  x != TraceField.UnassignedInt1
+                and x != TraceField.UnassignedInt2]
+
+
+    def __init__(self, buf, write, field_type, traceno=None, keys = _tr_keys):
         self.buf = buf
         self.traceno = traceno
-        self._get_field = segyio._segyio.get_field
-        self._set_field = segyio._segyio.set_field
         self._field_type = field_type
+        self._keys = keys
         self._write = write
 
-    def __getitem__(self, field):
+    def _get_field(self, *args):
+        return segyio._segyio.get_field(self.buf, *args)
 
+    def _set_field(self, *args):
+        return segyio._segyio.set_field(self.buf, *args)
+
+    def __getitem__(self, field):
         # add some structure so we can always iterate over fields
         if isinstance(field, int) or isinstance(field, self._field_type):
             field = [field]
 
-        d = {self._field_type(f): self._get_field(self.buf, f) for f in field}
+        d = {self._field_type(f): self._get_field(f) for f in field}
 
         # unpack the dictionary. if header[field] is requested, a
         # plain, unstructed output is expected, but header[f1,f2,f3]
@@ -28,15 +40,33 @@ class Field:
 
         return d
 
+    def keys(self):
+        return list(self._keys)
+
+    def values(self):
+        return map(self._get_field, self.keys())
+
+    def items(self):
+        return zip(self.keys(), self.values())
+
+    def __contains__(self, key):
+        return key in self._keys
+
+    def __len__(self):
+        return len(self._keys)
+
+    def __iter__(self):
+        return iter(self._keys)
+
     def __setitem__(self, field, val):
-        self._set_field(self.buf, field, val)
+        self._set_field(field, val)
         self._write(self.buf, self.traceno)
 
     def update(self, value):
         buf = self.buf
         if isinstance(value, dict):
             for k, v in value.items():
-                self._set_field(buf, int(k), v)
+                self._set_field(int(k), v)
         else:
             buf = value.buf
 
@@ -56,7 +86,7 @@ class Field:
         def wr(buf, *_):
             segyio._segyio.write_binaryheader(segy.xfd, buf)
 
-        return Field(buf, write=wr, field_type=BinField)
+        return Field(buf, write=wr, field_type=BinField, keys = Field._bin_keys)
 
     @classmethod
     def trace(cls, buf, traceno, segy):
@@ -78,11 +108,10 @@ class Field:
         def wr(buf, traceno):
             segyio._segyio.write_traceheader(segy.xfd, traceno, buf, segy._tr0, segy._bsz)
 
-        return Field(buf, traceno=traceno, write=wr, field_type=TraceField)
+        return Field(buf, traceno=traceno,
+                          write=wr,
+                          field_type=TraceField,
+                          keys=Field._tr_keys)
 
     def __repr__(self):
-        def assigned(x):
-            return x != BinField.Unassigned1 and x != BinField.Unassigned2
-
-        fields = filter(assigned, self._field_type.enums())
-        return self[fields].__repr__()
+        return self[self.keys()].__repr__()

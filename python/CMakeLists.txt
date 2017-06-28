@@ -30,11 +30,13 @@ if (NOT PYTHONLIBS_FOUND)
 endif()
 
 add_library(_segyio MODULE segyio/_segyio.c)
-target_link_libraries(_segyio PUBLIC segyio ${PYTHON_LIBRARIES})
+target_link_libraries(_segyio PUBLIC segyio)
 target_include_directories(_segyio PRIVATE ${PYTHON_INCLUDE_DIRS})
 export(TARGETS _segyio segyio-shared segyio-static APPEND FILE segyio-config.cmake)
 
-if(NOT MSVC)
+if(MSVC)
+    target_link_libraries(_segyio PRIVATE ${PYTHON_LIBRARIES})
+else()
     target_compile_options(_segyio PUBLIC "-std=c99")
 endif ()
 
@@ -87,4 +89,5 @@ add_python_example(pysegyio python.example.write         examples/write.py test-
 add_python_example(pysegyio python.example.makefile      examples/make-file.py test-data/large-file.sgy 20 1 20 1 20)
 add_python_example(pysegyio python.example.makepsfile    examples/make-ps-file.py test-data/small-prestack.sgy 10 1 5 1 4 1 3)
 add_python_example(pysegyio python.example.subcube       examples/copy-sub-cube.py test-data/small.sgy test-data/copy.sgy)
+add_python_example(pysegyio python.example.rotate        examples/make-rotated-copies.py test-data/small.sgy)
 add_python_example(pysegyio python.example.scan_min_max  examples/scan_min_max.py test-data/small.sgy)
