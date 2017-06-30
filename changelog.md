@@ -1,3 +1,18 @@
+# 2017.06
+* seismic unix-style aliases are available for python in the segyio.su
+  namespace
+* segyio has learned how to calculate the rotation of the cube
+  (segy_rotation_cw and segyio.tools.rotation)
+* The python header objects behave more as dicts as expected
+* The new program segyio-cath is added, a cat-like program that concatenate
+  text headers.
+* Infrastructure improvements
+* segyio for python is available via pypi (pip)
+* segyio is now meant to be consumed with binary downloads of versions, but
+  with a rapid release cycle. Releases within a major release will be backwards
+  compatible
+* Shared linking of the python extension is considered deprecated on Windows.
+
 # 2017.05
 * Requirements for the shape of the right hand side of `f.trace[:] =`
   expressions are relaxed and accepts more inputs
