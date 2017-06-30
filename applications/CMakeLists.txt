@@ -15,9 +15,9 @@ target_link_libraries(segyinfo segyio)
 add_executable(segyinspect segyinspect.c)
 target_link_libraries(segyinspect segyio)
 
-add_executable(segycath segycath.c)
-target_link_libraries(segycath segyio)
-target_compile_definitions(segycath PRIVATE
+add_executable(segyio-cath segyio-cath.c)
+target_link_libraries(segyio-cath segyio)
+target_compile_definitions(segyio-cath PRIVATE
     -Dsegyio_MAJOR=${segyio_MAJOR}
     -Dsegyio_MINOR=${segyio_MINOR}
 )
@@ -25,4 +25,4 @@ target_compile_definitions(segycath PRIVATE
 install(TARGETS segyinfo DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 install(TARGETS segyinspect DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 
-install(TARGETS segycath DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS segyio-cath DESTINATION ${CMAKE_INSTALL_BINDIR})

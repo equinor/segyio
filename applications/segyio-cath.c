@@ -9,7 +9,7 @@
 #include <segyio/segy.h>
 
 static int help() {
-    puts( "Usage: segycath [OPTION]... [FILE]...\n"
+    puts( "Usage: segyio-cath [OPTION]... [FILE]...\n"
           "Concatenate the textual header(s) from FILE(s) to standard output.\n"
           "\n"
           "-n, --num        the textual header to show, starts at 0\n"
@@ -28,7 +28,7 @@ static int help() {
 }
 
 static int printversion() {
-    printf( "segycath (segyio version %d.%d)\n", segyio_MAJOR, segyio_MINOR );
+    printf( "segyio-cath (segyio version %d.%d)\n", segyio_MAJOR, segyio_MINOR );
     return 0;
 }
 
