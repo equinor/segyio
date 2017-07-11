@@ -120,7 +120,7 @@ int main( int argc, char** argv ) {
     for( int i = optind; i < argc; ++i ) {
         segy_file* fp = segy_open( argv[ i ], "r" );
 
-        if( !fp ) fprintf( stderr, "segycath: %s: No such file or directory\n",
+        if( !fp ) fprintf( stderr, "segyio-cath: %s: No such file or directory\n",
                            argv[ i ] );
 
         if( !fp && strict ) return exit_error( errno, NULL );
