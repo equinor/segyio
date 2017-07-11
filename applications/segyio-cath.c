@@ -18,7 +18,7 @@ static int help() {
           "                 primarily meant for shell scripts\n"
           "-S, --nonstrict  ignore missing headers\n"
           "                 this is the default behaviour\n"
-          "    --version    ouput version information and exit\n"
+          "    --version    output version information and exit\n"
           "    --help       display this help and exit\n"
           "\n"
           "By default, only the non-extended header is printed, which is\n"
