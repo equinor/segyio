@@ -25,7 +25,15 @@ target_compile_definitions(segyio-cath PRIVATE
     -Dsegyio_MINOR=${segyio_MINOR}
 )
 
+add_executable(segyio-crop segyio-crop.c)
+target_link_libraries(segyio-crop segyio apputils)
+target_compile_definitions(segyio-crop PRIVATE
+    -Dsegyio_MAJOR=${segyio_MAJOR}
+    -Dsegyio_MINOR=${segyio_MINOR}
+)
+
 install(TARGETS segyinfo DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 install(TARGETS segyinspect DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 
 install(TARGETS segyio-cath DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS segyio-crop DESTINATION ${CMAKE_INSTALL_BINDIR})
