@@ -18,7 +18,7 @@ static int help() {
           "                 primarily meant for shell scripts\n"
           "-S, --nonstrict  ignore missing headers\n"
           "                 this is the default behaviour\n"
-          "    --version    ouput version information and exit\n"
+          "    --version    output version information and exit\n"
           "    --help       display this help and exit\n"
           "\n"
           "By default, only the non-extended header is printed, which is\n"
@@ -120,7 +120,7 @@ int main( int argc, char** argv ) {
     for( int i = optind; i < argc; ++i ) {
         segy_file* fp = segy_open( argv[ i ], "r" );
 
-        if( !fp ) fprintf( stderr, "segycath: %s: No such file or directory\n",
+        if( !fp ) fprintf( stderr, "segyio-cath: %s: No such file or directory\n",
                            argv[ i ] );
 
         if( !fp && strict ) return exit_error( errno, NULL );
