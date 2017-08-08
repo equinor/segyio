@@ -9,6 +9,9 @@ if (NOT MSVC)
     set(CMAKE_C_FLAGS "-std=c99 ${CMAKE_C_FLAGS}")
 endif()
 
+add_library(apputils STATIC apputils.c)
+target_link_libraries(apputils segyio)
+
 add_executable(segyinfo segyinfo.c)
 target_link_libraries(segyinfo segyio)
 
@@ -16,7 +19,7 @@ add_executable(segyinspect segyinspect.c)
 target_link_libraries(segyinspect segyio)
 
 add_executable(segyio-cath segyio-cath.c)
-target_link_libraries(segyio-cath segyio)
+target_link_libraries(segyio-cath segyio apputils)
 target_compile_definitions(segyio-cath PRIVATE
     -Dsegyio_MAJOR=${segyio_MAJOR}
     -Dsegyio_MINOR=${segyio_MINOR}
