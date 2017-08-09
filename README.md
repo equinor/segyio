@@ -1,4 +1,4 @@
-# SEGY IO [![Build Status](https://travis-ci.org/Statoil/SegyIO.svg?branch=master)](https://travis-ci.org/Statoil/SegyIO)
+# SEGY IO [![Build Status](https://travis-ci.org/Statoil/segyio.svg?branch=master)](https://travis-ci.org/Statoil/segyio)
 
 ## Introduction ##
 
@@ -33,7 +33,7 @@ At this stage three different type of segy files can be read and written:
  * Pre-stack 4D volumes, sorted with respect to three header words (generally INLINE, CROSSLINE, and OFFSET)
  * Unstructured data
 
-The writing functionality in Segyio is largely meant to *modify* or adapt
+The writing functionality in segyio is largely meant to *modify* or adapt
 files. A file created from scratch is not necessarily a to-spec SEG-Y file, as
 we only necessarily write the header fields segyio needs to make sense of the
 geometry. It is still highly recommended that SEG-Y files are maintained and
@@ -41,14 +41,14 @@ written according to specification, but segyio does not mandate this.
 
 ## Getting started ##
 
-When Segyio is built and installed, you're ready to start programming! For
+When segyio is built and installed, you're ready to start programming! For
 examples and documentation, check out the examples in the python/examples
 directory.  If you're using python, pydoc is used, so fire up your favourite
 python interpreter and type `help(segyio)` to get started.
 
 ### Requirements ###
 
-To build and use Segyio you need:
+To build and use segyio you need:
  * A C99 compatible C compiler (tested mostly on gcc and clang)
  * [CMake](https://cmake.org/) version 2.8.8 or greater
  * [Python](https://www.python.org/) 2.7 or 3.x.
@@ -57,7 +57,7 @@ To build and use Segyio you need:
 
 #### Users ####
 
-To build and install Segyio, perform the following actions in your console:
+To build and install segyio, perform the following actions in your console:
 
 ```
 git clone --recursive https://github.com/Statoil/segyio
@@ -97,7 +97,7 @@ recommended that new features added are demonstrated for correctness and
 contract by adding a test. Feel free to use the tests already written as a
 guide.
 
-After building Segyio you can run the tests with `ctest`, executed from the
+After building segyio you can run the tests with `ctest`, executed from the
 build directory.
 
 Please note that to run the python examples you need to let your environment know
@@ -124,8 +124,8 @@ demos in this
 
 Small SEG Y formatted files are included in the repository for test purposes.
 Phyiscally speaking the data is non-sensical, but it is reproducible by using
-Segyio. The tests file are located in the tests/test-data directory. To
-reproduce the data file, build Segyio and run the test program `make-file.py`,
+segyio. The tests file are located in the tests/test-data directory. To
+reproduce the data file, build segyio and run the test program `make-file.py`,
 `make-ps-file.py`, and `make-rotated-copies.py` as such:
 
 ```
