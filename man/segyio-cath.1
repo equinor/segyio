@@ -1,0 +1,47 @@
+.TH SEGYIO-CATH 1
+.SH NAME
+segyio-cath \- Concatenate SEG-Y text headers and print on the standard output
+.SH SYNPOSIS
+.B segyio-cath
+[\fIOPTION\fR]...
+[\fIFILE\fR]...
+.SH DESCRIPTION
+.B segyio-cath
+Concatenate the SEG-Y text headers in FILEs.
+
+By default, only the non-extended header is printed, which is equivalent to
+--num 0.
+
+Mandatory arguments to long options are mandatory for short options too.
+
+.SH OPTIONS
+.TP
+.BR \-n ", " \-\-num =\fINUM\fR
+the textual header to show, starts at 0
+
+.TP
+.BR \-a ", " \-\-all
+print all headers
+
+.TP
+.BR \-s ", " \-\-strict
+abort if a header or file is not found
+primarily meant for shell scripts
+
+.TP
+.BR \-S ", " \-\-nonstrict
+ignore missing headers
+this is the default behaviour
+
+.TP
+.BR \-\-version
+output version information and exit
+
+.TP
+.BR \-\-help
+display this help and exit
+
+.SH COPYRIGHT
+Copyright © Statoil ASA. License LPLv3+: GNU LGPL version 3 or later <http://gnu.org/licenses/lgpl.html>.
+
+This is free software: you are free to change and redistribute it.  There is NO WARRANTY, to the extent permitted by law.

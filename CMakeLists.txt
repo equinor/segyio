@@ -39,3 +39,4 @@ add_subdirectory(mex)
 add_subdirectory(python)
 
 add_subdirectory(applications)
+add_subdirectory(man)
