@@ -471,6 +471,15 @@ class TestSegy(TestCase):
             self.assertEqual(1, f.header[0][189])
             self.assertEqual(1, f.header[1][TraceField.INLINE_3D])
             self.assertEqual(1, f.header[1][segyio.su.iline])
+            self.assertEqual(5, f.header[-1][segyio.su.iline])
+            self.assertEqual(5, f.header[24][segyio.su.iline])
+            self.assertEqual(dict(f.header[-1]), dict(f.header[24]))
+
+            with self.assertRaises(IndexError):
+                f.header[30]
+
+            with self.assertRaises(IndexError):
+                f.header[-30]
 
             with self.assertRaises(IndexError):
                 f.header[0][188] # between byte offsets

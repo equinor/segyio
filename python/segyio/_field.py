@@ -90,8 +90,11 @@ class Field(object):
 
     @classmethod
     def trace(cls, buf, traceno, segy):
-        if traceno >= segy.tracecount:
-            raise IndexError("Trace number out of range: 0 <= %d < %d" % (traceno, segy.tracecount))
+        if traceno < 0:
+            traceno = segy.tracecount + traceno
+
+        if traceno >= segy.tracecount or traceno < 0:
+            raise IndexError("Header out of range: 0 <= %d < %d" % (traceno, segy.tracecount))
 
         if buf is None:
             buf = segyio._segyio.empty_traceheader()
