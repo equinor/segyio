@@ -217,7 +217,10 @@ class SegyFile(object):
         both in individual (trace) mode and line mode. Individual headers are
         accessed via generators and are not read from or written to disk until
         the generator is realised and the header in question is used. Supports
-        python slicing (which yields a generator), as well as direct lookup.
+        python slicing (which yields a generator), as well as direct lookup and
+        common dict operations.
+
+        The header can be considered a dictionary with a constant set of keys.
 
         Examples:
             Reading a field in a trace::
@@ -306,6 +309,24 @@ class SegyFile(object):
 
             Set offset line 3 offset 3 to 5::
                 >>> f.header.iline[3, 3] = { TraceField.offset: 5 }
+
+            Since v1.3, common dict operations are supported.
+
+            Get a list of keys and values::
+                >>> f.header[10].keys()
+                >>> f.header[10].values()
+
+            Get a list of key-value pairs::
+                >>> f.header[10].items()
+
+            Get the number of keys-value pairs in a header::
+                >>> len(f.header[10])
+
+            Update a set of values::
+                >>> d = { segyio.su.tracl: 10, segyio.su.nhs: 5 }
+                >>> f.header[10].update(d)
+                >>> l = [ (segyio.su.sy, 11), (segyio.su.sx, 4) ]
+                >>> f.header[11].update(l)
 
         :rtype: segyio._header.Header
         """
@@ -1066,6 +1087,24 @@ class SegyFile(object):
 
             Write multiple fields in a trace::
                 >>> f.bin = { 3213: 5, BinField.SweepFrequencyStart: 17 }
+
+            Since v1.3, common dict operations are supported.
+
+            Get a list of keys and values::
+                >>> f.bin.keys()
+                >>> f.bin.values()
+
+            Get a list of key-value pairs::
+                >>> f.bin.items()
+
+            Get the number of keys-value pairs in a header::
+                >>> len(f.bin)
+
+            Update a set of values::
+                >>> d = { segyio.su.jobid: 10, segyio.su.lino: 5 }
+                >>> f.bin.update(d)
+                >>> l = [ (segyio.su.hdt, 11), (segyio.su.hsfs, 4) ]
+                >>> f.bin.update(l)
         """
 
         return Field.binary(self)
