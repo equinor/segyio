@@ -534,6 +534,36 @@ class TestSegy(TestCase):
                 self.assertEqual(5, len(list(f.header[10:5:-1])))
                 self.assertEqual(0, len(list(f.header[10:5])))
 
+                d = { TraceField.INLINE_3D: 45,
+                      TraceField.CROSSLINE_3D: 10,
+                      TraceField.offset: 16 }
+
+                # assign multiple values using alternative syntax
+                f.header[5].update(d)
+                f.flush()
+                self.assertEqual(45, f.header[5][TraceField.INLINE_3D])
+                self.assertEqual(10, f.header[5][segyio.su.xline])
+                self.assertEqual(16, f.header[5][segyio.su.offset])
+
+                # accept anything with a key-value structure
+                f.header[5].update( [(segyio.su.ns, 12), (segyio.su.dt, 4)] )
+                f.header[5].update( ((segyio.su.muts, 3), (segyio.su.mute, 7)) )
+
+                with self.assertRaises(TypeError):
+                    f.header[0].update(10)
+
+                with self.assertRaises(TypeError):
+                    f.header[0].update(None)
+
+                with self.assertRaises(ValueError):
+                    f.header[0].update('foo')
+
+                f.flush()
+                self.assertEqual(12, f.header[5][segyio.su.ns])
+                self.assertEqual( 4, f.header[5][segyio.su.dt])
+                self.assertEqual( 3, f.header[5][segyio.su.muts])
+                self.assertEqual( 7, f.header[5][segyio.su.mute])
+
                 # for-each support
                 for th in f.header:
                     pass
@@ -574,6 +604,25 @@ class TestSegy(TestCase):
                 f.flush()
                 self.assertEqual(43, f.bin[segyio.su.ntrpr])
                 self.assertEqual(11, f.bin[segyio.su.hsfs])
+
+                d = { BinField.Traces: 45,
+                      BinField.SweepFrequencyStart: 10 }
+
+                # assign multiple values using alternative syntax
+                f.bin.update(d)
+                f.flush()
+                self.assertEqual(45, f.bin[segyio.su.ntrpr])
+                self.assertEqual(10, f.bin[segyio.su.hsfs])
+
+                # accept anything with a key-value structure
+                f.bin.update( [(segyio.su.jobid, 12), (segyio.su.lino, 4)] )
+                f.bin.update( ((segyio.su.reno, 3), (segyio.su.hdt, 7)) )
+
+                f.flush()
+                self.assertEqual(12, f.bin[segyio.su.jobid])
+                self.assertEqual( 4, f.bin[segyio.su.lino])
+                self.assertEqual( 3, f.bin[segyio.su.reno])
+                self.assertEqual( 7, f.bin[segyio.su.hdt])
 
                 # looking up multiple values at once returns a { TraceField: value } dict
                 self.assertEqual(d, f.bin[BinField.Traces, BinField.SweepFrequencyStart])

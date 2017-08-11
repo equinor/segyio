@@ -63,12 +63,17 @@ class Field(object):
         self._write(self.buf, self.traceno)
 
     def update(self, value):
-        buf = self.buf
-        if isinstance(value, dict):
-            for k, v in value.items():
-                self._set_field(int(k), v)
-        else:
+        if type(self) is type(value):
             buf = value.buf
+        else:
+            buf = self.buf
+
+            # iter() on a dict only gives values, need key-value pairs
+            try: value = value.items()
+            except AttributeError: pass
+
+            for k, v in value:
+                self._set_field(int(k), v)
 
         self._write(buf, self.traceno)
 
