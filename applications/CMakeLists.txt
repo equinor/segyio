@@ -25,6 +25,13 @@ target_compile_definitions(segyio-cath PRIVATE
     -Dsegyio_MINOR=${segyio_MINOR}
 )
 
+add_executable(segyio-catb segyio-catb.c)
+target_link_libraries(segyio-catb segyio apputils)
+target_compile_definitions(segyio-catb PRIVATE
+    -Dsegyio_MAJOR=${segyio_MAJOR}
+    -Dsegyio_MINOR=${segyio_MINOR}
+)
+
 add_executable(segyio-crop segyio-crop.c)
 target_link_libraries(segyio-crop segyio apputils)
 target_compile_definitions(segyio-crop PRIVATE
@@ -36,4 +43,7 @@ install(TARGETS segyinfo DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 install(TARGETS segyinspect DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 
 install(TARGETS segyio-cath DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS segyio-catb DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(TARGETS segyio-crop DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+add_python_test(python.segyb    test/test_segyb.py)
