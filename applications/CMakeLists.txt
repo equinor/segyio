@@ -32,16 +32,16 @@ target_compile_definitions(segyio-catb PRIVATE
     -Dsegyio_MINOR=${segyio_MINOR}
 )
 
-add_executable(segyio-crop segyio-crop.c)
-target_link_libraries(segyio-crop segyio apputils)
-target_compile_definitions(segyio-crop PRIVATE
+add_executable(segyio-catr segyio-catr.c)
+target_link_libraries(segyio-catr segyio apputils)
+target_compile_definitions(segyio-catr PRIVATE
     -Dsegyio_MAJOR=${segyio_MAJOR}
     -Dsegyio_MINOR=${segyio_MINOR}
 )
 
-add_executable(segyio-catr segyio-catr.c)
-target_link_libraries(segyio-catr segyio apputils)
-target_compile_definitions(segyio-catr PRIVATE
+add_executable(segyio-crop segyio-crop.c)
+target_link_libraries(segyio-crop segyio apputils)
+target_compile_definitions(segyio-crop PRIVATE
     -Dsegyio_MAJOR=${segyio_MAJOR}
     -Dsegyio_MINOR=${segyio_MINOR}
 )
