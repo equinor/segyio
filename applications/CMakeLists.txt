@@ -26,3 +26,5 @@ install(TARGETS segyinfo DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 install(TARGETS segyinspect DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 
 install(TARGETS segyio-cath DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+add_python_test(python.segyh    test/test_segyh.py)
