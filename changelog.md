@@ -1,3 +1,15 @@
+# 1.3.0
+* segyio is now meant to be used as proper versions, not trunk checkouts.
+  changelogs from now on will be written when new versions are released, not on
+  a monthly basis.
+* Minor typo fixes in segyio-cath help
+* Applications now come with man pages
+* `header` modes handle negative indexing
+* `header.update` handle any key-value iterable
+* New application: segyio-catr for printing trace headers
+* New application: segyio-catb for printing the binary header
+* New application: segyio-crop for copying sub cubes
+
 # 2017.06
 * seismic unix-style aliases are available for python in the segyio.su
   namespace

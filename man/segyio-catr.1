@@ -1,0 +1,63 @@
+.TH SEGYIO-CATR 1
+.SH NAME
+segyio-catr \- Print selected headers from FILE
+.SH SYNPOSIS
+.B segyio-catr
+[\fIOPTION\fR]...
+\fIFILE\fR
+.SH DESCRIPTION
+.B segyio-cath
+Print selected traceheaders from SEG-Y file FILE
+
+.PP
+
+The flag\fB-r\fR takes up to three vales; START, STOP, STEP, which is a closed inteval from START to STOP.
+The third value STEP can be specified to print i.e. every other trace in the interval. All values are defaulted to zero.
+Flags \fB-r\fR and \fB-t\fR can be called multiple times.
+
+.PP
+Mandatory arguments to long options are mandatory for short options too.
+
+.SH OPTIONS
+.TP
+.BR \-t ", " \-\-trace=\fINUMBER\fR
+trace(s) to print
+
+.TP
+.BR \-r ", " \-\-range \fISTART\fR [\fSTOP\fR \fISTEP\fR]
+range of trace(s) to print. \fISTOP\fR and \fISTEP\fR are optional, and
+defaults to \fISTART\fR and 1 respectively.
+
+.TP
+.BR \-s ", " \-\-strict
+fail on unreadable tracefields
+
+.TP
+.BR \-S ", " \-\-non-strict
+don't fail on unreadable fields
+this is the default behavior
+
+.TP
+.BR \-n ", " \-\-segyio-names
+print with segyio tracefield names
+
+.TP
+.BR \-v ", " \-\-verbose
+increase verbosity
+
+.TP
+.BR \-\-version
+output version information and exit
+
+.TP
+.BR \-\-help
+display this help and exit
+
+.SH COPYRIGHT
+Copyright © Statoil ASA. License LGPLv3+: GNU LGPL version 3 or later <http://gnu.org/licenses/lgpl.html>.
+
+.PP
+This is free software: you are free to change and redistribute it. There is NO WARRANTY, to the extent permitted by law.
+
+.SH SEE ALSO
+segyio-cath(1), segyio-catb(1)

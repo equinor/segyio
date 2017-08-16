@@ -1,0 +1,90 @@
+.TH SEGYIO-CROP 1
+.SH NAME
+segyio-crop \- Copy a sub cube from SRC to DST
+.SH SYNPOSIS
+.B segyio-crop
+[\fIOPTION\fR]...
+\fISOURCE DEST\fR
+.SH DESCRIPTION
+.B segyio-crop
+Copy a sub cube from SEG-Y file SOURCE to DEST.
+
+.PP
+If no \fBbegin\fR or \fBend\fR options are specified, this program is
+essentially a copy. If a \fBbegin\fR option is omitted, the program copies from
+the start of the file. If an \fBend\fR option is omitted, the program copies
+until the end of file is reached.
+
+.PP
+Mandatory arguments to long options are mandatory for short options too.
+
+.SH OPTIONS
+.TP
+.BR \-i ", " \-\-iline-begin =\fILINE\fR
+inline to copy from
+
+.TP
+.BR \-I ", " \-\-iline-end=\fILINE\fR
+inline to copy to (inclusive)
+
+.TP
+.BR \-x ", " \-\-xline-begin =\fILINE\fR
+crossline to copy from
+
+.TP
+.BR \-X ", " \-\-xline-end=\fILINE\fR
+crossnline to copy to (inclusive)
+
+.TP
+.BR \-\-inline-begin =\fILINE\fR
+alias to \-\-iline-begin
+
+.TP
+.BR \-\-inline-end =\fILINE\fR
+alias to \-\-iline-end
+
+.TP
+.BR \-\-crossline-begin =\fILINE\fR
+alias to \-\-xline-begin
+
+.TP
+.BR \-\-crossline-end =\fILINE\fR
+alias to \-\-xline-end
+
+.TP
+.BR \-s ", " \-\-sample-begin =\fILINE\fR
+sample to copy from
+
+.TP
+.BR \-S ", " \-\-sample-end=\fILINE\fR
+sample to copy to (inclusive)
+
+.TP
+.BR \-b ", " \-\-il =\fINUM\fR
+inline header word byte offset; must align with SEG-Y defined offsets
+
+defaults to 189
+
+.TP
+.BR \-B ", " \-\-xl =\fINUM\fR
+crossline header word byte offset; must align with SEG-Y defined offsets
+
+defaults to 193
+
+.TP
+.BR \-v ", " \-\-verbose
+increase verbosity
+
+.TP
+.BR \-\-version
+output version information and exit
+
+.TP
+.BR \-\-help
+display this help and exit
+
+.SH COPYRIGHT
+Copyright © Statoil ASA. License LPLv3+: GNU LGPL version 3 or later <http://gnu.org/licenses/lgpl.html>.
+
+.PP
+This is free software: you are free to change and redistribute it.  There is NO WARRANTY, to the extent permitted by law.

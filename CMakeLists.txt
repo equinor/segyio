@@ -4,7 +4,7 @@ project(segyio)
 include(GNUInstallDirs)
 
 set(segyio_MAJOR 1 CACHE STRING "")
-set(segyio_MINOR 2 CACHE STRING "")
+set(segyio_MINOR 3 CACHE STRING "")
 set(segyio_PATCH 0 CACHE STRING "")
 set(segyio_VERSION ${segyio_MAJOR}.${segyio_MINOR}.${segyio_PATCH})
 
