@@ -6,6 +6,7 @@
 #include <getopt.h>
 #include <unistd.h>
 
+#include "apputils.c"
 #include <segyio/segy.h>
 
 static int help() {
@@ -42,14 +43,6 @@ static int ext_headers( segy_file* fp ) {
     err = segy_get_bfield( binary, SEGY_BIN_EXT_HEADERS, &ext );
     if( err ) return -2;
     return ext;
-}
-
-static int exit_error( int errcode, const char* msg ) {
-    if( !msg ) return errcode;
-
-    fputs( msg,  stderr );
-    fputc( '\n', stderr );
-    return errcode;
 }
 
 static void print_header( const char* header ) {
@@ -98,15 +91,15 @@ int main( int argc, char** argv ) {
                 if( num_sz == num_alloc_sz - 1 ) {
                     num_alloc_sz *= 2;
                     int* re = realloc( num, num_alloc_sz * sizeof( int ) );
-                    if( !re ) return exit_error( errno, "Unable to alloc" );
+                    if( !re ) return errmsg( errno, "Unable to alloc" );
                     num = re;
                 }
 
                 num[ num_sz ] = strtol( optarg, &endptr, 10 );
                 if( *endptr != '\0' )
-                    return exit_error( EINVAL, "num must be an integer" );
+                    return errmsg( EINVAL, "num must be an integer" );
                 if( num[ num_sz ] < 0 )
-                    return exit_error( EINVAL, "num must be non-negative" );
+                    return errmsg( EINVAL, "num must be non-negative" );
                 break;
 
             default: return help();
@@ -123,21 +116,21 @@ int main( int argc, char** argv ) {
         if( !fp ) fprintf( stderr, "segyio-cath: %s: No such file or directory\n",
                            argv[ i ] );
 
-        if( !fp && strict ) return exit_error( errno, NULL );
+        if( !fp && strict ) return errmsg( errno, NULL );
         if( !fp ) continue;
 
         if( num_sz == 0 ) num_sz = 1;
 
         const int exts = ext_headers( fp );
         if( exts < 0 )
-            return exit_error( errno, "Unable to read binary header" );
+            return errmsg( errno, "Unable to read binary header" );
 
         if( all ) {
             /* just create the list 0,1,2... as if it was passed explicitly */
             if( exts >= num_alloc_sz ) {
                 num_alloc_sz = exts * 2;
                 int* re = realloc( num, num_alloc_sz * sizeof( int ) );
-                if( !re ) return exit_error( errno, "Unable to alloc" );
+                if( !re ) return errmsg( errno, "Unable to alloc" );
                 num = re;
             }
 
@@ -149,14 +142,14 @@ int main( int argc, char** argv ) {
 
         for( int j = 0; j < num_sz; ++j ) {
             if( strict && ( num[ j ] < 0 || num[ j ] > exts ) )
-                return exit_error( EINVAL, "Header index out of range" );
+                return errmsg( EINVAL, "Header index out of range" );
             if( num[ j ] < 0 || num[ j ] > exts ) continue;
 
             int err = num[ j ] == 0
                 ? segy_read_textheader( fp, header )
                 : segy_read_ext_textheader( fp, num[ j ] - 1, header );
 
-            if( err != 0 ) return exit_error( errno, "Unable to read header" );
+            if( err != 0 ) return errmsg( errno, "Unable to read header" );
             print_header( header );
         }
 
