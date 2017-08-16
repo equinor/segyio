@@ -63,12 +63,17 @@ class Field(object):
         self._write(self.buf, self.traceno)
 
     def update(self, value):
-        buf = self.buf
-        if isinstance(value, dict):
-            for k, v in value.items():
-                self._set_field(int(k), v)
-        else:
+        if type(self) is type(value):
             buf = value.buf
+        else:
+            buf = self.buf
+
+            # iter() on a dict only gives values, need key-value pairs
+            try: value = value.items()
+            except AttributeError: pass
+
+            for k, v in value:
+                self._set_field(int(k), v)
 
         self._write(buf, self.traceno)
 
@@ -90,8 +95,11 @@ class Field(object):
 
     @classmethod
     def trace(cls, buf, traceno, segy):
-        if traceno >= segy.tracecount:
-            raise IndexError("Trace number out of range: 0 <= %d < %d" % (traceno, segy.tracecount))
+        if traceno < 0:
+            traceno = segy.tracecount + traceno
+
+        if traceno >= segy.tracecount or traceno < 0:
+            raise IndexError("Header out of range: 0 <= %d < %d" % (traceno, segy.tracecount))
 
         if buf is None:
             buf = segyio._segyio.empty_traceheader()
