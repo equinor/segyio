@@ -20,12 +20,13 @@ Mandatory arguments to long options are mandatory for short options too.
 
 .SH OPTIONS
 .TP
-.BR \-t ", " \-\-trace =\fINUMBER\fR
+.BR \-t ", " \-\-trace=\fINUMBER\fR
 trace(s) to print
 
 .TP
-.BR \-r ", " \-\-range=\fINUMBER\fR
-trace to print from
+.BR \-r ", " \-\-range \fISTART\fR [\fSTOP\fR \fISTEP\fR]
+range of trace(s) to print. \fISTOP\fR and \fISTEP\fR are optional, and
+defaults to \fISTART\fR and 1 respectively.
 
 .TP
 .BR \-s ", " \-\-strict
@@ -33,7 +34,7 @@ fail on unreadable tracefields
 
 .TP
 .BR \-S ", " \-\-non-strict
-don't fail on unreadable tracefields
+don't fail on unreadable fields
 this is the default behavior
 
 .TP

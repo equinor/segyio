@@ -298,20 +298,20 @@ static int help() {
     puts( "Usage: segyio-catr [OPTION]... FILE\n"
           "Print specific trace headers from FILE\n"
           "\n"
-          "-t,  --trace=NUMBER      trace to print\n"
-          "-r,  --range=NUMBER      range of traces to print\n"
-          "-s,  --strict            fail on unreadable tracefields\n"
-          "-S,  --non-strict        don't fail on unreadable tracefields\n"
-          "                         this is the default behaviour\n"
-          "-n,  --segyio-names      print with segyio tracefield names\n"
-          "-v,  --verbose           increase verbosity\n"
-          "     --version           output version information and exit\n"
-          "     --help              display this help and exit\n"
+          "-t,  --trace=NUMBER          trace to print\n"
+          "-r,  --range START STOP STEP range of traces to print\n"
+          "-s,  --strict                fail on unreadable tracefields\n"
+          "-S,  --non-strict            don't fail on unreadable tracefields\n"
+          "                             this is the default behaviour\n"
+          "-n,  --segyio-names          print with segyio tracefield names\n"
+          "-v,  --verbose               increase verbosity\n"
+          "     --version               output version information and exit\n"
+          "     --help                  display this help and exit\n"
           "\n"
 
-          "The -r flag can takes up to three values; start, stop, step,\n"
+          "the -r flag can takes up to three values: start, stop, step\n"
           "where all values are defaulted to zero\n"
-          "Flags -r and -t can be called multiple times\n"
+          "flags -r and -t can be called multiple times\n"
         );
     return 0;
 }
@@ -355,10 +355,6 @@ static struct options parse_options( int argc, char** argv ){
     opts.strict = 0; opts.labels = su_labels;
     opts.errmsg = NULL;
 
-    struct options opthelp, optversion;
-    opthelp.help = 1; opthelp.errmsg = NULL;
-    optversion.version = 1, optversion.errmsg = NULL;
-
     static struct option long_options[] = {
         { "trace",          required_argument,  0, 't' },
         { "range",          required_argument,  0, 'r' },
@@ -385,8 +381,8 @@ static struct options parse_options( int argc, char** argv ){
        int ret;
        switch( c ) {
            case 0: break;
-           case 'h': return opthelp;
-           case 'V': return optversion;
+           case 'h': opts.help = 1;     return opts;
+           case 'V': opts.version = 1;  return opts;
            case 'v': ++opts.verbosity; break;
            case 's': opts.strict = 1; break;
            case 'S': opts.strict = 0; break;
@@ -425,16 +421,17 @@ static struct options parse_options( int argc, char** argv ){
                     return opts;
                }
 
-                // if sscanf found something it consumes 1 argument, and we won't have to rewind optind
+               // if sscanf found something it consumes 1 argument, and we
+               // won't have to rewind optind
                if( !ret ) optind--;
 
                for( int pos = ret; optind < argc && pos < 3; pos++, optind++ ) {
                     int val;
                     ret = parseint( argv[ optind ], &val );
-                    /* parseint returns 1 when the string contains more
-                     * than an int (or not an int at all)
-                     * we assume that the remaining range parameters
-                     * were defaulted and give control back to argument parsing
+                    /* parseint returns 1 when the string contains more than an
+                     * int (or not an int at all) we assume that the remaining
+                     * range parameters were defaulted and give control back to
+                     * argument parsing
                      *
                      * such invocations include:
                      *   segyio-catr -r 1 foo.sgy
@@ -450,13 +447,14 @@ static struct options parse_options( int argc, char** argv ){
 
                 done: ++opts.rsize; break;
 
-           default: return opthelp;
+           default: opts.help = 1; opts.errmsg = ""; return opts;
        }
     }
 
     if( argc - optind != 1 ) {
         errmsg( 0, "Wrong number of files" );
-        return opthelp;
+        opts.errmsg = "";
+        return opts;
     }
     opts.src = argv[ optind ];
 
