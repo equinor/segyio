@@ -100,14 +100,16 @@ script:
   - install_run $PLAT
   - mv wheelhouse build/python/dist
 
-before_deploy:
+after_success:
   - git clone $TRAVIS_BUILD_DIR
   - pushd segyio
   - git submodule update --init pycmake
   - popd
-  - pushd build/python
   - tar --exclude-vcs -C $TRAVIS_BUILD_DIR -czvf segyio-$TRAVIS_TAG-all.tar.gz segyio
   - zip --exclude *.git -r segyio-$TRAVIS_TAG-all.zip $TRAVIS_BUILD_DIR/segyio/*
+
+before_deploy:
+  - pushd build/python
 
 after_deploy:
   - popd
