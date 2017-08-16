@@ -42,5 +42,5 @@ install(TARGETS segyio-catb DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(TARGETS segyio-catr DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(TARGETS segyio-crop DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-add_python_test(applications.apps   test/apps.py)
-add_python_test(python.segyb        test/test_segyb.py)
+add_python_test(applications.catr test/catr.py)
+add_python_test(applications.catb test/catb.py)
