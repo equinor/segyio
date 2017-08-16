@@ -317,7 +317,7 @@ static int help() {
 }
 
 static int printversion() {
-    printf( "Segyio-catr (segyio version %d.%d)\n", segyio_MAJOR, segyio_MINOR );
+    printf( "segyio-catr (segyio version %d.%d)\n", segyio_MAJOR, segyio_MINOR );
     return 0;
 }
 
