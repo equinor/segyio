@@ -316,11 +316,6 @@ static int help() {
     return 0;
 }
 
-static int printversion() {
-    printf( "segyio-catr (segyio version %d.%d)\n", segyio_MAJOR, segyio_MINOR );
-    return 0;
-}
-
 typedef struct { int start, stop, step; } range;
 
 struct options {
@@ -467,7 +462,7 @@ int main( int argc, char** argv ) {
     struct options opts = parse_options( argc, argv );
 
     if( opts.help ) return help();
-    if( opts.version ) return printversion();
+    if( opts.version ) return printversion( "segyio-catr" );
     if( opts.errmsg ) return errmsg( EINVAL, opts.errmsg );
 
     int strict = opts.strict;

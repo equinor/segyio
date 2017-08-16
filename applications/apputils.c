@@ -46,3 +46,8 @@ int trfield( const char* header, int field ) {
     if( err ) return -1;
     return f;
 }
+
+int printversion( const char* name ) {
+    printf( "%s (segyio version %d.%d)\n", name, segyio_MAJOR, segyio_MINOR );
+    return 0;
+}

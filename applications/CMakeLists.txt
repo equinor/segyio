@@ -11,6 +11,10 @@ endif()
 
 add_library(apputils STATIC apputils.c)
 target_link_libraries(apputils segyio)
+target_compile_definitions(apputils PUBLIC
+    -Dsegyio_MAJOR=${segyio_MAJOR}
+    -Dsegyio_MINOR=${segyio_MINOR}
+)
 
 add_executable(segyinfo segyinfo.c)
 target_link_libraries(segyinfo segyio)
@@ -20,31 +24,15 @@ target_link_libraries(segyinspect segyio)
 
 add_executable(segyio-cath segyio-cath.c)
 target_link_libraries(segyio-cath segyio apputils)
-target_compile_definitions(segyio-cath PRIVATE
-    -Dsegyio_MAJOR=${segyio_MAJOR}
-    -Dsegyio_MINOR=${segyio_MINOR}
-)
 
 add_executable(segyio-catb segyio-catb.c)
 target_link_libraries(segyio-catb segyio apputils)
-target_compile_definitions(segyio-catb PRIVATE
-    -Dsegyio_MAJOR=${segyio_MAJOR}
-    -Dsegyio_MINOR=${segyio_MINOR}
-)
 
 add_executable(segyio-catr segyio-catr.c)
 target_link_libraries(segyio-catr segyio apputils)
-target_compile_definitions(segyio-catr PRIVATE
-    -Dsegyio_MAJOR=${segyio_MAJOR}
-    -Dsegyio_MINOR=${segyio_MINOR}
-)
 
 add_executable(segyio-crop segyio-crop.c)
 target_link_libraries(segyio-crop segyio apputils)
-target_compile_definitions(segyio-crop PRIVATE
-    -Dsegyio_MAJOR=${segyio_MAJOR}
-    -Dsegyio_MINOR=${segyio_MINOR}
-)
 
 install(TARGETS segyinfo DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 install(TARGETS segyinspect DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)

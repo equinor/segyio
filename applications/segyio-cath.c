@@ -28,11 +28,6 @@ static int help() {
     return 0;
 }
 
-static int printversion() {
-    printf( "segyio-cath (segyio version %d.%d)\n", segyio_MAJOR, segyio_MINOR );
-    return 0;
-}
-
 static int ext_headers( segy_file* fp ) {
     char binary[ SEGY_BINARY_HEADER_SIZE ];
     int err = segy_binheader( fp, binary );
@@ -106,7 +101,7 @@ int main( int argc, char** argv ) {
         }
     }
 
-    if( version ) return printversion();
+    if( version ) return printversion( "segyio-cath" );
 
     char header[ SEGY_TEXT_HEADER_SIZE + 1 ] = { 0 };
 

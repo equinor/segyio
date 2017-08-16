@@ -21,12 +21,6 @@ static int printhelp(){
     return 0;
 }
 
-static int printversion(){
-    printf( "segyio-catb (segyio version %d.%d)\n",
-             segyio_MAJOR, segyio_MINOR );
-    return 1;
-}
-
 static int get_binary_value( char* binheader, int bfield ){
     int32_t f;
     segy_get_bfield( binheader, bfield, &f );
@@ -152,7 +146,7 @@ int main( int argc, char** argv ){
     struct options opts = parse_options( argc, argv );
    
     if( opts.help )    return printhelp();
-    if( opts.version ) return printversion();
+    if( opts.version ) return printversion( "segyio-catb" );
 
     for( int i = optind; i < argc; ++i ){
         segy_file* fp = segy_open( argv[ i ], "r" );

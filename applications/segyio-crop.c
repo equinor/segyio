@@ -36,11 +36,6 @@ static int help() {
     return 0;
 }
 
-static int printversion() {
-    printf( "segyio-crop (segyio version %d.%d)\n", segyio_MAJOR, segyio_MINOR );
-    return 0;
-}
-
 struct delay {
     int delay;
     int skip;
@@ -322,7 +317,7 @@ int main( int argc, char** argv ) {
     struct options opts = parse_options( argc, argv );
 
     if( opts.help ) return help() + (opts.errmsg ? 2 : 0);
-    if( opts.version ) return printversion();
+    if( opts.version ) return printversion( "segyio-crop" );
     if( opts.errmsg ) return errmsg( EINVAL, opts.errmsg );
 
     int ibeg = opts.ibeg;
