@@ -420,8 +420,8 @@ static struct options parse_options( int argc, char** argv ){
                ret = sscanf(optarg," %d %d %d", &r->start,
                                                 &r->stop,
                                                 &r->step );
-               if( ret && (r->start < 0 || r->stop < 0 || r->step < 0 ) ) {
-                    opts.errmsg = "POSITIVE";
+               if( ret && ( r->start < 0 || r->stop < 0 || r->step < 0 ) ) {
+                    opts.errmsg = "range parameters must be positive";
                     return opts;
                }
 
