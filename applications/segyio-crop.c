@@ -25,7 +25,7 @@ static int help() {
           "-b, --il                   inline header word byte offset\n"
           "-B, --xl                   crossline header word byte offset\n"
           "-v, --verbose              increase verbosity\n"
-          "    --version              ouput version information and exit\n"
+          "    --version              output version information and exit\n"
           "    --help                 display this help and exit\n"
           "\n"
           "If no begin/end options are specified, this program is\n"
