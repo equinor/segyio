@@ -1,3 +1,7 @@
+# 1.3.1
+* fix a typo in segyio-crop --version
+* some building improvements
+
 # 1.3.0
 * segyio is now meant to be used as proper versions, not trunk checkouts.
   changelogs from now on will be written when new versions are released, not on
