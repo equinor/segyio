@@ -1234,7 +1234,7 @@ int segy_readsubtr( segy_file* fp,
 
     const size_t readc = fread( tracebuf, sizeof( float ), elems, fp->fp );
     if( readc != elems ) {
-        free( tracebuf );
+        if( !rangebuf ) free( tracebuf );
         return SEGY_FREAD_ERROR;
     }
 
@@ -1242,7 +1242,7 @@ int segy_readsubtr( segy_file* fp,
     for( ; slicelen > 0; cur += step, --slicelen, ++buf )
         *buf = *cur;
 
-    free( tracebuf );
+    if( !rangebuf ) free( tracebuf );
     return SEGY_OK;
 }
 
@@ -1309,14 +1309,17 @@ int segy_writesubtr( segy_file* fp,
     if( readc != elems ) { free( tracebuf ); return SEGY_FREAD_ERROR; }
     /* rewind, because fread advances the file pointer */
     err = fseek( fp->fp, -elemsize, SEEK_CUR );
-    if( err != 0 ) { free( tracebuf ); return SEGY_FSEEK_ERROR; }
+    if( err != 0 ) {
+        if( !rangebuf ) free( tracebuf );
+        return SEGY_FSEEK_ERROR;
+    }
 
     float* cur = tracebuf + defstart;
     for( ; slicelen > 0; cur += step, --slicelen, ++buf )
         *cur = *buf;
 
     const size_t writec = fwrite( tracebuf, sizeof( float ), elems, fp->fp );
-    free( tracebuf );
+    if( !rangebuf ) free( tracebuf );
 
     if( writec != elems ) return SEGY_FWRITE_ERROR;
 

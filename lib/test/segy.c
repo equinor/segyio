@@ -115,12 +115,13 @@ static void test_read_subtr( bool mmap ) {
 
     const int format = SEGY_IBM_FLOAT_4_BYTE;
     int trace0 = 3600;
-    int trace_bsize = 50 * 4;
+    int trace_bsize = 50 * sizeof( float );
     int err = 0;
 
     if( mmap ) segy_mmap( fp );
 
     float buf[ 5 ];
+    float rangebuf[ 50 ];
     /* read a strided chunk across the middle of all traces */
     /* should read samples 3, 8, 13, 18 */
     err = segy_readsubtr( fp,
@@ -129,7 +130,7 @@ static void test_read_subtr( bool mmap ) {
                           19,       /* stop */
                           5,        /* step */
                           buf,
-                          NULL,
+                          rangebuf, // readsubtr shouldn't try to free this
                           trace0,
                           trace_bsize );
     assertTrue( err == 0, "Unable to correctly read subtrace" );
@@ -195,7 +196,7 @@ static void test_write_subtr( bool mmap ) {
     const char *file = "test-data/write-subtr.sgy";
     segy_file* fp = segy_open( file, "w+b" );
     int trace0 = 3600;
-    int trace_bsize = 50 * 4;
+    int trace_bsize = 50 * sizeof( float );
     int err = 0;
 
     const int format = SEGY_IBM_FLOAT_4_BYTE;
@@ -208,6 +209,7 @@ static void test_write_subtr( bool mmap ) {
     assertTrue( err == 0, "Error in write-subtr setup." );
 
     float buf[ 5 ];
+    float rangebuf[ 50 ];
     float out[ 5 ] = { 2.0, 2.1, 2.2, 2.3, 2.4 };
     segy_from_native( format, 5, out );
 
@@ -219,7 +221,7 @@ static void test_write_subtr( bool mmap ) {
                            19,       /* stop */
                            5,        /* step */
                            out,
-                           NULL,
+                           rangebuf, // writesubtr shouldn't try to free this
                            trace0,
                            trace_bsize );
     assertTrue( err == 0, "Unable to correctly write subtrace" );
