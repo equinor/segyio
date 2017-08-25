@@ -5,7 +5,7 @@ include(GNUInstallDirs)
 
 set(segyio_MAJOR 1 CACHE STRING "")
 set(segyio_MINOR 3 CACHE STRING "")
-set(segyio_PATCH 1 CACHE STRING "")
+set(segyio_PATCH 2 CACHE STRING "")
 set(segyio_VERSION ${segyio_MAJOR}.${segyio_MINOR}.${segyio_PATCH})
 
 if (POLICY CMP0042)
