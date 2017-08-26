@@ -85,7 +85,7 @@ after_deploy:
 
 deploy_script:
     - ps: |
-          If (-not $env:APPVEYOR_REPO_TAG) { return }
+          If (-not ($env:APPVEYOR_REPO_TAG)) { return }
           If ($env:SHARED -eq "ON") { return }
           If ($env:APPVEYOR_REPO_BRANCH -ne "master") { return }
 

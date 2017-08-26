@@ -1,3 +1,7 @@
+# 1.3.2
+* add test for segy-cath
+* fix memory double-free error in subtr functions
+
 # 1.3.1
 * fix a typo in segyio-crop --version
 * some building improvements
