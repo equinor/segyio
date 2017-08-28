@@ -36,7 +36,7 @@ class TestSegyB(unittest.TestCase):
         b"trflag\t0",
         b"exth\t0"
     ]
-    work_dir = '../../build'
+    work_dir = '../'
     cmd_base = './applications/segyio-catb'
     FNULL = open(os.devnull, 'w')
 
