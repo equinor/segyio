@@ -20,7 +20,7 @@ class TestSegyH(unittest.TestCase):
         b"C14",
         b"C15 END EBCDIC HEADER",
     ]
-    work_dir = '../../build'
+    work_dir = '../'
     cmd_base = './applications/segyio-cath'
     FNULL = open(os.devnull, 'w')
 
