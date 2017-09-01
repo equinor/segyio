@@ -4,6 +4,7 @@ env:
     global:
         - UNICODE_WIDTH=32
         - PLAT=x86_64
+        - VERSION=$(echo $TRAVIS_TAG | sed s/v//)
     matrix:
         - MB_PYTHON_VERSION=2.7
         - MB_PYTHON_VERSION=3.4
@@ -103,13 +104,13 @@ script:
 before_deploy:
   # OS X ships with a tar that doesn't support --exclude-vcs, which is
   # unproblematic as long as source code is uploaded from linux.
-  - if [[ "$TRAVIS_OS_NAME" == "linux" && ! -d segyio ]]; then
-      git clone $TRAVIS_BUILD_DIR;
-      pushd segyio;
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && ! -d segyio-$VERSION ]]; then
+      git clone $TRAVIS_BUILD_DIR segyio-$VERSION;
+      pushd segyio-$VERSION;
       git submodule update --init pycmake;
       popd;
-      tar --exclude-vcs -C $TRAVIS_BUILD_DIR -czvf $TRAVIS_BUILD_DIR/segyio-$TRAVIS_TAG-all.tar.gz segyio;
-      zip --exclude *.git -r $TRAVIS_BUILD_DIR/segyio-$TRAVIS_TAG-all.zip $TRAVIS_BUILD_DIR/segyio/*;
+      tar --exclude-vcs -C $TRAVIS_BUILD_DIR -czvf segyio-$VERSION.tar.gz segyio-$VERSION;
+      zip --exclude *.git -r segyio-$VERSION.zip $TRAVIS_BUILD_DIR/segyio-$VERSION/*;
     fi
   - pushd build/python
 
@@ -141,8 +142,8 @@ deploy:
       skip_cleanup: true
       overwrite: true
       file:
-        - $TRAVIS_BUILD_DIR/segyio-$TRAVIS_TAG-all.tar.gz
-        - $TRAVIS_BUILD_DIR/segyio-$TRAVIS_TAG-all.zip
+        - $TRAVIS_BUILD_DIR/segyio-$VERSION.tar.gz
+        - $TRAVIS_BUILD_DIR/segyio-$VERSION.zip
       api_key:
         secure: VdV/5kCCwUFwgU7wvKRrOy4u9nnvLsM3RoW1G2z8w8e838fcTeXLU3Zu8rLzLpcaXJKX07WNQmG85PZrgRjB9mzZAbXnPJeMk5MT3YVWaiyF6zNxK+mQQOvTCJ8P25nm5Iq1PLtIW/wM1RqNLgT8t3AsLiIva+6JK+2wGA2ilOl2YVgJqEiZV1f9DJutPewDf8pqYrnrHktMmkio/uubc12MLFOrNeQxK/EJahw7x56q8EcxrJXHnv6T2zEvUdcEYfRvIrT62jiVqiJP9wmUVdq2x8/RlgRzcCpGhy2o17iMUIH228so2hbu5/NcvtAh/LUDeqlhQ1YLRp1vO6H8Uh9B6aJgBNPwYmrKBHQQD27l5vt74DNJuqsXTZtrQlzUiiptKTV7mjFckF7mG04d1J/0GcVcxjpRZa3rp85KymQKWTsuWJYrCWSeVh+SMwUAbMZ3/vhEKPtrf4rwI+4INTitLuBNfcyH0W+W/rWLBMYoojRW0NJjc+4HJGpkMPbFkDjpde31ZqgI/Cec0GPpqbtsb3DkK/f4mLrR+F59b3+Lj0Cjyh9lM2fVXTrPYt13kdwbtBnNy6x2kdTkEBCk9m+eTFAfJGal+3SwgLeiGQdkjdZ7vSLwwdRf7Qvz5WjxKQ+feFWm+qi0GurWOEaZrubB82CGukxOXKzrvAGN3Eo=
       on:
