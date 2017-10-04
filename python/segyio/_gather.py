@@ -58,25 +58,42 @@ class Gather:
                     self.trace[self._getindex(il, xl, x, sort)]
                     for x in xs)
 
-        # gather[:,:,:]
+        # gather[:,:,:], gather[int,:,:], gather[:,int,:]
+        # gather[:,:,int] etc
         def gen():
-            ils, _ = self.iline._indices(il, None)
-            xls, _ = self.xline._indices(xl, None)
+            # precompute the xline number -> xline offset
+            xlinds = { xlno: i for i, xlno in enumerate(self.xline.lines) }
+            ofinds = { ofno: i for i, ofno in enumerate(self.offsets) }
 
-            # gather[:, :, int]
-            # i.e. every yielded array is 1-dimensional
+            # doing range over gathers is VERY expensive, because every lookup
+            # with a naive implementations would call _getindex to map lineno
+            # -> trace index. However, ranges over gathers are done on a
+            # by-line basis so lines can be buffered, and traces can be read
+            # from the iline. This is the least efficient when there are very
+            # few traces read per inline, but huge savings with larger subcubes
+            last_il = self.iline.lines[-1] + 1
+            last_xl = self.xline.lines[-1] + 1
+
+            il_slice = il if isslice(il) else slice(il, il+1)
+            xl_slice = xl if isslice(xl) else slice(xl, xl+1)
+
+            il_range = range(*il_slice.indices(last_il))
+            xl_range = range(*xl_slice.indices(last_xl))
+
             if not isslice(off):
-                for i, x in itertools.product(ils, xls):
-                    yield self.trace[self._getindex(i, x, off, sort)]
+                for iline in self.iline[il_slice, off]:
+                    for xlno in xl_range:
+                        yield iline[xlinds[xlno]]
+
                 return
 
             if len(xs) == 0:
-                for _, _ in itertools.product(ils, xls): yield empty
+                for _, _ in itertools.product(ilrange, xlrange): yield empty
                 return
 
-            for i, x in itertools.product(ils, xls):
-                yield tools.collect(
-                        self.trace[self._getindex(i, x, o, sort)]
-                        for o in xs)
+            for ilno in il_range:
+                iline = tools.collect(self.iline[ilno, off])
+                for x in xl_range:
+                    yield iline[:, xlinds[x]]
 
         return gen()
