@@ -878,6 +878,7 @@ static void test_file_size_above_4GB(){
     long long pos = segy_ftell( fp );
     assertTrue(pos > (long long)INT_MAX, "pos smaller than INT_MAX. "
                               "This means there's an overflow somewhere" );
+    assertTrue(pos != -1, "overflow in off_t");
     assertTrue(pos == trace * tracesize, "seek overflow");
     segy_close(fp);
 }
