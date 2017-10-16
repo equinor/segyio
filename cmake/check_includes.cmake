@@ -38,3 +38,8 @@ if (HAVE_SYS_STAT_H)
         add_definitions("-DHAVE_FTELLI64")
     endif ()
 endif()
+
+check_function_exists(ftello HAVE_FTELLO)
+if (HAVE_FTELLO)
+    add_definitions("-DHAVE_FTELLO")
+endif ()

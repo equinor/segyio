@@ -1,5 +1,9 @@
 #define _POSIX_SOURCE /* fileno */
 
+/* 64-bit off_t in ftello */
+#define _POSIX_C_SOURCE 200808L
+#define _FILE_OFFSET_BITS 64
+
 #ifdef HAVE_MMAP
   #define _POSIX_SOURCE
   #include <sys/mman.h>
@@ -400,14 +404,16 @@ int segy_flush( segy_file* fp, bool async ) {
 }
 
 long long segy_ftell( segy_file* fp ) {
-#ifdef HAVE_FTELLI64
+#ifdef HAVE_FTELLO
+    off_t pos = ftello( fp->fp );
+    assert( pos != -1 );
+    return pos;
+#elif HAVE_FTELLI64
     // assuming we're on windows. This function is a little rough, but only
     // meant for testing - it's not a part of the public interface.
     return _ftelli64( fp->fp );
 #else
-    // cppcheck-suppress duplicateExpression
-    assert( sizeof( long ) == sizeof( long long ) );
-    return ftell( fp->fp );
+    assert( false );
 #endif
 }
 
