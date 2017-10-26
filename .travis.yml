@@ -69,7 +69,7 @@ install:
         fi
     fi
   - pip install numpy --upgrade
-  - pip install safety
+  - pip install safety bandit
 
 before_script:
   - enabled="-DBUILD_PYTHON=OFF -DBUILD_MEX=OFF"
@@ -95,6 +95,7 @@ before_script:
 
 script:
   - safety check
+  - bandit -r python
   - pushd build
   - make && ctest --output-on-failure
   - cat python/setup.py
