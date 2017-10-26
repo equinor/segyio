@@ -76,7 +76,7 @@ def main():
         # accessing a non-existing inline will raise a KeyError
         try:
             src.iline[5000]
-            assert(False)
+            sys.exit("Was able to access non-existing inline")
         except KeyError as e:
             print(str(e))
 
