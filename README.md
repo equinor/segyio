@@ -1,4 +1,9 @@
-# SEGY IO [![Build Status](https://travis-ci.org/Statoil/segyio.svg?branch=master)](https://travis-ci.org/Statoil/segyio)
+# SEGY IO
+
+[![Build Status](https://travis-ci.org/Statoil/segyio.svg?branch=master)](https://travis-ci.org/Statoil/segyio)
+[![Build status](https://ci.appveyor.com/api/projects/status/2i5cr8ui2t9qbxk9?svg=true)](https://ci.appveyor.com/project/statoil-travis/segyio)
+[![PyPI Updates](https://pyup.io/repos/github/Statoil/segyio/shield.svg)](https://pyup.io/repos/github/Statoil/segyio/)
+[![Python 3](https://pyup.io/repos/github/Statoil/segyio/python-3-shield.svg)](https://pyup.io/repos/github/Statoil/segyio/)
 
 ## Introduction ##
 
