@@ -1,12 +1,8 @@
 #!/usr/bin/env python
 
-from distutils.core import setup, Extension
-
-_segyio = Extension('segyio._segyio',
-                    sources=['python/segyio/_segyio.c', 'lib/src/segy.c'],
-                    include_dirs=['lib/src', 'lib/include'],
-                    define_macros=[('HAVE_MMAP', 1), ('HAVE_NETINET_IN_H', 1)],
-                    extra_compile_args=['-std=c99'])
+import os
+import sys
+from setuptools import setup, Extension
 
 long_description = """
 =======
@@ -51,21 +47,36 @@ written according to specification, but segyio does not mandate this.
 
 """
 
-setup(name='SegyIO',
-      version='1.0.4',
-      description='IO library for SEG-Y files',
+def src(x):
+    root = os.path.dirname( __file__ )
+    return os.path.abspath(os.path.join(root, x))
+
+extra_libs = ['m'] if not 'win' in sys.platform else []
+
+setup(name='segyio',
+      use_scm_version={
+        'root': src(''),
+        'write_to': src('python/segyio/version.py')
+      },
+      description='Simple & fast IO for SEG-Y files',
       long_description=long_description,
       author='Statoil ASA',
-      author_email='ert@statoil.com',
-      url='https://github.com/Statoil/SegyIO',
+      author_email='fg_gpl@statoil.com',
+      url='https://github.com/Statoil/segyio',
+      package_dir={'' : src('python')},
       packages=['segyio'],
-      package_dir={'': 'python'},
-      package_data={'': ['License.md']},
+      package_data={'': ['License', 'README']},
       license='LGPL-3.0',
-      ext_modules=[_segyio],
+      ext_modules=[Extension('segyio._segyio',
+        sources=[src('python/segyio/segyio.cpp')],
+        include_dirs=[src('lib/include')],
+        libraries=['segyio'] + extra_libs
+        )],
       platforms='any',
       requires=['numpy'],
       install_requires=['numpy'],
+      test_suite='test',
+      setup_requires=['setuptools_scm'],
       classifiers=[
           'Development Status :: 5 - Production/Stable',
           'Environment :: Other Environment',
@@ -73,9 +84,10 @@ setup(name='SegyIO',
           'Intended Audience :: Science/Research',
           'License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)',
           'Natural Language :: English',
-          'Operating System :: OS Independent',
-          'Programming Language :: C',
+          'Programming Language :: Python',
           'Programming Language :: Python :: 2.7',
+          'Programming Language :: Python :: 3.5',
+          'Programming Language :: Python :: 3.6',
           'Topic :: Scientific/Engineering',
           'Topic :: Scientific/Engineering :: Physics',
           'Topic :: Software Development :: Libraries',
