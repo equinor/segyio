@@ -55,6 +55,7 @@ python interpreter and type `help(segyio)` to get started.
 
 To build and use segyio you need:
  * A C99 compatible C compiler (tested mostly on gcc and clang)
+ * A C++ compiler for the python extension
  * [CMake](https://cmake.org/) version 2.8.8 or greater
  * [Python](https://www.python.org/) 2.7 or 3.x.
 

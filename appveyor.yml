@@ -56,12 +56,6 @@ build_script:
     - ctest -C "%configuration%" --output-on-failure
     - ps: popd
     - ps: pushd build/python
-    - cat setup.py
-    - IF DEFINED PYTHON python setup.py build_py
-    - IF DEFINED PYTHON ( IF %PYTHON_VERSION% == 27
-        cp segyio/_segyio.pyd build/*/segyio/
-      )
-    - IF DEFINED PYTHON python setup.py bdist_wheel
     - IF DEFINED PYTHON python %APPVEYOR_BUILD_FOLDER%/setup.py bdist_wheel
     - ps: popd
 
