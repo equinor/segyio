@@ -75,11 +75,11 @@ foreach (sgy ${sgys})
 endforeach ()
 
 configure_file(test/test_context.py test/test_context.py COPYONLY)
-add_python_test(python.segy         test/segy.py)
-add_python_test(python.h.segy       test/segyio_c.py)
-add_python_test(python.enum.segy    test/segyioenum.py)
-add_python_test(python.tools        test/tools.py)
-add_python_test(python.context      test/context.py)
+add_test(NAME python.segy      COMMAND ${PYTHON_EXECUTABLE} -m unittest test.segy)
+add_test(NAME python.h.segy    COMMAND ${PYTHON_EXECUTABLE} -m unittest test.segyio_c)
+add_test(NAME python.enum.segy COMMAND ${PYTHON_EXECUTABLE} -m unittest test.segyioenum)
+add_test(NAME python.tools     COMMAND ${PYTHON_EXECUTABLE} -m unittest test.tools)
+add_test(NAME python.context   COMMAND ${PYTHON_EXECUTABLE} -m unittest test.context)
 
 configure_file(${CMAKE_SOURCE_DIR}/test-data/small.sgy
                test-data/write.sgy

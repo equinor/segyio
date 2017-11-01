@@ -1,12 +1,14 @@
-from unittest import TestCase
+from __future__ import absolute_import
+
+import unittest
 
 import numpy
 import segyio
 import segyio._segyio as _segyio
-from test_context import TestContext
+from .test_context import TestContext
 
 
-class _segyioTests(TestCase):
+class _segyioTests(unittest.TestCase):
     def setUp(self):
         self.filename = "test-data/small.sgy"
 
@@ -483,3 +485,5 @@ class _segyioTests(TestCase):
         with self.assertRaises(KeyError):
             d = _segyio.fread_trace0(25, 1, 1, 1, indices, "depth")
 
+if __name__ == '__main__':
+    unittest.main()

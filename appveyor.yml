@@ -54,28 +54,26 @@ build_script:
     - cmake %APPVEYOR_BUILD_FOLDER% %W64% %MEX% %LANG% -DBUILD_SHARED_LIBS=%SHARED% -DCMAKE_INSTALL_PREFIX=%INSTALL_DIR%
     - cmake --build . --config "%configuration%" --target install
     - ctest -C "%configuration%" --output-on-failure
-    - ps: pushd python
+    - ps: popd
+    - ps: pushd build/python
     - cat setup.py
     - IF DEFINED PYTHON python setup.py build_py
     - IF DEFINED PYTHON ( IF %PYTHON_VERSION% == 27
         cp segyio/_segyio.pyd build/*/segyio/
       )
     - IF DEFINED PYTHON python setup.py bdist_wheel
-    - ps: popd
+    - IF DEFINED PYTHON python %APPVEYOR_BUILD_FOLDER%/setup.py bdist_wheel
     - ps: popd
 
 test_script:
     - set PATH=%INSTALL_DIR%\bin;%PATH%
-    - ps: pushd build
-    - ctest -C %configuration% --output-on-failure
-    - ps: pushd python
+    - ps: pushd build/python
     - IF DEFINED PYTHON FOR /F "tokens=*" %%G IN ('dir /b dist\*.whl') DO
         pip install dist/%%G
     - ps: popd
     - IF DEFINED PYTHON python -c
-        "import segyio;f=segyio.open('python/test-data/small.sgy');print(f.ilines)"
-    - ps: popd
-    - IF DEFINED PYTHON python -m unittest discover -vs build/python/test -p *.py
+        "import segyio;f=segyio.open('test-data/small.sgy');print(f.ilines)"
+    - IF DEFINED PYTHON python python/examples/scan_min_max.py test-data/small.sgy
 
 before_deploy:
     - ps: pushd build/python
