@@ -34,13 +34,11 @@ target_link_libraries(segyio-catr segyio apputils)
 add_executable(segyio-crop segyio-crop.c)
 target_link_libraries(segyio-crop segyio apputils)
 
-install(TARGETS segyinfo DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
-install(TARGETS segyinspect DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
-
-install(TARGETS segyio-cath DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(TARGETS segyio-catb DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(TARGETS segyio-catr DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(TARGETS segyio-crop DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS segyio-cath
+                segyio-catb
+                segyio-catr
+                segyio-crop
+        DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 if (NOT BUILD_TESTING)
     return ()
