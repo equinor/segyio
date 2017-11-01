@@ -1,10 +1,12 @@
+from __future__ import absolute_import
+
 import os
-from unittest import TestCase
+import unittest
 
-from test_context import TestContext
+from .test_context import TestContext
 
 
-class TestContextTest(TestCase):
+class TestContextTest(unittest.TestCase):
     def test_test_context(self):
         original_cwd = os.getcwd()
         with TestContext() as context:
@@ -30,3 +32,6 @@ class TestContextTest(TestCase):
 
             self.assertTrue(os.path.exists("small.sgy"))
             self.assertTrue(os.path.exists("test/small.sgy"))
+
+if __name__ == '__main__':
+    unittest.main()
