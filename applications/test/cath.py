@@ -24,12 +24,6 @@ class TestSegyH(unittest.TestCase):
     cmd_base = './applications/segyio-cath'
     FNULL = open(os.devnull, 'w')
 
-    def test_help(self):
-        cmd = self.cmd_base + ' --help'
-        result = subprocess.check_output(cmd, shell=True, cwd=self.work_dir)
-        self.assertEqual(result[0:18], b'Usage: segyio-cath')
-
-
     def test_segy_in(self):
         cmd = self.cmd_base + ' python/test-data/small.sgy'
         result = subprocess.check_output(cmd, shell=True,
@@ -41,18 +35,6 @@ class TestSegyH(unittest.TestCase):
         cmd = self.cmd_base + ' ../CMakeLists.txt'
         result = subprocess.call(cmd, shell=True,
                  stderr=self.FNULL, cwd=self.work_dir)
-        self.assertEqual(result, 0)
-
-    def test_none_file(self):
-        cmd = self.cmd_base + ' nothing'
-        result = subprocess.check_output(cmd, shell=True,
-                 stderr=self.FNULL, cwd=self.work_dir)
-        self.assertEqual(result, b'')
-
-    def test_empty_string_in(self):
-        cmd = self.cmd_base + ' ';
-        result = subprocess.call(cmd, shell=True, stderr=self.FNULL,
-		stdout=self.FNULL, cwd=self.work_dir)
         self.assertEqual(result, 0)
 
 if __name__ == '__main__':

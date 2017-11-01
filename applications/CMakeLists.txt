@@ -42,7 +42,43 @@ install(TARGETS segyio-catb DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(TARGETS segyio-catr DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(TARGETS segyio-crop DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-add_python_test(applications.catr test/catr.py)
-add_python_test(applications.catb test/catb.py)
-add_python_test(applications.cath test/cath.py)
+if (NOT BUILD_TESTING)
+    return ()
+endif ()
 
+set(small ${testdata}/small.sgy)
+add_test(NAME catr.arg.t        COMMAND segyio-catr -t 5 ${small})
+add_test(NAME catr.arg.r1       COMMAND segyio-catr -r 5 ${small})
+add_test(NAME catr.arg.r2       COMMAND segyio-catr -r 1 2 ${small})
+add_test(NAME catr.arg.r3       COMMAND segyio-catr -r 1 2 3 ${small} -r 5 6)
+add_test(NAME catr.arg.multiple COMMAND segyio-catr "-r 1" 5 2 ${small} -r 1 6)
+add_test(NAME catr.arg.rt       COMMAND segyio-catr -r 1 2 ${small} -t 5)
+
+add_test(NAME catb.arg.help     COMMAND segyio-catb --help)
+add_test(NAME catb.fail.nosegy  COMMAND segyio-catb ${CMAKE_CURRENT_LIST_FILE})
+add_test(NAME catb.fail.nofile  COMMAND segyio-catb not-exist)
+add_test(NAME catb.fail.noarg   COMMAND segyio-catb)
+
+add_test(NAME cath.arg.help     COMMAND segyio-catb --help)
+add_test(NAME cath.fail.nosegy  COMMAND segyio-catb ${CMAKE_CURRENT_LIST_FILE})
+add_test(NAME cath.fail.nofile  COMMAND segyio-catb not-exist)
+add_test(NAME cath.fail.noarg   COMMAND segyio-catb)
+
+set_tests_properties(catb.fail.nosegy
+                     catb.fail.nofile
+                     catb.fail.noarg
+                     cath.fail.nosegy
+                     cath.fail.nofile
+                     cath.fail.noarg
+    PROPERTIES WILL_FAIL ON)
+
+find_package(PythonInterp)
+
+if (NOT PYTHON_EXECUTABLE)
+    message(WARNING "Could not find python, skipping application output tests")
+endif()
+
+set(test ${CMAKE_CURRENT_SOURCE_DIR}/test)
+add_test(NAME catr.output COMMAND ${PYTHON_EXECUTABLE} ${test}/catr.py)
+add_test(NAME catb.output COMMAND ${PYTHON_EXECUTABLE} ${test}/catb.py)
+add_test(NAME cath.output COMMAND ${PYTHON_EXECUTABLE} ${test}/cath.py)
