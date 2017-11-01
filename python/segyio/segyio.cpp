@@ -45,7 +45,7 @@ static segy_file *get_FILE_pointer_from_capsule(PyObject *capsule) {
         return NULL;
     }
 
-    segy_file *p_FILE = PyCapsule_GetPointer(capsule, "segy_file*");
+    segy_file *p_FILE = (segy_file*)PyCapsule_GetPointer(capsule, "segy_file*");
 
     if (!p_FILE) {
         PyErr_SetString(PyExc_ValueError, "File Handle is NULL");
@@ -233,7 +233,7 @@ static PyObject *py_read_texthdr(PyObject *self, PyObject *args) {
 
     segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
 
-    char *buffer = malloc(sizeof(char) * (segy_textheader_size()));
+    char *buffer = (char*)malloc(sizeof(char) * (segy_textheader_size()));
 
     int error = index == 0
               ? segy_read_textheader(p_FILE, buffer)
@@ -279,13 +279,13 @@ static char *get_header_pointer_from_capsule(PyObject *capsule, int *length) {
         if (length) {
             *length = segy_binheader_size();
         }
-        return PyCapsule_GetPointer(capsule, "BinaryHeader=char*");
+        return (char*)PyCapsule_GetPointer(capsule, "BinaryHeader=char*");
 
     } else if (PyCapsule_IsValid(capsule, "TraceHeader=char*")) {
         if (length) {
             *length = SEGY_TRACE_HEADER_SIZE;
         }
-        return PyCapsule_GetPointer(capsule, "TraceHeader=char*");
+        return (char*)PyCapsule_GetPointer(capsule, "TraceHeader=char*");
     }
     PyErr_SetString(PyExc_TypeError, "The object was not a header type");
     return NULL;
@@ -359,7 +359,7 @@ static void *py_binary_header_destructor(PyObject *capsule) {
 
 static PyObject *py_empty_binaryhdr(PyObject *self) {
     errno = 0;
-    char *buffer = calloc(segy_binheader_size(), sizeof(char));
+    char *buffer = (char*)calloc(segy_binheader_size(), sizeof(char));
     return PyCapsule_New(buffer, "BinaryHeader=char*", (PyCapsule_Destructor) py_binary_header_destructor);
 }
 
@@ -373,7 +373,7 @@ static PyObject *py_read_binaryhdr(PyObject *self, PyObject *args) {
 
     if (PyErr_Occurred()) { return NULL; }
 
-    char *buffer = malloc(sizeof(char) * (segy_binheader_size()));
+    char *buffer = (char*)malloc(sizeof(char) * (segy_binheader_size()));
 
     int error = segy_binheader(p_FILE, buffer);
 
@@ -412,7 +412,7 @@ static char *get_trace_header_pointer_from_capsule(PyObject *capsule) {
         PyErr_Format(PyExc_TypeError, "The object was not of type TraceHeader.");
         return NULL;
     }
-    return PyCapsule_GetPointer(capsule, "TraceHeader=char*");
+    return (char*)PyCapsule_GetPointer(capsule, "TraceHeader=char*");
 }
 
 static void *py_trace_header_destructor(PyObject *capsule) {
@@ -423,7 +423,7 @@ static void *py_trace_header_destructor(PyObject *capsule) {
 
 static PyObject *py_empty_trace_header(PyObject *self) {
     errno = 0;
-    char *buffer = calloc(SEGY_TRACE_HEADER_SIZE, sizeof(char));
+    char *buffer = (char*)calloc(SEGY_TRACE_HEADER_SIZE, sizeof(char));
     return PyCapsule_New(buffer, "TraceHeader=char*", (PyCapsule_Destructor) py_trace_header_destructor);
 }
 
@@ -517,7 +517,7 @@ static PyObject *py_field_forall(PyObject *self, PyObject *args ) {
                                    start,
                                    stop,
                                    step,
-                                   buffer.buf,
+                                   (int*)buffer.buf,
                                    trace0,
                                    trace_bsize );
 
@@ -576,8 +576,8 @@ static PyObject *py_field_foreach(PyObject *self, PyObject *args ) {
         return NULL;
     }
 
-    const int* ind = bufindices.buf;
-    int* out = bufout.buf;
+    const int* ind = (int*)bufindices.buf;
+    int* out = (int*)bufout.buf;
     for( int i = 0; i < len; ++i ) {
         int err = segy_field_forall( fp, field,
                                      ind[ i ],
@@ -779,7 +779,7 @@ static PyObject *py_init_cube_metrics(PyObject *self, PyObject *args) {
 }
 
 static Py_buffer check_and_get_buffer(PyObject *object, const char *name, unsigned int expected) {
-    static const Py_buffer zero_buffer;
+    static const Py_buffer zero_buffer = { 0 };
     Py_buffer buffer = zero_buffer;
     if (!PyObject_CheckBuffer(object)) {
         PyErr_Format(PyExc_TypeError, "The destination for %s is not a buffer object", name);
@@ -866,7 +866,7 @@ static PyObject *py_init_indices(PyObject *self, PyObject *args) {
     PyArg_Parse(PyDict_GetItemString(metrics, "trace0"), "l", &trace0);
     PyArg_Parse(PyDict_GetItemString(metrics, "trace_bsize"), "i", &trace_bsize);
 
-    int error = segy_inline_indices(p_FILE, il_field, sorting, iline_count, xline_count, offset_count, iline_buffer.buf,
+    int error = segy_inline_indices(p_FILE, il_field, sorting, iline_count, xline_count, offset_count, (int*)iline_buffer.buf,
                                     trace0, trace_bsize);
 
     if (error != 0) {
@@ -874,7 +874,7 @@ static PyObject *py_init_indices(PyObject *self, PyObject *args) {
         goto cleanup;
     }
 
-    error = segy_crossline_indices(p_FILE, xl_field, sorting, iline_count, xline_count, offset_count, xline_buffer.buf,
+    error = segy_crossline_indices(p_FILE, xl_field, sorting, iline_count, xline_count, offset_count, (int*)xline_buffer.buf,
                                    trace0, trace_bsize);
 
     if (error != 0) {
@@ -883,7 +883,7 @@ static PyObject *py_init_indices(PyObject *self, PyObject *args) {
     }
 
     error = segy_offset_indices( p_FILE, offset_field, offset_count,
-                                 offsets_buffer.buf,
+                                 (int*)offsets_buffer.buf,
                                  trace0, trace_bsize );
 
     if (error != 0) {
@@ -924,7 +924,7 @@ static PyObject *py_fread_trace0(PyObject *self, PyObject *args) {
 
     int trace_no;
     int linenos_sz = PyObject_Length(indices_object);
-    int error = segy_line_trace0(lineno, other_line_length, stride, offsets, buffer.buf, linenos_sz, &trace_no);
+    int error = segy_line_trace0(lineno, other_line_length, stride, offsets, (int*)buffer.buf, linenos_sz, &trace_no);
     PyBuffer_Release( &buffer );
 
     if (error != 0) {
@@ -966,7 +966,7 @@ static PyObject *py_read_trace(PyObject *self, PyObject *args) {
     PyObject_GetBuffer(buffer_out, &buffer, PyBUF_FORMAT | PyBUF_C_CONTIGUOUS | PyBUF_WRITEABLE);
 
     int error = 0;
-    float* buf = buffer.buf;
+    float* buf = (float*)buffer.buf;
     Py_ssize_t i;
 
     for( i = 0; error == 0 && i < length; ++i, buf += samples ) {
@@ -974,7 +974,7 @@ static PyObject *py_read_trace(PyObject *self, PyObject *args) {
     }
 
     long long bufsize = (long long) length * samples;
-    int conv_error = segy_to_native(format, bufsize, buffer.buf);
+    int conv_error = segy_to_native(format, bufsize, (float*)buffer.buf);
     PyBuffer_Release( &buffer );
 
     if (error != 0) {
@@ -1013,7 +1013,7 @@ static PyObject *py_write_trace(PyObject *self, PyObject *args) {
     Py_buffer buffer;
     PyObject_GetBuffer(buffer_in, &buffer, PyBUF_FORMAT | PyBUF_C_CONTIGUOUS | PyBUF_WRITEABLE);
 
-    int error = segy_from_native(format, samples, buffer.buf);
+    int error = segy_from_native(format, samples, (float*)buffer.buf);
 
     if (error != 0) {
         PyErr_SetString(PyExc_TypeError, "Unable to convert buffer from native format.");
@@ -1021,8 +1021,8 @@ static PyObject *py_write_trace(PyObject *self, PyObject *args) {
         return NULL;
     }
 
-    error = segy_writetrace(p_FILE, trace_no, buffer.buf, trace0, trace_bsize);
-    int conv_error = segy_to_native(format, samples, buffer.buf);
+    error = segy_writetrace(p_FILE, trace_no, (float*)buffer.buf, trace0, trace_bsize);
+    int conv_error = segy_to_native(format, samples, (float*)buffer.buf);
     PyBuffer_Release( &buffer );
 
     if (error != 0) {
@@ -1068,14 +1068,14 @@ static PyObject *py_read_line(PyObject *self, PyObject *args) {
     Py_buffer buffer;
     PyObject_GetBuffer(buffer_in, &buffer, PyBUF_FORMAT | PyBUF_C_CONTIGUOUS | PyBUF_WRITEABLE);
 
-    int error = segy_read_line(p_FILE, line_trace0, line_length, stride, offsets, buffer.buf, trace0, trace_bsize);
+    int error = segy_read_line(p_FILE, line_trace0, line_length, stride, offsets, (float*)buffer.buf, trace0, trace_bsize);
 
     if (error != 0) {
         PyBuffer_Release( &buffer );
         return py_handle_segy_error_with_index_and_name(error, errno, line_trace0, "Line");
     }
 
-    error = segy_to_native(format, samples * line_length, buffer.buf);
+    error = segy_to_native(format, samples * line_length, (float*)buffer.buf);
     PyBuffer_Release( &buffer );
 
     if (error != 0) {
@@ -1120,7 +1120,7 @@ static PyObject *py_read_depth_slice(PyObject *self, PyObject *args) {
 
     Py_ssize_t trace_no = 0;
     int error = 0;
-    float* buf = buffer.buf;
+    float* buf = (float*)buffer.buf;
 
     for(trace_no = 0; error == 0 && trace_no < count; ++trace_no) {
         error = segy_readsubtr(p_FILE,
@@ -1138,7 +1138,7 @@ static PyObject *py_read_depth_slice(PyObject *self, PyObject *args) {
         return py_handle_segy_error_with_index_and_name(error, errno, trace_no, "Depth");
     }
 
-    error = segy_to_native(format, count, buffer.buf);
+    error = segy_to_native(format, count, (float*)buffer.buf);
     PyBuffer_Release( &buffer );
 
     if (error != 0) {
@@ -1160,7 +1160,7 @@ static PyObject * py_format(PyObject *self, PyObject *args) {
     PyObject_GetBuffer( out, &buffer,
                         PyBUF_FORMAT | PyBUF_C_CONTIGUOUS | PyBUF_WRITEABLE );
 
-    int err = segy_to_native( format, buffer.len / buffer.itemsize, buffer.buf );
+    int err = segy_to_native( format, buffer.len / buffer.itemsize, (float*)buffer.buf );
 
     PyBuffer_Release( &buffer );
 
