@@ -1,8 +1,7 @@
-from unittest import TestCase
-
+import unittest
 import subprocess
 
-class appTest(TestCase):
+class appTest(unittest.TestCase):
     def setUp(self):
         self.file_path = "../python/test-data/small.sgy"
         self.cmd_base = ".././applications/segyio-catr"
@@ -99,30 +98,6 @@ class appTest(TestCase):
                     b'uint1\t0',
                     b'uint2\t0']
 
-    def test_segycatr_argparse_t(self):
-        cmd = [self.cmd_base, "-t 5", self.file_path]
-        subprocess.check_call(cmd)
-
-    def test_segycatr_argparse_r1(self):
-        cmd = [self.cmd_base, "-r 5", self.file_path]
-        subprocess.check_call(cmd)
-
-    def test_segycatr_argparse_r2(self):
-        cmd = [self.cmd_base, "-r 1 2", self.file_path]
-        subprocess.check_call(cmd)
-
-    def test_segycatr_argparse_r3(self):
-        cmd = [self.cmd_base, "-r 1 2 3", self.file_path, "-r 5 6"]
-        subprocess.check_call(cmd)
-
-    def test_segycatr_argparse_r_multiple(self):
-        cmd = [self.cmd_base, "-r 1", "5", "2", self.file_path, "-r 1 2"]
-        subprocess.check_call(cmd)
-
-    def test_segycatr_argparse_r_t(self):
-        cmd = [self.cmd_base, "-r 1 2", self.file_path, "-t 5"]
-        subprocess.check_call(cmd)
-
     def test_segycatr_output_t(self):
         cmd = [self.cmd_base, self.file_path, "-t 6"]
         res = subprocess.Popen(cmd, stdout=subprocess.PIPE).communicate()[0]
@@ -164,3 +139,6 @@ class appTest(TestCase):
         res_list = res.split(b"\n")
         for i in range(len(self.ref_list)):
             self.assertEquals(self.ref_list[i], res_list[i+182])
+
+if __name__ == '__main__':
+    unittest.main()
