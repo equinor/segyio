@@ -9,7 +9,7 @@ if (NOT BUILD_MEX)
     return()
 endif()
 
-include(${CMAKE_SOURCE_DIR}/cmake/matlab.cmake REQUIRED)
+include(matlab.cmake REQUIRED)
 
 option(BUILD_MEX_TESTS "Build matlab mex tests" ON)
 
