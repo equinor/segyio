@@ -82,9 +82,6 @@ else()
     list(APPEND warnings-c /W3 /wd4996)
 endif ()
 
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-include(segyio_testing)
-
 set(testdata ${CMAKE_CURRENT_SOURCE_DIR}/test-data)
 
 add_subdirectory(lib)
