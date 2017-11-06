@@ -69,9 +69,20 @@ if(NOT MSVC)
     set(m m)
 endif()
 
+if (NOT MSVC)
+    # assuming gcc-style options
+    set(c99 -std=c99)
+    # add warnings in debug mode
+    list(APPEND warnings-c -Wall -Wextra -pedantic -Wformat-nonliteral
+                           -Wcast-align -Wpointer-arith -Wmissing-declarations
+                           -Wcast-qual -Wwrite-strings -Wchar-subscripts
+                           -Wredundant-decls
+    )
+else()
+    list(APPEND warnings-c /W3 /wd4996)
+endif ()
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-include(default_warnings)
 include(segyio_testing)
 
 set(testdata ${CMAKE_CURRENT_SOURCE_DIR}/test-data)
