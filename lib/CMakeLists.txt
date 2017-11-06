@@ -7,7 +7,7 @@ endif()
 set(SOURCE_FILES src/segy.c)
 
 set(STATIC_NAME segyio)
-if(WINDOWS)
+if(MSVC)
     # MSVC outputs the same name for static and shared libraries (with the same
     # extension), so we need to differentiate between the two somehow.
     set(STATIC_NAME "${STATIC_NAME}-static")
