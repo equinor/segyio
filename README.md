@@ -66,7 +66,7 @@ To build and use segyio you need:
 To build and install segyio, perform the following actions in your console:
 
 ```
-git clone --recursive https://github.com/Statoil/segyio
+git clone https://github.com/Statoil/segyio
 cd segyio
 mkdir build
 cd build
@@ -79,11 +79,6 @@ Make install must be done as root for a system install; if you want to install
 in your home directory, add `-DCMAKE_INSTALL_PREFIX=~/` or some other
 appropriate directory. Remember to update your $PATH! By default, only the
 python bindings are built.
-
-Passing recursive to `git clone` also fetches statoil/pycmake and
-matthew-brett/multibuild. The former is cmake features for managing python
-packages, and the latter tools for building OS X and linux binary packages for
-pip.
 
 ##### Matlab support #####
 

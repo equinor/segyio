@@ -104,16 +104,9 @@ before_deploy:
   # unproblematic as long as source code is uploaded from linux.
   - if [[ "$TRAVIS_OS_NAME" == "linux" && ! -d segyio-$VERSION ]]; then
       git clone $TRAVIS_BUILD_DIR segyio-$VERSION;
-      pushd segyio-$VERSION;
-      git submodule update --init pycmake;
-      popd;
       tar --exclude-vcs -C $TRAVIS_BUILD_DIR -czvf segyio-$VERSION.tar.gz segyio-$VERSION;
       zip --exclude *.git -r segyio-$VERSION.zip $TRAVIS_BUILD_DIR/segyio-$VERSION/*;
     fi
-  - pushd build/python
-
-after_deploy:
-  - popd
 
 deploy:
     - provider: pypi # source distribution (done from linux python 3.6 only)
@@ -136,7 +129,7 @@ deploy:
       on:
         tags: true
 
-    - provider: releases # upload tarball with submodule
+    - provider: releases # upload tarball and zip with source code
       skip_cleanup: true
       overwrite: true
       file:
