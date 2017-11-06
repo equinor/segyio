@@ -21,6 +21,9 @@ add_library(segyio-static STATIC ${SOURCE_FILES})
 target_link_libraries(segyio-static ${m} ${ws2})
 target_compile_definitions(segyio-static PRIVATE
     ${htons} ${mmap} ${fstat} ${ftello})
+target_compile_options(segyio-static BEFORE
+    PRIVATE $<$<CONFIG:Debug>:${warnings-c}> ${c99}
+)
 set_target_properties(segyio-static PROPERTIES
                       OUTPUT_NAME ${STATIC_NAME}
                       CLEAN_DIRECT_OUTPUT 1)
@@ -35,6 +38,9 @@ target_include_directories(
 #
 add_library(segyio-shared SHARED ${SOURCE_FILES} ${DLL_EXPORT_FILES})
 target_link_libraries(segyio-shared ${m} ${ws2})
+target_compile_options(segyio-shared BEFORE
+    PRIVATE $<$<CONFIG:Debug>:${warnings-c}> ${c99}
+)
 target_compile_definitions(segyio-shared PRIVATE
     ${htons} ${mmap} ${fstat} ${ftello})
 set_target_properties(segyio-shared PROPERTIES
