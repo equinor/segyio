@@ -14,15 +14,13 @@ if(MSVC)
     set(DLL_EXPORT_FILES src/segy.def)
 endif()
 
-if(NOT MSVC)
-    set(math "m")
-endif()
-
 #
 # static build
 #
 add_library(segyio-static STATIC ${SOURCE_FILES})
-target_link_libraries(segyio-static ${math} ${ws2})
+target_link_libraries(segyio-static ${m} ${ws2})
+target_compile_definitions(segyio-static PRIVATE
+    ${htons} ${mmap} ${fstat} ${ftello})
 set_target_properties(segyio-static PROPERTIES
                       OUTPUT_NAME ${STATIC_NAME}
                       CLEAN_DIRECT_OUTPUT 1)
@@ -36,7 +34,9 @@ target_include_directories(
 # dynamic build
 #
 add_library(segyio-shared SHARED ${SOURCE_FILES} ${DLL_EXPORT_FILES})
-target_link_libraries(segyio-shared ${math} ${ws2})
+target_link_libraries(segyio-shared ${m} ${ws2})
+target_compile_definitions(segyio-shared PRIVATE
+    ${htons} ${mmap} ${fstat} ${ftello})
 set_target_properties(segyio-shared PROPERTIES
                       SOVERSION   ${segyio_MAJOR}
                       VERSION     ${segyio_MAJOR}
