@@ -77,6 +77,9 @@ after_deploy:
 
 deploy_script:
     - ps: |
+          Write-Host "TAG: $env:APPVEYOR_REPO_TAG"
+          Write-Host "SHARED: $env:SHARED"
+          Write-Host "BRANCH: $env:APPVEYOR_REPO_BRANCH"
           If (-not ($env:APPVEYOR_REPO_TAG)) { return }
           If ($env:SHARED -eq "ON") { return }
           If ($env:APPVEYOR_REPO_BRANCH -ne "master") { return }
