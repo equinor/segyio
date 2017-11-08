@@ -104,6 +104,7 @@ before_deploy:
   # unproblematic as long as source code is uploaded from linux.
   - if [[ "$TRAVIS_OS_NAME" == "linux" && ! -d segyio-$VERSION ]]; then
       git clone $TRAVIS_BUILD_DIR segyio-$VERSION;
+      echo "version = '$TRAVIS_TAG'" > python/segyio/version.py
       tar --exclude-vcs -C $TRAVIS_BUILD_DIR -czvf segyio-$VERSION.tar.gz segyio-$VERSION;
       zip --exclude *.git -r segyio-$VERSION.zip $TRAVIS_BUILD_DIR/segyio-$VERSION/*;
     fi
