@@ -207,25 +207,25 @@ static struct options parse_options( int argc, char** argv ) {
     optversion.version = 1, optversion.errmsg = NULL;
 
     static struct option long_options[] = {
-        { "iline-begin",        required_argument,    0,        'i' },
-        { "iline-end",          required_argument,    0,        'I' },
-        { "inline-begin",       required_argument,    0,        'i' },
-        { "inline-end",         required_argument,    0,        'I' },
+        { "iline-begin",        required_argument, 0, 'i' },
+        { "iline-end",          required_argument, 0, 'I' },
+        { "inline-begin",       required_argument, 0, 'i' },
+        { "inline-end",         required_argument, 0, 'I' },
 
-        { "xline-begin",        required_argument,    0,        'x' },
-        { "xline-end",          required_argument,    0,        'X' },
-        { "crossline-begin",    required_argument,    0,        'x' },
-        { "crossline-end",      required_argument,    0,        'X' },
+        { "xline-begin",        required_argument, 0, 'x' },
+        { "xline-end",          required_argument, 0, 'X' },
+        { "crossline-begin",    required_argument, 0, 'x' },
+        { "crossline-end",      required_argument, 0, 'X' },
 
-        { "sample-begin",       required_argument,    0,        's' },
-        { "sample-end",         required_argument,    0,        'S' },
+        { "sample-begin",       required_argument, 0, 's' },
+        { "sample-end",         required_argument, 0, 'S' },
 
-        { "il",                 required_argument,    0,        'b' },
-        { "xl",                 required_argument,    0,        'B' },
+        { "il",                 required_argument, 0, 'b' },
+        { "xl",                 required_argument, 0, 'B' },
 
-        { "verbose",            no_argument,          0,        'v' },
-        { "version",            no_argument,          0,        'V'  },
-        { "help",               no_argument,          0,        'h' },
+        { "verbose",            no_argument,       0, 'v' },
+        { "version",            no_argument,       0, 'V' },
+        { "help",               no_argument,       0, 'h' },
         { 0, 0, 0, 0 }
     };
 
