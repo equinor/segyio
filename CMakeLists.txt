@@ -12,6 +12,7 @@ if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.git)
                     OUTPUT_VARIABLE git-describe
                     OUTPUT_STRIP_TRAILING_WHITESPACE
                     RESULT_VARIABLE describe-failure
+                    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
                     )
     if (NOT describe-failure)
         message(STATUS "Found version ${git-describe} from git")
