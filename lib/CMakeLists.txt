@@ -7,22 +7,23 @@ endif()
 set(SOURCE_FILES src/segy.c)
 
 set(STATIC_NAME segyio)
-if(WINDOWS)
+if(MSVC)
     # MSVC outputs the same name for static and shared libraries (with the same
     # extension), so we need to differentiate between the two somehow.
     set(STATIC_NAME "${STATIC_NAME}-static")
     set(DLL_EXPORT_FILES src/segy.def)
 endif()
 
-if(NOT MSVC)
-    set(math "m")
-endif()
-
 #
 # static build
 #
 add_library(segyio-static STATIC ${SOURCE_FILES})
-target_link_libraries(segyio-static ${math} ${ws2})
+target_link_libraries(segyio-static ${m} ${ws2})
+target_compile_definitions(segyio-static PRIVATE
+    ${htons} ${mmap} ${fstat} ${ftello})
+target_compile_options(segyio-static BEFORE
+    PRIVATE $<$<CONFIG:Debug>:${warnings-c}> ${c99}
+)
 set_target_properties(segyio-static PROPERTIES
                       OUTPUT_NAME ${STATIC_NAME}
                       CLEAN_DIRECT_OUTPUT 1)
@@ -36,7 +37,12 @@ target_include_directories(
 # dynamic build
 #
 add_library(segyio-shared SHARED ${SOURCE_FILES} ${DLL_EXPORT_FILES})
-target_link_libraries(segyio-shared ${math} ${ws2})
+target_link_libraries(segyio-shared ${m} ${ws2})
+target_compile_options(segyio-shared BEFORE
+    PRIVATE $<$<CONFIG:Debug>:${warnings-c}> ${c99}
+)
+target_compile_definitions(segyio-shared PRIVATE
+    ${htons} ${mmap} ${fstat} ${ftello})
 set_target_properties(segyio-shared PROPERTIES
                       SOVERSION   ${segyio_MAJOR}
                       VERSION     ${segyio_MAJOR}
@@ -79,5 +85,4 @@ foreach (src segy utils)
     target_link_libraries(test${src} segyio-shared)
     target_include_directories(test${src} PRIVATE src)
     add_test(c.${src} test${src})
-    add_memcheck_test(test${src} test${src})
 endforeach()

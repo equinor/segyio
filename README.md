@@ -1,4 +1,9 @@
-# SEGY IO [![Build Status](https://travis-ci.org/Statoil/segyio.svg?branch=master)](https://travis-ci.org/Statoil/segyio)
+# SEGY IO
+
+[![Travis](https://img.shields.io/travis/Statoil/segyio/master.svg?label=travis)](https://travis-ci.org/Statoil/segyio)
+[![Appveyor](https://ci.appveyor.com/api/projects/status/2i5cr8ui2t9qbxk9?svg=true)](https://ci.appveyor.com/project/statoil-travis/segyio)
+[![PyPI Updates](https://pyup.io/repos/github/Statoil/segyio/shield.svg)](https://pyup.io/repos/github/Statoil/segyio/)
+[![Python 3](https://pyup.io/repos/github/Statoil/segyio/python-3-shield.svg)](https://pyup.io/repos/github/Statoil/segyio/)
 
 ## Introduction ##
 
@@ -50,6 +55,7 @@ python interpreter and type `help(segyio)` to get started.
 
 To build and use segyio you need:
  * A C99 compatible C compiler (tested mostly on gcc and clang)
+ * A C++ compiler for the python extension
  * [CMake](https://cmake.org/) version 2.8.8 or greater
  * [Python](https://www.python.org/) 2.7 or 3.x.
 
@@ -60,7 +66,7 @@ To build and use segyio you need:
 To build and install segyio, perform the following actions in your console:
 
 ```
-git clone --recursive https://github.com/Statoil/segyio
+git clone https://github.com/Statoil/segyio
 cd segyio
 mkdir build
 cd build
@@ -73,11 +79,6 @@ Make install must be done as root for a system install; if you want to install
 in your home directory, add `-DCMAKE_INSTALL_PREFIX=~/` or some other
 appropriate directory. Remember to update your $PATH! By default, only the
 python bindings are built.
-
-Passing recursive to `git clone` also fetches statoil/pycmake and
-matthew-brett/multibuild. The former is cmake features for managing python
-packages, and the latter tools for building OS X and linux binary packages for
-pip.
 
 ##### Matlab support #####
 

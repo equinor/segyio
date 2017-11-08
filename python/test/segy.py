@@ -1,9 +1,11 @@
+from __future__ import absolute_import
+
 from types import GeneratorType
 
 import itertools
 import numpy as np
-from unittest import TestCase
-from test_context import TestContext
+import unittest
+from .test_context import TestContext
 
 import segyio
 from segyio import TraceField, BinField
@@ -50,7 +52,7 @@ def mklines(fname):
             dst.header.xline[xl] = { TraceField.CROSSLINE_3D: xl }
 
 
-class TestSegy(TestCase):
+class TestSegy(unittest.TestCase):
 
     def setUp(self):
         self.filename = "test-data/small.sgy"
@@ -998,3 +1000,6 @@ class TestSegy(TestCase):
                 f.depth_slice = [buf * i for i in range(len(f.depth_slice))]  # assign to all depths
                 for index, depth_slice in enumerate(f.depth_slice):
                     self.assertTrue(np.allclose(depth_slice, buf * index))
+
+if __name__ == '__main__':
+    unittest.main()

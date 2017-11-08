@@ -40,11 +40,6 @@ class TestSegyB(unittest.TestCase):
     cmd_base = './applications/segyio-catb'
     FNULL = open(os.devnull, 'w')
 
-    def test_help(self):
-        cmd = self.cmd_base + ' --help'
-        result = subprocess.check_output(cmd, shell=True, cwd=self.work_dir)
-        self.assertEqual(result[0:18], b'Usage: segyio-catb')
-
     def test_segy_in(self):
         filepath = self.work_dir + '/python/test-data/small.sgy'
         cmd = self.cmd_base + ' python/test-data/small.sgy'
@@ -52,31 +47,6 @@ class TestSegyB(unittest.TestCase):
         result_list = result.split(b'\n')
         for i in range(len(self.actual_output)):
             self.assertEqual(result_list[i], self.actual_output[i])
-
-    def test_non_segy_in(self):
-        cmd = self.cmd_base + ' ../applications/CMakeLists.txt'
-        result = subprocess.call(cmd,
-                                 shell=True,
-                                 stderr=self.FNULL,
-                                 cwd=self.work_dir)
-        self.assertEqual(result, 1)
-
-    def test_none_file(self):
-        cmd = self.cmd_base + ' nothing'
-        result = subprocess.call(cmd,
-                                 shell=True,
-                                 stderr=self.FNULL,
-                                 cwd=self.work_dir)
-        self.assertEqual(result, 1)
-
-    def test_empty_string_in(self):
-        cmd = self.cmd_base + ' ';
-        result = subprocess.call(cmd,
-                                 shell=True,
-                                 stderr=self.FNULL,
-                                 stdout=self.FNULL,
-                                 cwd=self.work_dir)
-        self.assertEqual(result, 2)
 
 if __name__ == '__main__':
     unittest.main()

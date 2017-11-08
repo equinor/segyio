@@ -58,29 +58,23 @@ before_install:
     - before_install
 
 install:
-  # on os x, python is set up in a virtualenv, but cmake tends to find a
-  # system-installed, incompatible python lib.
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
         brew update && brew install cppcheck;
-        if [[ -n "${MB_PYTHON_VERSION+1}" ]]; then
-            prefix=`python-config --prefix`;
-            pypath=$prefix/lib/libpython$MB_PYTHON_VERSION.dylib;
-            pylib="-DPYTHON_LIBRARY=$pypath";
-        fi
     fi
-  - pip install numpy --upgrade
+  - pip install -r requirements.txt
 
 before_script:
   - enabled="-DBUILD_PYTHON=OFF -DBUILD_MEX=OFF"
   - if [[ -n "${MB_PYTHON_VERSION+1}" ]]; then
-        enabled="$enabled -DBUILD_PYTHON=ON";
+        enabled="$enabled -DBUILD_PYTHON=ON -DREQUIRE_PYTHON=ON";
     fi
   - cmake --version
   - mkdir build
   - pushd build
   - cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
           -DBUILD_SHARED_LIBS=ON
-          $pylib $enabled ..
+          -DCMAKE_BUILD_TYPE=Release
+          $enabled ..
   - cppcheck --language=c
              --std=c99
              --enable=style,portability,performance,warning
@@ -92,30 +86,28 @@ before_script:
              --error-exitcode=1
   - popd
 
+# distutils/setuptools on macos ignores the --rpath argument, so set
+# DYLD_LIBRARY_PATH so that the freshly-built image is picked up on for the
+# tests
 script:
   - pushd build
+  - export DYLD_LIBRARY_PATH=$PWD/lib
   - make && ctest --output-on-failure
-  - cat python/setup.py
+  - sudo make install
   - popd
-  - BUILD_COMMANDS=build_bdist_wheel build_wheel build/python
+  - build_wheel . $PLAT
   - install_run $PLAT
-  - mv wheelhouse build/python/dist
+  - mv wheelhouse dist
 
 before_deploy:
   # OS X ships with a tar that doesn't support --exclude-vcs, which is
   # unproblematic as long as source code is uploaded from linux.
   - if [[ "$TRAVIS_OS_NAME" == "linux" && ! -d segyio-$VERSION ]]; then
       git clone $TRAVIS_BUILD_DIR segyio-$VERSION;
-      pushd segyio-$VERSION;
-      git submodule update --init pycmake;
-      popd;
+      echo "version = '$TRAVIS_TAG'" > python/segyio/version.py
       tar --exclude-vcs -C $TRAVIS_BUILD_DIR -czvf segyio-$VERSION.tar.gz segyio-$VERSION;
       zip --exclude *.git -r segyio-$VERSION.zip $TRAVIS_BUILD_DIR/segyio-$VERSION/*;
     fi
-  - pushd build/python
-
-after_deploy:
-  - popd
 
 deploy:
     - provider: pypi # source distribution (done from linux python 3.6 only)
@@ -138,7 +130,7 @@ deploy:
       on:
         tags: true
 
-    - provider: releases # upload tarball with submodule
+    - provider: releases # upload tarball and zip with source code
       skip_cleanup: true
       overwrite: true
       file:

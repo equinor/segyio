@@ -1,15 +1,16 @@
+from __future__ import absolute_import
 from __future__ import division
-from unittest import TestCase
+import unittest
 
 import math
 from segyio import BinField
 from segyio import TraceField
 import numpy as np
-from test_context import TestContext
+from .test_context import TestContext
 import segyio
 
 
-class ToolsTest(TestCase):
+class ToolsTest(unittest.TestCase):
     def setUp(self):
         self.filename = "test-data/small.sgy"
         self.prestack = "test-data/small-ps.sgy"
@@ -127,3 +128,6 @@ class ToolsTest(TestCase):
                 close(angle, rotation(f, line = 'iline'), places = 3)
                 close(right, rotation(f, line = 'slow'),  places = 3)
                 close(right, rotation(f, line = 'xline'), places = 3)
+
+if __name__ == '__main__':
+    unittest.main()
