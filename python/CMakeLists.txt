@@ -36,7 +36,6 @@ add_custom_target(
     COMMENT "Building python library with setup.py"
     SOURCES ${setup-py}
     DEPENDS ${setup-py}
-    BYPRODUCTS build examples test segyio
     VERBATIM
 
     # copy the examples to have them runnable from a relative directory, so
