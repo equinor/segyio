@@ -6,11 +6,46 @@ include(CheckIncludeFile)
 include(CTest)
 include(GNUInstallDirs)
 
+if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.git)
+    find_program(git-bin git)
+    execute_process(COMMAND ${git-bin} describe
+                    OUTPUT_VARIABLE git-describe
+                    OUTPUT_STRIP_TRAILING_WHITESPACE
+                    RESULT_VARIABLE describe-failure
+                    )
+    if (NOT describe-failure)
+        message(STATUS "Found version ${git-describe} from git")
+    else ()
+        message(STATUS "No version from git - falling back to 0.0.0")
+        set(git-describe 0.0.0)
+    endif ()
 
-set(segyio_MAJOR 1 CACHE STRING "")
-set(segyio_MINOR 3 CACHE STRING "")
-set(segyio_PATCH 3 CACHE STRING "")
+    string(REGEX REPLACE "^v" "" ver-describe "${git-describe}")
+    unset(git-bin)
+elseif (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/python/segyio/version.py)
+    # tarball checkout - the version file should've been written when the
+    # tarball was built
+    file(READ python/segyio/version.py ver-describe)
+    message(STATUS "Found version ${ver-describe} from segyio/version.py")
+    string(REGEX REPLACE "^version =" "" ver-describe ${ver-describe})
+    string(REGEX REPLACE "'" "" ver-describe ${ver-describe})
+else ()
+    set(ver-describe 0.0.0)
+    message(STATUS "Could not find version, guessing ${ver-describe}")
+endif ()
+
+string(REPLACE . ";" version-list ${ver-describe})
+list(GET version-list 0 segyio-major)
+list(GET version-list 1 segyio-minor)
+list(GET version-list 2 segyio-patch)
+unset(version-list)
+
+# versions can always be overriden with -Dsegyio_MAJOR=N
+set(segyio_MAJOR ${segyio-major} CACHE STRING "Major version")
+set(segyio_MINOR ${segyio-minor} CACHE STRING "Minor version")
+set(segyio_PATCH ${segyio-patch} CACHE STRING "Patch")
 set(segyio_VERSION ${segyio_MAJOR}.${segyio_MINOR}.${segyio_PATCH})
+message(STATUS "segyio version ${segyio_VERSION}")
 
 if (POLICY CMP0042)
     cmake_policy(SET CMP0042 NEW)
