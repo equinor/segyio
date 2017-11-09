@@ -62,6 +62,7 @@ install:
         brew update && brew install cppcheck;
     fi
   - pip install -r requirements.txt
+  - pip install dependency-check
 
 before_script:
   - enabled="-DBUILD_PYTHON=OFF -DBUILD_MEX=OFF"
@@ -85,6 +86,7 @@ before_script:
              --project=compile_commands.json
              --error-exitcode=1
   - popd
+  - dependency-check
 
 # distutils/setuptools on macos ignores the --rpath argument, so set
 # DYLD_LIBRARY_PATH so that the freshly-built image is picked up on for the
