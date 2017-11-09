@@ -53,11 +53,37 @@ def src(x):
 
 extra_libs = ['m'] if not 'win' in sys.platform else []
 
+def getversion():
+    # if this is a tarball distribution, the .git-directory won't be avilable
+    # and setuptools_scm will crash hard. good tarballs are built with a
+    # pre-generated version.py, so parse that and extract version from it
+    if os.path.isdir(src('.git')):
+        return {
+            'use_scm_version': {
+                        'root': src(''),
+                        'write_to': src('python/segyio/version.py')
+            }
+        }
+
+
+    pkgversion = { 'version': '0.0.0' }
+    versionfile = src('python/segyio/version.py')
+
+    if not os.path.exists(versionfile):
+        return pkgversion
+
+    import ast
+    with open(versionfile) as f:
+        root = ast.parse(f.read())
+
+    for node in ast.walk(root):
+        if not isinstance(node, ast.Assign): continue
+        if len(node.targets) == 1 and node.targets[0].id == 'version':
+            pkgversion['version'] = node.value.s
+
+    return pkgversion
+
 setup(name='segyio',
-      use_scm_version={
-        'root': src(''),
-        'write_to': src('python/segyio/version.py')
-      },
       description='Simple & fast IO for SEG-Y files',
       long_description=long_description,
       author='Statoil ASA',
@@ -92,5 +118,6 @@ setup(name='segyio',
           'Topic :: Scientific/Engineering :: Physics',
           'Topic :: Software Development :: Libraries',
           'Topic :: Utilities'
-      ]
+      ],
+      **getversion()
       )
