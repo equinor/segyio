@@ -8,7 +8,7 @@ include(GNUInstallDirs)
 
 if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.git)
     find_program(git-bin git)
-    execute_process(COMMAND ${git-bin} describe
+    execute_process(COMMAND ${git-bin} describe --tags
                     OUTPUT_VARIABLE git-describe
                     OUTPUT_STRIP_TRAILING_WHITESPACE
                     RESULT_VARIABLE describe-failure
