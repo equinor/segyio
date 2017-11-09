@@ -1,9 +1,5 @@
 project(libsegyio)
 
-if (NOT MSVC)
-    set(CMAKE_C_FLAGS "-std=c99 ${CMAKE_C_FLAGS}")
-endif()
-
 set(SOURCE_FILES src/segy.c)
 
 set(STATIC_NAME segyio)
