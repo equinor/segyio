@@ -89,6 +89,8 @@ before_script:
   - dependency-check --failOnCVSS 1
                      --format ALL
                      --project segyio
+                     --disableAssembly
+                     --disableNodeJS
                      --scan python
                      --scan lib
                      --scan .
