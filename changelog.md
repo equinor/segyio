@@ -1,13 +1,26 @@
+# 1.3.4
+* Reading a slice in gather mode is significantly faster
+* Use ftello when available to support large files on systems where long is
+  32-bit
+* The python extension is changed to use C++; a C++ compiler is now required,
+  not just optional, when building the python extension
+* Many internal and infrastructure improvements
+* The python library is built with setuptools - still integrated with cmake.
+  Users building from source can still do cmake && make
+* Git tag is now authority on version numbers, as opposed to the version string
+  recorded in the cmake file.
+* General building and infrastructure improvements
+
 # 1.3.3
 * Infrastructure fixes
 
 # 1.3.2
-* add test for segy-cath
-* fix memory double-free error in subtr functions
+* Add test for segy-cath
+* Fix memory double-free error in subtr functions
 
 # 1.3.1
-* fix a typo in segyio-crop --version
-* some building improvements
+* Fix a typo in segyio-crop --version
+* Some building improvements
 
 # 1.3.0
 * segyio is now meant to be used as proper versions, not trunk checkouts.
