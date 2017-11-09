@@ -1,4 +1,4 @@
-project(libsegyio)
+project(libsegyio C)
 
 set(SOURCE_FILES src/segy.c)
 
