@@ -86,14 +86,6 @@ before_script:
              --project=compile_commands.json
              --error-exitcode=1
   - popd
-  - dependency-check --failOnCVSS 1
-                     --format ALL
-                     --project segyio
-                     --disableAssembly
-                     --disableNodeJS
-                     --scan python
-                     --scan lib
-                     --scan .
 
 # distutils/setuptools on macos ignores the --rpath argument, so set
 # DYLD_LIBRARY_PATH so that the freshly-built image is picked up on for the
@@ -107,6 +99,12 @@ script:
   - build_wheel . $PLAT
   - install_run $PLAT
   - mv wheelhouse dist
+  - dependency-check --failOnCVSS 1
+                     --format ALL
+                     --project segyio
+                     --disableAssembly
+                     --disableNodeJS
+                     --scan dist
 
 before_deploy:
   # OS X ships with a tar that doesn't support --exclude-vcs, which is
