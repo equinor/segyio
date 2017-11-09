@@ -1,9 +1,5 @@
 project(libsegyio)
 
-if (NOT MSVC)
-    set(CMAKE_C_FLAGS "-std=c99 ${CMAKE_C_FLAGS}")
-endif()
-
 set(SOURCE_FILES src/segy.c)
 
 set(STATIC_NAME segyio)
@@ -82,6 +78,7 @@ configure_file(${testdata}/text.sgy  test-data/text.sgy              COPYONLY)
 
 foreach (src segy utils)
     add_executable(test${src} test/${src}.c)
+    target_compile_options(test${src} BEFORE PRIVATE ${c99})
     target_link_libraries(test${src} segyio-shared)
     target_include_directories(test${src} PRIVATE src)
     add_test(c.${src} test${src})
