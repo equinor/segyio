@@ -86,7 +86,12 @@ before_script:
              --project=compile_commands.json
              --error-exitcode=1
   - popd
-  - dependency-check
+  - dependency-check --failOnCVSS 1
+                     --format ALL
+                     --project segyio
+                     --scan python
+                     --scan lib
+                     --scan .
 
 # distutils/setuptools on macos ignores the --rpath argument, so set
 # DYLD_LIBRARY_PATH so that the freshly-built image is picked up on for the
