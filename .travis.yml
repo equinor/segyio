@@ -62,13 +62,14 @@ install:
         brew update && brew install cppcheck;
     fi
   - pip install -r requirements.txt
-  - pip install dependency-check
+  - pip install dependency-check safety
 
 before_script:
   - enabled="-DBUILD_PYTHON=OFF -DBUILD_MEX=OFF"
   - if [[ -n "${MB_PYTHON_VERSION+1}" ]]; then
         enabled="$enabled -DBUILD_PYTHON=ON -DREQUIRE_PYTHON=ON";
     fi
+  - safety check
   - cmake --version
   - mkdir build
   - pushd build
