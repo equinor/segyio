@@ -105,6 +105,8 @@ script:
                      --disableAssembly
                      --disableNodeJS
                      --scan dist
+                     --scan build
+                     --enableExperimental
 
 before_deploy:
   # OS X ships with a tar that doesn't support --exclude-vcs, which is
