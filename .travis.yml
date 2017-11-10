@@ -62,12 +62,14 @@ install:
         brew update && brew install cppcheck;
     fi
   - pip install -r requirements.txt
+  - pip install dependency-check safety
 
 before_script:
   - enabled="-DBUILD_PYTHON=OFF -DBUILD_MEX=OFF"
   - if [[ -n "${MB_PYTHON_VERSION+1}" ]]; then
         enabled="$enabled -DBUILD_PYTHON=ON -DREQUIRE_PYTHON=ON";
     fi
+  - safety check
   - cmake --version
   - mkdir build
   - pushd build
@@ -98,6 +100,14 @@ script:
   - build_wheel . $PLAT
   - install_run $PLAT
   - mv wheelhouse dist
+  - dependency-check --failOnCVSS 1
+                     --format ALL
+                     --project segyio
+                     --disableAssembly
+                     --disableNodeJS
+                     --scan dist
+                     --scan build
+                     --enableExperimental
 
 before_deploy:
   # OS X ships with a tar that doesn't support --exclude-vcs, which is
