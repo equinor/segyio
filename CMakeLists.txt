@@ -27,10 +27,10 @@ elseif (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/python/segyio/version.py)
     # tarball checkout - the version file should've been written when the
     # tarball was built
     file(READ python/segyio/version.py ver-describe)
-    message(STATUS "Found version ${ver-describe} from segyio/version.py")
     string(REGEX REPLACE "^version =" "" ver-describe ${ver-describe})
     string(REGEX REPLACE "'" "" ver-describe ${ver-describe})
     string(STRIP ${ver-describe} ver-describe)
+    message(STATUS "Found version ${ver-describe} from segyio/version.py")
 else ()
     set(ver-describe 0.0.0)
     message(STATUS "Could not find version, guessing ${ver-describe}")
