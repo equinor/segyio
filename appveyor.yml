@@ -79,11 +79,12 @@ after_deploy:
 deploy_script:
     - ps: |
           Write-Host "TAG: $env:APPVEYOR_REPO_TAG"
-          Write-Host "SHARED: $env:SHARED"
-          Write-Host "BRANCH: $env:APPVEYOR_REPO_BRANCH"
           If (-not ($env:APPVEYOR_REPO_TAG).Value) { return }
+          Write-Host "SHARED: $env:SHARED"
           If ($env:SHARED -eq "ON") { return }
+          Write-Host "BRANCH: $env:APPVEYOR_REPO_BRANCH"
           If ($env:APPVEYOR_REPO_BRANCH -ne "master") { return }
 
+          Write-Host "Uploading wheels to pypi"
           Invoke-Expression "twine upload -u statoil-travis -p $env:pypipassword --skip-existing dist/*"
           If ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode) }
