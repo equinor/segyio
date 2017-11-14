@@ -70,14 +70,23 @@ add_dependencies(segyio-python segyio-shared)
 # write egg_info to the build dir in order not to pollute the source directory
 # and install as if it was through some other distro by using single-version,
 # so that install won't die on possibly missing pythonpath
-install(CODE "execute_process(COMMAND
-    ${python} ${setup-py}
-        install_egg_info --install-dir .
-        egg_info --egg-base .
-        install --prefix=${CMAKE_INSTALL_PREFIX}
-                --single-version-externally-managed
-                --record installed-files
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+# setup.py install doesn't respect DESTDIR, so "force" it by changing the
+# --root if DESTDIR is passed
+install(CODE "
+if (DEFINED ENV{DESTDIR})
+    get_filename_component(abs-destdir \"\$ENV{DESTDIR}\" ABSOLUTE)
+    set(root_destdir --root=\${abs-destdir})
+endif()
+
+execute_process(COMMAND
+${python} ${setup-py}
+    install_egg_info --install-dir .
+    egg_info --egg-base .
+    install --prefix=${CMAKE_INSTALL_PREFIX}
+            --single-version-externally-managed
+            --record installed-files
+            \${root_destdir}
+WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )")
 
 if(NOT BUILD_TESTING)

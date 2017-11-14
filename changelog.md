@@ -1,3 +1,6 @@
+# 1.3.5
+* make install respects DESTDIR, also for python files
+
 # 1.3.4
 * Reading a slice in gather mode is significantly faster
 * Use ftello when available to support large files on systems where long is
