@@ -99,8 +99,8 @@ setup(name='segyio',
         libraries=['segyio'] + extra_libs
         )],
       platforms='any',
-      requires=['numpy'],
-      install_requires=['numpy'],
+      requires=['numpy(>=1.10)'],
+      install_requires=['numpy(>=1.10)'],
       test_suite='test',
       setup_requires=['setuptools_scm'],
       classifiers=[
