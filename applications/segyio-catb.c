@@ -38,8 +38,8 @@ static struct options parse_options( int argc, char** argv ){
     opts.errmsg = NULL;
 
     struct options opthelp, optversion;
-    opthelp.help = 1, opthelp.errmsg = NULL;
-    optversion.version = 1, optversion.errmsg = NULL;
+    opthelp.version = 0, opthelp.help = 1, opthelp.errmsg = NULL;
+    optversion.version = 1, optversion.help = 0, optversion.errmsg = NULL;
     
     static struct option long_options[] = {
         {"version",     no_argument,    0,    'V'},
