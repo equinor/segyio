@@ -1,3 +1,7 @@
+# 1.3.6
+* Applications no longer spuriously ignore arguments
+* All assertClose calls in tests have non-zero epsilon
+
 # 1.3.5
 * make install respects DESTDIR, also for python files
 
