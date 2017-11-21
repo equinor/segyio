@@ -544,7 +544,7 @@ static void testReadInLine_4(){
     //last xline
     int last_line = (crosslines_sz-1);
     //first sample
-    assertClose(4.24f, data[samples*last_line+0], 0);
+    assertClose(4.24f, data[samples*last_line+0], 0.0001f);
     //middle sample
     assertClose(4.24024f, data[samples*last_line+samples/2-1], 0.0001);
     //last sample
