@@ -1,3 +1,6 @@
+# 1.3.7
+* Makefiles can turn off version detection from git from env or via args
+
 # 1.3.6
 * Applications no longer spuriously ignore arguments
 * All assertClose calls in tests have non-zero epsilon

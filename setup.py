@@ -57,11 +57,14 @@ def getversion():
     # if this is a tarball distribution, the .git-directory won't be avilable
     # and setuptools_scm will crash hard. good tarballs are built with a
     # pre-generated version.py, so parse that and extract version from it
-    if os.path.isdir(src('.git')):
+    #
+    # set the SEGYIO_NO_GIT_VER environment variable to ignore a version from
+    # git (useful when building for debian or other distributions)
+    if not 'SEGYIO_NO_GIT_VER' in os.environ and os.path.isdir(src('.git')):
         return {
             'use_scm_version': {
-                        'root': src(''),
-                        'write_to': src('python/segyio/version.py')
+                'root': src(''),
+                'write_to': src('python/segyio/version.py')
             }
         }
 

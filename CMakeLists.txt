@@ -6,7 +6,11 @@ include(CheckIncludeFile)
 include(CTest)
 include(GNUInstallDirs)
 
-if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.git)
+if (DEFINED ENV{SEGYIO_NO_GIT_VER})
+    set(SEGYIO_NO_GIT_VER CACHE BOOL "Ignore version from git" ON)
+endif ()
+
+if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.git AND NOT SEGYIO_NO_GIT_VER)
     find_program(git-bin git)
     execute_process(COMMAND ${git-bin} describe --tags
                     OUTPUT_VARIABLE git-describe
