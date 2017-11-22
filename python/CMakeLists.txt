@@ -23,11 +23,15 @@ endif()
 set(python ${PYTHON_EXECUTABLE})
 
 if (NOT WIN32)
-    # setuptools on microsoft compilers doesn't support the --library-dir flag
-    # and crashes, so only pass it on non-microsoft platforms
+    # setuptools on microsoft compilers doesn't support the --library-dir or
+    # --buil-dir flag and crashes, so only pass it on non-microsoft platforms
     set(setup-py-libdir build_ext
                             --rpath        $<TARGET_FILE_DIR:segyio-shared>
                             --library-dirs $<TARGET_FILE_DIR:segyio-shared>)
+
+    set(install-no-rpath install_lib --build-dir build/install)
+    set(build-no-rpath --library-dirs $<TARGET_FILE_DIR:segyio-shared>
+                       build --build-lib build/install)
 endif ()
 
 set(setup-py ${CMAKE_SOURCE_DIR}/setup.py)
@@ -63,6 +67,11 @@ add_custom_target(
     # install the lib in the build-dir so that the examples can load that from
     # current working dir
     COMMAND ${python} ${setup-py} ${setup-py-libdir} install_lib -d .
+
+    # to maintain good make && make install behaviour, the extension is built
+    # twice, one with rpath (for testing and build-dir-local) and one for
+    # installation
+    COMMAND ${python} ${setup-py} build_ext ${build-no-rpath}
 )
 
 add_dependencies(segyio-python segyio-shared)
@@ -82,6 +91,7 @@ execute_process(COMMAND
 ${python} ${setup-py}
     install_egg_info --install-dir .
     egg_info --egg-base .
+    ${install-no-rpath}
     install --prefix=${CMAKE_INSTALL_PREFIX}
             --single-version-externally-managed
             --record installed-files
