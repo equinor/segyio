@@ -20,6 +20,10 @@ if (NOT PYTHON_EXECUTABLE)
     return()
 endif()
 
+if (PYTHON_INSTALL_LAYOUT)
+    set(setup-install-layout --install-layout ${PYTHON_INSTALL_LAYOUT})
+endif()
+
 set(python ${PYTHON_EXECUTABLE})
 
 if (NOT WIN32)
@@ -95,6 +99,7 @@ ${python} ${setup-py}
     install --prefix=${CMAKE_INSTALL_PREFIX}
             --single-version-externally-managed
             --record installed-files
+            ${setup-install-layout}
             \${root_destdir}
 WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )")
