@@ -1,3 +1,10 @@
+# 1.3.8
+* Automate python ast analysis with bandit on travis
+* The installed python extension is built without rpath
+* The numpy minimum requirement is handled in setup.py
+* The python installation layout can be configured via cmake
+  e.g. -DPYTHON_INSTALL_LAYOUT=deb
+
 # 1.3.7
 * Makefiles can turn off version detection from git from env or via args
 
