@@ -102,10 +102,9 @@ setup(name='segyio',
         libraries=['segyio'] + extra_libs
         )],
       platforms='any',
-      requires=['numpy(>=1.10)'],
       install_requires=['numpy(>=1.10)'],
+      setup_requires=['setuptools >=28', 'setuptools_scm'],
       test_suite='test',
-      setup_requires=['setuptools_scm'],
       classifiers=[
           'Development Status :: 5 - Production/Stable',
           'Environment :: Other Environment',
