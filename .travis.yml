@@ -5,6 +5,7 @@ env:
         - UNICODE_WIDTH=32
         - PLAT=x86_64
         - VERSION=$(echo $TRAVIS_TAG | sed s/v//)
+        - SCAN=""
     matrix:
         - MB_PYTHON_VERSION=2.7
         - MB_PYTHON_VERSION=3.4
@@ -25,9 +26,12 @@ matrix:
     fast_finish: true
     exclude:
         - os: osx
+    include:
         - os: linux
           compiler: clang
-    include:
+          env:
+            - SCAN="scan-build --status-bugs"
+            - MB_PYTHON_VERSION=3.6
         - os: osx
           language: generic
           env: MB_PYTHON_VERSION=2.7
@@ -40,6 +44,11 @@ matrix:
         - os: osx
           language: generic
           env: MB_PYTHON_VERSION=3.6
+        - os: osx
+          language: generic
+          env:
+            - SCAN="scan-build --status-bugs"
+            - MB_PYTHON_VERSION=3.6
 
 addons:
     apt:
@@ -73,7 +82,7 @@ before_script:
   - cmake --version
   - mkdir build
   - pushd build
-  - cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+  - $SCAN cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
           -DBUILD_SHARED_LIBS=ON
           -DCMAKE_BUILD_TYPE=Release
           $enabled ..
@@ -94,7 +103,7 @@ before_script:
 script:
   - pushd build
   - export DYLD_LIBRARY_PATH=$PWD/lib
-  - make && ctest --output-on-failure
+  - $SCAN make && ctest --output-on-failure
   - sudo make install
   - popd
   - build_wheel . $PLAT
