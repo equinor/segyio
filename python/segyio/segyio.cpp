@@ -16,23 +16,6 @@
 #define IS_PY3K
 #endif
 
-static bool integer_check(PyObject* integer) {
-#ifdef IS_PY3K
-    return PyLong_Check(integer);
-#else
-    return PyInt_Check(integer);
-#endif
-}
-
-static Py_ssize_t convert_integer(PyObject* integer) {
-#ifdef IS_PY3K
-    return PyLong_AsSsize_t(integer);
-#else
-    return PyInt_AsSsize_t(integer);
-#endif
-}
-
-
 // ---------------  FILE Handling ------------
 static segy_file *get_FILE_pointer_from_capsule(PyObject *capsule) {
     if (!PyCapsule_IsValid(capsule, "segy_file*")) {
