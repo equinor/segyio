@@ -291,7 +291,7 @@ static PyObject *py_get_field(PyObject *self, PyObject *args) {
 
     PyArg_ParseTuple(args, "Oi", &header_capsule, &field);
 
-    int length;
+    int length = 0;
     char *header = get_header_pointer_from_capsule(header_capsule, &length);
 
     if (PyErr_Occurred()) { return NULL; }
@@ -319,7 +319,7 @@ static PyObject *py_set_field(PyObject *self, PyObject *args) {
 
     PyArg_ParseTuple(args, "Oii", &header_capsule, &field, &value);
 
-    int length;
+    int length = 0;
     char *header = get_header_pointer_from_capsule(header_capsule, &length);
 
     if (PyErr_Occurred()) { return NULL; }
