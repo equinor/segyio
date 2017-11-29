@@ -5,6 +5,7 @@ env:
         - UNICODE_WIDTH=32
         - PLAT=x86_64
         - VERSION=$(echo $TRAVIS_TAG | sed s/v//)
+        - SOURCEDEPLOY=0
         - SCAN=""
     matrix:
         - MB_PYTHON_VERSION=2.7
@@ -49,6 +50,11 @@ matrix:
           env:
             - SCAN="scan-build --status-bugs"
             - MB_PYTHON_VERSION=3.6
+        - os: linux
+          compiler: gcc
+          env:
+            - MB_PYTHON_VERSION=3.6
+            - SOURCEDEPLOY=1
 
 addons:
     apt:
@@ -128,7 +134,7 @@ deploy:
       password:
         secure: WHeA5x2iiXzjYXdgZeJU6l4fawRi/umqH1713QAj0RPZBAnD+9m8Zrpn2UWn9+1dtx6xUMkNg3ZTueVKTKo0f2i/4o0xkzQ5BW11cetCWusV2Dku1btPTA5Fhs+dvPDlL3m496a3Bq/A/fRDj5JLDiiPibvpM01lEBxFKYooWGQ75HVuhnAt57vabD45gDpIE7N23+So4+9bsG/nT/ZlgoaS01uLTdlnf6tjNgP0/UBkonmedC62iVvCu7itfHZMTY2rSeww7KBMI3s7Gz+cyx9IbI3shbDpdJGHpM8Qe+1oFi31Z+DylWQA5SkpHlLMUP+zjMKLF+1hXGNUeJuyadIFrxzbS3vTV2yRPa6ol8q+bX7YLy0xNLSE8aMm54LKgXfRKLc3G8d3I33oEfyk5hygY8iEX728r2TsARslYxOF3sZqJvY8lx4GBEDiXxX2GJvGCPy/Uby786uWnZlFFkDERk3nawE0W68zY0GElbutq6HMSk6v49J7em9Rg/QLptjoa0uF2A9Cy+BAJcnfauIawOG3UPXZ8kD60PTbu8tqtwtXO5lzTSIOr1lt3+6R8GmCc2hz2YXELKvdnZWYCXAjnNuC4eESlp7zxmzhpOVkb2Jy1v6rGKpcxVMggLQbOjOGWPLg9q4+OZQBw5bhMGmVGQhSBuxzEb/wBRy9XV8=
       on:
-        condition: $TRAVIS_OS_NAME == linux && $MB_PYTHON_VERSION == 3.6
+        condition: $SOURCEDEPLOY == 1
         tags: true
 
     - provider: pypi # upload built wheels
@@ -139,6 +145,7 @@ deploy:
       password:
         secure: WHeA5x2iiXzjYXdgZeJU6l4fawRi/umqH1713QAj0RPZBAnD+9m8Zrpn2UWn9+1dtx6xUMkNg3ZTueVKTKo0f2i/4o0xkzQ5BW11cetCWusV2Dku1btPTA5Fhs+dvPDlL3m496a3Bq/A/fRDj5JLDiiPibvpM01lEBxFKYooWGQ75HVuhnAt57vabD45gDpIE7N23+So4+9bsG/nT/ZlgoaS01uLTdlnf6tjNgP0/UBkonmedC62iVvCu7itfHZMTY2rSeww7KBMI3s7Gz+cyx9IbI3shbDpdJGHpM8Qe+1oFi31Z+DylWQA5SkpHlLMUP+zjMKLF+1hXGNUeJuyadIFrxzbS3vTV2yRPa6ol8q+bX7YLy0xNLSE8aMm54LKgXfRKLc3G8d3I33oEfyk5hygY8iEX728r2TsARslYxOF3sZqJvY8lx4GBEDiXxX2GJvGCPy/Uby786uWnZlFFkDERk3nawE0W68zY0GElbutq6HMSk6v49J7em9Rg/QLptjoa0uF2A9Cy+BAJcnfauIawOG3UPXZ8kD60PTbu8tqtwtXO5lzTSIOr1lt3+6R8GmCc2hz2YXELKvdnZWYCXAjnNuC4eESlp7zxmzhpOVkb2Jy1v6rGKpcxVMggLQbOjOGWPLg9q4+OZQBw5bhMGmVGQhSBuxzEb/wBRy9XV8=
       on:
+        condition: $SCAN == ""
         tags: true
 
     - provider: releases # upload tarball and zip with source code
@@ -151,4 +158,4 @@ deploy:
         secure: VdV/5kCCwUFwgU7wvKRrOy4u9nnvLsM3RoW1G2z8w8e838fcTeXLU3Zu8rLzLpcaXJKX07WNQmG85PZrgRjB9mzZAbXnPJeMk5MT3YVWaiyF6zNxK+mQQOvTCJ8P25nm5Iq1PLtIW/wM1RqNLgT8t3AsLiIva+6JK+2wGA2ilOl2YVgJqEiZV1f9DJutPewDf8pqYrnrHktMmkio/uubc12MLFOrNeQxK/EJahw7x56q8EcxrJXHnv6T2zEvUdcEYfRvIrT62jiVqiJP9wmUVdq2x8/RlgRzcCpGhy2o17iMUIH228so2hbu5/NcvtAh/LUDeqlhQ1YLRp1vO6H8Uh9B6aJgBNPwYmrKBHQQD27l5vt74DNJuqsXTZtrQlzUiiptKTV7mjFckF7mG04d1J/0GcVcxjpRZa3rp85KymQKWTsuWJYrCWSeVh+SMwUAbMZ3/vhEKPtrf4rwI+4INTitLuBNfcyH0W+W/rWLBMYoojRW0NJjc+4HJGpkMPbFkDjpde31ZqgI/Cec0GPpqbtsb3DkK/f4mLrR+F59b3+Lj0Cjyh9lM2fVXTrPYt13kdwbtBnNy6x2kdTkEBCk9m+eTFAfJGal+3SwgLeiGQdkjdZ7vSLwwdRf7Qvz5WjxKQ+feFWm+qi0GurWOEaZrubB82CGukxOXKzrvAGN3Eo=
       on:
         tags: true
-        condition: $TRAVIS_OS_NAME == linux && $MB_PYTHON_VERSION == 3.6
+        condition: $SOURCEDEPLOY == 1
