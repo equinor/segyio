@@ -62,7 +62,7 @@ install:
         brew update && brew install cppcheck;
     fi
   - pip install -r requirements.txt
-  - pip install bandit
+  - pip install bandit setuptools setuptools-scm
 
 before_script:
   - enabled="-DBUILD_PYTHON=OFF -DBUILD_MEX=OFF"
