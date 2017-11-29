@@ -517,6 +517,8 @@ int segy_set_bfield( char* binheader, int field, int val ) {
 }
 
 static int slicelength( int start, int stop, int step ) {
+    if( step == 0 ) return 0;
+
     if( ( step < 0 && stop >= start ) ||
         ( step > 0 && start >= stop ) ) return 0;
 

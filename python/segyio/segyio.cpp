@@ -509,6 +509,11 @@ static PyObject *py_field_forall(PyObject *self, PyObject *args ) {
         return NULL;
     }
 
+    if(step == 0) {
+        PyErr_SetString(PyExc_TypeError, "slice step cannot be zero");
+        return NULL;
+    }
+
     Py_buffer buffer;
     PyObject_GetBuffer(buffer_out, &buffer, PyBUF_FORMAT | PyBUF_C_CONTIGUOUS | PyBUF_WRITEABLE);
 
