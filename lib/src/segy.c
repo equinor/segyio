@@ -929,6 +929,8 @@ int segy_offsets( segy_file* fp,
         return SEGY_INVALID_FIELD;
 
     err = segy_traceheader( fp, 0, header, trace0, trace_bsize );
+    if( err != 0 ) return SEGY_FREAD_ERROR;
+
     segy_get_field( header, il, &il0 );
     segy_get_field( header, xl, &xl0 );
 
