@@ -2,6 +2,7 @@ language: python
 
 env:
     global:
+        - osx_image
         - UNICODE_WIDTH=32
         - PLAT=x86_64
         - VERSION=$(echo $TRAVIS_TAG | sed s/v//)
@@ -29,19 +30,19 @@ matrix:
           compiler: clang
     include:
         - os: osx
-          xcode_image: 9.1
+          osx_image: 9.1
           language: generic
           env: MB_PYTHON_VERSION=2.7
         - os: osx
-          xcode_image: 9.1
+          osx_image: 9.1
           language: generic
           env: MB_PYTHON_VERSION=3.4
         - os: osx
-          xcode_image: 9.1
+          osx_image: 9.1
           language: generic
           env: MB_PYTHON_VERSION=3.5
         - os: osx
-          xcode_image: 9.1
+          osx_image: 9.1
           language: generic
           env: MB_PYTHON_VERSION=3.6
         - os: osx
