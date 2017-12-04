@@ -50,6 +50,7 @@ matrix:
           env: MB_PYTHON_VERSION=3.6
     allow_failures:
         - os: osx
+          osx_image:
           language: generic
           env: MB_PYTHON_VERSION=3.6
 
