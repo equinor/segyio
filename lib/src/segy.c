@@ -550,6 +550,7 @@ int segy_field_forall( segy_file* fp,
     err = segy_seek( fp, end, trace0, trace_bsize );
     if( err != SEGY_OK ) return err;
 
+#ifdef HAVE_MMAP
     if( fp->addr ) {
         for( int i = start; slicelen > 0; i += step, ++buf, --slicelen ) {
             segy_seek( fp, i, trace0, trace_bsize );
@@ -559,6 +560,7 @@ int segy_field_forall( segy_file* fp,
 
         return SEGY_OK;
     }
+#endif //HAVE_MMAP
 
     /*
      * non-mmap path. Doing multiple freads is slow, so instead the *actual*
