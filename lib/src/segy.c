@@ -590,6 +590,13 @@ int segy_binheader( segy_file* fp, char* buf ) {
         return SEGY_INVALID_ARGS;
     }
 
+#ifdef HAVE_MMAP
+    if( fp->addr ) {
+        memcpy( buf, (char*)fp->addr + SEGY_TEXT_HEADER_SIZE, SEGY_BINARY_HEADER_SIZE );
+        return SEGY_OK;
+    }
+#endif //HAVE_MMAP
+
     const int err = fseek( fp->fp, SEGY_TEXT_HEADER_SIZE, SEEK_SET );
     if( err != 0 ) return SEGY_FSEEK_ERROR;
 
