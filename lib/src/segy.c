@@ -1583,6 +1583,13 @@ int segy_write_textheader( segy_file* fp, int pos, const char* buf ) {
                       : SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE +
                         ((pos-1) * SEGY_TEXT_HEADER_SIZE);
 
+#ifdef HAVE_MMAP
+    if( fp->addr ) {
+        memcpy( (char*)fp->addr + offset, mbuf, SEGY_TEXT_HEADER_SIZE );
+        return SEGY_OK;
+    }
+#endif //HAVE_MMAP
+
     err = fseek( fp->fp, offset, SEEK_SET );
     if( err != 0 ) return SEGY_FSEEK_ERROR;
 
