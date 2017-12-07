@@ -663,12 +663,14 @@ int segy_seek( segy_file* fp,
     trace_bsize += SEGY_TRACE_HEADER_SIZE;
     long long pos = (long long)trace0 + (trace * (long long)trace_bsize);
 
+#ifdef HAVE_MMAP
     if( fp->addr ) {
         if( (size_t)pos >= fp->fsize ) return SEGY_FSEEK_ERROR;
 
         fp->cur = (char*)fp->addr + pos;
         return SEGY_OK;
     }
+#endif //HAVE_MMAP
 
     int err;
 #if LONG_MAX == LLONG_MAX
