@@ -755,8 +755,12 @@ int segy_traces( segy_file* fp,
                  int trace_bsize ) {
 
     long long size;
-    int err = file_size( fp->fp, &size );
-    if( err != 0 ) return err;
+    if( fp->addr )
+        size = fp->fsize;
+    else{
+        int err = file_size( fp->fp, &size );
+        if( err != 0 ) return err;
+    }
 
     if( trace0 > size ) return SEGY_INVALID_ARGS;
 
