@@ -380,21 +380,23 @@ int segy_mmap( segy_file* fp ) {
 
     fp->addr = fp->cur = addr;
     fp->fsize = fsize;
+
+    fclose(fp->fp);
+
     return SEGY_OK;
 #endif //HAVE_MMAP
 }
 
 int segy_flush( segy_file* fp, bool async ) {
-    int syncerr = 0;
 
 #ifdef HAVE_MMAP
     if( fp->addr ) {
         int flag = async ? MS_ASYNC : MS_SYNC;
-        syncerr = msync( fp->addr, fp->fsize, flag );
+        int syncerr = msync( fp->addr, fp->fsize, flag );
+        if( syncerr != 0 ) return syncerr;
+        return SEGY_OK;
     }
 #endif //HAVE_MMAP
-
-    if( syncerr != 0 ) return syncerr;
 
     int flusherr = fflush( fp->fp );
 
@@ -426,6 +428,9 @@ int segy_close( segy_file* fp ) {
     err = munmap( fp->addr, fp->fsize );
     if( err != 0 )
         err = SEGY_MMAP_ERROR;
+
+    free( fp );
+    return err;
 
 no_mmap:
 #endif //HAVE_MMAP
