@@ -1547,10 +1547,20 @@ int segy_read_ext_textheader( segy_file* fp, int pos, char *buf) {
                         SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE +
                         ((pos-1) * SEGY_TEXT_HEADER_SIZE);
 
+    char localbuf[ SEGY_TEXT_HEADER_SIZE + 1 ];
+
+#ifdef HAVE_MMAP
+    if ( fp->addr ) {
+        memcpy( localbuf, (char*)fp->addr + offset, SEGY_TEXT_HEADER_SIZE );
+        localbuf[ SEGY_TEXT_HEADER_SIZE ] = '\0';
+        ebcdic2ascii( localbuf, buf );
+        return SEGY_OK;
+    }
+#endif //HAVE_MMAP
+
     int err = fseek( fp->fp, offset, SEEK_SET );
     if( err != 0 ) return SEGY_FSEEK_ERROR;
 
-    char localbuf[ SEGY_TEXT_HEADER_SIZE + 1 ];
     const size_t read = fread( localbuf, 1, SEGY_TEXT_HEADER_SIZE, fp->fp );
     if( read != SEGY_TEXT_HEADER_SIZE ) return SEGY_FREAD_ERROR;
 
