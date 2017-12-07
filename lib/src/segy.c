@@ -380,21 +380,23 @@ int segy_mmap( segy_file* fp ) {
 
     fp->addr = fp->cur = addr;
     fp->fsize = fsize;
+
+    fclose(fp->fp);
+
     return SEGY_OK;
 #endif //HAVE_MMAP
 }
 
 int segy_flush( segy_file* fp, bool async ) {
-    int syncerr = 0;
 
 #ifdef HAVE_MMAP
     if( fp->addr ) {
         int flag = async ? MS_ASYNC : MS_SYNC;
-        syncerr = msync( fp->addr, fp->fsize, flag );
+        int syncerr = msync( fp->addr, fp->fsize, flag );
+        if( syncerr != 0 ) return syncerr;
+        return SEGY_OK;
     }
 #endif //HAVE_MMAP
-
-    if( syncerr != 0 ) return syncerr;
 
     int flusherr = fflush( fp->fp );
 
@@ -426,6 +428,9 @@ int segy_close( segy_file* fp ) {
     err = munmap( fp->addr, fp->fsize );
     if( err != 0 )
         err = SEGY_MMAP_ERROR;
+
+    free( fp );
+    return err;
 
 no_mmap:
 #endif //HAVE_MMAP
@@ -550,6 +555,7 @@ int segy_field_forall( segy_file* fp,
     err = segy_seek( fp, end, trace0, trace_bsize );
     if( err != SEGY_OK ) return err;
 
+#ifdef HAVE_MMAP
     if( fp->addr ) {
         for( int i = start; slicelen > 0; i += step, ++buf, --slicelen ) {
             segy_seek( fp, i, trace0, trace_bsize );
@@ -559,6 +565,7 @@ int segy_field_forall( segy_file* fp,
 
         return SEGY_OK;
     }
+#endif //HAVE_MMAP
 
     /*
      * non-mmap path. Doing multiple freads is slow, so instead the *actual*
@@ -588,6 +595,13 @@ int segy_binheader( segy_file* fp, char* buf ) {
         return SEGY_INVALID_ARGS;
     }
 
+#ifdef HAVE_MMAP
+    if( fp->addr ) {
+        memcpy( buf, (char*)fp->addr + SEGY_TEXT_HEADER_SIZE, SEGY_BINARY_HEADER_SIZE );
+        return SEGY_OK;
+    }
+#endif //HAVE_MMAP
+
     const int err = fseek( fp->fp, SEGY_TEXT_HEADER_SIZE, SEEK_SET );
     if( err != 0 ) return SEGY_FSEEK_ERROR;
 
@@ -602,6 +616,13 @@ int segy_write_binheader( segy_file* fp, const char* buf ) {
     if(fp == NULL) {
         return SEGY_INVALID_ARGS;
     }
+
+#ifdef HAVE_MMAP
+    if( fp->addr ) {
+        memcpy( (char*)fp->addr + SEGY_TEXT_HEADER_SIZE, buf, SEGY_BINARY_HEADER_SIZE );
+        return SEGY_OK;
+    }
+#endif //HAVE_MMAP
 
     const int err = fseek( fp->fp, SEGY_TEXT_HEADER_SIZE, SEEK_SET );
     if( err != 0 ) return SEGY_FSEEK_ERROR;
@@ -647,12 +668,14 @@ int segy_seek( segy_file* fp,
     trace_bsize += SEGY_TRACE_HEADER_SIZE;
     long long pos = (long long)trace0 + (trace * (long long)trace_bsize);
 
+#ifdef HAVE_MMAP
     if( fp->addr ) {
         if( (size_t)pos >= fp->fsize ) return SEGY_FSEEK_ERROR;
 
         fp->cur = (char*)fp->addr + pos;
         return SEGY_OK;
     }
+#endif //HAVE_MMAP
 
     int err;
 #if LONG_MAX == LLONG_MAX
@@ -737,8 +760,12 @@ int segy_traces( segy_file* fp,
                  int trace_bsize ) {
 
     long long size;
-    int err = file_size( fp->fp, &size );
-    if( err != 0 ) return err;
+    if( fp->addr )
+        size = fp->fsize;
+    else{
+        int err = file_size( fp->fp, &size );
+        if( err != 0 ) return err;
+    }
 
     if( trace0 > size ) return SEGY_INVALID_ARGS;
 
@@ -1525,10 +1552,20 @@ int segy_read_ext_textheader( segy_file* fp, int pos, char *buf) {
                         SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE +
                         ((pos-1) * SEGY_TEXT_HEADER_SIZE);
 
+    char localbuf[ SEGY_TEXT_HEADER_SIZE + 1 ];
+
+#ifdef HAVE_MMAP
+    if ( fp->addr ) {
+        memcpy( localbuf, (char*)fp->addr + offset, SEGY_TEXT_HEADER_SIZE );
+        localbuf[ SEGY_TEXT_HEADER_SIZE ] = '\0';
+        ebcdic2ascii( localbuf, buf );
+        return SEGY_OK;
+    }
+#endif //HAVE_MMAP
+
     int err = fseek( fp->fp, offset, SEEK_SET );
     if( err != 0 ) return SEGY_FSEEK_ERROR;
 
-    char localbuf[ SEGY_TEXT_HEADER_SIZE + 1 ];
     const size_t read = fread( localbuf, 1, SEGY_TEXT_HEADER_SIZE, fp->fp );
     if( read != SEGY_TEXT_HEADER_SIZE ) return SEGY_FREAD_ERROR;
 
@@ -1550,6 +1587,13 @@ int segy_write_textheader( segy_file* fp, int pos, const char* buf ) {
                       ? 0
                       : SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE +
                         ((pos-1) * SEGY_TEXT_HEADER_SIZE);
+
+#ifdef HAVE_MMAP
+    if( fp->addr ) {
+        memcpy( (char*)fp->addr + offset, mbuf, SEGY_TEXT_HEADER_SIZE );
+        return SEGY_OK;
+    }
+#endif //HAVE_MMAP
 
     err = fseek( fp->fp, offset, SEEK_SET );
     if( err != 0 ) return SEGY_FSEEK_ERROR;
