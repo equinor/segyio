@@ -913,6 +913,42 @@ class TestSegy(unittest.TestCase):
                 self.assertAlmostEqual(3.014, f.iline[3][1][4], places = 4)
                 self.assertAlmostEqual(7.023, f.iline[7][2][3], places = 4)
 
+    def test_create_bad_specs(self):
+        class C: pass
+
+        c = C()
+
+        mandatory = [('iline', 189),
+                     ('xline', 193),
+                     ('samples', [10,11,12]),
+                     ('format', 1),
+                     ('t0', 10.2)]
+
+        for attr, val in mandatory:
+            setattr(c, attr, val)
+            with self.assertRaises(AttributeError):
+                with segyio.create("foo", c): pass
+
+        c.tracecount = 10
+        with segyio.create("foo", c): pass
+
+        del c.tracecount
+
+        c.ilines = [1,2,3]
+        with self.assertRaises(AttributeError):
+            with segyio.create("foo", c): pass
+
+        c.xlines = [4,6,8]
+        with self.assertRaises(AttributeError):
+            with segyio.create("foo", c): pass
+
+        c.offsets = [1]
+        with self.assertRaises(AttributeError):
+            with segyio.create("foo", c): pass
+
+        c.sorting = 2
+        with segyio.create("foo", c): pass
+
     def test_segyio_types(self):
         with segyio.open(self.filename, "r") as f:
             self.assertIsInstance(f.sorting, int)

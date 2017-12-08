@@ -1148,4 +1148,3 @@ class spec:
         self.ext_headers = 0
         self.format = None
         self.sorting = None
-        self.t0 = 1111.0
