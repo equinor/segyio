@@ -1038,7 +1038,7 @@ class SegyFile(object):
                 if index > self.ext_headers:
                     raise IndexError("Textual header %d not in file" % index)
 
-                _segyio.write_textheader(self.xfd, index, val)
+                _segyio.write_textheader(self.xfd, index, bytes(val))
 
             def __repr__(inner):
                 return "Text(external_headers = {})".format(self.ext_headers)
