@@ -1044,7 +1044,7 @@ class SegyFile(object):
                 return "Text(external_headers = {})".format(self.ext_headers)
 
             def __str__(inner):
-                return '\n'.join(map(''.join, zip(*[iter(inner[0])] * 80)))
+                return '\n'.join(map(''.join, zip(*[iter(str(inner[0]))] * 80)))
 
         return TextHeader()
 
