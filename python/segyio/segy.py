@@ -201,7 +201,7 @@ class SegyFile(object):
     @property
     def ext_headers(self):
         """ :rtype: int """
-        return self._ext_headers
+        return self._ext_headers if self._ext_headers is not None else 0
 
     @property
     def unstructured(self):
