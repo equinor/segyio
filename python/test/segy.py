@@ -638,8 +638,11 @@ class TestSegy(unittest.TestCase):
             segyio.open("no_dir/no_file", "r")
 
         # non-existant mode
-        with self.assertRaises(IOError):
+        with self.assertRaises(ValueError):
             segyio.open(self.filename, "foo")
+
+        with self.assertRaises(ValueError):
+            segyio.open(self.filename, "r+b+toolong")
 
     def test_wrong_lineno(self):
         with self.assertRaises(KeyError):
