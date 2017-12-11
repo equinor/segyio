@@ -68,14 +68,19 @@ static PyObject *py_FILE_open(PyObject *self, PyObject *args) {
     PyArg_ParseTuple(args, "ss#", &filename, &mode, &mode_len);
 
     if( mode_len == 0 ) {
-        PyErr_SetString(PyExc_IOError, "Mode string must be non-empty");
+        PyErr_SetString(PyExc_ValueError, "Mode string must be non-empty");
+        return NULL;
+    }
+
+    if( mode_len > 3 ) {
+        PyErr_Format( PyExc_ValueError, "Invalid mode string '%s'", mode );
         return NULL;
     }
 
     segy_file *p_FILE = segy_open( filename, mode );
 
     if( !p_FILE && !strstr( "rb" "wb" "ab" "r+b" "w+b" "a+b", mode ) ) {
-        PyErr_Format( PyExc_IOError, "Invalid mode string '%s'", mode );
+        PyErr_Format( PyExc_ValueError, "Invalid mode string '%s'", mode );
         return NULL;
     }
 

@@ -343,7 +343,7 @@ segy_file* segy_open( const char* path, const char* mode ) {
 
     // append a 'b' if it is not passed by the user; not a problem on unix, but
     // windows and other platforms fail without it
-    char binary_mode[ 4 ] = { 0 };
+    char binary_mode[ 5 ] = { 0 };
     strncpy( binary_mode, mode, 3 );
 
     size_t mode_len = strlen( binary_mode );
