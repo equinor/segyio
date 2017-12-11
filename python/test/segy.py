@@ -757,6 +757,29 @@ class TestSegy(unittest.TestCase):
 
             self.assertTrue(filecmp.cmp(src_file, dst_file))
 
+    def test_create_sgy(self):
+        with TestContext("truncate-text") as context:
+            context.copy_file(self.filename)
+            src_file = "small.sgy"
+            dst_file = "text-truncated.sgy"
+            with segyio.open(src_file, "r") as src:
+                spec = segyio.tools.metadata(src)
+
+                # repeat the text header 3 times
+                text = ''.join([str(src.text[0])] * 3)
+
+                with segyio.create(dst_file, spec) as dst:
+                    dst.bin     = src.bin
+                    dst.text[0] = text
+
+                    dst.header = src.header
+                    for i, srctr in enumerate(src.trace):
+                        dst.trace[i] = srctr
+
+                    dst.trace = src.trace
+
+            self.assertTrue(filecmp.cmp(src_file, dst_file))
+
     def test_create_sgy_shorter_traces(self):
         with TestContext("create_sgy_shorter_traces") as context:
             context.copy_file(self.filename)

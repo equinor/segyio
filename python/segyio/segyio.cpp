@@ -238,7 +238,7 @@ static PyObject *py_read_texthdr(PyObject *self, PyObject *args) {
 
     segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
 
-    char *buffer = (char*)malloc(sizeof(char) * (segy_textheader_size()));
+    char *buffer = (char*)calloc(segy_textheader_size(), sizeof(char));
 
     int error = index == 0
               ? segy_read_textheader(p_FILE, buffer)
@@ -249,7 +249,8 @@ static PyObject *py_read_texthdr(PyObject *self, PyObject *args) {
         return PyErr_Format(PyExc_Exception, "Could not read text header: %s", strerror(errno));
     }
 
-    PyObject *result = PyBytes_FromStringAndSize(buffer, SEGY_TEXT_HEADER_SIZE);
+    size_t len = strlen( buffer );
+    PyObject *result = PyBytes_FromStringAndSize( buffer, len );
     free(buffer);
     return result;
 }
@@ -261,15 +262,18 @@ static PyObject *py_write_texthdr(PyObject *self, PyObject *args) {
     char *buffer;
     int size;
 
+    char buf[ SEGY_TEXT_HEADER_SIZE + 1 ] = { 0 };
+
     PyArg_ParseTuple(args, "Ois#", &file_capsule, &index, &buffer, &size);
 
-    if (size < SEGY_TEXT_HEADER_SIZE) {
-        return PyErr_Format(PyExc_ValueError, "String must have at least 3200 characters. Received count: %d", size);
-    }
+    if( size > SEGY_TEXT_HEADER_SIZE )
+        size = SEGY_TEXT_HEADER_SIZE;
+
+    memcpy( buf, buffer, size );
 
     segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
 
-    int error = segy_write_textheader(p_FILE, index, buffer);
+    int error = segy_write_textheader(p_FILE, index, buf);
 
     if (error == 0) {
         return Py_BuildValue("");
