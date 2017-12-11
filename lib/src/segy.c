@@ -71,18 +71,33 @@ static const unsigned char e2a[256] = {
     48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 250,251,252,253,254,255
 };
 
-void ebcdic2ascii( const char* ebcdic, char* ascii ) {
-    while( *ebcdic != '\0' )
-        *ascii++ = (char)e2a[ (unsigned char) *ebcdic++ ];
+static int encode( char* dst,
+                   const char* src,
+                   const unsigned char* conv,
+                   size_t n ) {
+    for( size_t i = 0; i < n; ++i )
+        dst[ i ] = (char)conv[ (unsigned char) src[ i ] ];
 
-    *ascii = '\0';
+    return SEGY_OK;
+}
+
+/*
+ * DEPRECATED
+ * ebcdic2ascii and ascii2ebcdic are deprecated in favour of the length-aware
+ * encode. They will be removed in segyio2. These functions were never public
+ * (in the sense they're not available in headers), but currently have external
+ * linkage.
+ */
+void ebcdic2ascii( const char* ebcdic, char* ascii ) {
+    size_t len = strlen( ebcdic );
+    encode( ascii, ebcdic, e2a, len );
+    ascii[ len ] = '\0';
 }
 
 void ascii2ebcdic( const char* ascii, char* ebcdic ) {
-    while (*ascii != '\0')
-        *ebcdic++ = (char)a2e[(unsigned char) *ascii++];
-
-    *ebcdic = '\0';
+    size_t len = strlen( ascii );
+    encode( ebcdic, ascii, a2e, len );
+    ebcdic[ len ] = '\0';
 }
 
 #define IEEEMAX 0x7FFFFFFF
@@ -1552,13 +1567,10 @@ int segy_read_ext_textheader( segy_file* fp, int pos, char *buf) {
                         SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE +
                         ((pos-1) * SEGY_TEXT_HEADER_SIZE);
 
-    char localbuf[ SEGY_TEXT_HEADER_SIZE + 1 ];
-
 #ifdef HAVE_MMAP
     if ( fp->addr ) {
-        memcpy( localbuf, (char*)fp->addr + offset, SEGY_TEXT_HEADER_SIZE );
-        localbuf[ SEGY_TEXT_HEADER_SIZE ] = '\0';
-        ebcdic2ascii( localbuf, buf );
+        encode( buf, (char*)fp->addr + offset, e2a, SEGY_TEXT_HEADER_SIZE );
+        buf[ SEGY_TEXT_HEADER_SIZE ] = '\0';
         return SEGY_OK;
     }
 #endif //HAVE_MMAP
@@ -1566,22 +1578,22 @@ int segy_read_ext_textheader( segy_file* fp, int pos, char *buf) {
     int err = fseek( fp->fp, offset, SEEK_SET );
     if( err != 0 ) return SEGY_FSEEK_ERROR;
 
+    char localbuf[ SEGY_TEXT_HEADER_SIZE + 1 ] = { 0 };
     const size_t read = fread( localbuf, 1, SEGY_TEXT_HEADER_SIZE, fp->fp );
     if( read != SEGY_TEXT_HEADER_SIZE ) return SEGY_FREAD_ERROR;
 
-    localbuf[ SEGY_TEXT_HEADER_SIZE ] = '\0';
-    ebcdic2ascii( localbuf, buf );
+    encode( buf, localbuf, e2a, SEGY_TEXT_HEADER_SIZE );
     return SEGY_OK;
 }
 
 int segy_write_textheader( segy_file* fp, int pos, const char* buf ) {
     int err;
-    char mbuf[ SEGY_TEXT_HEADER_SIZE + 1 ];
+    char mbuf[ SEGY_TEXT_HEADER_SIZE ];
 
     if( pos < 0 ) return SEGY_INVALID_ARGS;
 
-    // TODO: reconsider API, allow non-zero terminated strings
-    ascii2ebcdic( buf, mbuf );
+    err = encode( mbuf, buf, a2e, SEGY_TEXT_HEADER_SIZE );
+    if( err != 0 ) return err;
 
     const long offset = pos == 0
                       ? 0
