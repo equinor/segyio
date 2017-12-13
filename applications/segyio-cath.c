@@ -97,7 +97,9 @@ int main( int argc, char** argv ) {
                     return errmsg( EINVAL, "num must be non-negative" );
                 break;
 
-            default: return help();
+            default:
+                free( num );
+                return help();
         }
     }
 
