@@ -766,7 +766,8 @@ class TestSegy(unittest.TestCase):
                 spec = segyio.tools.metadata(src)
 
                 # repeat the text header 3 times
-                text = ''.join([str(src.text[0])] * 3)
+                text = src.text[0]
+                text = text + text + text
 
                 with segyio.create(dst_file, spec) as dst:
                     dst.bin     = src.bin
