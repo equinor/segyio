@@ -638,8 +638,11 @@ class TestSegy(unittest.TestCase):
             segyio.open("no_dir/no_file", "r")
 
         # non-existant mode
-        with self.assertRaises(IOError):
+        with self.assertRaises(ValueError):
             segyio.open(self.filename, "foo")
+
+        with self.assertRaises(ValueError):
+            segyio.open(self.filename, "r+b+toolong")
 
     def test_wrong_lineno(self):
         with self.assertRaises(KeyError):
@@ -751,6 +754,29 @@ class TestSegy(unittest.TestCase):
 
                     #for dsttr, srctr in zip(dst.trace, src.trace):
                     #    dsttr = srctr
+
+            self.assertTrue(filecmp.cmp(src_file, dst_file))
+
+    def test_create_sgy(self):
+        with TestContext("truncate-text") as context:
+            context.copy_file(self.filename)
+            src_file = "small.sgy"
+            dst_file = "text-truncated.sgy"
+            with segyio.open(src_file, "r") as src:
+                spec = segyio.tools.metadata(src)
+
+                # repeat the text header 3 times
+                text = ''.join([str(src.text[0])] * 3)
+
+                with segyio.create(dst_file, spec) as dst:
+                    dst.bin     = src.bin
+                    dst.text[0] = text
+
+                    dst.header = src.header
+                    for i, srctr in enumerate(src.trace):
+                        dst.trace[i] = srctr
+
+                    dst.trace = src.trace
 
             self.assertTrue(filecmp.cmp(src_file, dst_file))
 
@@ -912,6 +938,42 @@ class TestSegy(unittest.TestCase):
                 self.assertAlmostEqual(3.004, f.iline[3][0][4], places = 4)
                 self.assertAlmostEqual(3.014, f.iline[3][1][4], places = 4)
                 self.assertAlmostEqual(7.023, f.iline[7][2][3], places = 4)
+
+    def test_create_bad_specs(self):
+        class C: pass
+
+        c = C()
+
+        mandatory = [('iline', 189),
+                     ('xline', 193),
+                     ('samples', [10,11,12]),
+                     ('format', 1),
+                     ('t0', 10.2)]
+
+        for attr, val in mandatory:
+            setattr(c, attr, val)
+            with self.assertRaises(AttributeError):
+                with segyio.create("foo", c): pass
+
+        c.tracecount = 10
+        with segyio.create("foo", c): pass
+
+        del c.tracecount
+
+        c.ilines = [1,2,3]
+        with self.assertRaises(AttributeError):
+            with segyio.create("foo", c): pass
+
+        c.xlines = [4,6,8]
+        with self.assertRaises(AttributeError):
+            with segyio.create("foo", c): pass
+
+        c.offsets = [1]
+        with self.assertRaises(AttributeError):
+            with segyio.create("foo", c): pass
+
+        c.sorting = 2
+        with segyio.create("foo", c): pass
 
     def test_segyio_types(self):
         with segyio.open(self.filename, "r") as f:

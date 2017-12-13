@@ -20,10 +20,30 @@ def default_text_header(iline, xline, offset):
     return bytes(rows)  # immutable array of bytes that is compatible with strings
 
 
+def structured(spec):
+    if not hasattr(spec, 'ilines' ): return False
+    if not hasattr(spec, 'xlines' ): return False
+    if not hasattr(spec, 'offsets'): return False
+    if not hasattr(spec, 'sorting'): return False
+
+    if spec.ilines  is None: return False
+    if spec.xlines  is None: return False
+    if spec.offsets is None: return False
+    if spec.sorting is None: return False
+
+    if not list(spec.ilines):  return False
+    if not list(spec.xlines):  return False
+    if not list(spec.offsets): return False
+    if not int(spec.sorting):  return False
+
+    return True
+
 def create(filename, spec):
     """Create a new segy file.
 
     Since v1.1
+
+    Unstructured file creation since v1.4
 
     Create a new segy file with the geometry and properties given by `spec`.
     This enables creating SEGY files from your data. The created file supports
@@ -37,6 +57,37 @@ def create(filename, spec):
 
     Create should be used together with python's `with` statement. This ensure
     the data is written. Please refer to the examples.
+
+    The `spec` is any object that has the following attributes:
+        Mandatory:
+            iline   (int/segyio.BinField)
+            xline   (int/segyio.BinField)
+            samples (array-like of int)
+            format  (int), 1 = IBM float, 5 = IEEE float
+
+        Exclusive:
+            ilines  (array-like of int)
+            xlines  (array-like of int)
+            offsets (array-like of int)
+            sorting (int/segyio.TraceSortingFormat)
+
+            OR
+
+            tracecount (int)
+
+        Optional:
+            ext_headers (int)
+
+    The `segyio.spec()` function will default offsets and everything in the
+    mandatory group, except format and samples, and requires the caller to fill
+    in *all* the fields in either of the exclusive groups.
+
+    If any field is missing from the first exclusive group, and the tracecount
+    is set, the resulting file will be considered unstructured. If the
+    tracecount is set, and all fields of the first exclusive group are
+    specified, the file is considered structured and the tracecount is inferred
+    from the xlines/ilines/offsets. The offsets are defaulted to [1] by
+    `segyio.spec()`.
 
     Args:
         filename (str): Path to file to open.
@@ -72,30 +123,34 @@ def create(filename, spec):
     f = segyio.SegyFile(filename, "w+")
 
     f._samples       = numpy.asarray(spec.samples, dtype = numpy.single)
-    f._ext_headers   = spec.ext_headers
+    f._ext_headers   = spec.ext_headers if hasattr(spec, 'ext_headers') else 0
     f._bsz           = _segyio.trace_bsize(len(f.samples))
 
     txt_hdr_sz       = _segyio.textheader_size()
     bin_hdr_sz       = _segyio.binheader_size()
-    f._tr0           = txt_hdr_sz + bin_hdr_sz + (spec.ext_headers * txt_hdr_sz)
-    f._sorting       = spec.sorting
+    f._tr0           = txt_hdr_sz + bin_hdr_sz + (f.ext_headers * txt_hdr_sz)
     f._fmt           = int(spec.format)
-    f._offsets       = numpy.copy(numpy.asarray(spec.offsets, dtype = numpy.intc))
-    f._tracecount    = len(spec.ilines) * len(spec.xlines) * len(spec.offsets)
 
     f._il            = int(spec.iline)
-    f._ilines        = numpy.copy(numpy.asarray(spec.ilines, dtype=numpy.intc))
-
     f._xl            = int(spec.xline)
-    f._xlines        = numpy.copy(numpy.asarray(spec.xlines, dtype=numpy.intc))
 
-    line_metrics = _segyio.init_line_metrics(f.sorting, f.tracecount, len(f.ilines), len(f.xlines), len(f.offsets))
+    if not structured(spec):
+        f._tracecount = spec.tracecount
+    else:
+        f._sorting       = spec.sorting
+        f._offsets       = numpy.copy(numpy.asarray(spec.offsets, dtype = numpy.intc))
+        f._tracecount    = len(spec.ilines) * len(spec.xlines) * len(spec.offsets)
 
-    f._iline_length = line_metrics['iline_length']
-    f._iline_stride = line_metrics['iline_stride']
+        f._ilines        = numpy.copy(numpy.asarray(spec.ilines, dtype=numpy.intc))
+        f._xlines        = numpy.copy(numpy.asarray(spec.xlines, dtype=numpy.intc))
 
-    f._xline_length = line_metrics['xline_length']
-    f._xline_stride = line_metrics['xline_stride']
+        line_metrics = _segyio.init_line_metrics(f.sorting, f.tracecount, len(f.ilines), len(f.xlines), len(f.offsets))
+
+        f._iline_length = line_metrics['iline_length']
+        f._iline_stride = line_metrics['iline_stride']
+
+        f._xline_length = line_metrics['xline_length']
+        f._xline_stride = line_metrics['xline_stride']
 
     f.text[0] = default_text_header(f._il, f._xl, segyio.TraceField.offset)
     f.bin     = {

@@ -187,3 +187,39 @@ def rotation(f, line = 'fast'):
                                   f._tr0,
                                   f._bsz)
     return rot, cdpx, cdpy
+
+def metadata(f):
+    """ Get survey structural properties and metadata
+
+    Since v1.4
+
+    Create a descriptor object that, when passed to `segyio.create()`, would
+    create a new file with the same structure, dimensions and metadata as `f`.
+
+    Takes an open segy file (created with segyio.open) or a file name.
+
+    :type f: SegyFile|str
+    :rtype segyio.spec
+    """
+
+    if not isinstance(f, segyio.SegyFile):
+        with segyio.open(f) as fl:
+            return metadata(fl)
+
+    spec = segyio.spec()
+
+    spec.iline = f._il
+    spec.xline = f._xl
+    spec.samples = f.samples
+    spec.format = f.format
+
+    spec.ilines = f.ilines
+    spec.xlines = f.xlines
+    spec.offsets = f.offsets
+    spec.sorting = f.sorting
+
+    spec.tracecount = f.tracecount
+
+    spec.ext_headers = f.ext_headers
+
+    return spec
