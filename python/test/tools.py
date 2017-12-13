@@ -129,5 +129,22 @@ class ToolsTest(unittest.TestCase):
                 close(right, rotation(f, line = 'slow'),  places = 3)
                 close(right, rotation(f, line = 'xline'), places = 3)
 
+    def test_metadata(self):
+        spec = segyio.spec()
+        spec.ilines = [1, 2, 3, 4, 5]
+        spec.xlines = [20, 21, 22, 23, 24]
+        spec.samples = list(range(0,200,4))
+        spec.sorting = 2
+        spec.format = 1
+
+        smallspec = segyio.tools.metadata(self.filename)
+
+        self.assertTrue(np.array_equal(spec.ilines, smallspec.ilines))
+        self.assertTrue(np.array_equal(spec.xlines, smallspec.xlines))
+        self.assertTrue(np.array_equal(spec.offsets, smallspec.offsets))
+        self.assertTrue(np.array_equal(spec.samples, smallspec.samples))
+        self.assertEqual(spec.sorting, smallspec.sorting)
+        self.assertEqual(spec.format, int(smallspec.format))
+
 if __name__ == '__main__':
     unittest.main()

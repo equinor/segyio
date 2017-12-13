@@ -71,10 +71,11 @@ class _segyioTests(unittest.TestCase):
 
             f = _segyio.open("small.sgy", "r+")
 
-            with self.assertRaises(ValueError):
-                _segyio.write_textheader(f, 0, "")
+            _segyio.write_textheader(f, 0, "")
 
-            self.assertEqual(_segyio.read_textheader(f, 0), self.ACTUAL_TEXT_HEADER)
+            textheader = _segyio.read_textheader(f, 0)
+            textheader = textheader.decode('ascii')
+            self.assertEqual(textheader, "" * 3200)
 
             _segyio.write_textheader(f, 0, "yolo" * 800)
 

@@ -33,7 +33,7 @@
 #include <segyio/segy.h>
 #include <segyio/util.h>
 
-static unsigned char a2e[256] = {
+static const unsigned char a2e[256] = {
     0,  1,  2,  3,  55, 45, 46, 47, 22, 5,  37, 11, 12, 13, 14, 15,
     16, 17, 18, 19, 60, 61, 50, 38, 24, 25, 63, 39, 28, 29, 30, 31,
     64, 79, 127,123,91, 108,80, 125,77, 93, 92, 78, 107,96, 75, 97,
@@ -52,7 +52,7 @@ static unsigned char a2e[256] = {
     220,221,222,223,234,235,236,237,238,239,250,251,252,253,254,255
 };
 
-static unsigned char e2a[256] = {
+static const unsigned char e2a[256] = {
     0,  1,  2,  3,  156,9,  134,127,151,141,142, 11,12, 13, 14, 15,
     16, 17, 18, 19, 157,133,8,  135,24, 25, 146,143,28, 29, 30, 31,
     128,129,130,131,132,10, 23, 27, 136,137,138,139,140,5,  6,  7,
@@ -71,18 +71,33 @@ static unsigned char e2a[256] = {
     48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 250,251,252,253,254,255
 };
 
-void ebcdic2ascii( const char* ebcdic, char* ascii ) {
-    while( *ebcdic != '\0' )
-        *ascii++ = (char)e2a[ (unsigned char) *ebcdic++ ];
+static int encode( char* dst,
+                   const char* src,
+                   const unsigned char* conv,
+                   size_t n ) {
+    for( size_t i = 0; i < n; ++i )
+        dst[ i ] = (char)conv[ (unsigned char) src[ i ] ];
 
-    *ascii = '\0';
+    return SEGY_OK;
+}
+
+/*
+ * DEPRECATED
+ * ebcdic2ascii and ascii2ebcdic are deprecated in favour of the length-aware
+ * encode. They will be removed in segyio2. These functions were never public
+ * (in the sense they're not available in headers), but currently have external
+ * linkage.
+ */
+void ebcdic2ascii( const char* ebcdic, char* ascii ) {
+    size_t len = strlen( ebcdic );
+    encode( ascii, ebcdic, e2a, len );
+    ascii[ len ] = '\0';
 }
 
 void ascii2ebcdic( const char* ascii, char* ebcdic ) {
-    while (*ascii != '\0')
-        *ebcdic++ = (char)a2e[(unsigned char) *ascii++];
-
-    *ebcdic = '\0';
+    size_t len = strlen( ascii );
+    encode( ebcdic, ascii, a2e, len );
+    ebcdic[ len ] = '\0';
 }
 
 #define IEEEMAX 0x7FFFFFFF
@@ -328,7 +343,7 @@ segy_file* segy_open( const char* path, const char* mode ) {
 
     // append a 'b' if it is not passed by the user; not a problem on unix, but
     // windows and other platforms fail without it
-    char binary_mode[ 4 ] = { 0 };
+    char binary_mode[ 5 ] = { 0 };
     strncpy( binary_mode, mode, 3 );
 
     size_t mode_len = strlen( binary_mode );
@@ -380,21 +395,23 @@ int segy_mmap( segy_file* fp ) {
 
     fp->addr = fp->cur = addr;
     fp->fsize = fsize;
+
+    fclose(fp->fp);
+
     return SEGY_OK;
 #endif //HAVE_MMAP
 }
 
 int segy_flush( segy_file* fp, bool async ) {
-    int syncerr = 0;
 
 #ifdef HAVE_MMAP
     if( fp->addr ) {
         int flag = async ? MS_ASYNC : MS_SYNC;
-        syncerr = msync( fp->addr, fp->fsize, flag );
+        int syncerr = msync( fp->addr, fp->fsize, flag );
+        if( syncerr != 0 ) return syncerr;
+        return SEGY_OK;
     }
 #endif //HAVE_MMAP
-
-    if( syncerr != 0 ) return syncerr;
 
     int flusherr = fflush( fp->fp );
 
@@ -426,6 +443,9 @@ int segy_close( segy_file* fp ) {
     err = munmap( fp->addr, fp->fsize );
     if( err != 0 )
         err = SEGY_MMAP_ERROR;
+
+    free( fp );
+    return err;
 
 no_mmap:
 #endif //HAVE_MMAP
@@ -550,6 +570,7 @@ int segy_field_forall( segy_file* fp,
     err = segy_seek( fp, end, trace0, trace_bsize );
     if( err != SEGY_OK ) return err;
 
+#ifdef HAVE_MMAP
     if( fp->addr ) {
         for( int i = start; slicelen > 0; i += step, ++buf, --slicelen ) {
             segy_seek( fp, i, trace0, trace_bsize );
@@ -559,6 +580,7 @@ int segy_field_forall( segy_file* fp,
 
         return SEGY_OK;
     }
+#endif //HAVE_MMAP
 
     /*
      * non-mmap path. Doing multiple freads is slow, so instead the *actual*
@@ -588,6 +610,13 @@ int segy_binheader( segy_file* fp, char* buf ) {
         return SEGY_INVALID_ARGS;
     }
 
+#ifdef HAVE_MMAP
+    if( fp->addr ) {
+        memcpy( buf, (char*)fp->addr + SEGY_TEXT_HEADER_SIZE, SEGY_BINARY_HEADER_SIZE );
+        return SEGY_OK;
+    }
+#endif //HAVE_MMAP
+
     const int err = fseek( fp->fp, SEGY_TEXT_HEADER_SIZE, SEEK_SET );
     if( err != 0 ) return SEGY_FSEEK_ERROR;
 
@@ -602,6 +631,13 @@ int segy_write_binheader( segy_file* fp, const char* buf ) {
     if(fp == NULL) {
         return SEGY_INVALID_ARGS;
     }
+
+#ifdef HAVE_MMAP
+    if( fp->addr ) {
+        memcpy( (char*)fp->addr + SEGY_TEXT_HEADER_SIZE, buf, SEGY_BINARY_HEADER_SIZE );
+        return SEGY_OK;
+    }
+#endif //HAVE_MMAP
 
     const int err = fseek( fp->fp, SEGY_TEXT_HEADER_SIZE, SEEK_SET );
     if( err != 0 ) return SEGY_FSEEK_ERROR;
@@ -647,12 +683,14 @@ int segy_seek( segy_file* fp,
     trace_bsize += SEGY_TRACE_HEADER_SIZE;
     long long pos = (long long)trace0 + (trace * (long long)trace_bsize);
 
+#ifdef HAVE_MMAP
     if( fp->addr ) {
         if( (size_t)pos >= fp->fsize ) return SEGY_FSEEK_ERROR;
 
         fp->cur = (char*)fp->addr + pos;
         return SEGY_OK;
     }
+#endif //HAVE_MMAP
 
     int err;
 #if LONG_MAX == LLONG_MAX
@@ -737,8 +775,12 @@ int segy_traces( segy_file* fp,
                  int trace_bsize ) {
 
     long long size;
-    int err = file_size( fp->fp, &size );
-    if( err != 0 ) return err;
+    if( fp->addr )
+        size = fp->fsize;
+    else{
+        int err = file_size( fp->fp, &size );
+        if( err != 0 ) return err;
+    }
 
     if( trace0 > size ) return SEGY_INVALID_ARGS;
 
@@ -1525,31 +1567,45 @@ int segy_read_ext_textheader( segy_file* fp, int pos, char *buf) {
                         SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE +
                         ((pos-1) * SEGY_TEXT_HEADER_SIZE);
 
+#ifdef HAVE_MMAP
+    if ( fp->addr ) {
+        encode( buf, (char*)fp->addr + offset, e2a, SEGY_TEXT_HEADER_SIZE );
+        buf[ SEGY_TEXT_HEADER_SIZE ] = '\0';
+        return SEGY_OK;
+    }
+#endif //HAVE_MMAP
+
     int err = fseek( fp->fp, offset, SEEK_SET );
     if( err != 0 ) return SEGY_FSEEK_ERROR;
 
-    char localbuf[ SEGY_TEXT_HEADER_SIZE + 1 ];
+    char localbuf[ SEGY_TEXT_HEADER_SIZE + 1 ] = { 0 };
     const size_t read = fread( localbuf, 1, SEGY_TEXT_HEADER_SIZE, fp->fp );
     if( read != SEGY_TEXT_HEADER_SIZE ) return SEGY_FREAD_ERROR;
 
-    localbuf[ SEGY_TEXT_HEADER_SIZE ] = '\0';
-    ebcdic2ascii( localbuf, buf );
+    encode( buf, localbuf, e2a, SEGY_TEXT_HEADER_SIZE );
     return SEGY_OK;
 }
 
 int segy_write_textheader( segy_file* fp, int pos, const char* buf ) {
     int err;
-    char mbuf[ SEGY_TEXT_HEADER_SIZE + 1 ];
+    char mbuf[ SEGY_TEXT_HEADER_SIZE ];
 
     if( pos < 0 ) return SEGY_INVALID_ARGS;
 
-    // TODO: reconsider API, allow non-zero terminated strings
-    ascii2ebcdic( buf, mbuf );
+    err = encode( mbuf, buf, a2e, SEGY_TEXT_HEADER_SIZE );
+    if( err != 0 ) return err;
 
     const long offset = pos == 0
                       ? 0
                       : SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE +
                         ((pos-1) * SEGY_TEXT_HEADER_SIZE);
+
+#ifdef HAVE_MMAP
+    if( fp->addr ) {
+        memcpy( (char*)fp->addr + offset, mbuf, SEGY_TEXT_HEADER_SIZE );
+        return SEGY_OK;
+    }
+#endif //HAVE_MMAP
 
     err = fseek( fp->fp, offset, SEEK_SET );
     if( err != 0 ) return SEGY_FSEEK_ERROR;

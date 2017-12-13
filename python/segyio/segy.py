@@ -201,7 +201,7 @@ class SegyFile(object):
     @property
     def ext_headers(self):
         """ :rtype: int """
-        return self._ext_headers
+        return self._ext_headers if self._ext_headers is not None else 0
 
     @property
     def unstructured(self):
@@ -1017,6 +1017,9 @@ class SegyFile(object):
             Write a new textual header::
                 >>> f.text[0] = make_new_header()
 
+            Copy a tectual header::
+                >>> f.text[1] = g.text[0]
+
             Print a textual header line-by-line::
                 >>> # using zip, from the zip documentation
                 >>> text = f.text[0]
@@ -1025,28 +1028,7 @@ class SegyFile(object):
                 ...     print(line)
                 ...
         """
-
-        class TextHeader:
-
-            def __getitem__(inner, index):
-                if index > self.ext_headers:
-                    raise IndexError("Textual header %d not in file" % index)
-
-                return _segyio.read_textheader(self.xfd, index)
-
-            def __setitem__(inner, index, val):
-                if index > self.ext_headers:
-                    raise IndexError("Textual header %d not in file" % index)
-
-                _segyio.write_textheader(self.xfd, index, val)
-
-            def __repr__(inner):
-                return "Text(external_headers = {})".format(self.ext_headers)
-
-            def __str__(inner):
-                return '\n'.join(map(''.join, zip(*[iter(inner[0])] * 80)))
-
-        return TextHeader()
+        return TextHeader(self)
 
     @property
     def bin(self):
@@ -1148,4 +1130,30 @@ class spec:
         self.ext_headers = 0
         self.format = None
         self.sorting = None
-        self.t0 = 1111.0
+
+class TextHeader(object):
+
+    def __init__(self, outer):
+        self.outer = outer
+
+    def __getitem__(self, index):
+        if index > self.outer.ext_headers:
+            raise IndexError("Textual header %d not in file" % index)
+
+        return _segyio.read_textheader(self.outer.xfd, index)
+
+    def __setitem__(self, index, val):
+        if isinstance(val, TextHeader):
+            self[index] = val[0]
+            return
+
+        if index > self.outer.ext_headers:
+            raise IndexError("Textual header %d not in file" % index)
+
+        _segyio.write_textheader(self.outer.xfd, index, bytes(val))
+
+    def __repr__(self):
+        return "Text(external_headers = {})".format(self.outer.ext_headers)
+
+    def __str__(self):
+        return '\n'.join(map(''.join, zip(*[iter(str(self[0]))] * 80)))

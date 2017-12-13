@@ -87,6 +87,8 @@ int segy_sample_indices( segy_file*,
                          float* buf );
 
 /* text header operations */
+/* buf in all read functions should be minimum segy_textheader_size() in size */
+/* all read_textheader function outputs are zero-terminated C strings */
 int segy_read_textheader( segy_file*, char *buf);
 int segy_textheader_size( void );
 /*
