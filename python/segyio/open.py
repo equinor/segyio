@@ -17,8 +17,9 @@ def open(filename, mode="r", iline = 189,
 
     For reading, the access mode "r" is preferred. All write operations will
     raise an exception. For writing, the mode "r+" is preferred (as "rw" would
-    truncate the file). The modes used are standard C file modes; please refer
-    to that documentation for a complete reference.
+    truncate the file). Any mode with 'w' will raise an error. The modes used
+    are standard C file modes; please refer to that documentation for a
+    complete reference.
 
     Open should be used together with python's `with` statement. Please refer
     to the examples. When the `with` statement is used the file will
@@ -66,6 +67,12 @@ def open(filename, mode="r", iline = 189,
             ...
     :rtype: segyio.SegyFile
     """
+
+    if 'w' in mode:
+        problem = 'w in mode would truncate the file'
+        solution = 'use r+ to open in read-write'
+        raise ValueError(', '.join((problem, solution)))
+
     f = segyio.SegyFile(filename, mode, iline, xline)
 
     try:
