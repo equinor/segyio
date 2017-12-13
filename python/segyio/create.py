@@ -118,6 +118,16 @@ def create(filename, spec):
             ...         dst.bin = src.bin
             ...         dst.header = src.header
             ...         dst.trace = src.trace
+
+        Copy a file, but shorten all traces by 50 samples (since v1.4)::
+            >>> with segyio.open(srcpath) as src:
+            ...     spec = segyio.tools.metadata(src)
+            ...     spec.samples = spec.samples[:len(spec.samples) - 50]
+            ...     with segyio.create(dstpath, spec) as dst:
+            ...         dst.text[0] = src.text[0]
+            ...         dst.bin = src.bin
+            ...         dst.header = src.header
+            ...         dst.trace = src.trace
     :rtype: segyio.SegyFile
     """
     f = segyio.SegyFile(filename, "w+")
