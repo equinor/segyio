@@ -250,7 +250,7 @@ static PyObject *py_read_texthdr(PyObject *self, PyObject *args) {
     }
 
     size_t len = strlen( buffer );
-    PyObject *result = PyBytes_FromStringAndSize(buffer, len );
+    PyObject *result = PyBytes_FromStringAndSize( buffer, len );
     free(buffer);
     return result;
 }
