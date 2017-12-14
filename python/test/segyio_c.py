@@ -55,8 +55,9 @@ class _segyioTests(unittest.TestCase):
         # with self.assertRaises(IOError):
         #     _segyio.flush(f)
 
-    def test_read_text_header(self):
+    def test_read_text_header(self, mmap=False):
         f = _segyio.open(self.filename, "r")
+        if mmap: _segyio.mmap(f)
 
         self.assertEqual(_segyio.read_textheader(f, 0), self.ACTUAL_TEXT_HEADER)
 
@@ -64,6 +65,9 @@ class _segyioTests(unittest.TestCase):
             _segyio.read_texthdr(None, 0)
 
         _segyio.close(f)
+
+    def test_read_text_header_mmap(self):
+        self.test_read_text_header(True)
 
     def test_write_text_header(self):
         with TestContext("write_text_header") as context:
