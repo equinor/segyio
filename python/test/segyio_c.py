@@ -137,8 +137,9 @@ class _segyioTests(unittest.TestCase):
     def test_read_binary_header_fields_mmap(self):
         self.test_read_binary_header_fields(True)
 
-    def test_line_metrics(self):
+    def test_line_metrics(self, mmap=False):
         f = _segyio.open(self.filename, "r")
+        if mmap: _segyio.mmap(f)
 
         binary_header = _segyio.read_binaryheader(f)
         ilb = 189
@@ -177,6 +178,9 @@ class _segyioTests(unittest.TestCase):
         self.assertEqual(metrics['xline_stride'], 5)
         self.assertEqual(metrics['iline_length'], 5)
         self.assertEqual(metrics['iline_stride'], 1)
+
+    def test_line_metrics_mmap(self):
+        self.test_line_metrics(True)
 
     def test_metrics(self):
         f = _segyio.open(self.filename, "r")
