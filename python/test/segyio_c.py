@@ -93,7 +93,7 @@ class _segyioTests(unittest.TestCase):
     def test_write_text_header_mmap(self):
         self.test_write_text_header(True)
 
-    def test_read_and_write_binary_header(self):
+    def test_read_and_write_binary_header(self, mmap=False):
         with self.assertRaises(Exception):
             hdr = _segyio.read_binaryheader(None)
 
@@ -104,6 +104,7 @@ class _segyioTests(unittest.TestCase):
             context.copy_file(self.filename)
 
             f = _segyio.open("small.sgy", "r+")
+            if mmap: _segyio.mmap(f)
 
             binary_header = _segyio.read_binaryheader(f)
 
@@ -112,6 +113,9 @@ class _segyioTests(unittest.TestCase):
 
             _segyio.write_binaryheader(f, binary_header)
             _segyio.close(f)
+
+    def test_read_and_write_binary_header_mmap(self):
+        self.test_read_and_write_binary_header(True)
 
     def test_read_binary_header_fields(self):
         f = _segyio.open(self.filename, "r")
