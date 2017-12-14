@@ -10,7 +10,7 @@
 
 #include "unittest.h"
 
-static void test_interpret_file() {
+static void test_interpret_file( bool mmap ) {
     /*
      * test all structural properties of a file, i.e. traces, samples, sorting
      * etc, but don't actually read any data
@@ -29,6 +29,7 @@ static void test_interpret_file() {
     const int of = SEGY_TR_OFFSET;
 
     segy_file* fp = segy_open( file, "rb" );
+    if ( mmap ) segy_mmap( fp );
 
     assertTrue( fp != NULL, "Could not open file." );
     err = segy_binheader( fp, header );
@@ -484,7 +485,7 @@ void test_interpret_file_prestack() {
 
 */
 
-static void testReadInLine_4(){
+static void testReadInLine_4( bool mmap ){
     const char *file = "test-data/small.sgy";
 
     int sorting;
@@ -500,6 +501,7 @@ static void testReadInLine_4(){
     char header[ SEGY_BINARY_HEADER_SIZE ];
 
     segy_file* fp = segy_open( file, "rb" );
+    if ( mmap ) segy_mmap( fp );
     assertTrue( 0 == segy_binheader( fp, header ), "Could not read header" );
     const long trace0 = segy_trace0( header );
     const int samples = segy_samples( header );
@@ -560,7 +562,7 @@ static void testReadInLine_4(){
     segy_close(fp);
 }
 
-static void testReadCrossLine_22(){
+static void testReadCrossLine_22( bool mmap ){
     const char *file = "test-data/small.sgy";
 
     int sorting;
@@ -576,6 +578,7 @@ static void testReadCrossLine_22(){
     char header[ SEGY_BINARY_HEADER_SIZE ];
 
     segy_file* fp = segy_open( file, "rb" );
+    if ( mmap ) segy_mmap( fp );
     assertTrue( 0 == segy_binheader( fp, header ), "Could not read header" );
     const long trace0 = segy_trace0( header );
     const int samples = segy_samples( header );
@@ -638,13 +641,14 @@ static void testReadCrossLine_22(){
     segy_close(fp);
 }
 
-static void test_modify_trace_header() {
+static void test_modify_trace_header( bool mmap ) {
     const char *file = "test-data/small-traceheader.sgy";
 
     int err;
     char bheader[ SEGY_BINARY_HEADER_SIZE ];
 
     segy_file* fp = segy_open( file, "r+b" );
+    if ( mmap ) segy_mmap( fp );
     err = segy_binheader( fp, bheader );
     assertTrue( err == 0, "Could not read header" );
     const long trace0 = segy_trace0( bheader );
@@ -733,9 +737,10 @@ static const char* expected_textheader =
     "C39                                                                             "
     "C40                                                                            \x80";
 
-static void test_text_header() {
+static void test_text_header( bool mmap ) {
     const char *file = "test-data/text.sgy";
     segy_file* fp = segy_open( file, "rb" );
+    if ( mmap ) segy_mmap( fp );
 
     char ascii[ SEGY_TEXT_HEADER_SIZE + 1 ] = { 0 };
     int err = segy_read_textheader(fp, ascii);
@@ -745,10 +750,11 @@ static void test_text_header() {
     segy_close( fp );
 }
 
-static void test_trace_header_errors() {
+static void test_trace_header_errors( bool mmap ) {
     const char *file = "test-data/small.sgy";
     segy_file* fp = segy_open( file, "rb" );
     int err;
+    if ( mmap ) segy_mmap( fp );
 
     char binheader[ SEGY_BINARY_HEADER_SIZE ];
     err = segy_binheader( fp, binheader );
@@ -780,9 +786,10 @@ static void test_trace_header_errors() {
     segy_close( fp );
 }
 
-static void test_file_error_codes() {
+static void test_file_error_codes( bool mmap ) {
     const char *file = "test-data/small.sgy";
     segy_file* fp = segy_open( file, "rb" );
+    if ( mmap ) segy_mmap( fp );
     segy_close( fp );
 
     int err;
@@ -867,9 +874,9 @@ static void test_error_codes_sans_file() {
                 "Expected sorting to be invalid." );
 }
 
-static void test_file_size_above_4GB(){
+static void test_file_size_above_4GB( bool mmap ){
     segy_file* fp = segy_open( "4gbfile", "w+b" );
-
+    if ( mmap ) segy_mmap( fp );
     int trace = 5000000;
     int trace_bsize = 1000;
     long long tracesize = trace_bsize + SEGY_TRACE_HEADER_SIZE;
@@ -889,18 +896,24 @@ static void test_file_size_above_4GB(){
 int main() {
     puts("starting");
     puts("interpret file");
-    test_interpret_file();
+    test_interpret_file( false );
+    test_interpret_file( true );
     /* test_interpret_file_prestack(); */
     puts("read inline 4");
-    testReadInLine_4();
+    testReadInLine_4( false );
+    testReadInLine_4( true );
     puts("read inline 22");
-    testReadCrossLine_22();
+    testReadCrossLine_22( false );
+    testReadCrossLine_22( true );
     puts("mod traceh");
-    test_modify_trace_header();
+    test_modify_trace_header( false );
+    test_modify_trace_header( true );
     puts("mod texth");
-    test_text_header();
+    test_text_header( false );
+    test_text_header( true );
     puts("test traceh");
-    test_trace_header_errors();
+    test_trace_header_errors( false );
+    test_trace_header_errors( true );
 
     puts("test readsubtr(mmap)");
     test_read_subtr( true );
@@ -928,7 +941,9 @@ int main() {
      */
     test_error_codes_sans_file();
 
-    test_file_size_above_4GB();
+    test_file_size_above_4GB( false );
+    test_file_size_above_4GB( true );
+
     exit(0);
 }
 
