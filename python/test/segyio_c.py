@@ -117,8 +117,9 @@ class _segyioTests(unittest.TestCase):
     def test_read_and_write_binary_header_mmap(self):
         self.test_read_and_write_binary_header(True)
 
-    def test_read_binary_header_fields(self):
+    def test_read_binary_header_fields(self, mmap=False):
         f = _segyio.open(self.filename, "r")
+        if mmap: _segyio.mmap(f)
 
         binary_header = _segyio.read_binaryheader(f)
 
@@ -132,6 +133,9 @@ class _segyioTests(unittest.TestCase):
         self.assertEqual(_segyio.get_field(binary_header, 3221), 50)
 
         _segyio.close(f)
+
+    def test_read_binary_header_fields_mmap(self):
+        self.test_read_binary_header_fields(True)
 
     def test_line_metrics(self):
         f = _segyio.open(self.filename, "r")
