@@ -292,8 +292,9 @@ class _segyioTests(unittest.TestCase):
     def test_indices_mmap(self):
         self.test_indices(True)
 
-    def test_fread_trace0(self):
+    def test_fread_trace0(self, mmap=False):
         f = _segyio.open(self.filename, "r")
+        if mmap: _segyio.mmap(f)
 
         binary_header = _segyio.read_binaryheader(f)
         ilb = 189
@@ -337,6 +338,9 @@ class _segyioTests(unittest.TestCase):
         self.assertEqual(value, 2)
 
         _segyio.close(f)
+
+    def test_fread_trace0_mmap(self):
+        self.test_fread_trace0(True)
 
     def test_get_and_set_field(self):
         hdr = _segyio.empty_traceheader()
