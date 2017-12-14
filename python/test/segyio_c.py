@@ -365,11 +365,13 @@ class _segyioTests(unittest.TestCase):
         self.assertEqual(_segyio.get_field(hdr, 5), 67)
         self.assertEqual(_segyio.get_field(hdr, 9), 19)
 
-    def test_read_and_write_traceheader(self):
+    def test_read_and_write_traceheader(self, mmap=False):
         with TestContext("read_and_write_trace_header") as context:
             context.copy_file(self.filename)
 
             f = _segyio.open("small.sgy", "r+")
+            if mmap: _segyio.mmap(f)
+
             binary_header = _segyio.read_binaryheader(f)
             ilb = 189
             xlb = 193
@@ -404,6 +406,9 @@ class _segyioTests(unittest.TestCase):
             self.assertEqual(_segyio.get_field(trace_header, xlb), 42)
 
             _segyio.close(f)
+
+    def test_read_and_write_traceheader_mmap(self):
+        self.test_read_and_write_traceheader(True)
 
     def test_read_and_write_trace(self):
         with TestContext("read_and_write_trace") as context:
