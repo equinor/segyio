@@ -182,8 +182,10 @@ class _segyioTests(unittest.TestCase):
     def test_line_metrics_mmap(self):
         self.test_line_metrics(True)
 
-    def test_metrics(self):
+    def test_metrics(self, mmap=False):
         f = _segyio.open(self.filename, "r")
+        if mmap: _segyio.mmap(f)
+
         binary_header = _segyio.read_binaryheader(f)
         ilb = 189
         xlb = 193
@@ -221,6 +223,9 @@ class _segyioTests(unittest.TestCase):
 
         with self.assertRaises(IOError):
             metrics = _segyio.init_metrics(f, binary_header)
+
+    def test_metrics_mmap(self):
+        self.test_metrics(True)
 
     def test_indices(self):
         f = _segyio.open(self.filename, "r")
