@@ -69,11 +69,12 @@ class _segyioTests(unittest.TestCase):
     def test_read_text_header_mmap(self):
         self.test_read_text_header(True)
 
-    def test_write_text_header(self):
+    def test_write_text_header(self, mmap=False):
         with TestContext("write_text_header") as context:
             context.copy_file(self.filename)
 
             f = _segyio.open("small.sgy", "r+")
+            if mmap: _segyio.mmap(f)
 
             _segyio.write_textheader(f, 0, "")
 
@@ -88,6 +89,9 @@ class _segyioTests(unittest.TestCase):
             self.assertEqual(textheader, "yolo" * 800)
 
             _segyio.close(f)
+
+    def test_write_text_header_mmap(self):
+        self.test_write_text_header(True)
 
     def test_read_and_write_binary_header(self):
         with self.assertRaises(Exception):
