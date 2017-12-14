@@ -410,9 +410,10 @@ class _segyioTests(unittest.TestCase):
     def test_read_and_write_traceheader_mmap(self):
         self.test_read_and_write_traceheader(True)
 
-    def test_read_and_write_trace(self):
+    def test_read_and_write_trace(self, mmap=False):
         with TestContext("read_and_write_trace") as context:
             f = _segyio.open("trace-wrt.sgy", "w+")
+            if mmap: _segyio.mmap(f)
 
             buf = numpy.ones(25, dtype=numpy.single)
             buf[11] = 3.1415
@@ -434,6 +435,9 @@ class _segyioTests(unittest.TestCase):
             self.assertAlmostEqual(sum(buf), 42.0 * 25, places=4)
 
             _segyio.close(f)
+
+    def test_read_and_write_trace_mmap(self):
+        self.test_read_and_write_trace(True)
 
     def read_small(self, mmap = False):
         f = _segyio.open(self.filename, "r")
