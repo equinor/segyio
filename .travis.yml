@@ -30,19 +30,15 @@ matrix:
           compiler: clang
     include:
         - os: osx
-          osx_image: xcode9.1
           language: generic
           env: MB_PYTHON_VERSION=2.7
         - os: osx
-          osx_image: xcode9.1
           language: generic
           env: MB_PYTHON_VERSION=3.4
         - os: osx
-          osx_image: xcode9.1
           language: generic
           env: MB_PYTHON_VERSION=3.5
         - os: osx
-          osx_image: xcode9.1
           language: generic
           env: MB_PYTHON_VERSION=3.6
         - os: osx
@@ -66,6 +62,8 @@ addons:
         - cmake-data
 
 before_install:
+    - unset -f pushd
+    - unset -f popd
     - source multibuild/common_utils.sh
     - source multibuild/travis_steps.sh
     - before_install
