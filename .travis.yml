@@ -45,11 +45,6 @@ matrix:
         - os: osx
           language: generic
           env: MB_PYTHON_VERSION=3.6
-        - os: osx
-          language: generic
-          env:
-            - SCAN="scan-build --status-bugs"
-            - MB_PYTHON_VERSION=3.6
         - os: linux
           compiler: gcc
           env:
