@@ -316,9 +316,9 @@ int main( int argc, char** argv ) {
 
     struct options opts = parse_options( argc, argv );
 
-    if( opts.help ) return help() + (opts.errmsg ? 2 : 0);
-    if( opts.version ) return printversion( "segyio-crop" );
-    if( opts.errmsg ) return errmsg( EINVAL, opts.errmsg );
+    if( opts.help ) exit( help() + (opts.errmsg ? 2 : 0) );
+    if( opts.version ) exit( printversion( "segyio-crop" ) );
+    if( opts.errmsg ) exit( errmsg( EINVAL, opts.errmsg ) );
 
     int ibeg = opts.ibeg;
     int iend = opts.iend;
@@ -331,19 +331,19 @@ int main( int argc, char** argv ) {
     int verbosity = opts.verbosity;
 
     if( !valid_trfield( il ) )
-        return errmsg( -3, "Invalid inline byte offset" );
+        exit( errmsg( -3, "Invalid inline byte offset" ) );
 
     if( !valid_trfield( xl ) )
-        return errmsg( -3, "Invalid crossline byte offset" );
+        exit( errmsg( -3, "Invalid crossline byte offset" ) );
 
     if( ibeg > iend )
-        return errmsg( -4, "Invalid iline interval - file would be empty" );
+        exit( errmsg( -4, "Invalid iline interval - file would be empty" ) );
 
     if( xbeg > xend )
-        return errmsg( -4, "Invalid xline interval - file would be empty" );
+        exit( errmsg( -4, "Invalid xline interval - file would be empty" ) );
 
     if( sbeg > send )
-        return errmsg( -4, "Invalid sample interval - file would be empty" );
+        exit( errmsg( -4, "Invalid sample interval - file would be empty" ) );
 
     char textheader[ TEXTSIZE ] = { 0 };
     char binheader[ BINSIZE ]   = { 0 };
@@ -351,51 +351,51 @@ int main( int argc, char** argv ) {
 
     FILE* src = fopen( opts.src, "rb" );
     if( !src )
-        return errmsg2( errno, "Unable to open src", strerror( errno ) );
+        exit( errmsg2( errno, "Unable to open src", strerror( errno ) ) );
 
     FILE* dst = fopen( opts.dst, "wb" );
     if( !dst )
-        return errmsg2( errno, "Unable to open dst", strerror( errno ) );
+        exit( errmsg2( errno, "Unable to open dst", strerror( errno ) ) );
 
     /* copy the textual and binary headers */
     if( verbosity > 0 ) puts( "Copying text header" );
     int sz;
     sz = fread( textheader, TEXTSIZE, 1, src );
-    if( sz != 1 ) return errmsg2( errno, "Unable to read text header",
-                                         strerror( errno ) );
+    if( sz != 1 ) exit( errmsg2( errno, "Unable to read text header",
+                                         strerror( errno ) ) );
 
     sz = fwrite( textheader, TEXTSIZE, 1, dst );
-    if( sz != 1 ) return errmsg2( errno, "Unable to write text header",
-                                         strerror( errno ) );
+    if( sz != 1 ) exit( errmsg2( errno, "Unable to write text header",
+                                         strerror( errno ) ) );
 
     if( verbosity > 0 ) puts( "Copying binary header" );
     sz = fread( binheader, BINSIZE, 1, src );
-    if( sz != 1 ) return errmsg2( errno, "Unable to read binary header",
-                                         strerror( errno ) );
+    if( sz != 1 ) exit( errmsg2( errno, "Unable to read binary header",
+                                         strerror( errno ) ) );
 
     sz = fwrite( binheader, BINSIZE, 1, dst );
-    if( sz != 1 ) return errmsg2( errno, "Unable to write binary header",
-                                         strerror( errno ) );
+    if( sz != 1 ) exit( errmsg2( errno, "Unable to write binary header",
+                                         strerror( errno ) ) );
 
     int ext_headers = bfield( binheader, SEGY_BIN_EXT_HEADERS );
-    if( ext_headers < 0 ) return errmsg( -1, "Malformed binary header" );
+    if( ext_headers < 0 ) exit( errmsg( -1, "Malformed binary header" ) );
 
     for( int i = 0; i < ext_headers; ++i ) {
         if( verbosity > 0 ) puts( "Copying extended text header" );
         sz = fread( textheader, TEXTSIZE, 1, src );
-        if( sz != 1 ) return errmsg2( errno, "Unable to read ext text header",
-                                             strerror( errno ) );
+        if( sz != 1 ) exit( errmsg2( errno, "Unable to read ext text header",
+                                             strerror( errno ) ) );
 
         sz = fwrite( textheader, TEXTSIZE, 1, dst );
-        if( sz != 1 ) return errmsg2( errno, "Unable to write ext text header",
-                                             strerror( errno ) );
+        if( sz != 1 ) exit( errmsg2( errno, "Unable to write ext text header",
+                                             strerror( errno ) ) );
     }
 
     if( verbosity > 2 ) puts( "Computing samples-per-trace" );
     const int bindt = bfield( binheader, SEGY_BIN_INTERVAL );
     const int src_samples = bfield( binheader, SEGY_BIN_SAMPLES );
     if( src_samples < 0 )
-        return errmsg( -2, "Could not determine samples per trace" );
+        exit( errmsg( -2, "Could not determine samples per trace" ) );
 
     if( verbosity > 2 ) printf( "Found %d samples per trace\n", src_samples );
 
@@ -408,7 +408,7 @@ int main( int argc, char** argv ) {
 
         if( sz != 1 && feof( src ) ) break;
         if( sz != 1 && ferror( src ) )
-            return errmsg( ferror( src ), "Unable to read trace header" );
+            exit( errmsg( ferror( src ), "Unable to read trace header" ) );
 
         int ilno = trfield( trheader, SEGY_TR_INLINE );
         int xlno = trfield( trheader, SEGY_TR_CROSSLINE );
@@ -421,8 +421,8 @@ int main( int argc, char** argv ) {
 
         sz = fread( trace, sizeof( float ), src_samples, src );
         if( sz != src_samples )
-            return errmsg2( errno, "Unable to read trace",
-                                   strerror( errno ) );
+            exit( errmsg2( errno, "Unable to read trace",
+                                   strerror( errno ) ) );
 
         /* figure out how to crop the trace */
         struct delay d = delay_recording_time( trheader,
@@ -437,20 +437,20 @@ int main( int argc, char** argv ) {
         if( verbosity > 2 ) printf( "Copying trace %lld\n", traces );
         sz = fwrite( trheader, TRHSIZE, 1, dst );
         if( sz != 1 )
-            return errmsg2( errno, "Unable to write trace header",
-                                   strerror( errno ) );
+            exit( errmsg2( errno, "Unable to write trace header",
+                                   strerror( errno ) ) );
 
         sz = fwrite( trace + d.skip, sizeof( float ), d.len, dst );
         if( sz != d.len )
-            return errmsg2( errno, "Unable to write trace",
-                                   strerror( errno ) );
+            exit( errmsg2( errno, "Unable to write trace",
+                                   strerror( errno ) ) );
         ++traces;
     }
 
     fseek( dst, SEGY_TEXT_HEADER_SIZE, SEEK_SET );
     sz = fwrite( binheader, BINSIZE, 1, dst );
-    if( sz != 1 ) return errmsg2( errno, "Unable to write binary header",
-                                         strerror( errno ) );
+    if( sz != 1 ) exit( errmsg2( errno, "Unable to write binary header",
+                                         strerror( errno ) ) );
 
     free( trace );
     fclose( dst );
