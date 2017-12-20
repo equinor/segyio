@@ -1,3 +1,6 @@
+// Omit from static analysis.
+#ifndef __clang_analyzer__
+
 #include <limits.h>
 #include <math.h>
 #include <stdlib.h>
@@ -928,3 +931,5 @@ int main() {
     test_file_size_above_4GB();
     exit(0);
 }
+
+#endif // __clang_analyzer__
