@@ -1045,7 +1045,7 @@ static int count_lines( segy_file* fp,
     err = segy_traceheader( fp, 0, header, trace0, trace_bsize );
     if( err != 0 ) return err;
 
-    int first_lineno, first_offset, ln, off = 0;
+    int first_lineno, first_offset, ln = 0, off = 0;
 
     err = segy_get_field( header, field, &first_lineno );
     if( err != 0 ) return err;
