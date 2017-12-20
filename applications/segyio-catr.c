@@ -461,9 +461,9 @@ static struct options parse_options( int argc, char** argv ){
 int main( int argc, char** argv ) {
     struct options opts = parse_options( argc, argv );
 
-    if( opts.help ) return help();
-    if( opts.version ) return printversion( "segyio-catr" );
-    if( opts.errmsg ) return errmsg( EINVAL, opts.errmsg );
+    if( opts.help )    exit( help() );
+    if( opts.version ) exit( printversion( "segyio-catr" ) );
+    if( opts.errmsg )  exit( errmsg( EINVAL, opts.errmsg ) );
 
     int strict = opts.strict;
 
@@ -476,7 +476,7 @@ int main( int argc, char** argv ) {
 
     for( range* r = opts.r; r < opts.r + opts.rsize; ++r ) {
         if( r->start > r->stop && strict )
-            return errmsg( -3, "Range is empty" );
+            exit( errmsg( -3, "Range is empty" ) );
     }
 
     char trheader[ TRHSIZE ];
@@ -484,11 +484,10 @@ int main( int argc, char** argv ) {
 
     segy_file* src = segy_open( opts.src, "r" );
     if( !src )
-        return errmsg2( errno, "Unable to open src", strerror( errno ) );
+        exit( errmsg2( errno, "Unable to open src", strerror( errno ) ) );
 
     int err = segy_binheader( src, binheader );
-    if( err )
-        return errmsg( errno, "Unable to read binheader" );
+    if( err ) exit( errmsg( errno, "Unable to read binheader" ) );
 
     int samnr = segy_samples( binheader );
     int trace_bsize = segy_trace_bsize( samnr );
@@ -497,7 +496,7 @@ int main( int argc, char** argv ) {
     int numtrh;
     err = segy_traces( src, &numtrh, trace0, trace_bsize );
     if( err )
-        return errmsg( errno, "Unable to determine number of traces in file" );
+        exit( errmsg( errno, "Unable to determine number of traces in file" ) );
 
     for( range* r = opts.r; r < opts.r + opts.rsize; ++r ) {
         if( r->stop == 0 ) r->stop = r->start;
@@ -507,13 +506,13 @@ int main( int argc, char** argv ) {
     for( range* r = opts.r; r < opts.r + opts.rsize; ++r ) {
         for( int i = r->start; i <= r->stop; i += r->step ) {
             if( i > numtrh && strict )
-              return errmsg2( errno, "Unable to read traceheader",
-                                     "out of range" );
+              exit( errmsg2( errno, "Unable to read traceheader",
+                                     "out of range" ) );
             if( i > numtrh ) break;
 
             err = segy_traceheader( src, i - 1, trheader, trace0, trace_bsize );
             if( err )
-                return errmsg( errno, "Unable to read trace header" );
+                exit( errmsg( errno, "Unable to read trace header" ) );
 
             for( int j = 0; j < 91; j++ ) {
                 int f;
