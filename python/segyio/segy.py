@@ -860,10 +860,12 @@ class SegyFile(object):
 
         Since v1.1
 
-        This mode gives access to reading and writing functionality for depth slices.
-        The primary data type is the numpy ndarray. Depth slices can be accessed
-        individually or with python slices, and writing is done via assignment.
-        Note that each slice is returned as a numpy array, meaning
+        This mode gives access to reading and writing functionality for depth
+        slices, a horizontal cut of the survey.
+
+        The primary data type is the numpy ndarray. Depth slices can be
+        accessed individually or with python slices, and writing is done via
+        assignment.  Note that each slice is returned as a numpy array, meaning
         accessing the values of the slice is 0-indexed.
 
         Examples:
@@ -888,10 +890,10 @@ class SegyFile(object):
                 ...     print(np.average(depth_slice))
                 ...
 
-            Copy a line from file g to f::
+            Copy a slice from file g to f::
                 >>> f.depth_slice[4] = g.depth_slice[19]
 
-            Copy lines from the first line in g to f, starting at 10,
+            Copy slice from the first line in g to f, starting at 10,
             ending at 49 in f::
                 >>> f.depth_slice[10:50] = g.depth_slice
 
@@ -905,7 +907,7 @@ class SegyFile(object):
             destination file will be written.
 
             Copy depth slices from file f to file g::
-                >>> f.depth_slice = g.depth_slice.
+                >>> f.depth_slice = g.depth_slice
 
             Copy first half of the depth slices from g to f::
                 >>> f.depth_slice = g.depth_slice[:g.samples/2]]
