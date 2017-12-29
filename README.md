@@ -380,8 +380,8 @@ from shutil import copyfile
 Open segy file and inspect it:
 
 ```python
-filename='name_of_your_file.sgy'
-with segyio.open(filename, "r" ) as segyfile:
+filename = 'name_of_your_file.sgy'
+with segyio.open(filename, "r") as segyfile:
 
     # Memory map file for faster reading (especially if file is big...)
     segyfile.mmap()
@@ -401,46 +401,46 @@ with segyio.open(filename, "r" ) as segyfile:
 Read post-stack data cube contained in segy file:
 
 ```python
-    # Read data along first xline
-    data  = segyfile.xline[segyfile.xlines[1]]
+# Read data along first xline
+data = segyfile.xline[segyfile.xlines[1]]
 
-    # Read data along last iline
-    data  = segyfile.iline[segyfile.ilines[-1]]
+# Read data along last iline
+data = segyfile.iline[segyfile.ilines[-1]]
 
-    # Read data along 100th time slice
-    data  = segyfile.depth_slice[100]
+# Read data along 100th time slice
+data = segyfile.depth_slice[100]
 
-    # Read data cube
-    data = segyio.tools.cube(filename)
+# Read data cube
+data = segyio.tools.cube(filename)
 ```
 
 Read pre-stack data cube contained in segy file:
 
 ```python
-filename='name_of_your_prestack_file.sgy'
-with segyio.open( filename, "r" ) as segyfile:
+filename = 'name_of_your_prestack_file.sgy'
+with segyio.open(filename, "r") as segyfile:
 
     # Print offsets
     print(segyfile.offset)
 
     # Read data along first iline and offset 100:  data [nxl x nt]
-    data=segyfile.iline[0,100]
+    data = segyfile.iline[0, 100]
 
     # Read data along first iline and all offsets gath:  data [noff x nxl x nt]
-    data=np.asarray([np.copy(x) for x in segyfile.iline[0:1,:]]
+    data = np.asarray([np.copy(x) for x in segyfile.iline[0:1, :]])
 
     # Read data along first 5 ilines and all offsets gath:  data [noff nil x nxl x nt]
-    data=np.asarray([np.copy(x) for x in segyfile.iline[0:5,:]]
+    data = np.asarray([np.copy(x) for x in segyfile.iline[0:5, :]])
 
     # Read data along first xline and all offsets gath:  data [noff x nil x nt]
-    data=np.asarray([np.copy(x) for x in segyfile.xline[0:1,:]])
+    data = np.asarray([np.copy(x) for x in segyfile.xline[0:1, :]])
 ```
 
 Read and understand fairly 'unstructured' data (e.g., data sorted in common shot gathers):
 
 ```python
-filename='name_of_your_prestack_file.sgy'
-with segyio.open( filename, "r", ignore_geometry=True) as segyfile:
+filename = 'name_of_your_prestack_file.sgy'
+with segyio.open(filename, "r", ignore_geometry=True) as segyfile:
     segyfile.mmap()
 
     # Extract header word for all traces
@@ -450,7 +450,7 @@ with segyio.open( filename, "r", ignore_geometry=True) as segyfile:
     plt.figure()
     sourceY = segyfile.attributes(segyio.TraceField.SourceY)[:]
     nsum = segyfile.attributes(segyio.TraceField.NSummedTraces)[:]
-    plt.scatter(sourceX, sourceY, c=nsum,  edgecolor='none')
+    plt.scatter(sourceX, sourceY, c=nsum, edgecolor='none')
 
     groupX = segyfile.attributes(segyio.TraceField.GroupX)[:]
     groupY = segyfile.attributes(segyio.TraceField.GroupY)[:]
@@ -461,47 +461,50 @@ with segyio.open( filename, "r", ignore_geometry=True) as segyfile:
 Write segy file using same header of another file but multiply data by *2
 
 ```python
-input_file='name_of_your_input_file.sgy'
-output_file='name_of_your_output_file.sgy'
+input_file = 'name_of_your_input_file.sgy'
+output_file = 'name_of_your_output_file.sgy'
 
 copyfile(input_file, output_file)
 
-with segyio.open( output_file, "r+" ) as src:
+with segyio.open(output_file, "r+") as src:
 
     # multiply data by 2
     for i in src.ilines:
-        src.iline[i] = 2*src.iline[i]
+        src.iline[i] = 2 * src.iline[i]
 ```
 
 Make segy file from sctrach
 
 ```python
 spec = segyio.spec()
-filename='name_of_your_file.sgy'
+filename = 'name_of_your_file.sgy'
 
 spec = segyio.spec()
 file_out = 'test1.sgy'
 
 spec.sorting = 2
-spec.format  = 1
+spec.format = 1
 spec.samples = 30
-spec.ilines  = np.arange(10)
-spec.xlines  = np.arange(20)
+spec.ilines = np.arange(10)
+spec.xlines = np.arange(20)
 
-with segyio.create(filename , spec) as f:
+with segyio.create(filename, spec) as f:
 
     # write the line itself to the file and the inline number in all this line's headers
     for ilno in spec.ilines:
-        f.iline[ilno] = np.zeros((len(spec.xlines),spec.samples),dtype=np.single)+ilno
-        f.header.iline[ilno] = { segyio.TraceField.INLINE_3D: ilno,
-                                 segyio.TraceField.offset: 0
-                               }
+        f.iline[ilno] = np.zeros(
+            (len(spec.xlines), spec.samples), dtype=np.single) + ilno
+        f.header.iline[ilno] = {
+            segyio.TraceField.INLINE_3D: ilno,
+            segyio.TraceField.offset: 0
+        }
 
     # then do the same for xlines
     for xlno in spec.xlines:
-        f.header.xline[xlno] = { segyio.TraceField.CROSSLINE_3D: xlno,
-                                 segyio.TraceField.TRACE_SAMPLE_INTERVAL: 4000
-                                }
+        f.header.xline[xlno] = {
+            segyio.TraceField.CROSSLINE_3D: xlno,
+            segyio.TraceField.TRACE_SAMPLE_INTERVAL: 4000
+        }
 ```
 
 Visualize data using sibling tool [SegyViewer](https://github.com/Statoil/segyviewer):
@@ -510,7 +513,7 @@ Visualize data using sibling tool [SegyViewer](https://github.com/Statoil/segyvi
 from PyQt4.QtGui import QApplication
 import segyviewlib
 qapp = QApplication([])
-l= segyviewlib.segyviewwidget.SegyViewWidget('filename.sgy')
+l = segyviewlib.segyviewwidget.SegyViewWidget('filename.sgy')
 l.show()
 ```
 
