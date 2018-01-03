@@ -53,7 +53,7 @@ def create(filename, spec):
 
     Very little data is written to the file, so just calling create is not
     sufficient to re-read the file with segyio. Rather, every trace header and
-    trace must be written to for the file to be considered complete.
+    trace must be written to the file to be considered complete.
 
     Create should be used together with python's `with` statement. This ensure
     the data is written. Please refer to the examples.
