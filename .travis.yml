@@ -76,6 +76,7 @@ before_script:
   - cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
           -DBUILD_SHARED_LIBS=ON
           -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_INSTALL_NAME_DIR=/usr/local/lib
           $enabled ..
   - cppcheck --language=c
              --std=c99
@@ -90,7 +91,10 @@ before_script:
 
 # distutils/setuptools on macos ignores the --rpath argument, so set
 # DYLD_LIBRARY_PATH so that the freshly-built image is picked up on for the
-# tests
+# tests.
+#
+# segyio is configured with CMAKE_INSTALL_NAME_DIR so that the wheel build on
+# OS X so the delocate tool can figure out what dylib to include.
 script:
   - pushd build
   - export DYLD_LIBRARY_PATH=$PWD/lib
