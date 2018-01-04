@@ -78,12 +78,21 @@ def open(filename, mode="r", iline = 189,
     try:
         metrics = segyio._segyio.init_metrics(f.xfd, f.bin.buf)
 
-        f._tr0 = metrics['trace0']
-        f._fmt = metrics['format']
-        f._bsz = metrics['trace_bsize']
-        f._tracecount = metrics['trace_count']
-        f._ext_headers = (f._tr0 - 3600) // 3200  # should probably be from C
+    except RuntimeError:
+        f.close()
+        raise RuntimeError("Unable to parse global binary header. Corrupted file?")
 
+    except:
+        f.close()
+        raise
+
+    f._tr0 = metrics['trace0']
+    f._fmt = metrics['format']
+    f._bsz = metrics['trace_bsize']
+    f._tracecount = metrics['trace_count']
+    f._ext_headers = (f._tr0 - 3600) // 3200  # should probably be from C
+
+    try:
         dt = segyio.tools.dt(f, fallback_dt = 4000.0) / 1000.0
         t0 = f.header[0][segyio.TraceField.DelayRecordingTime]
         samples = metrics['sample_count']
