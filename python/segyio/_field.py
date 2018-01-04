@@ -99,7 +99,7 @@ class Field(object):
             traceno = segy.tracecount + traceno
 
         if traceno >= segy.tracecount or traceno < 0:
-            raise IndexError("Header out of range: 0 <= %d < %d" % (traceno, segy.tracecount))
+            raise IndexError("Header out of range: 0 <= {} < {}".format(traceno, segy.tracecount))
 
         if buf is None:
             buf = segyio._segyio.empty_traceheader()

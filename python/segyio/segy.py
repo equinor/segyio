@@ -1140,7 +1140,7 @@ class TextHeader(object):
 
     def __getitem__(self, index):
         if index > self.outer.ext_headers:
-            raise IndexError("Textual header %d not in file" % index)
+            raise IndexError("Textual header {} not in file".format(index))
 
         return _segyio.read_textheader(self.outer.xfd, index)
 
@@ -1150,7 +1150,7 @@ class TextHeader(object):
             return
 
         if index > self.outer.ext_headers:
-            raise IndexError("Textual header %d not in file" % index)
+            raise IndexError("Textual header {} not in file".format(index))
 
         _segyio.write_textheader(self.outer.xfd, index, val)
 

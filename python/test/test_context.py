@@ -14,7 +14,7 @@ class TestContext(object):
         self._cleanup = cleanup
 
     def __enter__(self):
-        temp_path = tempfile.mkdtemp("_%s" % self._name)
+        temp_path = tempfile.mkdtemp("_{}".format(self._name))
         os.chdir(temp_path)
         self._temp_path = os.getcwd()
         return self

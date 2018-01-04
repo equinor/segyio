@@ -37,7 +37,7 @@ class Trace:
             return gen()
 
         if not 0 <= abs(index) < len(self):
-            raise IndexError("Trace %d not in range (-%d,%d)", (index, len(self), len(self)))
+            raise IndexError("Trace {} not in range (-{},{})".format(index, len(self), len(self)))
 
         # map negative a negative to the corresponding positive value
         start = (index + len(self)) % len(self)
@@ -53,8 +53,7 @@ class Trace:
             raise TypeError("Trace index must be integer type")
 
         if not 0 <= abs(index) < len(self):
-            raise IndexError("Trace %d not in range (-%d,%d)",
-                             (index, len(self), len(self)))
+            raise IndexError("Trace %d not in range (-{},{})".format(index, len(self), len(self)))
 
         self.write_trace(index, val, self._file)
 

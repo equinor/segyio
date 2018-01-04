@@ -171,9 +171,9 @@ def rotation(f, line = 'fast'):
             }
 
     if line not in lines:
-        error = "Unknown line '%s'" % line
-        solution = "Must be any of: " % ' '.join(lines.keys())
-        raise ValueError('%s. %s' % (error, solution))
+        error = "Unknown line {}".format(line)
+        solution = "Must be any of: {}".format(' '.join(lines.keys()))
+        raise ValueError('{} {}'.format(error, solution))
 
     l = lines[line]
     origin = f.header[0][segyio.su.cdpx, segyio.su.cdpy]
