@@ -10,109 +10,6 @@
 
 #include "unittest.h"
 
-static void test_interpret_file( bool mmap ) {
-    /*
-     * test all structural properties of a file, i.e. traces, samples, sorting
-     * etc, but don't actually read any data
-     */
-    const char *file = "test-data/small.sgy";
-
-    int err;
-    char header[ SEGY_BINARY_HEADER_SIZE ];
-    int sorting;
-    int traces;
-    int inlines_sz, crosslines_sz;
-    int offsets, stride;
-    int line_trace0, line_length;
-    const int il = SEGY_TR_INLINE;
-    const int xl = SEGY_TR_CROSSLINE;
-    const int of = SEGY_TR_OFFSET;
-
-    segy_file* fp = segy_open( file, "rb" );
-    if ( mmap ) segy_mmap( fp );
-
-    assertTrue( fp != NULL, "Could not open file." );
-    err = segy_binheader( fp, header );
-    assertTrue( err == 0, "Could not read binary header." );
-
-    const long trace0 = segy_trace0( header );
-    assertTrue( trace0 == 3600,
-                "Wrong byte offset of the first trace header. Expected 3600." );
-
-    const int samples = segy_samples( header );
-    assertTrue( samples == 50, "Expected 350 samples per trace." );
-
-    const int trace_bsize = segy_trace_bsize( samples );
-    assertTrue( trace_bsize == 50 * 4,
-                "Wrong trace byte size. Expected samples * 4-byte float." );
-
-    err = segy_traces( fp, &traces, trace0, trace_bsize );
-    assertTrue( err == 0, "Could not determine number of traces in this file." );
-    assertTrue( traces == 25, "Expected 25 traces in the file." );
-
-    err = segy_sorting( fp, xl, il, of, &sorting, trace0, trace_bsize );
-    assertTrue( err == 0, "Could not figure out file sorting." );
-    assertTrue( sorting == SEGY_CROSSLINE_SORTING, "Expected crossline sorting." );
-
-    err = segy_sorting( fp, il, xl, of, &sorting, trace0, trace_bsize );
-    assertTrue( err == 0, "Could not figure out file sorting." );
-    assertTrue( sorting == SEGY_INLINE_SORTING, "Expected inline sorting." );
-
-    err = segy_offsets( fp, il, xl, traces, &offsets, trace0, trace_bsize );
-    assertTrue( err == 0, "Could not figure out offsets." );
-    assertTrue( offsets == 1, "Expected offsets to be 1 (no extra offsets)." );
-
-    int offset_index = -1;
-    err = segy_offset_indices( fp, 37, 1, &offset_index, trace0, trace_bsize );
-    assertTrue( err == 0, "Could not figure out offset indices." );
-    assertTrue( offset_index == 1, "Expected offset index to be 1." );
-
-    err = segy_count_lines( fp, xl, offsets, &inlines_sz, &crosslines_sz, trace0, trace_bsize );
-    assertTrue( err == 0, "Could not determine line count in this file." );
-    assertTrue( inlines_sz == 5, "Expected 5 inlines." );
-    assertTrue( crosslines_sz == 5, "Expected 5 crosslines." );
-
-    /* Inline-specific information */
-    int inline_indices[ 5 ];
-    err = segy_inline_indices( fp, il, sorting, inlines_sz, crosslines_sz, offsets, inline_indices, trace0, trace_bsize );
-    assertTrue( err == 0, "Could not determine inline linenos." );
-    for( int i = 0, ref = 1; i < 5; ++i, ++ref )
-        assertTrue( inline_indices[ i ] == ref,
-                    "Inline lineno mismatch, should be [1..5]." );
-
-    err = segy_inline_stride( sorting, inlines_sz, &stride );
-    assertTrue( err == 0, "Failure while reading stride." );
-    assertTrue( stride == 1, "Expected inline stride = 1." );
-
-    err = segy_line_trace0( 4, crosslines_sz, stride, offsets, inline_indices, inlines_sz, &line_trace0 );
-    assertTrue( err == 0, "Could not determine 2484's trace0." );
-    assertTrue( line_trace0 == 15, "Line 4 should start at traceno 15." );
-
-    line_length = segy_inline_length( crosslines_sz);
-    assertTrue( line_length == 5, "Inline length should be 5." );
-
-    /* Crossline-specific information */
-    int crossline_indices[ 5 ];
-    err = segy_crossline_indices( fp, xl, sorting, inlines_sz, crosslines_sz, offsets, crossline_indices, trace0, trace_bsize );
-    assertTrue( err == 0, "Could not determine crossline linenos." );
-    for( int i = 0, ref = 20; i < 5; ++i, ++ref )
-        assertTrue( crossline_indices[ i ] == ref,
-                    "Crossline lineno mismatch, should be [20..24]." );
-
-    err = segy_crossline_stride( sorting, crosslines_sz, &stride );
-    assertTrue( err == 0, "Failure while reading stride." );
-    assertTrue( stride == 5, "Expected crossline stride = 5." );
-
-    err = segy_line_trace0( 22, crosslines_sz, stride, offsets, crossline_indices, inlines_sz, &line_trace0 );
-    assertTrue( err == 0, "Could not determine 22's trace0." );
-    assertTrue( line_trace0 == 2, "Line 22 should start at traceno 2." );
-
-    line_length = segy_crossline_length( inlines_sz );
-    assertTrue( line_length == 5, "Crossline length should be 5." );
-
-    segy_close( fp );
-}
-
 static void test_read_subtr( bool mmap ) {
     const char *file = "test-data/small.sgy";
     segy_file* fp = segy_open( file, "rb" );
@@ -895,9 +792,6 @@ static void test_file_size_above_4GB( bool mmap ){
 
 int main() {
     puts("starting");
-    puts("interpret file");
-    test_interpret_file( false );
-    test_interpret_file( true );
     /* test_interpret_file_prestack(); */
     puts("read inline 4");
     testReadInLine_4( false );

@@ -81,5 +81,11 @@ foreach (src segy utils)
     target_compile_options(test${src} BEFORE PRIVATE ${c99})
     target_link_libraries(test${src} segyio-shared)
     target_include_directories(test${src} PRIVATE src)
-    add_test(c.${src} test${src})
+    add_test(c.old.${src} test${src})
 endforeach()
+
+add_executable(c.segy test/testsuite.cpp test/segy.cpp test/mmap.cpp)
+target_link_libraries(c.segy catch2 segyio)
+target_compile_options(c.segy BEFORE PRIVATE
+                       ${c++11} $<$<CONFIG:Debug>:${warnings-c}> ${mmap})
+add_test(NAME c.segy COMMAND c.segy)
