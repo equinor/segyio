@@ -1,3 +1,6 @@
+# 1.3.9
+* Fix OS X wheel packaging.
+
 # 1.3.8
 * Automate python ast analysis with bandit on travis
 * The installed python extension is built without rpath
