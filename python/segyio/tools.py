@@ -223,3 +223,55 @@ def metadata(f):
     spec.ext_headers = f.ext_headers
 
     return spec
+
+def resample(f, rate = None, delay = None, micro = False,
+                                           trace = True,
+                                           binary = True):
+    """ Resample a file
+
+    Since v1.4
+
+    Resample all data traces, and update the file handle to reflect the new
+    sample rate. No actual samples (data traces) are modified, only the header
+    fields and interpretation.
+
+    By default, the rate and the delay are in millseconds - if you need higher
+    resolution, passing micro=True interprets rate as microseconds (as it is
+    represented in the file). Delay is always milliseconds.
+
+    By default, both the global binary header and the trace headers are updated
+    to reflect this. If preserving either the trace header interval field or
+    the binary header interval field is important, pass trace=False and
+    binary=False respectively, to not have that field updated. This only apply
+    to sample rates - the recording delay is only found in trace headers and
+    will be written unconditionally, if delay is not None.
+
+    This function requires an open file handle and is DESTRUCTIVE. It will
+    modify the file, and if an exception is raised then partial writes might
+    have happened and the file might be corrupted.
+
+    This function assumes all traces have uniform delays and frequencies.
+
+    :type f: SegyFile
+    :type rate: int
+    :type delay: int
+    :type micro: bool
+    :type trace: bool
+    :type binary: bool
+    """
+
+    if rate is not None:
+        if not micro: rate *= 1000
+
+        if binary: f.bin[segyio.su.hdt] = rate
+        if trace: f.header = { segyio.su.dt: rate}
+
+    if delay is not None:
+        f.header = { segyio.su.delrt: delay }
+
+    t0 = delay if delay is not None else f.samples[0]
+    rate = rate / 1000 if rate is not None else f.samples[1] - f.samples[0]
+
+    f._samples = (np.arange(len(f.samples), dtype = np.single) * rate) + t0
+
+    return f
