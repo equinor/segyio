@@ -146,5 +146,61 @@ class ToolsTest(unittest.TestCase):
         self.assertEqual(spec.sorting, smallspec.sorting)
         self.assertEqual(spec.format, int(smallspec.format))
 
+    def test_resample(self):
+        with TestContext('resample-none') as context:
+            context.copy_file(self.filename)
+
+            old = list(range(0,200,4))
+
+            with segyio.open('small.sgy', 'r+') as f:
+                self.assertTrue(np.array_equal(old, f.samples))
+                segyio.tools.resample(f) # essentially a no-op
+                self.assertTrue(np.array_equal(old, f.samples))
+
+            with segyio.open('small.sgy') as f:
+                self.assertTrue(np.array_equal(old, f.samples))
+
+        with TestContext('resample-all') as context:
+            context.copy_file(self.filename)
+
+            old = list(range(0,200,4))
+            new = list(range(12,112,2))
+
+            with segyio.open('small.sgy', 'r+') as f:
+                self.assertTrue(np.array_equal(old, f.samples))
+                segyio.tools.resample(f, rate = 2, delay = 12)
+                self.assertTrue(np.array_equal(new, f.samples))
+
+            with segyio.open('small.sgy') as f:
+                self.assertTrue(np.array_equal(new, f.samples))
+
+        with TestContext('resample-rate') as context:
+            context.copy_file(self.filename)
+
+            old = list(range(0,200,4))
+            new = list(range(12,212,4))
+
+            with segyio.open('small.sgy', 'r+') as f:
+                self.assertTrue(np.array_equal(old, f.samples))
+                segyio.tools.resample(f, delay = 12)
+                self.assertTrue(np.array_equal(new, f.samples))
+
+            with segyio.open('small.sgy') as f:
+                self.assertTrue(np.array_equal(new, f.samples))
+
+        with TestContext('resample-delay') as context:
+            context.copy_file(self.filename)
+
+            old = list(range(0,200,4))
+            new = list(range(0,100,2))
+
+            with segyio.open('small.sgy', 'r+') as f:
+                self.assertTrue(np.array_equal(old, f.samples))
+                segyio.tools.resample(f, rate = 2000, micro = True)
+                self.assertTrue(np.array_equal(new, f.samples))
+
+            with segyio.open('small.sgy') as f:
+                self.assertTrue(np.array_equal(new, f.samples))
+
 if __name__ == '__main__':
     unittest.main()
