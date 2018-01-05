@@ -621,9 +621,31 @@ static PyObject *py_get_dt(PyObject *self, PyObject *args) {
 
     float dt;
     int error = segy_sample_interval(p_FILE, fallback, &dt);
-    if (error != 0) { return py_handle_segy_error(error, errno); }
+    if( error == 0 )
+        return PyFloat_FromDouble( dt );
 
-    return PyFloat_FromDouble( dt );
+    if( error != SEGY_FREAD_ERROR )
+        return py_handle_segy_error( error, errno );
+
+    /*
+     * Figure out if the problem is reading the trace header
+     * or the binary header
+     */
+    char buffer[ SEGY_BINARY_HEADER_SIZE ];
+    error = segy_binheader( p_FILE, buffer );
+    if( error != 0 )
+        return PyErr_Format( PyExc_RuntimeError,
+                             "Error reading global binary header" );
+
+    const long trace0 = segy_trace0( buffer );
+    const int samples = segy_samples( buffer );
+    const int trace_bsize = segy_trace_bsize( samples );
+    error = segy_traceheader( p_FILE, 0, buffer, trace0, trace_bsize );
+    if( error != 0 )
+        return PyErr_Format( PyExc_RuntimeError,
+                             "Error reading trace header (index 0)" );
+
+    return py_handle_segy_error( error, errno );
 }
 
 
