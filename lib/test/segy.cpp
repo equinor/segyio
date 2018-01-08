@@ -304,3 +304,73 @@ SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
         }
     }
 }
+
+SCENARIO( MMAP_TAG "writing to a file", "[c.segy]" MMAP_TAG ) {
+    const long trace0 = 3600;
+    const int trace_bsize = 50 * 4;
+    const float dummy[ 50 ] = {};
+
+    WHEN( "writing parts of a trace" ) {
+        const int format = SEGY_IBM_FLOAT_4_BYTE;
+
+        const std::vector< slice > inputs = {
+            {  3,  19,   5 },
+            { 18,   2,  -5 },
+            {  3,  -1,  -1 },
+            { 24,  -1,  -5 }
+        };
+
+        const std::vector< std::vector< float > > expect = {
+            { 3.20003f, 3.20008f, 3.20013f, 3.20018f },
+            { 3.20018f, 3.20013f, 3.20008f, 3.20003f },
+            { 3.20003f, 3.20002f, 3.20001f, 3.20000f },
+            { 3.20024f, 3.20019f, 3.20014f, 3.20009f, 3.20004f }
+        };
+
+        for( size_t i = 0; i < inputs.size(); ++i ) {
+            WHEN( "slice is " + str( inputs[ i ] ) ) {
+                const auto file = "wsubtr" MMAP_TAG + str(inputs[i]) + ".sgy";
+
+                std::unique_ptr< segy_file, decltype( &segy_close ) >
+                    ufp{ segy_open( file.c_str(), "w+b" ), &segy_close };
+
+                REQUIRE( ufp );
+                auto fp = ufp.get();
+
+                int err = segy_writetrace( fp, 10, dummy, trace0, trace_bsize );
+                REQUIRE( err == 0 );
+
+                if( MMAP_TAG != std::string("") )
+                    REQUIRE( segy_mmap( fp ) == 0 );
+
+                std::vector< float > buf( expect[ i ].size() );
+
+                auto start = inputs[ i ].start;
+                auto stop  = inputs[ i ].stop;
+                auto step  = inputs[ i ].step;
+
+                auto out = expect[ i ];
+                segy_from_native( format, out.size(), out.data() );
+
+                err = segy_writesubtr( fp,
+                                       i,
+                                       start, stop, step,
+                                       out.data(),
+                                       nullptr,
+                                       trace0, trace_bsize );
+                CHECK( err == 0 );
+                THEN( "updates are observable" ) {
+                    err = segy_readsubtr( fp,
+                                          i,
+                                          start, stop, step,
+                                          buf.data(),
+                                          nullptr,
+                                          trace0, trace_bsize );
+                    segy_to_native( format, buf.size(), buf.data() );
+                    CHECK( err == 0 );
+                    CHECK_THAT( buf, ApproxRange( expect[ i ] ) );
+                }
+            }
+        }
+    }
+}

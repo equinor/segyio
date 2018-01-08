@@ -10,111 +10,6 @@
 
 #include "unittest.h"
 
-static void test_write_subtr( bool mmap ) {
-    const char *file = "test-data/write-subtr.sgy";
-    segy_file* fp = segy_open( file, "w+b" );
-    int trace0 = 3600;
-    int trace_bsize = 50 * sizeof( float );
-    int err = 0;
-
-    const int format = SEGY_IBM_FLOAT_4_BYTE;
-    if( mmap ) segy_mmap( fp );
-
-    // since write-subtr.segy is an empty file we must pre-write a full trace
-    // to make sure *something* exists, otherwise we'd get a read error.
-    float dummytrace[ 50 ] = { 0 };
-    err = segy_writetrace( fp, 10, dummytrace, trace0, trace_bsize );
-    assertTrue( err == 0, "Error in write-subtr setup." );
-
-    float buf[ 5 ];
-    float rangebuf[ 50 ];
-    float out[ 5 ] = { 2.0, 2.1, 2.2, 2.3, 2.4 };
-    segy_from_native( format, 5, out );
-
-    /* read a strided chunk across the middle of all traces */
-    /* should read samples 3, 8, 13, 18 */
-    err = segy_writesubtr( fp,
-                           10,
-                           3,        /* start */
-                           19,       /* stop */
-                           5,        /* step */
-                           out,
-                           rangebuf, // writesubtr shouldn't try to free this
-                           trace0,
-                           trace_bsize );
-    assertTrue( err == 0, "Unable to correctly write subtrace" );
-    err = segy_readsubtr( fp,
-                          10,
-                          3,        /* start */
-                          19,       /* stop */
-                          5,        /* step */
-                          buf,
-                          NULL,
-                          trace0,
-                          trace_bsize );
-    assertTrue( err == 0, "Unable to correctly read subtrace" );
-    segy_to_native( format, 4, buf );
-    assertClose( 2.0, buf[ 0 ], 1e-6 );
-    assertClose( 2.1, buf[ 1 ], 1e-6 );
-    assertClose( 2.2, buf[ 2 ], 1e-6 );
-    assertClose( 2.3, buf[ 3 ], 1e-6 );
-    err = segy_writesubtr( fp,
-                           10,
-                           18,       /* start */
-                           2,        /* stop */
-                           -5,       /* step */
-                           out,
-                           NULL,
-                           trace0,
-                           trace_bsize );
-    assertTrue( err == 0, "Unable to correctly write subtrace" );
-    err = segy_readsubtr( fp,
-                          10,
-                          18,       /* start */
-                          2,        /* stop */
-                          -5,       /* step */
-                          buf,
-                          NULL,
-                          trace0,
-                          trace_bsize );
-    assertTrue( err == 0, "Unable to correctly read subtrace" );
-    segy_to_native( format, 4, buf );
-    assertClose( 2.3, buf[ 3 ], 1e-6 );
-    assertClose( 2.2, buf[ 2 ], 1e-6 );
-    assertClose( 2.1, buf[ 1 ], 1e-6 );
-    assertClose( 2.0, buf[ 0 ], 1e-6 );
-
-    /* write back-to-front, read front-to-back */
-    err = segy_writesubtr( fp,
-                           10,
-                           24,       /* start */
-                           -1,       /* stop */
-                           -5,       /* step */
-                           out,
-                           NULL,
-                           trace0,
-                           trace_bsize );
-    assertTrue( err == 0, "Unable to correctly write subtrace" );
-    err = segy_readsubtr( fp,
-                          10,
-                          4,        /* start */
-                          25,       /* stop */
-                          5,        /* step */
-                          buf,
-                          NULL,
-                          trace0,
-                          trace_bsize );
-    assertTrue( err == 0, "Unable to correctly read subtrace" );
-    segy_to_native( format, 5, buf );
-    assertClose( 2.0, buf[ 4 ], 1e-6 );
-    assertClose( 2.1, buf[ 3 ], 1e-6 );
-    assertClose( 2.2, buf[ 2 ], 1e-6 );
-    assertClose( 2.3, buf[ 1 ], 1e-6 );
-    assertClose( 2.4, buf[ 0 ], 1e-6 );
-
-    segy_close( fp );
-}
-
 static const int inlines[] = {
     1, 1, 1, 1, 1,
     2, 2, 2, 2, 2,
@@ -725,13 +620,6 @@ int main() {
     puts("test traceh");
     test_trace_header_errors( false );
     test_trace_header_errors( true );
-
-    /*
-     * this test *creates* a new file, which is currently won't mmap (since we
-     * cannot determine the size, as this does not require any geometry.
-     */
-    puts("test writesubtr(no-mmap)");
-    test_write_subtr( false );
 
     puts("test scan headers(mmap)");
     test_scan_headers( true );
