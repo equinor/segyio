@@ -1,3 +1,4 @@
+#include <cmath>
 #include <memory>
 #include <vector>
 
@@ -8,6 +9,42 @@
 #ifndef MMAP_TAG
 #define MMAP_TAG ""
 #endif
+
+namespace {
+
+struct slice { int start, stop, step; };
+std::string str( const slice& s ) {
+    return "(" + std::to_string( s.start ) +
+           "," + std::to_string( s.stop ) +
+           "," + std::to_string( s.step ) +
+           ")";
+}
+
+class ApproxRange : public Catch::MatcherBase< std::vector< float > > {
+    public:
+        explicit ApproxRange( const std::vector< float >& xs ) :
+            lhs( xs )
+        {}
+
+        virtual bool match( const std::vector< float >& xs ) const override {
+            if( xs.size() != lhs.size() ) return false;
+
+            for( size_t i = 0; i < xs.size(); ++i )
+                if( xs[ i ] != Approx(this->lhs[ i ]) ) return false;
+
+            return true;
+        }
+
+        virtual std::string describe() const override {
+            using str = Catch::StringMaker< std::vector< float > >;
+            return "~= " + str::convert( this->lhs );
+        }
+
+    private:
+        std::vector< float > lhs;
+};
+
+}
 
 SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
     const char* file = "test-data/small.sgy";
@@ -226,6 +263,44 @@ SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
                                               &line_trace0 );
             CHECK( err == 0 );
             CHECK( line_trace0 == 2 );
+        }
+    }
+
+    WHEN( "reading a subtrace" ) {
+        const int format = SEGY_IBM_FLOAT_4_BYTE;
+
+        const std::vector< slice > inputs = {
+            {  3,  19,   5 },
+            { 18,   2,  -5 },
+            {  3,  -1,  -1 },
+            { 24,  -1,  -5 }
+        };
+
+        const std::vector< std::vector< float > > expect = {
+            { 3.20003f, 3.20008f, 3.20013f, 3.20018f },
+            { 3.20018f, 3.20013f, 3.20008f, 3.20003f },
+            { 3.20003f, 3.20002f, 3.20001f, 3.20000f },
+            { 3.20024f, 3.20019f, 3.20014f, 3.20009f, 3.20004f }
+        };
+
+        for( size_t i = 0; i < inputs.size(); ++i ) {
+            WHEN( "slice is " + str( inputs[ i ] ) ) {
+                std::vector< float > buf( expect[ i ].size() );
+
+                auto start = inputs[ i ].start;
+                auto stop  = inputs[ i ].stop;
+                auto step  = inputs[ i ].step;
+
+                int err = segy_readsubtr( fp,
+                                          10,
+                                          start, stop, step,
+                                          buf.data(),
+                                          nullptr,
+                                          trace0, trace_bsize );
+                segy_to_native( format, buf.size(), buf.data() );
+                CHECK( err == 0 );
+                CHECK_THAT( buf, ApproxRange( expect[ i ] ) );
+            }
         }
     }
 }
