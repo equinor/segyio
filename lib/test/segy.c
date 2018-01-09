@@ -106,61 +106,6 @@ void test_interpret_file_prestack() {
 
 */
 
-static const char* expected_textheader =
-    "C 1 DATE: 22/02/2016                                                            "
-    "C 2 AN INCREASE IN AMPLITUDE EQUALS AN INCREASE IN ACOUSTIC IMPEDANCE           "
-    "C 3 FIRST SAMPLE: 4 MS, LAST SAMPLE: 1400 MS, SAMPLE INTERVAL: 4 MS             "
-    "C 4 DATA RANGE: INLINES=(2479-2500) (INC 1),CROSSLINES=(1428-1440) (INC 1)      "
-    "C 5 PROCESSING GRID CORNERS:                                                    "
-    "C 6 DISTANCE BETWEEN INLINES: 2499.75 M, CROSSLINES: 1250 M                     "
-    "C 7 1: INLINE 2479, CROSSLINE 1428, UTM-X 9976386.00, UTM-Y 9989096.00          "
-    "C 8 2: INLINE 2479, CROSSLINE 1440, UTM-X 9983886.00, UTM-Y 10002087.00         "
-    "C 9 3: INLINE 2500, CROSSLINE 1428, UTM-X 10021847.00, UTM-Y 9962849.00         "
-    "C10 4: INLINE 2500, CROSSLINE 1440, UTM-X 10029348.00, UTM-Y 9975839.00         "
-    "C11 TRACE HEADER POSITION:                                                      "
-    "C12   INLINE BYTES 005-008    | OFFSET BYTES 037-040                            "
-    "C13   CROSSLINE BYTES 021-024 | CMP UTM-X BYTES 181-184                         "
-    "C14   CMP UTM-Y BYTES 185-188                                                   "
-    "C15 END EBCDIC HEADER                                                           "
-    "C16                                                                             "
-    "C17                                                                             "
-    "C18                                                                             "
-    "C19                                                                             "
-    "C20                                                                             "
-    "C21                                                                             "
-    "C22                                                                             "
-    "C23                                                                             "
-    "C24                                                                             "
-    "C25                                                                             "
-    "C26                                                                             "
-    "C27                                                                             "
-    "C28                                                                             "
-    "C29                                                                             "
-    "C30                                                                             "
-    "C31                                                                             "
-    "C32                                                                             "
-    "C33                                                                             "
-    "C34                                                                             "
-    "C35                                                                             "
-    "C36                                                                             "
-    "C37                                                                             "
-    "C38                                                                             "
-    "C39                                                                             "
-    "C40                                                                            \x80";
-
-static void test_text_header( bool mmap ) {
-    const char *file = "test-data/text.sgy";
-    segy_file* fp = segy_open( file, "rb" );
-    if ( mmap ) segy_mmap( fp );
-
-    char ascii[ SEGY_TEXT_HEADER_SIZE + 1 ] = { 0 };
-    int err = segy_read_textheader(fp, ascii);
-    assertTrue( err == 0, "Could not read text header" );
-    assertTrue( strcmp(expected_textheader, ascii) == 0, "Text headers did not match" );
-
-    segy_close( fp );
-}
-
 static void test_trace_header_errors( bool mmap ) {
     const char *file = "test-data/small.sgy";
     segy_file* fp = segy_open( file, "rb" );
@@ -307,9 +252,6 @@ static void test_file_size_above_4GB( bool mmap ){
 int main() {
     puts("starting");
     /* test_interpret_file_prestack(); */
-    puts("mod texth");
-    test_text_header( false );
-    test_text_header( true );
     puts("test traceh");
     test_trace_header_errors( false );
     test_trace_header_errors( true );
