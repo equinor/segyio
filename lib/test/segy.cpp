@@ -72,6 +72,7 @@ SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
 
     const long trace0 = 3600;
     const int trace_bsize = 50 * 4;
+    const int samples = 50;
 
     WHEN( "determining number of traces" ) {
         int traces = 0;
@@ -187,6 +188,7 @@ SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
 
     const int inlines_sizes = 5;
     const int crosslines_sizes = 5;
+    const int format = SEGY_IBM_FLOAT_4_BYTE;
 
     WHEN( "inferring inline structure" ) {
         const std::vector< int > indices = { 1, 2, 3, 4, 5 };
@@ -267,7 +269,6 @@ SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
     }
 
     WHEN( "reading a subtrace" ) {
-        const int format = SEGY_IBM_FLOAT_4_BYTE;
 
         const std::vector< slice > inputs = {
             {  3,  19,   5 },
@@ -300,6 +301,89 @@ SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
                 segy_to_native( format, buf.size(), buf.data() );
                 CHECK( err == 0 );
                 CHECK_THAT( buf, ApproxRange( expect[ i ] ) );
+            }
+        }
+    }
+
+    const std::vector< int > inlines = { 1, 2, 3, 4, 5 };
+    const std::vector< int > crosslines = { 20, 21, 22, 23, 24 };
+    const int inline_length = 5;
+    const int crossline_length = 5;
+
+    WHEN( "reading an inline" ) {
+        for( const auto il : inlines ) {
+            std::vector< float > line( inline_length * samples );
+            const int stride = 1;
+
+            int line_trace0 = -1;
+            int err = segy_line_trace0( il,
+                                        inline_length,
+                                        stride,
+                                        offsets,
+                                        inlines.data(),
+                                        inlines.size(),
+                                        &line_trace0 );
+            REQUIRE( err == 0 );
+            REQUIRE( line_trace0 != -1 );
+
+            err = segy_read_line( fp,
+                                  line_trace0,
+                                  inlines_sizes,
+                                  stride,
+                                  offsets,
+                                  line.data(),
+                                  trace0, trace_bsize );
+            REQUIRE( err == 0 );
+            segy_to_native( format, line.size(), line.data() );
+
+            for( const auto xl : crosslines ) {
+                auto point = std::to_string(il) + ", " + std::to_string(xl);
+                THEN( "at intersection (" + point + ")" ) {
+                    const auto i = (xl - 20) * samples;
+                    for( size_t s = 0; s < samples; ++s ) {
+                        const float expected = il + (0.01 * xl) + (1e-5 * s);
+                        CHECK( line.at(i+s) == Approx( expected ) );
+                    }
+                }
+            }
+        }
+    }
+
+    WHEN( "reading a crossline" ) {
+        for( const auto xl : crosslines ) {
+            std::vector< float > line( crossline_length * samples );
+            const int stride = 5;
+
+            int line_trace0 = -1;
+            int err = segy_line_trace0( xl,
+                                        crosslines_sizes,
+                                        stride,
+                                        offsets,
+                                        crosslines.data(),
+                                        crosslines.size(),
+                                        &line_trace0 );
+            REQUIRE( err == 0 );
+            REQUIRE( line_trace0 != -1 );
+
+            err = segy_read_line( fp,
+                                  line_trace0,
+                                  crosslines_sizes,
+                                  stride,
+                                  offsets,
+                                  line.data(),
+                                  trace0, trace_bsize );
+            REQUIRE( err == 0 );
+            segy_to_native( format, line.size(), line.data() );
+
+            for( const auto il : inlines ) {
+                auto point = std::to_string(il) + ", " + std::to_string(xl);
+                THEN( "at intersection (" + point + ")" ) {
+                    const auto i = (il - 1) * samples;
+                    for( size_t s = 0; s < samples; ++s ) {
+                        const float expected = il + (0.01 * xl) + (1e-5 * s);
+                        CHECK( line.at(i+s) == Approx( expected ) );
+                    }
+                }
             }
         }
     }
