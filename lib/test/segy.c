@@ -10,94 +10,6 @@
 
 #include "unittest.h"
 
-static const int inlines[] = {
-    1, 1, 1, 1, 1,
-    2, 2, 2, 2, 2,
-    3, 3, 3, 3, 3,
-    4, 4, 4, 4, 4,
-    5, 5, 5, 5, 5,
-};
-
-static const int crosslines[] = {
-    20, 21, 22, 23, 24,
-    20, 21, 22, 23, 24,
-    20, 21, 22, 23, 24,
-    20, 21, 22, 23, 24,
-    20, 21, 22, 23, 24,
-};
-
-static void test_scan_headers( bool mmap ) {
-    const char *file = "test-data/small.sgy";
-    segy_file* fp = segy_open( file, "rb" );
-
-    int trace0 = 3600;
-    int trace_bsize = 50 * 4;
-    int err = 0;
-
-    if( mmap) segy_mmap( fp );
-
-    int full[ 25 ];
-    err = segy_field_forall( fp,
-                           SEGY_TR_INLINE,
-                           0,        /* start */
-                           25,       /* stop */
-                           1,        /* step */
-                           full,
-                           trace0,
-                           trace_bsize );
-    assertTrue( err == 0, "Unable to correctly scan headers" );
-    assertTrue( memcmp( full, inlines, sizeof( full ) ) == 0,
-                "Mismatching inline numbers." );
-
-    err = segy_field_forall( fp,
-                             SEGY_TR_CROSSLINE,
-                             0,        /* start */
-                             25,       /* stop */
-                             1,        /* step */
-                             full,
-                             trace0,
-                             trace_bsize );
-    assertTrue( err == 0, "Unable to correctly scan headers" );
-    assertTrue( memcmp( full, crosslines, sizeof( full ) ) == 0,
-                "Mismatching inline numbers." );
-
-    const int xlines_skip[] = {
-        crosslines[ 1 ],  crosslines[ 4 ],  crosslines[ 7 ],  crosslines[ 10 ],
-        crosslines[ 13 ], crosslines[ 16 ], crosslines[ 19 ], crosslines[ 22 ],
-    };
-
-    int xlbuf[ sizeof( xlines_skip ) / sizeof( int ) ];
-    err = segy_field_forall( fp,
-                             SEGY_TR_CROSSLINE,
-                             1,        /* start */
-                             25,       /* stop */
-                             3,        /* step */
-                             xlbuf,
-                             trace0,
-                             trace_bsize );
-    assertTrue( err == 0, "Unable to correctly scan headers" );
-    assertTrue( memcmp( xlbuf, xlines_skip, sizeof( xlbuf ) ) == 0,
-                "Mismatching skipped crossline numbers." );
-
-    const int xlines_skip_rev[] = {
-        crosslines[ 22 ], crosslines[ 19 ], crosslines[ 16 ], crosslines[ 13 ],
-        crosslines[ 10 ], crosslines[ 7 ],  crosslines[ 4 ],  crosslines[ 1 ],
-    };
-    err = segy_field_forall( fp,
-                             SEGY_TR_CROSSLINE,
-                             22,      /* start */
-                             0,       /* stop */
-                             -3,      /* step */
-                             xlbuf,
-                             trace0,
-                             trace_bsize );
-    assertTrue( err == 0, "Unable to correctly scan headers" );
-    assertTrue( memcmp( xlbuf, xlines_skip_rev, sizeof( xlbuf ) ) == 0,
-                "Mismatching reverse skipped crossline numbers." );
-
-    segy_close( fp );
-}
-
 /* Prestack test for when we have an approperiate prestack file
 
 void test_interpret_file_prestack() {
@@ -621,11 +533,6 @@ int main() {
     test_trace_header_errors( false );
     test_trace_header_errors( true );
 
-    puts("test scan headers(mmap)");
-    test_scan_headers( true );
-
-    puts("test scan headers(no-mmap)");
-    test_scan_headers( false );
     /*
      * due to its barely-defined behavorial nature, this test is commented out
      * for most runs, as it would trip up the memcheck test

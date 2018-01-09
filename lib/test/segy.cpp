@@ -374,3 +374,92 @@ SCENARIO( MMAP_TAG "writing to a file", "[c.segy]" MMAP_TAG ) {
         }
     }
 }
+
+SCENARIO( MMAP_TAG "extracting header fields", "[c.segy]" MMAP_TAG ) {
+
+    const char* file = "test-data/small.sgy";
+
+    std::unique_ptr< segy_file, decltype( &segy_close ) >
+        ufp{ segy_open( file, "rb" ), &segy_close };
+
+    REQUIRE( ufp );
+    auto fp = ufp.get();
+
+    const int trace0 = 3600;
+    const int trace_bsize = 50 * 4;
+
+    if( MMAP_TAG != std::string("") )
+        REQUIRE( segy_mmap( fp ) == 0 );
+
+    WHEN( "reading inline labels" ) {
+        const std::vector< int > inlines = {
+            1, 1, 1, 1, 1,
+            2, 2, 2, 2, 2,
+            3, 3, 3, 3, 3,
+            4, 4, 4, 4, 4,
+            5, 5, 5, 5, 5,
+        };
+
+        std::vector< int > buf( inlines.size() );
+
+        const slice input = { 0, 25, 1 };
+        const auto start = input.start;
+        const auto stop  = input.stop;
+        const auto step  = input.step;
+
+        const int err = segy_field_forall( fp,
+                                           SEGY_TR_INLINE,
+                                           start, stop, step,
+                                           buf.data(),
+                                           trace0, trace_bsize );
+        CHECK( err == 0 );
+
+        WHEN( "in range " + str( input ) )
+            CHECK_THAT( buf, Catch::Equals( inlines ) );
+    }
+
+    WHEN( "reading crossline labels" ) {
+        const std::vector< std::pair< slice, std::vector< int > > > pairs = {
+            { {  0, 25,  1 }, { 20, 21, 22, 23, 24,
+                                20, 21, 22, 23, 24,
+                                20, 21, 22, 23, 24,
+                                20, 21, 22, 23, 24,
+                                20, 21, 22, 23, 24, }, },
+
+            { {  1, 25,  3 }, {     21,         24,
+                                        22,
+                                20,         23,
+                                    21,         24,
+                                        22,         }, },
+
+            { { 22,  0, -3 }, {         22,
+                                24,         21,
+                                    23,         20,
+                                        22,
+                                24,         21      }, },
+
+            { { 24, -1, -5 }, { 24, 24, 24, 24, 24  }, },
+        };
+
+        for( const auto& p : pairs ) {
+            const auto& input = p.first;
+            const auto& xl = p.second;
+
+            std::vector< int > buf( xl.size() );
+
+            const auto start = input.start;
+            const auto stop  = input.stop;
+            const auto step  = input.step;
+
+            const int err = segy_field_forall( fp,
+                                               SEGY_TR_CROSSLINE,
+                                               start, stop, step,
+                                               buf.data(),
+                                               trace0, trace_bsize );
+            CHECK( err == 0 );
+
+            WHEN( "in range " + str( input ) )
+                CHECK_THAT( buf, Catch::Equals( xl ) );
+        }
+    }
+}
