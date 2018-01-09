@@ -229,14 +229,28 @@ SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
     }
 
     WHEN( "reading a trace header" ) {
-        char buf[ SEGY_TRACE_HEADER_SIZE ];
-        int err = segy_traceheader( fp, 0, buf, trace0, trace_bsize );
-        CHECK( err == 0 );
+        char buf[ SEGY_TRACE_HEADER_SIZE ] = {};
 
-        int ilno = 0;
-        err = segy_get_field( buf, SEGY_TR_INLINE, &ilno );
-        CHECK( err == 0 );
-        CHECK( ilno == 1 );
+        GIVEN( "a valid field" ) {
+            int err = segy_traceheader( fp, 0, buf, trace0, trace_bsize );
+            CHECK( err == 0 );
+
+            int ilno = 0;
+            err = segy_get_field( buf, SEGY_TR_INLINE, &ilno );
+            CHECK( err == 0 );
+            CHECK( ilno == 1 );
+        }
+
+        GIVEN( "an invalid field" ) {
+            int x = -1;
+            int err = segy_get_field( buf, SEGY_TRACE_HEADER_SIZE + 10, &x );
+            CHECK( err == SEGY_INVALID_FIELD );
+            CHECK( x == -1 );
+
+            err = segy_get_field( buf, SEGY_TR_INLINE + 1, &x );
+            CHECK( err == SEGY_INVALID_FIELD );
+            CHECK( x == -1 );
+        }
     }
 
     WHEN( "inferring crossline structure" ) {

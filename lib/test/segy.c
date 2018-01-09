@@ -106,42 +106,6 @@ void test_interpret_file_prestack() {
 
 */
 
-static void test_trace_header_errors( bool mmap ) {
-    const char *file = "test-data/small.sgy";
-    segy_file* fp = segy_open( file, "rb" );
-    int err;
-    if ( mmap ) segy_mmap( fp );
-
-    char binheader[ SEGY_BINARY_HEADER_SIZE ];
-    err = segy_binheader( fp, binheader );
-    assertTrue( err == 0, "Could not read binary header." );
-    const int samples = segy_samples( binheader );
-    const int bsize = segy_trace_bsize( samples );
-    const long trace0 = segy_trace0( binheader );
-
-    char header[ SEGY_TRACE_HEADER_SIZE ];
-
-    err = segy_traceheader( fp, 0, header, trace0, bsize );
-    assertTrue( err == 0, "Could not read trace header." );
-
-    /* reading outside header should yield invalid field */
-    int field;
-    err = segy_get_field( header, SEGY_TRACE_HEADER_SIZE + 10, &field );
-    assertTrue( err == SEGY_INVALID_FIELD, "Reading outside trace header." );
-
-    /* Reading between known byte offsets should yield error */
-    err = segy_get_field( header, SEGY_TR_INLINE + 1, &field );
-    assertTrue( err == SEGY_INVALID_FIELD, "Reading between ok byte offsets." );
-
-    err = segy_get_field( header, SEGY_TR_INLINE, &field );
-    assertTrue( err == SEGY_OK, "Reading failed at valid byte offset." );
-
-    err = segy_get_field( header, SEGY_TR_DAY_OF_YEAR, &field );
-    assertTrue( err == SEGY_OK, "Reading failed at valid byte offset." );
-
-    segy_close( fp );
-}
-
 static void test_file_error_codes( bool mmap ) {
     const char *file = "test-data/small.sgy";
     segy_file* fp = segy_open( file, "rb" );
@@ -252,9 +216,6 @@ static void test_file_size_above_4GB( bool mmap ){
 int main() {
     puts("starting");
     /* test_interpret_file_prestack(); */
-    puts("test traceh");
-    test_trace_header_errors( false );
-    test_trace_header_errors( true );
 
     /*
      * due to its barely-defined behavorial nature, this test is commented out
