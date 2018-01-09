@@ -106,60 +106,6 @@ void test_interpret_file_prestack() {
 
 */
 
-static void test_modify_trace_header( bool mmap ) {
-    const char *file = "test-data/small-traceheader.sgy";
-
-    int err;
-    char bheader[ SEGY_BINARY_HEADER_SIZE ];
-
-    segy_file* fp = segy_open( file, "r+b" );
-    if ( mmap ) segy_mmap( fp );
-    err = segy_binheader( fp, bheader );
-    assertTrue( err == 0, "Could not read header" );
-    const long trace0 = segy_trace0( bheader );
-    const int samples = segy_samples( bheader );
-    const int trace_bsize = segy_trace_bsize( samples );
-
-    char traceh[ SEGY_TRACE_HEADER_SIZE ];
-    err = segy_traceheader( fp, 0, traceh, trace0, trace_bsize );
-    assertTrue( err == 0, "Error while reading trace header." );
-
-    int ilno;
-    err = segy_get_field( traceh, SEGY_TR_INLINE, &ilno );
-    assertTrue( err == 0, "Error while reading iline no from field." );
-    assertTrue( ilno == 1, "Wrong iline no." );
-
-    err = segy_set_field( traceh, SEGY_TR_INLINE, ilno + 1 );
-    assertTrue( err == 0, "Error writing to trace header buffer." );
-
-    err = segy_get_field( traceh, SEGY_TR_INLINE, &ilno );
-    assertTrue( err == 0, "Error while reading iline no from dirty field." );
-    assertTrue( ilno == 2, "Wrong iline no." );
-
-    err = segy_write_traceheader( fp, 0, traceh, trace0, trace_bsize );
-    assertTrue( err == 0, "Error writing trace header." );
-    segy_flush( fp, false );
-
-    err = segy_traceheader( fp, 0, traceh, trace0, trace_bsize );
-    assertTrue( err == 0, "Error while reading trace header." );
-    err = segy_get_field( traceh, SEGY_TR_INLINE, &ilno );
-    assertTrue( err == 0, "Error while reading iline no from dirty field." );
-    assertTrue( ilno == 2, "Wrong iline no." );
-
-    err = segy_set_field( traceh, SEGY_TR_INLINE, 1 );
-    assertTrue( err == 0, "Error writing to trace header buffer." );
-    err = segy_write_traceheader( fp, 0, traceh, trace0, trace_bsize );
-    assertTrue( err == 0, "Error writing traceheader." );
-
-    err = segy_set_field( traceh, SEGY_TR_SOURCE_GROUP_SCALAR, -100 );
-    assertTrue( err == 0, "Error writing to trace header buffer." );
-    int32_t scale;
-    err = segy_get_field( traceh, SEGY_TR_SOURCE_GROUP_SCALAR, &scale );
-    assertTrue( err == 0, "Error while reading SourceGroupScalar from dirty field." );
-
-    segy_close( fp );
-}
-
 static const char* expected_textheader =
     "C 1 DATE: 22/02/2016                                                            "
     "C 2 AN INCREASE IN AMPLITUDE EQUALS AN INCREASE IN ACOUSTIC IMPEDANCE           "
@@ -361,9 +307,6 @@ static void test_file_size_above_4GB( bool mmap ){
 int main() {
     puts("starting");
     /* test_interpret_file_prestack(); */
-    puts("mod traceh");
-    test_modify_trace_header( false );
-    test_modify_trace_header( true );
     puts("mod texth");
     test_text_header( false );
     test_text_header( true );

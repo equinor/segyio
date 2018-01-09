@@ -228,6 +228,17 @@ SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
         }
     }
 
+    WHEN( "reading a trace header" ) {
+        char buf[ SEGY_TRACE_HEADER_SIZE ];
+        int err = segy_traceheader( fp, 0, buf, trace0, trace_bsize );
+        CHECK( err == 0 );
+
+        int ilno = 0;
+        err = segy_get_field( buf, SEGY_TR_INLINE, &ilno );
+        CHECK( err == 0 );
+        CHECK( ilno == 1 );
+    }
+
     WHEN( "inferring crossline structure" ) {
         const std::vector< int > indices = { 20, 21, 22, 23, 24 };
         CHECK( segy_crossline_length( inlines_sizes ) == 5 );
@@ -544,6 +555,76 @@ SCENARIO( MMAP_TAG "extracting header fields", "[c.segy]" MMAP_TAG ) {
 
             WHEN( "in range " + str( input ) )
                 CHECK_THAT( buf, Catch::Equals( xl ) );
+        }
+    }
+}
+
+SCENARIO( MMAP_TAG "modifying trace header", "[c.segy]" MMAP_TAG ) {
+
+    const int samples = 10;
+    const int trace_bsize = segy_trace_bsize( samples );
+    const int trace0 = 0;
+    const float emptytr[ samples ] = {};
+    const char emptyhdr[ SEGY_TRACE_HEADER_SIZE ] = {};
+
+
+    WHEN( "writing iline no" ) {
+        char header[ SEGY_TRACE_HEADER_SIZE ] = {};
+
+        GIVEN( "an invalid field" ) {
+            int err = segy_set_field( header, SEGY_TR_INLINE + 1, 2 );
+            CHECK( err != 0 );
+        }
+
+        int err = segy_set_field( header, SEGY_TR_INLINE, 2 );
+        CHECK( err == 0 );
+        err = segy_set_field( header, SEGY_TR_SOURCE_GROUP_SCALAR, -100 );
+        CHECK( err == 0 );
+
+        THEN( "the header buffer is updated") {
+            int ilno = 0;
+            int scale = 0;
+            err = segy_get_field( header, SEGY_TR_INLINE, &ilno );
+            CHECK( err == 0 );
+            err = segy_get_field( header, SEGY_TR_SOURCE_GROUP_SCALAR, &scale );
+            CHECK( err == 0 );
+
+            CHECK( ilno == 2 );
+            CHECK( scale == -100 );
+        }
+
+        const char* file = "write-traceheader.sgy";
+
+        std::unique_ptr< segy_file, decltype( &segy_close ) >
+            ufp{ segy_open( file, "w+b" ), &segy_close };
+
+        REQUIRE( ufp );
+        auto fp = ufp.get();
+
+        /* make a file and write to last trace (to accurately get size) */
+        err = segy_write_traceheader( fp, 10, emptyhdr, trace0, trace_bsize );
+        REQUIRE( err == 0 );
+        err = segy_writetrace( fp, 10, emptytr, trace0, trace_bsize );
+        REQUIRE( err == 0 );
+        if( MMAP_TAG != std::string("") )
+            REQUIRE( segy_mmap( fp ) == 0 );
+
+        err = segy_write_traceheader( fp, 5, header, trace0, trace_bsize );
+        CHECK( err == 0 );
+
+        THEN( "changes are observable on disk" ) {
+            char header[ SEGY_TRACE_HEADER_SIZE ] = {};
+            int ilno = 0;
+            int scale = 0;
+            err = segy_traceheader( fp, 5, header, trace0, trace_bsize );
+            CHECK( err == 0 );
+            err = segy_get_field( header, SEGY_TR_INLINE, &ilno );
+            CHECK( err == 0 );
+            err = segy_get_field( header, SEGY_TR_SOURCE_GROUP_SCALAR, &scale );
+            CHECK( err == 0 );
+
+            CHECK( ilno == 2 );
+            CHECK( scale == -100 );
         }
     }
 }

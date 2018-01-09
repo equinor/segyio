@@ -73,7 +73,6 @@ export(TARGETS segyio-static segyio-shared FILE segyio-config.cmake)
 # tests
 #
 configure_file(${testdata}/small.sgy test-data/small.sgy             COPYONLY)
-configure_file(${testdata}/small.sgy test-data/small-traceheader.sgy COPYONLY)
 configure_file(${testdata}/text.sgy  test-data/text.sgy              COPYONLY)
 
 foreach (src segy utils)
