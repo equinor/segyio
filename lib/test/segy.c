@@ -106,76 +106,6 @@ void test_interpret_file_prestack() {
 
 */
 
-static void test_file_error_codes( bool mmap ) {
-    const char *file = "test-data/small.sgy";
-    segy_file* fp = segy_open( file, "rb" );
-    if ( mmap ) segy_mmap( fp );
-    segy_close( fp );
-
-    int err;
-    char binheader[ SEGY_BINARY_HEADER_SIZE ];
-    err = segy_binheader( fp, binheader );
-    assertTrue( err == SEGY_FSEEK_ERROR,
-                "Could read binary header from invalid file." );
-
-    const int samples = segy_samples( binheader );
-    const int trace_bsize = segy_trace_bsize( samples );
-    const long trace0 = segy_trace0( binheader );
-
-    char header[ SEGY_TRACE_HEADER_SIZE ];
-
-    err = segy_traceheader( fp, 0, header, trace0, trace_bsize );
-    assertTrue( err == SEGY_FSEEK_ERROR, "Could not read trace header." );
-
-    /* reading outside header should yield invalid field */
-    int field;
-    err = segy_get_field( header, SEGY_TRACE_HEADER_SIZE + 10, &field );
-    assertTrue( err == SEGY_INVALID_FIELD, "Reading outside trace header." );
-
-    /* Reading between known byte offsets should yield error */
-    err = segy_get_field( header, SEGY_TR_INLINE + 1, &field );
-    assertTrue( err == SEGY_INVALID_FIELD, "Reading between ok byte offsets." );
-
-    err = segy_get_field( header, SEGY_TR_INLINE, &field );
-    assertTrue( err == SEGY_OK, "Reading failed at valid byte offset." );
-
-    err = segy_get_field( header, SEGY_TR_DAY_OF_YEAR, &field );
-    assertTrue( err == SEGY_OK, "Reading failed at valid byte offset." );
-
-    err = segy_read_textheader(fp, NULL);
-    assertTrue( err == SEGY_FSEEK_ERROR, "Could seek in invalid file." );
-
-    int traces;
-    err = segy_traces( fp, &traces, 3600, 350 );
-    assertTrue( err == SEGY_FSEEK_ERROR, "Could seek in invalid file." );
-
-    int sorting;
-    err = segy_sorting( fp, 0, 0, 0, &sorting, 3600, 350 );
-    assertTrue( err == SEGY_FSEEK_ERROR, "Could seek in invalid file." );
-
-    err = segy_readtrace( fp, 0, NULL, 3600, 350 );
-    assertTrue( err == SEGY_FSEEK_ERROR, "Could seek in invalid file." );
-
-    err = segy_writetrace( fp, 0, NULL, 3600, 350 );
-    assertTrue( err == SEGY_FSEEK_ERROR, "Could seek in invalid file." );
-
-    int l1, l2;
-    err = segy_readsubtr( fp, 0, 2, 0, 1, NULL, NULL, 3600, 350 );
-    assertTrue( err == SEGY_INVALID_ARGS, "Could pass fst larger than lst" );
-
-    err = segy_readsubtr( fp, 0, -1, 10, 1, NULL, NULL, 3600, 350 );
-    assertTrue( err == SEGY_INVALID_ARGS, "Could pass negative fst" );
-
-    err = segy_writesubtr( fp, 0, 2, 0, 1, NULL, NULL, 3600, 350 );
-    assertTrue( err == SEGY_INVALID_ARGS, "Could pass fst larger than lst" );
-
-    err = segy_writesubtr( fp, 0, -1, 10, 1, NULL, NULL, 3600, 350 );
-    assertTrue( err == SEGY_INVALID_ARGS, "Could pass negative fst" );
-
-    err = segy_count_lines( fp, 0, 1, &l1, &l2, 3600, 350 );
-    assertTrue( err == SEGY_FSEEK_ERROR, "Could seek in invalid file." );
-}
-
 static void test_error_codes_sans_file() {
     int err;
 
@@ -217,12 +147,6 @@ int main() {
     puts("starting");
     /* test_interpret_file_prestack(); */
 
-    /*
-     * due to its barely-defined behavorial nature, this test is commented out
-     * for most runs, as it would trip up the memcheck test
-     *
-     * test_file_error_codes();
-     */
     test_error_codes_sans_file();
 
     test_file_size_above_4GB( false );
