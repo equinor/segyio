@@ -7,3 +7,6 @@ unreachableCode:*test/*.c
 // resource leaks in segyio-crop are unproblematic because they happen in
 // teardown
 resourceLeak:*segyio-crop.c
+
+// Ignore all warnings for external libraries
+*:*external/*

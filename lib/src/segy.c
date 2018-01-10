@@ -309,6 +309,12 @@ static int bfield_size[] = {
  */
 #ifdef HAVE_SYS_STAT_H
 static int file_size( FILE* fp, long long* size ) {
+
+    /*
+     * the file size will be unaccurate unless userland buffers are flushed if
+     * the file is new or appended to
+     */
+    if( fflush( fp ) != 0 ) return SEGY_FWRITE_ERROR;
 #ifdef HAVE_FSTATI64
     // this means we're on windows where fstat is unreliable for filesizes >2G
     // because long is only 4 bytes
@@ -775,6 +781,8 @@ int segy_traces( segy_file* fp,
                  int* traces,
                  long trace0,
                  int trace_bsize ) {
+
+    if( trace0 < 0 ) return SEGY_INVALID_ARGS;
 
     long long size;
     if( fp->addr )

@@ -77,7 +77,10 @@ int segy_field_forall( segy_file*,
 int segy_trace_bsize( int samples );
 /* byte-offset of the first trace header. */
 long segy_trace0( const char* binheader );
-/* number of traces in this file */
+/*
+ * number of traces in this file.
+ * if this function fails, the input argument is not modified.
+ */
 int segy_traces( segy_file*, int*, long trace0, int trace_bsize );
 
 int segy_sample_indices( segy_file*,

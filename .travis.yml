@@ -90,9 +90,7 @@ before_script:
           -DCMAKE_BUILD_TYPE=Release
           -DCMAKE_INSTALL_NAME_DIR=/usr/local/lib
           $enabled ..
-  - cppcheck --language=c
-             --std=c99
-             --enable=style,portability,performance,warning
+  - cppcheck --enable=style,portability,performance,warning
              --library=posix
              --library=$TRAVIS_BUILD_DIR/cppcheck/segyio.cfg
              --suppressions-list=$TRAVIS_BUILD_DIR/cppcheck/suppressions.txt

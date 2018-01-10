@@ -113,6 +113,7 @@ endif()
 if (NOT MSVC)
     # assuming gcc-style options
     set(c99 -std=c99)
+    set(c++11 -std=c++11)
     # add warnings in debug mode
     list(APPEND warnings-c -Wall -Wextra -pedantic -Wformat-nonliteral
                            -Wcast-align -Wpointer-arith -Wmissing-declarations
@@ -125,6 +126,7 @@ endif ()
 
 set(testdata ${CMAKE_CURRENT_SOURCE_DIR}/test-data)
 
+add_subdirectory(external/catch2)
 add_subdirectory(lib)
 # language bindings
 add_subdirectory(mex)
