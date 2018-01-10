@@ -124,34 +124,11 @@ static void test_error_codes_sans_file() {
                 "Expected sorting to be invalid." );
 }
 
-static void test_file_size_above_4GB( bool mmap ){
-    segy_file* fp = segy_open( "4gbfile", "w+b" );
-    if ( mmap ) segy_mmap( fp );
-    int trace = 5000000;
-    int trace_bsize = 1000;
-    long long tracesize = trace_bsize + SEGY_TRACE_HEADER_SIZE;
-    long trace0 = 0;
-
-    int err = segy_seek( fp, trace, trace0, trace_bsize );
-    assertTrue(err==0, "");
-
-    long long pos = segy_ftell( fp );
-    assertTrue(pos > (long long)INT_MAX, "pos smaller than INT_MAX. "
-                              "This means there's an overflow somewhere" );
-    assertTrue(pos != -1, "overflow in off_t");
-    assertTrue(pos == trace * tracesize, "seek overflow");
-    segy_close(fp);
-}
-
 int main() {
     puts("starting");
     /* test_interpret_file_prestack(); */
 
     test_error_codes_sans_file();
-
-    test_file_size_above_4GB( false );
-    test_file_size_above_4GB( true );
-
     exit(0);
 }
 

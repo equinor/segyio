@@ -1,10 +1,12 @@
 #include <cmath>
 #include <memory>
+#include <limits>
 #include <vector>
 
 #include <catch/catch.hpp>
 
 #include <segyio/segy.h>
+#include <segyio/util.h>
 
 #ifndef MMAP_TAG
 #define MMAP_TAG ""
@@ -702,4 +704,32 @@ SCENARIO( MMAP_TAG "reading text header", "[c.segy]" MMAP_TAG ) {
 
         CHECK( err == 0 );
         CHECK( ascii == expected );
+}
+
+SCENARIO( MMAP_TAG "reading a large file", "[c.segy]" MMAP_TAG ) {
+    GIVEN( "a large file" ) {
+        const char* file = MMAP_TAG "4G-file.sgy";
+
+        std::unique_ptr< segy_file, decltype( &segy_close ) >
+            ufp{ segy_open( file, "w+b" ), &segy_close };
+        REQUIRE( ufp );
+
+        auto fp = ufp.get();
+
+        const int trace = 5000000;
+        const int trace_bsize = 1000;
+        const long long tracesize = trace_bsize + SEGY_TRACE_HEADER_SIZE;
+        const long trace0 = 0;
+
+        const int err = segy_seek( fp, trace, trace0, trace_bsize );
+        CHECK( err == 0 );
+        WHEN( "reading past 4GB (pos >32bit)" ) {
+            THEN( "there is no overflow" ) {
+                const long long pos = segy_ftell( fp );
+                CHECK( pos > std::numeric_limits< int >::max() );
+                CHECK( pos != -1 );
+                CHECK( pos == trace * tracesize );
+            }
+        }
+    }
 }
