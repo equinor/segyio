@@ -9,12 +9,13 @@ The conversion functions are linkable today, but the symbols are not exposed in
 any headers. Giving these functions public linkage (for testing purposes) was a
 mistake, but hopefully no users will be affected as the symbols never appears in
 the header file. Affected functions:
-    - ebcdic2ascii
-    - ascii2ebcdic
-    - ibm2ieee
-    - ieee2ibm
-    - segy_seek
-    - segy_ftell
+
+- ebcdic2ascii
+- ascii2ebcdic
+- ibm2ieee
+- ieee2ibm
+- segy_seek
+- segy_ftell
 
 # python
 ## accessing closed files raises ValueError
