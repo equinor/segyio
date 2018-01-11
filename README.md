@@ -31,7 +31,8 @@ seismic applications. Features are added as they are needed; suggestions and
 contributions of all kinds are very welcome.
 
 To catch up on the latest development and features, see the
-[changelog](changelog.md).
+[changelog](changelog.md). To write future proof code, consult the planned
+[breaking changes](breaking-changes.md).
 
 ## Feature summary ##
 
