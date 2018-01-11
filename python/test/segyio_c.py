@@ -46,14 +46,12 @@ class _segyioTests(unittest.TestCase):
         _segyio.close(f)
 
     def test_open_flush_and_close_file(self):
-        _segyio.flush(None)
         f = _segyio.open(self.filename, "r")
         _segyio.flush(f)
         _segyio.close(f)
 
-        # This does not fail for some reason.
-        # with self.assertRaises(IOError):
-        #     _segyio.flush(f)
+        with self.assertRaises(IOError):
+            _segyio.flush(f)
 
     def test_read_text_header(self, mmap=False):
         f = _segyio.open(self.filename, "r")

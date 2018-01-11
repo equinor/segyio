@@ -99,10 +99,8 @@ static PyObject *py_FILE_flush(PyObject *self, PyObject *args) {
     PyObject *file_capsule = NULL;
     PyArg_ParseTuple(args, "O", &file_capsule);
 
-    segy_file *p_FILE = NULL;
-    if(file_capsule != Py_None) {
-        p_FILE = get_FILE_pointer_from_capsule(file_capsule);
-    }
+    segy_file* p_FILE = get_FILE_pointer_from_capsule(file_capsule);
+    if (PyErr_Occurred()) { return NULL; }
 
     if( !p_FILE ) return Py_BuildValue("");
 
@@ -220,6 +218,7 @@ static PyObject *py_read_texthdr(PyObject *self, PyObject *args) {
     PyArg_ParseTuple(args, "Oi", &file_capsule, &index);
 
     segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
+    if (PyErr_Occurred()) { return NULL; }
 
     char *buffer = (char*)calloc(segy_textheader_size(), sizeof(char));
 
@@ -255,6 +254,7 @@ static PyObject *py_write_texthdr(PyObject *self, PyObject *args) {
     memcpy( buf, buffer, size );
 
     segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
+    if (PyErr_Occurred()) { return NULL; }
 
     int error = segy_write_textheader(p_FILE, index, buf);
 
@@ -385,8 +385,9 @@ static PyObject *py_write_binaryhdr(PyObject *self, PyObject *args) {
     PyArg_ParseTuple(args, "OO", &file_capsule, &binary_header_capsule);
 
     segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
-    char *binary_header = get_header_pointer_from_capsule(binary_header_capsule, NULL);
+    if (PyErr_Occurred()) { return NULL; }
 
+    char *binary_header = get_header_pointer_from_capsule(binary_header_capsule, NULL);
     if (PyErr_Occurred()) { return NULL; }
 
     int error = segy_write_binheader(p_FILE, binary_header);
