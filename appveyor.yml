@@ -14,7 +14,8 @@ platform:
 
 environment:
     MEX: -DBUILD_MEX=OFF
-    SHARED: OFF
+    TWINE_PASSWORD:
+        secure: kTga6+rLL1fNpKqFNcX0QZNyqiYaHsEfSS4k6wvUoTE=
     matrix:
         - PYTHON: C:\Python27
           LANG: -DBUILD_PYTHON=ON
@@ -52,7 +53,7 @@ build_script:
     - IF "%platform%" == "x64" set W64="-GVisual Studio 14 2015 Win64"
     - mkdir build
     - ps: pushd build
-    - cmake %APPVEYOR_BUILD_FOLDER% %W64% %MEX% %LANG% -DBUILD_SHARED_LIBS=%SHARED% -DCMAKE_INSTALL_PREFIX=%INSTALL_DIR%
+    - cmake %APPVEYOR_BUILD_FOLDER% %W64% %MEX% %LANG% -DCMAKE_INSTALL_PREFIX=%INSTALL_DIR%
     - cmake --build . --config "%configuration%" --target install
     - ctest -C "%configuration%" --output-on-failure
     - ps: popd
@@ -79,12 +80,8 @@ after_deploy:
 deploy_script:
     - ps: |
           Write-Host "TAG: $env:APPVEYOR_REPO_TAG"
-          If (-not ($env:APPVEYOR_REPO_TAG).Value) { return }
-          Write-Host "SHARED: $env:SHARED"
-          If ($env:SHARED -eq "ON") { return }
-          Write-Host "BRANCH: $env:APPVEYOR_REPO_BRANCH"
-          If ($env:APPVEYOR_REPO_BRANCH -ne "master") { return }
+          If ($env:APPVEYOR_REPO_TAG -eq "false") { return }
 
           Write-Host "Uploading wheels to pypi"
-          Invoke-Expression "twine upload -u statoil-travis -p $env:pypipassword --skip-existing dist/*"
+          Invoke-Expression "twine upload -u statoil-travis --skip-existing dist/*"
           If ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode) }
