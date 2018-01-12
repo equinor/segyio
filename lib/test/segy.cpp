@@ -46,6 +46,43 @@ class ApproxRange : public Catch::MatcherBase< std::vector< float > > {
         std::vector< float > lhs;
 };
 
+struct Err {
+    Err( int err ) : err( err ) {}
+
+    bool operator == ( Err other ) const { return this->err == other.err; }
+    bool operator != ( Err other ) const { return !(*this == other); }
+
+    static Err ok()    { return SEGY_OK; }
+    static Err args()  { return SEGY_INVALID_ARGS; }
+    static Err field() { return SEGY_INVALID_FIELD; }
+
+    int err;
+};
+
+}
+
+namespace Catch {
+template<>
+struct StringMaker< Err > {
+    static std::string convert( const Err& err ) {
+        switch( err.err ) {
+            case SEGY_OK : return "OK";
+            case SEGY_FOPEN_ERROR: return "SEGY_FOPEN_ERROR";
+            case SEGY_FSEEK_ERROR: return "SEGY_FSEEK_ERROR";
+            case SEGY_FREAD_ERROR: return "SEGY_FREAD_ERROR";
+            case SEGY_FWRITE_ERROR: return "SEGY_FWRITE_ERROR";
+            case SEGY_INVALID_FIELD: return "SEGY_INVALID_FIELD";
+            case SEGY_INVALID_SORTING: return "SEGY_INVALID_SORTING";
+            case SEGY_MISSING_LINE_INDEX: return "SEGY_MISSING_LINE_INDEX";
+            case SEGY_INVALID_OFFSETS: return "SEGY_INVALID_OFFSETS";
+            case SEGY_TRACE_SIZE_MISMATCH: return "SEGY_TRACE_SIZE_MISMATCH";
+            case SEGY_INVALID_ARGS: return "SEGY_INVALID_ARGS";
+            case SEGY_MMAP_ERROR: return "SEGY_MMAP_ERROR";
+            case SEGY_MMAP_INVALID: return "SEGY_MMAP_INVALID";
+        }
+        return "Unknown error";
+    }
+};
 }
 
 SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
@@ -58,11 +95,11 @@ SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
 
     auto fp = ufp.get();
     if( MMAP_TAG != std::string("") )
-        REQUIRE( segy_mmap( fp ) == 0 );
+        REQUIRE( Err( segy_mmap( fp ) ) == Err::ok() );
 
     WHEN( "finding traces initial byte offset and sizes" ) {
         char header[ SEGY_BINARY_HEADER_SIZE ];
-        REQUIRE( segy_binheader( fp, header ) == 0 );
+        REQUIRE( Err( segy_binheader( fp, header ) ) == Err::ok() );
         int samples = segy_samples( header );
         long trace0 = segy_trace0( header );
         int trace_bsize = segy_trace_bsize( samples );
@@ -78,20 +115,25 @@ SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
 
     WHEN( "determining number of traces" ) {
         int traces = 0;
-        REQUIRE( segy_traces( fp, &traces, trace0, trace_bsize ) == 0 );
+        Err err = segy_traces( fp, &traces, trace0, trace_bsize );
+        REQUIRE( err == Err::ok() );
         CHECK( traces == 25 );
 
         GIVEN( "trace0 outside its domain" ) {
             WHEN( "trace0 is after end-of-file" ) {
-                const int err = segy_traces( fp, &traces, 50000, trace_bsize );
-                THEN( "segy_traces fail" ) CHECK( err == SEGY_INVALID_ARGS );
-                THEN( "the input does not change" ) CHECK( traces == 25 );
+                err = segy_traces( fp, &traces, 50000, trace_bsize );
+                THEN( "segy_traces fail" )
+                    CHECK( err == Err::args() );
+                THEN( "the input does not change" )
+                    CHECK( traces == 25 );
             }
 
             WHEN( "trace0 is negative" ) {
-                const int err = segy_traces( fp, &traces, -1, trace_bsize );
-                THEN( "segy_traces fail" ) CHECK( err == SEGY_INVALID_ARGS );
-                THEN( "the input does not change" ) CHECK( traces == 25 );
+                err = segy_traces( fp, &traces, -1, trace_bsize );
+                THEN( "segy_traces fail" )
+                    CHECK( err == Err::args() );
+                THEN( "the input does not change" )
+                    CHECK( traces == 25 );
             }
         }
     }
@@ -104,22 +146,22 @@ SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
     GIVEN( "an inline sorted file" ) {
         THEN( "inline sorting is inferred" ) {
             int sorting = -1;
-            const int err = segy_sorting( fp,
+            const Err err = segy_sorting( fp,
                                           il, xl, of,
                                           &sorting,
                                           trace0, trace_bsize );
-            CHECK( err == 0 );
+            CHECK( err == Err::ok() );
             CHECK( sorting == SEGY_INLINE_SORTING );
         }
 
         WHEN( "swapping inline and crossline position" ) {
             THEN( "crossline sorting is inferred" ) {
                 int sorting = -1;
-                const int err = segy_sorting( fp,
+                const Err err = segy_sorting( fp,
                                               xl, il, of,
                                               &sorting,
                                               trace0, trace_bsize );
-                CHECK( err == 0 );
+                CHECK( err == Err::ok() );
                 CHECK( sorting == SEGY_CROSSLINE_SORTING );
             }
         }
@@ -129,23 +171,23 @@ SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
 
     GIVEN( "a post stack file" ) {
         int offsets = -1;
-        const int err = segy_offsets( fp,
+        const Err err = segy_offsets( fp,
                                       il, xl, traces,
                                       &offsets,
                                       trace0, trace_bsize );
         THEN( "there is only one offset" ) {
-            CHECK( err == 0 );
+            CHECK( err == Err::ok() );
             CHECK( offsets == 1 );
         }
 
         WHEN( "swapping inline and crossline position" ) {
             int offsets = -1;
-            const int err = segy_offsets( fp,
+            const Err err = segy_offsets( fp,
                                           xl, il, traces,
                                           &offsets,
                                           trace0, trace_bsize );
             THEN( "there is only one offset" ) {
-                CHECK( err == 0 );
+                CHECK( err == Err::ok() );
                 CHECK( offsets == 1 );
             }
         }
@@ -155,11 +197,11 @@ SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
 
     WHEN( "determining offset labels" ) {
         int offset_index = -1;
-        const int err = segy_offset_indices( fp,
+        const Err err = segy_offset_indices( fp,
                                              of, offsets,
                                              &offset_index,
                                              trace0, trace_bsize );
-        CHECK( err == 0 );
+        CHECK( err == Err::ok() );
         CHECK( offset_index == 1 );
     }
 
@@ -168,21 +210,21 @@ SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
         int xlsz = -1;
 
         WHEN( "using segy_count_lines" ) {
-            const int err = segy_count_lines( fp,
+            const Err err = segy_count_lines( fp,
                                               xl, offsets,
                                               &ilsz, &xlsz,
                                               trace0, trace_bsize );
-            CHECK( err == 0 );
+            CHECK( err == Err::ok() );
             CHECK( ilsz == 5 );
             CHECK( xlsz == 5 );
         }
 
         WHEN( "using segy_lines_count" ) {
-            const int err = segy_lines_count( fp,
+            const Err err = segy_lines_count( fp,
                                               il, xl, sorting, offsets,
                                               &ilsz, &xlsz,
                                               trace0, trace_bsize );
-            CHECK( err == 0 );
+            CHECK( err == Err::ok() );
             CHECK( ilsz == 5 );
             CHECK( xlsz == 5 );
         }
@@ -198,7 +240,7 @@ SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
 
         WHEN( "finding inline numbers" ) {
             std::vector< int > result( inlines_sizes );
-            const int err = segy_inline_indices( fp,
+            const Err err = segy_inline_indices( fp,
                                                  il,
                                                  sorting,
                                                  inlines_sizes,
@@ -206,26 +248,26 @@ SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
                                                  offsets,
                                                  result.data(),
                                                  trace0, trace_bsize );
-            CHECK( err == 0 );
+            CHECK( err == Err::ok() );
             CHECK_THAT( result, Catch::Equals( indices ) );
         }
 
         WHEN( "determining inline 4's first trace number" ) {
             GIVEN( "an inline sorted file" ) THEN( "the stride is 1" ) {
                 int stride = -1;
-                int err = segy_inline_stride( sorting, inlines_sizes, &stride );
-                CHECK( err == 0 );
+                Err err = segy_inline_stride( sorting, inlines_sizes, &stride );
+                CHECK( err == Err::ok() );
                 CHECK( stride == 1 );
             }
 
             const int stride = 1;
             int line_trace0 = -1;
-            const int err = segy_line_trace0( 4,
+            const Err err = segy_line_trace0( 4,
                                               crosslines_sizes, stride,
                                               offsets,
                                               indices.data(), inlines_sizes,
                                               &line_trace0 );
-            CHECK( err == 0 );
+            CHECK( err == Err::ok() );
             CHECK( line_trace0 == 15 );
         }
     }
@@ -234,23 +276,23 @@ SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
         char buf[ SEGY_TRACE_HEADER_SIZE ] = {};
 
         GIVEN( "a valid field" ) {
-            int err = segy_traceheader( fp, 0, buf, trace0, trace_bsize );
-            CHECK( err == 0 );
+            Err err = segy_traceheader( fp, 0, buf, trace0, trace_bsize );
+            CHECK( err == Err::ok() );
 
             int ilno = 0;
             err = segy_get_field( buf, SEGY_TR_INLINE, &ilno );
-            CHECK( err == 0 );
+            CHECK( err == Err::ok() );
             CHECK( ilno == 1 );
         }
 
         GIVEN( "an invalid field" ) {
             int x = -1;
-            int err = segy_get_field( buf, SEGY_TRACE_HEADER_SIZE + 10, &x );
-            CHECK( err == SEGY_INVALID_FIELD );
+            Err err = segy_get_field( buf, SEGY_TRACE_HEADER_SIZE + 10, &x );
+            CHECK( err == Err::field() );
             CHECK( x == -1 );
 
             err = segy_get_field( buf, SEGY_TR_INLINE + 1, &x );
-            CHECK( err == SEGY_INVALID_FIELD );
+            CHECK( err == Err::field() );
             CHECK( x == -1 );
         }
     }
@@ -261,7 +303,7 @@ SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
 
         WHEN( "finding crossline numbers" ) {
             std::vector< int > result( crosslines_sizes );
-            const int err = segy_crossline_indices( fp,
+            const Err err = segy_crossline_indices( fp,
                                                     xl,
                                                     sorting,
                                                     inlines_sizes,
@@ -269,28 +311,28 @@ SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
                                                     offsets,
                                                     result.data(),
                                                     trace0, trace_bsize );
-            CHECK( err == 0 );
+            CHECK( err == Err::ok() );
             CHECK_THAT( result, Catch::Equals( indices ) );
         }
 
         WHEN( "determining crossline 22's first trace number" ) {
             GIVEN( "an inline sorted file" ) THEN( "the stride is 5" ) {
                 int stride = -1;
-                int err = segy_crossline_stride( sorting,
+                Err err = segy_crossline_stride( sorting,
                                                  crosslines_sizes,
                                                  &stride );
-                CHECK( err == 0 );
+                CHECK( err == Err::ok() );
                 CHECK( stride == 5 );
             }
 
             const int stride = 5;
             int line_trace0 = -1;
-            const int err = segy_line_trace0( 22,
+            const Err err = segy_line_trace0( 22,
                                               inlines_sizes, stride,
                                               offsets,
                                               indices.data(), crosslines_sizes,
                                               &line_trace0 );
-            CHECK( err == 0 );
+            CHECK( err == Err::ok() );
             CHECK( line_trace0 == 2 );
         }
     }
@@ -319,14 +361,14 @@ SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
                 auto stop  = inputs[ i ].stop;
                 auto step  = inputs[ i ].step;
 
-                int err = segy_readsubtr( fp,
+                Err err = segy_readsubtr( fp,
                                           10,
                                           start, stop, step,
                                           buf.data(),
                                           nullptr,
                                           trace0, trace_bsize );
                 segy_to_native( format, buf.size(), buf.data() );
-                CHECK( err == 0 );
+                CHECK( err == Err::ok() );
                 CHECK_THAT( buf, ApproxRange( expect[ i ] ) );
             }
         }
@@ -343,14 +385,14 @@ SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
             const int stride = 1;
 
             int line_trace0 = -1;
-            int err = segy_line_trace0( il,
+            Err err = segy_line_trace0( il,
                                         inline_length,
                                         stride,
                                         offsets,
                                         inlines.data(),
                                         inlines.size(),
                                         &line_trace0 );
-            REQUIRE( err == 0 );
+            REQUIRE( err == Err::ok() );
             REQUIRE( line_trace0 != -1 );
 
             err = segy_read_line( fp,
@@ -360,7 +402,7 @@ SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
                                   offsets,
                                   line.data(),
                                   trace0, trace_bsize );
-            REQUIRE( err == 0 );
+            REQUIRE( err == Err::ok() );
             segy_to_native( format, line.size(), line.data() );
 
             for( const auto xl : crosslines ) {
@@ -382,14 +424,14 @@ SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
             const int stride = 5;
 
             int line_trace0 = -1;
-            int err = segy_line_trace0( xl,
+            Err err = segy_line_trace0( xl,
                                         crosslines_sizes,
                                         stride,
                                         offsets,
                                         crosslines.data(),
                                         crosslines.size(),
                                         &line_trace0 );
-            REQUIRE( err == 0 );
+            REQUIRE( err == Err::ok() );
             REQUIRE( line_trace0 != -1 );
 
             err = segy_read_line( fp,
@@ -399,7 +441,7 @@ SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
                                   offsets,
                                   line.data(),
                                   trace0, trace_bsize );
-            REQUIRE( err == 0 );
+            REQUIRE( err == Err::ok() );
             segy_to_native( format, line.size(), line.data() );
 
             for( const auto il : inlines ) {
@@ -448,11 +490,11 @@ SCENARIO( MMAP_TAG "writing to a file", "[c.segy]" MMAP_TAG ) {
                 REQUIRE( ufp );
                 auto fp = ufp.get();
 
-                int err = segy_writetrace( fp, 10, dummy, trace0, trace_bsize );
-                REQUIRE( err == 0 );
+                Err err = segy_writetrace( fp, 10, dummy, trace0, trace_bsize );
+                REQUIRE( err == Err::ok() );
 
                 if( MMAP_TAG != std::string("") )
-                    REQUIRE( segy_mmap( fp ) == 0 );
+                    REQUIRE( Err( segy_mmap( fp ) ) == Err::ok() );
 
                 std::vector< float > buf( expect[ i ].size() );
 
@@ -469,7 +511,7 @@ SCENARIO( MMAP_TAG "writing to a file", "[c.segy]" MMAP_TAG ) {
                                        out.data(),
                                        nullptr,
                                        trace0, trace_bsize );
-                CHECK( err == 0 );
+                CHECK( err == Err::ok() );
                 THEN( "updates are observable" ) {
                     err = segy_readsubtr( fp,
                                           i,
@@ -478,7 +520,7 @@ SCENARIO( MMAP_TAG "writing to a file", "[c.segy]" MMAP_TAG ) {
                                           nullptr,
                                           trace0, trace_bsize );
                     segy_to_native( format, buf.size(), buf.data() );
-                    CHECK( err == 0 );
+                    CHECK( err == Err::ok() );
                     CHECK_THAT( buf, ApproxRange( expect[ i ] ) );
                 }
             }
@@ -500,7 +542,7 @@ SCENARIO( MMAP_TAG "extracting header fields", "[c.segy]" MMAP_TAG ) {
     const int trace_bsize = 50 * 4;
 
     if( MMAP_TAG != std::string("") )
-        REQUIRE( segy_mmap( fp ) == 0 );
+        REQUIRE( Err( segy_mmap( fp ) ) == Err::ok() );
 
     WHEN( "reading inline labels" ) {
         const std::vector< int > inlines = {
@@ -518,12 +560,12 @@ SCENARIO( MMAP_TAG "extracting header fields", "[c.segy]" MMAP_TAG ) {
         const auto stop  = input.stop;
         const auto step  = input.step;
 
-        const int err = segy_field_forall( fp,
+        const Err err = segy_field_forall( fp,
                                            SEGY_TR_INLINE,
                                            start, stop, step,
                                            buf.data(),
                                            trace0, trace_bsize );
-        CHECK( err == 0 );
+        CHECK( err == Err::ok() );
 
         WHEN( "in range " + str( input ) )
             CHECK_THAT( buf, Catch::Equals( inlines ) );
@@ -562,12 +604,12 @@ SCENARIO( MMAP_TAG "extracting header fields", "[c.segy]" MMAP_TAG ) {
             const auto stop  = input.stop;
             const auto step  = input.step;
 
-            const int err = segy_field_forall( fp,
+            const Err err = segy_field_forall( fp,
                                                SEGY_TR_CROSSLINE,
                                                start, stop, step,
                                                buf.data(),
                                                trace0, trace_bsize );
-            CHECK( err == 0 );
+            CHECK( err == Err::ok() );
 
             WHEN( "in range " + str( input ) )
                 CHECK_THAT( buf, Catch::Equals( xl ) );
@@ -588,22 +630,22 @@ SCENARIO( MMAP_TAG "modifying trace header", "[c.segy]" MMAP_TAG ) {
         char header[ SEGY_TRACE_HEADER_SIZE ] = {};
 
         GIVEN( "an invalid field" ) {
-            int err = segy_set_field( header, SEGY_TR_INLINE + 1, 2 );
-            CHECK( err != 0 );
+            Err err = segy_set_field( header, SEGY_TR_INLINE + 1, 2 );
+            CHECK( err == Err::field() );
         }
 
-        int err = segy_set_field( header, SEGY_TR_INLINE, 2 );
-        CHECK( err == 0 );
+        Err err = segy_set_field( header, SEGY_TR_INLINE, 2 );
+        CHECK( err == Err::ok() );
         err = segy_set_field( header, SEGY_TR_SOURCE_GROUP_SCALAR, -100 );
-        CHECK( err == 0 );
+        CHECK( err == Err::ok() );
 
         THEN( "the header buffer is updated") {
             int ilno = 0;
             int scale = 0;
             err = segy_get_field( header, SEGY_TR_INLINE, &ilno );
-            CHECK( err == 0 );
+            CHECK( err == Err::ok() );
             err = segy_get_field( header, SEGY_TR_SOURCE_GROUP_SCALAR, &scale );
-            CHECK( err == 0 );
+            CHECK( err == Err::ok() );
 
             CHECK( ilno == 2 );
             CHECK( scale == -100 );
@@ -619,25 +661,25 @@ SCENARIO( MMAP_TAG "modifying trace header", "[c.segy]" MMAP_TAG ) {
 
         /* make a file and write to last trace (to accurately get size) */
         err = segy_write_traceheader( fp, 10, emptyhdr, trace0, trace_bsize );
-        REQUIRE( err == 0 );
+        REQUIRE( err == Err::ok() );
         err = segy_writetrace( fp, 10, emptytr, trace0, trace_bsize );
-        REQUIRE( err == 0 );
+        REQUIRE( err == Err::ok() );
         if( MMAP_TAG != std::string("") )
-            REQUIRE( segy_mmap( fp ) == 0 );
+            REQUIRE( Err( segy_mmap( fp ) ) == Err::ok() );
 
         err = segy_write_traceheader( fp, 5, header, trace0, trace_bsize );
-        CHECK( err == 0 );
+        CHECK( err == Err::ok() );
 
         THEN( "changes are observable on disk" ) {
             char header[ SEGY_TRACE_HEADER_SIZE ] = {};
             int ilno = 0;
             int scale = 0;
             err = segy_traceheader( fp, 5, header, trace0, trace_bsize );
-            CHECK( err == 0 );
+            CHECK( err == Err::ok() );
             err = segy_get_field( header, SEGY_TR_INLINE, &ilno );
-            CHECK( err == 0 );
+            CHECK( err == Err::ok() );
             err = segy_get_field( header, SEGY_TR_SOURCE_GROUP_SCALAR, &scale );
-            CHECK( err == 0 );
+            CHECK( err == Err::ok() );
 
             CHECK( ilno == 2 );
             CHECK( scale == -100 );
@@ -697,12 +739,12 @@ SCENARIO( MMAP_TAG "reading text header", "[c.segy]" MMAP_TAG ) {
 
         auto fp = ufp.get();
         if( MMAP_TAG != std::string("") )
-            REQUIRE( segy_mmap( fp ) == 0 );
+            REQUIRE( Err( segy_mmap( fp ) ) == Err::ok() );
 
         char ascii[ SEGY_TEXT_HEADER_SIZE + 1 ] = {};
-        int err = segy_read_textheader( fp, ascii );
+        const Err err = segy_read_textheader( fp, ascii );
 
-        CHECK( err == 0 );
+        CHECK( err == Err::ok() );
         CHECK( ascii == expected );
 }
 
@@ -721,8 +763,8 @@ SCENARIO( MMAP_TAG "reading a large file", "[c.segy]" MMAP_TAG ) {
         const long long tracesize = trace_bsize + SEGY_TRACE_HEADER_SIZE;
         const long trace0 = 0;
 
-        const int err = segy_seek( fp, trace, trace0, trace_bsize );
-        CHECK( err == 0 );
+        const Err err = segy_seek( fp, trace, trace0, trace_bsize );
+        CHECK( err == Err::ok() );
         WHEN( "reading past 4GB (pos >32bit)" ) {
             THEN( "there is no overflow" ) {
                 const long long pos = segy_ftell( fp );

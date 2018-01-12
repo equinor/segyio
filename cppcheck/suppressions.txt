@@ -10,3 +10,7 @@ resourceLeak:*segyio-crop.c
 
 // Ignore all warnings for external libraries
 *:*external/*
+
+// Singe argument no-explicit constructor is used purposefully to construct
+// objects from integer error codes for generating test output
+noExplicitConstructor:*test/*.cpp
