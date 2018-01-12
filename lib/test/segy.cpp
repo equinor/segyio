@@ -609,7 +609,7 @@ SCENARIO( MMAP_TAG "modifying trace header", "[c.segy]" MMAP_TAG ) {
             CHECK( scale == -100 );
         }
 
-        const char* file = "write-traceheader.sgy";
+        const char* file = MMAP_TAG "write-traceheader.sgy";
 
         std::unique_ptr< segy_file, decltype( &segy_close ) >
             ufp{ segy_open( file, "w+b" ), &segy_close };
