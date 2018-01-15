@@ -1,3 +1,46 @@
+# 1.4.0
+* segyio has learned how to resample a file (`segyio.tools.resample`). This
+  function does not actually touch the data traces, but rewrites the header
+  fields and attributes required to persistently change sample rate.
+  Interpolation of data traces must be done manually, but for a strict
+  reinterpretation this function is sufficient
+* segyio has learned to read enough structure from a file to create a new file
+  with the same dimensions and lines (`segyio.tools.metadata`)
+* segyio has learned to create unstructured files (only traces, no inlines or
+  crosslines)
+* `f.text[0] =` requires `bytes` convertability. This catches some errors that
+  were previously fatal or silent
+* `f.text` broken internal buffer allocations fixed
+* `f.text[n] =` supports strings longer or shorter than 3200 bytes by
+  truncating or padding, respectively
+* Fixed a bug where a particular length of mode strings caused errors
+* `segyio.open('w')` raises an exception, instead of silently truncating the
+  file and failing later when the file size does not match the expected.
+* `segy_traces` now fails if `trace0` is outside domain, instead of silently
+  returning garbage
+* Return correct size for dirty, newly-created files. This means carefully
+  created new files can be `mmap`d earlier
+* Methods on closed files always raise exceptions
+* `mmap` support improved - all C functions are `mmap` aware.
+* The file is now closed after a successful `mmap` call
+* `str.format` used for string interpolation over the `%` operator
+* Several potential issues found by static analysis, such as non-initialised
+  temporaries, divide-by-zero code paths, and leak-errors (in process teardown)
+  addressed, to reduce noise and improve safety
+* Error message on failure in `segyio.tools.dt` improved
+* Error message on unparsable global binary header improved
+  changes for the next major release
+* Catch2 is introduced to test the core C library, replacing the old
+  `test/segy.c` family of tests
+* Contract for `segy_traces` clarified in documentation
+* Docstrings improved for `depth_slice` and `segyio.create`
+* A new document, `breaking-changes.md`, lists planned deprecations and API
+* The readme has gotten a makeover, with better structure, an index, and more
+  examples
+* `setup.py` requires setuptools >= 28. A rather recent setuptools was always a
+  requirement, but not codified
+* scan-build (clang analysis) enabled on Travis
+
 # 1.3.9
 * Fix OS X wheel packaging.
 
