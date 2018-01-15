@@ -2,8 +2,8 @@
 
 This documents describe the planned breaking changes for segyio >= 2.
 
-# libsegyio
-## removal of linkage of ebcdic2ascii and friends, and ibm2ieee
+## libsegyio
+### removal of linkage of ebcdic2ascii and friends, and ibm2ieee
 
 The conversion functions are linkable today, but the symbols are not exposed in
 any headers. Giving these functions public linkage (for testing purposes) was a
@@ -17,8 +17,8 @@ the header file. Affected functions:
 - segy_seek
 - segy_ftell
 
-# python
-## accessing closed files raises ValueError
+## python
+### accessing closed files raises ValueError
 
 Calling methods on closed files should not raise IOError, but ValueError, in
 order to be uniform with python's own file object.
@@ -26,13 +26,13 @@ order to be uniform with python's own file object.
 Most users shouldn't (or wouldn't) use this error for control flow or recovery,
 but in order to account for it, the change is postponed.
 
-## f.text no longer implicitly resolves to f.text[0]
+### f.text no longer implicitly resolves to f.text[0]
 
 The implicit accessing of the mandatory text header is inconsistent and error
 prone, and won't work in segyio2. In segyio2, the only way to grab the
 mandatory text header is f.text[0]
 
-## str(f.text[n]) removed
+### str(f.text[n]) removed
 
 The implicit string conversion should be either tied to fmt or other explicit
 methods, instead of implicitly resolving into a newline-interleaved
