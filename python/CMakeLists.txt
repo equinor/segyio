@@ -130,5 +130,5 @@ add_test(NAME python.example.write        COMMAND ${python} write.py test-data/w
 add_test(NAME python.example.makefile     COMMAND ${python} make-file.py test-data/large-file.sgy 20 1 20 1 20)
 add_test(NAME python.example.makepsfile   COMMAND ${python} make-ps-file.py test-data/small-prestack.sgy 10 1 5 1 4 1 3)
 add_test(NAME python.example.subcube      COMMAND ${python} copy-sub-cube.py test-data/small.sgy test-data/copy.sgy)
-add_test(NAME python.example.rotate       COMMAND ${python} make-rotated-copies.py test-data/small.sgy)
+add_test(NAME python.example.rotate       COMMAND ${python} make-rotated-copies.py test-data/small.sgy ex-rotate.sgy)
 add_test(NAME python.example.scan_min_max COMMAND ${python} scan_min_max.py test-data/small.sgy)
