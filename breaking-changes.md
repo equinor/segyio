@@ -10,18 +10,18 @@ any headers. Giving these functions public linkage (for testing purposes) was a
 mistake, but hopefully no users will be affected as the symbols never appears in
 the header file. Affected functions:
 
-- ebcdic2ascii
-- ascii2ebcdic
-- ibm2ieee
-- ieee2ibm
-- segy_seek
-- segy_ftell
+- `ebcdic2ascii`
+- `ascii2ebcdic`
+- `ibm2ieee`
+- `ieee2ibm`
+- `segy_seek`
+- `segy_ftell`
 
 ## python
 ### accessing closed files raises ValueError
 
-Calling methods on closed files should not raise IOError, but ValueError, in
-order to be uniform with python's own file object.
+Calling methods on closed files should not raise `IOError`, but `ValueError`,
+in order to be uniform with python's own file object.
 
 Most users shouldn't (or wouldn't) use this error for control flow or recovery,
 but in order to account for it, the change is postponed.
@@ -30,7 +30,7 @@ but in order to account for it, the change is postponed.
 
 The implicit accessing of the mandatory text header is inconsistent and error
 prone, and won't work in segyio2. In segyio2, the only way to grab the
-mandatory text header is f.text[0]
+mandatory text header is `f.text[0]`
 
 ### str(f.text[n]) removed
 
