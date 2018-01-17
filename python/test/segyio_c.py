@@ -57,7 +57,7 @@ class _segyioTests(unittest.TestCase):
         f = _segyio.segyiofd(self.filename, "r")
         if mmap: f.mmap()
 
-        self.assertEqual(_segyio.read_textheader(f, 0), self.ACTUAL_TEXT_HEADER)
+        self.assertEqual(f.gettext(0), self.ACTUAL_TEXT_HEADER)
 
         with self.assertRaises(Exception):
             _segyio.read_texthdr(None, 0)
@@ -76,13 +76,13 @@ class _segyioTests(unittest.TestCase):
 
             _segyio.write_textheader(f, 0, "")
 
-            textheader = _segyio.read_textheader(f, 0)
+            textheader = f.gettext(0)
             textheader = textheader.decode('ascii')
             self.assertEqual(textheader, "" * 3200)
 
             _segyio.write_textheader(f, 0, "yolo" * 800)
 
-            textheader = _segyio.read_textheader(f, 0)
+            textheader = f.gettext(0)
             textheader = textheader.decode('ascii')  # Because in Python 3.5 bytes are not comparable to strings
             self.assertEqual(textheader, "yolo" * 800)
 
