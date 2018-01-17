@@ -176,7 +176,7 @@ class SegyFile(object):
             >>> # keep using segyio as per usual
             >>> print( f.trace[10] )
         """
-        return _segyio.mmap(self.xfd)
+        return self.xfd.mmap()
 
     @property
     def sorting(self):
