@@ -129,11 +129,61 @@ PyObject* mmap( segyiofd* self ) {
     Py_RETURN_TRUE;
 }
 
+/*
+ * No C++11, so no std::vector::data. single-alloc automatic heap buffer,
+ * without resize
+ */
+struct heapbuffer {
+    explicit heapbuffer( int sz ) : ptr( new( std::nothrow ) char[ sz ] ) {
+        if( !this->ptr ) {
+            PyErr_SetString( PyExc_MemoryError, "unable to alloc buffer" );
+            return;
+        }
+
+        std::memset( this->ptr, 0, sz );
+    }
+
+    ~heapbuffer() { delete[] this->ptr; }
+
+    operator char*()             { return this->ptr; }
+    operator const char*() const { return this->ptr; }
+
+    char* ptr;
+
+private:
+    heapbuffer( const heapbuffer& );
+};
+
+PyObject* gettext( segyiofd* self, PyObject* args ) {
+    segy_file* fp = self->fd;
+    if( !fp ) return NULL;
+
+    int index = 0;
+    if( !PyArg_ParseTuple(args, "i", &index ) ) return NULL;
+
+    heapbuffer buffer( segy_textheader_size() );
+    if( !buffer ) return NULL;
+
+    const int error = index == 0
+              ? segy_read_textheader( fp, buffer )
+              : segy_read_ext_textheader( fp, index - 1, buffer );
+
+    if( error != SEGY_OK )
+        return PyErr_Format( PyExc_Exception,
+                             "Could not read text header: %s", strerror(errno));
+
+    const size_t len = std::strlen( buffer );
+    return PyBytes_FromStringAndSize( buffer, len );
+}
+
+
 
 PyMethodDef methods [] = {
     { "close", (PyCFunction) fd::close, METH_VARARGS, "Close file." },
     { "flush", (PyCFunction) fd::flush, METH_VARARGS, "Flush file." },
     { "mmap",  (PyCFunction) fd::mmap,  METH_NOARGS,  "mmap file."  },
+
+    { "gettext", (PyCFunction) fd::gettext, METH_VARARGS, "Get text header." },
 
     { NULL }
 };
@@ -282,33 +332,6 @@ static PyObject *py_handle_segy_error_with_index_and_name(int error, int errno_e
 
 static PyObject *py_textheader_size(PyObject *self) {
     return Py_BuildValue("i", SEGY_TEXT_HEADER_SIZE);
-}
-
-static PyObject *py_read_texthdr(PyObject *self, PyObject *args) {
-    errno = 0;
-    PyObject *file_capsule = NULL;
-    int index;
-
-    PyArg_ParseTuple(args, "Oi", &file_capsule, &index);
-
-    segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
-    if (PyErr_Occurred()) { return NULL; }
-
-    char *buffer = (char*)calloc(segy_textheader_size(), sizeof(char));
-
-    int error = index == 0
-              ? segy_read_textheader(p_FILE, buffer)
-              : segy_read_ext_textheader(p_FILE, index - 1, buffer);
-
-    if (error != 0) {
-        free(buffer);
-        return PyErr_Format(PyExc_Exception, "Could not read text header: %s", strerror(errno));
-    }
-
-    size_t len = strlen( buffer );
-    PyObject *result = PyBytes_FromStringAndSize( buffer, len );
-    free(buffer);
-    return result;
 }
 
 static PyObject *py_write_texthdr(PyObject *self, PyObject *args) {
@@ -1319,7 +1342,6 @@ static PyMethodDef SegyMethods[] = {
         {"binheader_size",     (PyCFunction) py_binheader_size,     METH_NOARGS,  "Return the size of the binary header."},
         {"textheader_size",    (PyCFunction) py_textheader_size,    METH_NOARGS,  "Return the size of the text header."},
 
-        {"read_textheader",    (PyCFunction) py_read_texthdr,       METH_VARARGS, "Reads the text header from a segy file."},
         {"write_textheader",   (PyCFunction) py_write_texthdr,      METH_VARARGS, "Write the text header to a segy file."},
 
         {"empty_binaryheader", (PyCFunction) py_empty_binaryhdr,    METH_NOARGS,  "Create empty binary header for a segy file."},
