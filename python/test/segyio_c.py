@@ -35,26 +35,26 @@ class _segyioTests(unittest.TestCase):
 
     def test_open_non_existing_file(self):
         with self.assertRaises(IOError):
-            f = _segyio.open("non-existing", "r")
+            f = _segyio.segyiofd("non-existing", "r")
 
     def test_close_non_existing_file(self):
         with self.assertRaises(TypeError):
-            _segyio.close(None)
+            _segyio.segyiofd.close(None)
 
     def test_open_and_close_file(self):
-        f = _segyio.open(self.filename, "r")
-        _segyio.close(f)
+        f = _segyio.segyiofd(self.filename, "r")
+        f.close()
 
     def test_open_flush_and_close_file(self):
-        f = _segyio.open(self.filename, "r")
-        _segyio.flush(f)
-        _segyio.close(f)
+        f = _segyio.segyiofd(self.filename, "r")
+        f.flush()
+        f.close()
 
         with self.assertRaises(IOError):
-            _segyio.flush(f)
+            f.flush()
 
     def test_read_text_header(self, mmap=False):
-        f = _segyio.open(self.filename, "r")
+        f = _segyio.segyiofd(self.filename, "r")
         if mmap: _segyio.mmap(f)
 
         self.assertEqual(_segyio.read_textheader(f, 0), self.ACTUAL_TEXT_HEADER)
@@ -62,7 +62,7 @@ class _segyioTests(unittest.TestCase):
         with self.assertRaises(Exception):
             _segyio.read_texthdr(None, 0)
 
-        _segyio.close(f)
+        f.close()
 
     def test_read_text_header_mmap(self):
         self.test_read_text_header(True)
@@ -71,7 +71,7 @@ class _segyioTests(unittest.TestCase):
         with TestContext("write_text_header") as context:
             context.copy_file(self.filename)
 
-            f = _segyio.open("small.sgy", "r+")
+            f = _segyio.segyiofd("small.sgy", "r+")
             if mmap: _segyio.mmap(f)
 
             _segyio.write_textheader(f, 0, "")
@@ -86,7 +86,7 @@ class _segyioTests(unittest.TestCase):
             textheader = textheader.decode('ascii')  # Because in Python 3.5 bytes are not comparable to strings
             self.assertEqual(textheader, "yolo" * 800)
 
-            _segyio.close(f)
+            f.close()
 
     def test_write_text_header_mmap(self):
         self.test_write_text_header(True)
@@ -101,7 +101,7 @@ class _segyioTests(unittest.TestCase):
         with TestContext("read_and_write_bin_header") as context:
             context.copy_file(self.filename)
 
-            f = _segyio.open("small.sgy", "r+")
+            f = _segyio.segyiofd("small.sgy", "r+")
             if mmap: _segyio.mmap(f)
 
             binary_header = _segyio.read_binaryheader(f)
@@ -110,13 +110,13 @@ class _segyioTests(unittest.TestCase):
                 _segyio.write_binaryheader(f, "Not the correct type")
 
             _segyio.write_binaryheader(f, binary_header)
-            _segyio.close(f)
+            f.close()
 
     def test_read_and_write_binary_header_mmap(self):
         self.test_read_and_write_binary_header(True)
 
     def test_read_binary_header_fields(self, mmap=False):
-        f = _segyio.open(self.filename, "r")
+        f = _segyio.segyiofd(self.filename, "r")
         if mmap: _segyio.mmap(f)
 
         binary_header = _segyio.read_binaryheader(f)
@@ -130,13 +130,13 @@ class _segyioTests(unittest.TestCase):
         self.assertEqual(_segyio.get_field(binary_header, 3225), 1)
         self.assertEqual(_segyio.get_field(binary_header, 3221), 50)
 
-        _segyio.close(f)
+        f.close()
 
     def test_read_binary_header_fields_mmap(self):
         self.test_read_binary_header_fields(True)
 
     def test_line_metrics(self, mmap=False):
-        f = _segyio.open(self.filename, "r")
+        f = _segyio.segyiofd(self.filename, "r")
         if mmap: _segyio.mmap(f)
 
         binary_header = _segyio.read_binaryheader(f)
@@ -147,7 +147,7 @@ class _segyioTests(unittest.TestCase):
                                                  metrics['trace_count'],
                                                  metrics['trace0'],
                                                  metrics['trace_bsize']))
-        _segyio.close(f)
+        f.close()
 
         sorting = metrics['sorting']
         trace_count = metrics['trace_count']
@@ -181,7 +181,7 @@ class _segyioTests(unittest.TestCase):
         self.test_line_metrics(True)
 
     def test_metrics(self, mmap=False):
-        f = _segyio.open(self.filename, "r")
+        f = _segyio.segyiofd(self.filename, "r")
         if mmap: _segyio.mmap(f)
 
         binary_header = _segyio.read_binaryheader(f)
@@ -217,7 +217,7 @@ class _segyioTests(unittest.TestCase):
         self.assertEqual(metrics['iline_count'], 5)
         self.assertEqual(metrics['xline_count'], 5)
 
-        _segyio.close(f)
+        f.close()
 
         with self.assertRaises(IOError):
             metrics = _segyio.init_metrics(f, binary_header)
@@ -226,7 +226,7 @@ class _segyioTests(unittest.TestCase):
         self.test_metrics(True)
 
     def test_indices(self, mmap=False):
-        f = _segyio.open(self.filename, "r")
+        f = _segyio.segyiofd(self.filename, "r")
         if mmap: _segyio.mmap(f)
 
         binary_header = _segyio.read_binaryheader(f)
@@ -285,13 +285,13 @@ class _segyioTests(unittest.TestCase):
         self.assertListEqual([20, 21, 22, 23, 24], list(xline_indexes))
         self.assertListEqual([1], list(offsets))
 
-        _segyio.close(f)
+        f.close()
 
     def test_indices_mmap(self):
         self.test_indices(True)
 
     def test_fread_trace0(self, mmap=False):
-        f = _segyio.open(self.filename, "r")
+        f = _segyio.segyiofd(self.filename, "r")
         if mmap: _segyio.mmap(f)
 
         binary_header = _segyio.read_binaryheader(f)
@@ -335,7 +335,7 @@ class _segyioTests(unittest.TestCase):
         value = _segyio.fread_trace0(22, len(iline_indexes), line_metrics['xline_stride'], offset_count, xline_indexes, "crossline")
         self.assertEqual(value, 2)
 
-        _segyio.close(f)
+        f.close()
 
     def test_fread_trace0_mmap(self):
         self.test_fread_trace0(True)
@@ -367,7 +367,7 @@ class _segyioTests(unittest.TestCase):
         with TestContext("read_and_write_trace_header") as context:
             context.copy_file(self.filename)
 
-            f = _segyio.open("small.sgy", "r+")
+            f = _segyio.segyiofd("small.sgy", "r+")
             if mmap: _segyio.mmap(f)
 
             binary_header = _segyio.read_binaryheader(f)
@@ -403,14 +403,14 @@ class _segyioTests(unittest.TestCase):
             self.assertEqual(_segyio.get_field(trace_header, ilb), 99)
             self.assertEqual(_segyio.get_field(trace_header, xlb), 42)
 
-            _segyio.close(f)
+            f.close()
 
     def test_read_and_write_traceheader_mmap(self):
         self.test_read_and_write_traceheader(True)
 
     def test_read_and_write_trace(self, mmap=False):
         with TestContext("read_and_write_trace") as context:
-            f = _segyio.open("trace-wrt.sgy", "w+")
+            f = _segyio.segyiofd("trace-wrt.sgy", "w+")
             if mmap: _segyio.mmap(f)
 
             buf = numpy.ones(25, dtype=numpy.single)
@@ -419,7 +419,7 @@ class _segyioTests(unittest.TestCase):
             buf[:] = 42.0
             _segyio.write_trace(f, 1, buf, 0, 100, 1, 25)
 
-            _segyio.flush(f)
+            f.flush()
 
             buf = numpy.zeros(25, dtype=numpy.single)
 
@@ -432,13 +432,13 @@ class _segyioTests(unittest.TestCase):
 
             self.assertAlmostEqual(sum(buf), 42.0 * 25, places=4)
 
-            _segyio.close(f)
+            f.close()
 
     def test_read_and_write_trace_mmap(self):
         self.test_read_and_write_trace(True)
 
     def read_small(self, mmap = False):
-        f = _segyio.open(self.filename, "r")
+        f = _segyio.segyiofd(self.filename, "r")
 
         if mmap: _segyio.mmap(f)
 
@@ -490,7 +490,7 @@ class _segyioTests(unittest.TestCase):
         _segyio.read_line(f, iline_trace0, len(xline_idx), iline_stride, offsets, buf, tr0, bsz, 1, samples)
         self.assertAlmostEqual(sum(sum(buf)), 305.061146736, places=6)
 
-        _segyio.close(f)
+        f.close()
 
     def test_read_line_mmap(self):
         f, metrics, iline_idx, xline_idx = self.read_small(True)
@@ -513,7 +513,7 @@ class _segyioTests(unittest.TestCase):
         _segyio.read_line(f, iline_trace0, len(xline_idx), iline_stride, offsets, buf, tr0, bsz, 1, samples)
         self.assertAlmostEqual(sum(sum(buf)), 305.061146736, places=6)
 
-        _segyio.close(f)
+        f.close()
 
     def test_fread_trace0_for_depth(self):
         elements = list(range(25))

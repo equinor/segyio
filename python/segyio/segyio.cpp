@@ -8,109 +8,182 @@
 #  include <Python.h>
 #  include <bytesobject.h>
 #endif
+
 #include "segyio/segy.h"
-#include <assert.h>
-#include <string.h>
+
+#include <algorithm>
+#include <cstring>
+#include <stdexcept>
 
 #if PY_MAJOR_VERSION >= 3
 #define IS_PY3K
 #endif
 
-// ---------------  FILE Handling ------------
-static segy_file *get_FILE_pointer_from_capsule(PyObject *capsule) {
-    if (!PyCapsule_IsValid(capsule, "segy_file*")) {
-        PyErr_SetString(PyExc_TypeError, "The object was not of type FILE");
-        return NULL;
-    }
+namespace {
 
-    if(PyCapsule_GetDestructor(capsule) == NULL) {
-        PyErr_SetString(PyExc_IOError, "The file has already been closed");
-        return NULL;
-    }
+struct autofd {
+    explicit autofd( segy_file* p = NULL ) : fd( p ) {}
+    operator segy_file*() const;
+    operator bool() const;
 
-    segy_file *p_FILE = (segy_file*)PyCapsule_GetPointer(capsule, "segy_file*");
+    segy_file* fd;
+};
 
-    if (!p_FILE) {
-        PyErr_SetString(PyExc_ValueError, "File Handle is NULL");
-        return NULL;
-    }
-    return p_FILE;
-}
+autofd::operator segy_file*() const {
+    if( this->fd ) return this->fd;
 
-static void *py_FILE_destructor(PyObject *capsule) {
-#ifndef NDEBUG
-    fputs("segy_file* destructed before calling close()\n", stderr);
-#endif
+    PyErr_SetString( PyExc_IOError, "I/O operation on closed file" );
     return NULL;
 }
 
-static PyObject *py_FILE_open(PyObject *self, PyObject *args) {
+
+autofd::operator bool() const { return this->fd; }
+
+struct segyiofd {
+    PyObject_HEAD
+    autofd fd;
+};
+
+namespace fd {
+
+int init( segyiofd* self, PyObject* args, PyObject* ) {
     char *filename = NULL;
     char *mode = NULL;
     int mode_len = 0;
-    PyArg_ParseTuple(args, "ss#", &filename, &mode, &mode_len);
+    if( !PyArg_ParseTuple( args, "ss#", &filename, &mode, &mode_len ) )
+        return -1;
 
     if( mode_len == 0 ) {
-        PyErr_SetString(PyExc_ValueError, "Mode string must be non-empty");
-        return NULL;
+        PyErr_SetString( PyExc_ValueError, "Mode string must be non-empty" );
+        return -1;
     }
 
     if( mode_len > 3 ) {
         PyErr_Format( PyExc_ValueError, "Invalid mode string '%s'", mode );
-        return NULL;
+        return -1;
     }
 
-    segy_file *p_FILE = segy_open( filename, mode );
+    /* init can be called multiple times, which is treated as opening a new
+     * file on the same object. That means the previous file handle must be
+     * properly closed before the new file is set
+     */
+    segy_file* fd = segy_open( filename, mode );
 
-    if( !p_FILE && !strstr( "rb" "wb" "ab" "r+b" "w+b" "a+b", mode ) ) {
+    if( !fd && !strstr( "rb" "wb" "ab" "r+b" "w+b" "a+b", mode ) ) {
         PyErr_Format( PyExc_ValueError, "Invalid mode string '%s'", mode );
+        return -1;
+    }
+
+    if( !fd ) {
+        PyErr_Format( PyExc_IOError, "Unable to open file '%s'", filename );
+        return -1;
+    }
+
+    if( self->fd.fd ) segy_close( self->fd.fd );
+    self->fd.fd = fd;
+
+    return 0;
+}
+
+void dealloc( segyiofd* self ) {
+    if( self->fd ) segy_close( self->fd.fd );
+    Py_TYPE( self )->tp_free( (PyObject*) self );
+}
+
+PyObject* close( segyiofd* self ) {
+    errno = 0;
+
+    /* multiple close() is a no-op */
+    if( !self->fd ) return Py_BuildValue( "" );
+
+    segy_close( self->fd );
+    self->fd.fd = NULL;
+
+    if( errno ) return PyErr_SetFromErrno( PyExc_IOError );
+
+    return Py_BuildValue( "" );
+}
+
+PyObject* flush( segyiofd* self ) {
+    errno = 0;
+
+    segy_file* fp = self->fd;
+    if( !fp ) return NULL;
+
+    segy_flush( self->fd, false );
+    if( errno ) return PyErr_SetFromErrno( PyExc_IOError );
+
+    return Py_BuildValue( "" );
+}
+
+PyMethodDef methods [] = {
+    { "close", (PyCFunction) fd::close, METH_VARARGS, "Close file." },
+    { "flush", (PyCFunction) fd::flush, METH_VARARGS, "Flush file." },
+    { NULL }
+};
+
+}
+
+PyTypeObject Segyiofd = {
+    PyVarObject_HEAD_INIT( NULL, 0 )
+    "_segyio.segyfd",               /* name */
+    sizeof( segyiofd ),             /* basic size */
+    0,                              /* tp_itemsize */
+    (destructor)fd::dealloc,        /* tp_dealloc */
+    0,                              /* tp_print */
+    0,                              /* tp_getattr */
+    0,                              /* tp_setattr */
+    0,                              /* tp_compare */
+    0,                              /* tp_repr */
+    0,                              /* tp_as_number */
+    0,                              /* tp_as_sequence */
+    0,                              /* tp_as_mapping */
+    0,                              /* tp_hash */
+    0,                              /* tp_call */
+    0,                              /* tp_str */
+    0,                              /* tp_getattro */
+    0,                              /* tp_setattro */
+    0,                              /* tp_as_buffer */
+    Py_TPFLAGS_DEFAULT,             /* tp_flags */
+    "segyio file descriptor",       /* tp_doc */
+    0,                              /* tp_traverse */
+    0,                              /* tp_clear */
+    0,                              /* tp_richcompare */
+    0,                              /* tp_weaklistoffset */
+    0,                              /* tp_iter */
+    0,                              /* tp_iternext */
+    fd::methods,                    /* tp_methods */
+    0,                              /* tp_members */
+    0,                              /* tp_getset */
+    0,                              /* tp_base */
+    0,                              /* tp_dict */
+    0,                              /* tp_descr_get */
+    0,                              /* tp_descr_set */
+    0,                              /* tp_dictoffset */
+    (initproc)fd::init,             /* tp_init */
+};
+
+}
+
+
+static segy_file* get_FILE_pointer_from_capsule( PyObject* self ) {
+    if( !self ) {
+        PyErr_SetString( PyExc_TypeError, "The object was not of type FILE" );
         return NULL;
     }
 
-    if (p_FILE == NULL) {
-        return PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
+    if( !PyObject_TypeCheck( self, &Segyiofd ) ) {
+        PyErr_SetString( PyExc_TypeError, "The object was not of type FILE" );
+        return NULL;
     }
 
-    return PyCapsule_New(p_FILE, "segy_file*", (PyCapsule_Destructor) py_FILE_destructor);
-}
-
-static PyObject *py_FILE_close(PyObject *self, PyObject *args) {
-    errno = 0;
-    PyObject *file_capsule = NULL;
-    PyArg_ParseTuple(args, "O", &file_capsule);
-
-    segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
-
-    if (PyErr_Occurred()) { return NULL; }
-
-    segy_close(p_FILE);
-
-    if (errno != 0) {
-        return PyErr_SetFromErrno(PyExc_IOError);
+    segy_file* fp = ((segyiofd*)self)->fd;
+    if( !fp ) {
+        PyErr_SetString( PyExc_IOError, "I/O operation invalid on closed file" );
+        return NULL;
     }
 
-    PyCapsule_SetDestructor(file_capsule, NULL);
-
-    return Py_BuildValue("");
-}
-
-static PyObject *py_FILE_flush(PyObject *self, PyObject *args) {
-    errno = 0;
-    PyObject *file_capsule = NULL;
-    PyArg_ParseTuple(args, "O", &file_capsule);
-
-    segy_file* p_FILE = get_FILE_pointer_from_capsule(file_capsule);
-    if (PyErr_Occurred()) { return NULL; }
-
-    if( !p_FILE ) return Py_BuildValue("");
-
-    segy_flush(p_FILE, false );
-
-    if (errno != 0) {
-        return PyErr_SetFromErrno(PyExc_IOError);
-    }
-
-    return Py_BuildValue("");
+    return fp;
 }
 
 static PyObject *py_mmap(PyObject *self, PyObject* args) {
@@ -1242,9 +1315,6 @@ static PyObject* py_rotation(PyObject *self, PyObject* args) {
 
 /*  define functions in module */
 static PyMethodDef SegyMethods[] = {
-        {"open",               (PyCFunction) py_FILE_open,          METH_VARARGS, "Opens a file."},
-        {"close",              (PyCFunction) py_FILE_close,         METH_VARARGS, "Closes a file."},
-        {"flush",              (PyCFunction) py_FILE_flush,         METH_VARARGS, "Flushes a file."},
         {"mmap",               (PyCFunction) py_mmap,               METH_VARARGS, "Memory map a file."},
 
         {"binheader_size",     (PyCFunction) py_binheader_size,     METH_NOARGS,  "Return the size of the binary header."},
@@ -1294,11 +1364,28 @@ static struct PyModuleDef segyio_module = {
 
 PyMODINIT_FUNC
 PyInit__segyio(void) {
-    return PyModule_Create(&segyio_module);
+
+    Segyiofd.tp_new = PyType_GenericNew;
+    if( PyType_Ready( &Segyiofd ) < 0 ) return NULL;
+
+    PyObject* m = PyModule_Create(&segyio_module);
+
+    if( !m ) return NULL;
+
+    Py_INCREF( &Segyiofd );
+    PyModule_AddObject( m, "segyiofd", (PyObject*)&Segyiofd );
+
+    return m;
 }
 #else
 PyMODINIT_FUNC
 init_segyio(void) {
-    (void) Py_InitModule("_segyio", SegyMethods);
+    Segyiofd.tp_new = PyType_GenericNew;
+    if( PyType_Ready( &Segyiofd ) < 0 ) return;
+
+    PyObject* m = Py_InitModule("_segyio", SegyMethods);
+
+    Py_INCREF( &Segyiofd );
+    PyModule_AddObject( m, "segyiofd", (PyObject*)&Segyiofd );
 }
 #endif

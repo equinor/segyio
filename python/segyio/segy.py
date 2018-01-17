@@ -73,7 +73,7 @@ class SegyFile(object):
         self._xline = None
         self._gather = None
 
-        self.xfd = _segyio.open(filename, mode)
+        self.xfd = _segyio.segyiofd(filename, mode)
 
         super(SegyFile, self).__init__()
 
@@ -134,7 +134,7 @@ class SegyFile(object):
                 ...     # write something to f
                 ...     f.flush()
         """
-        _segyio.flush(self.xfd)
+        self.xfd.flush()
 
     def close(self):
         """Close the file.
@@ -146,7 +146,7 @@ class SegyFile(object):
         It is not necessary to call this method if you're using the `with`
         statement, which will close the file for you.
         """
-        _segyio.close(self.xfd)
+        self.xfd.close()
 
     def mmap(self):
         """Memory map the file
