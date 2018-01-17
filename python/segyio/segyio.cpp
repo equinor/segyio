@@ -116,9 +116,25 @@ PyObject* flush( segyiofd* self ) {
     return Py_BuildValue( "" );
 }
 
+PyObject* mmap( segyiofd* self ) {
+    segy_file* fp = self->fd;
+
+    if( !fp ) return NULL;
+
+    const int err = segy_mmap( fp );
+
+    if( err != SEGY_OK )
+        Py_RETURN_FALSE;
+
+    Py_RETURN_TRUE;
+}
+
+
 PyMethodDef methods [] = {
     { "close", (PyCFunction) fd::close, METH_VARARGS, "Close file." },
     { "flush", (PyCFunction) fd::flush, METH_VARARGS, "Flush file." },
+    { "mmap",  (PyCFunction) fd::mmap,  METH_NOARGS,  "mmap file."  },
+
     { NULL }
 };
 
@@ -184,21 +200,6 @@ static segy_file* get_FILE_pointer_from_capsule( PyObject* self ) {
     }
 
     return fp;
-}
-
-static PyObject *py_mmap(PyObject *self, PyObject* args) {
-    PyObject* file_capsule = NULL;
-    PyArg_ParseTuple(args, "O", &file_capsule);
-
-    segy_file* fp = get_FILE_pointer_from_capsule( file_capsule );
-    if (PyErr_Occurred()) { return NULL; }
-
-    int err = segy_mmap( fp );
-
-    if( err == SEGY_OK )
-        Py_RETURN_TRUE;
-
-    Py_RETURN_FALSE;
 }
 
 // ------------- ERROR Handling -------------
@@ -1315,8 +1316,6 @@ static PyObject* py_rotation(PyObject *self, PyObject* args) {
 
 /*  define functions in module */
 static PyMethodDef SegyMethods[] = {
-        {"mmap",               (PyCFunction) py_mmap,               METH_VARARGS, "Memory map a file."},
-
         {"binheader_size",     (PyCFunction) py_binheader_size,     METH_NOARGS,  "Return the size of the binary header."},
         {"textheader_size",    (PyCFunction) py_textheader_size,    METH_NOARGS,  "Return the size of the text header."},
 
