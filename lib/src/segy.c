@@ -1577,7 +1577,7 @@ int segy_read_ext_textheader( segy_file* fp, int pos, char *buf) {
 
     const long offset = pos == -1 ? 0 :
                         SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE +
-                        ((pos-1) * SEGY_TEXT_HEADER_SIZE);
+                        (pos * SEGY_TEXT_HEADER_SIZE);
 
 #ifdef HAVE_MMAP
     if ( fp->addr ) {
