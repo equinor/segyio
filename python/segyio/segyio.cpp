@@ -44,6 +44,16 @@ struct segyiofd {
     autofd fd;
 };
 
+PyObject* ValueError( const char* msg ) {
+    PyErr_SetString( PyExc_ValueError, msg );
+    return NULL;
+}
+
+PyObject* IndexError( const char* msg ) {
+    PyErr_SetString( PyExc_IndexError, msg );
+    return NULL;
+}
+
 namespace fd {
 
 int init( segyiofd* self, PyObject* args, PyObject* ) {
@@ -176,6 +186,40 @@ PyObject* gettext( segyiofd* self, PyObject* args ) {
     return PyBytes_FromStringAndSize( buffer, len );
 }
 
+PyObject* puttext( segyiofd* self, PyObject* args ) {
+    int index;
+    char* buffer;
+    int size;
+
+    if( !PyArg_ParseTuple(args, "is#", &index, &buffer, &size ) )
+        return NULL;
+
+    segy_file* fp = self->fd;
+    if( !fp ) return NULL;
+
+    size = std::min( size, SEGY_TEXT_HEADER_SIZE );
+    heapbuffer buf( SEGY_TEXT_HEADER_SIZE );
+    if( !buf ) return NULL;
+    std::copy( buffer, buffer + size, buf.ptr );
+
+    const int err = segy_write_textheader( fp, index, buf );
+
+    switch( err ) {
+        case SEGY_OK:
+            return Py_BuildValue("");
+
+        case SEGY_FSEEK_ERROR:
+        case SEGY_FWRITE_ERROR:
+            return PyErr_SetFromErrno( PyExc_IOError );
+
+        case SEGY_INVALID_ARGS:
+            return IndexError( "text header index out of range" );
+
+        default:
+            return PyErr_Format( PyExc_RuntimeError,
+                                 "unknown error code %d", err  );
+    }
+}
 
 
 PyMethodDef methods [] = {
@@ -184,6 +228,7 @@ PyMethodDef methods [] = {
     { "mmap",  (PyCFunction) fd::mmap,  METH_NOARGS,  "mmap file."  },
 
     { "gettext", (PyCFunction) fd::gettext, METH_VARARGS, "Get text header." },
+    { "puttext", (PyCFunction) fd::puttext, METH_VARARGS, "Put text header." },
 
     { NULL }
 };
@@ -332,34 +377,6 @@ static PyObject *py_handle_segy_error_with_index_and_name(int error, int errno_e
 
 static PyObject *py_textheader_size(PyObject *self) {
     return Py_BuildValue("i", SEGY_TEXT_HEADER_SIZE);
-}
-
-static PyObject *py_write_texthdr(PyObject *self, PyObject *args) {
-    errno = 0;
-    PyObject *file_capsule = NULL;
-    int index;
-    char *buffer;
-    int size;
-
-    char buf[ SEGY_TEXT_HEADER_SIZE + 1 ] = { 0 };
-
-    PyArg_ParseTuple(args, "Ois#", &file_capsule, &index, &buffer, &size);
-
-    if( size > SEGY_TEXT_HEADER_SIZE )
-        size = SEGY_TEXT_HEADER_SIZE;
-
-    memcpy( buf, buffer, size );
-
-    segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
-    if (PyErr_Occurred()) { return NULL; }
-
-    int error = segy_write_textheader(p_FILE, index, buf);
-
-    if (error == 0) {
-        return Py_BuildValue("");
-    } else {
-        return py_handle_segy_error(error, errno);
-    }
 }
 
 // ------------ Binary and Trace Header ------------
@@ -1341,8 +1358,6 @@ static PyObject* py_rotation(PyObject *self, PyObject* args) {
 static PyMethodDef SegyMethods[] = {
         {"binheader_size",     (PyCFunction) py_binheader_size,     METH_NOARGS,  "Return the size of the binary header."},
         {"textheader_size",    (PyCFunction) py_textheader_size,    METH_NOARGS,  "Return the size of the text header."},
-
-        {"write_textheader",   (PyCFunction) py_write_texthdr,      METH_VARARGS, "Write the text header to a segy file."},
 
         {"empty_binaryheader", (PyCFunction) py_empty_binaryhdr,    METH_NOARGS,  "Create empty binary header for a segy file."},
         {"read_binaryheader",  (PyCFunction) py_read_binaryhdr,     METH_VARARGS, "Read the binary header from a segy file."},
