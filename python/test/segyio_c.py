@@ -74,13 +74,13 @@ class _segyioTests(unittest.TestCase):
             f = _segyio.segyiofd("small.sgy", "r+")
             if mmap: f.mmap()
 
-            _segyio.write_textheader(f, 0, "")
+            f.puttext(0, "")
 
             textheader = f.gettext(0)
             textheader = textheader.decode('ascii')
             self.assertEqual(textheader, "" * 3200)
 
-            _segyio.write_textheader(f, 0, "yolo" * 800)
+            f.puttext(0, "yolo" * 800)
 
             textheader = f.gettext(0)
             textheader = textheader.decode('ascii')  # Because in Python 3.5 bytes are not comparable to strings

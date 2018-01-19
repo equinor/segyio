@@ -1152,7 +1152,7 @@ class TextHeader(object):
         if index > self.outer.ext_headers:
             raise IndexError("Textual header {} not in file".format(index))
 
-        _segyio.write_textheader(self.outer.xfd, index, val)
+        self.outer.xfd.puttext(index, val)
 
     def __repr__(self):
         return "Text(external_headers = {})".format(self.outer.ext_headers)
