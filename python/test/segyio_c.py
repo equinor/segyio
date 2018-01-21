@@ -372,17 +372,17 @@ class _segyioTests(unittest.TestCase):
             empty = _segyio.empty_traceheader()
 
             with self.assertRaises(TypeError):
-                trace_header = _segyio.read_traceheader("+", )
+                trace_header = f.getth("+")
 
             with self.assertRaises(TypeError):
-                trace_header = _segyio.read_traceheader(f, 0, None)
+                trace_header = f.getth(0, None)
 
-            trace_header = _segyio.read_traceheader(f, 0, _segyio.empty_traceheader(), metrics['trace0'], metrics['trace_bsize'])
+            trace_header = f.getth(0, _segyio.empty_traceheader(), metrics['trace0'], metrics['trace_bsize'])
 
             self.assertEqual(_segyio.get_field(trace_header, ilb), 1)
             self.assertEqual(_segyio.get_field(trace_header, xlb), 20)
 
-            trace_header = _segyio.read_traceheader(f, 1, _segyio.empty_traceheader(), metrics['trace0'], metrics['trace_bsize'])
+            trace_header = f.getth(1, _segyio.empty_traceheader(), metrics['trace0'], metrics['trace_bsize'])
 
             self.assertEqual(_segyio.get_field(trace_header, ilb), 1)
             self.assertEqual(_segyio.get_field(trace_header, xlb), 21)
@@ -392,7 +392,7 @@ class _segyioTests(unittest.TestCase):
 
             _segyio.write_traceheader(f, 0, trace_header, metrics['trace0'], metrics['trace_bsize'])
 
-            trace_header = _segyio.read_traceheader(f, 0, _segyio.empty_traceheader(), metrics['trace0'], metrics['trace_bsize'])
+            trace_header = f.getth(0, _segyio.empty_traceheader(), metrics['trace0'], metrics['trace_bsize'])
 
             self.assertEqual(_segyio.get_field(trace_header, ilb), 99)
             self.assertEqual(_segyio.get_field(trace_header, xlb), 42)

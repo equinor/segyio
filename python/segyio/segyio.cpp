@@ -44,6 +44,18 @@ struct segyiofd {
     autofd fd;
 };
 
+struct buffer_guard {
+    explicit buffer_guard( Py_buffer& b ) : buffer( &b ) {}
+    ~buffer_guard() { PyBuffer_Release( this->buffer ); }
+
+    Py_buffer* buffer;
+};
+
+PyObject* TypeError( const char* msg ) {
+    PyErr_SetString( PyExc_TypeError, msg );
+    return NULL;
+}
+
 PyObject* ValueError( const char* msg ) {
     PyErr_SetString( PyExc_ValueError, msg );
     return NULL;
@@ -51,6 +63,11 @@ PyObject* ValueError( const char* msg ) {
 
 PyObject* IndexError( const char* msg ) {
     PyErr_SetString( PyExc_IndexError, msg );
+    return NULL;
+}
+
+PyObject* BufferError( const char* msg ) {
+    PyErr_SetString( PyExc_BufferError, msg );
     return NULL;
 }
 
@@ -268,6 +285,52 @@ PyObject* putbin( segyiofd* self, PyObject* args ) {
     }
 }
 
+PyObject* getth( segyiofd* self, PyObject *args ) {
+    segy_file* fp = self->fd;
+    if( !fp ) return NULL;
+
+    int traceno;
+    PyObject* bufferobj;
+    long trace0;
+    int trace_bsize;
+
+    if( !PyArg_ParseTuple( args, "iOli", &traceno,
+                                         &bufferobj,
+                                         &trace0,
+                                         &trace_bsize ) )
+        return NULL;
+
+    Py_buffer buffer;
+    if( !PyObject_CheckBuffer( bufferobj ) )
+        return TypeError( "expected buffer object" );
+
+    if( PyObject_GetBuffer( bufferobj, &buffer,
+        PyBUF_WRITEABLE | PyBUF_C_CONTIGUOUS ) )
+        return BufferError( "buffer not contiguous-writeable" );
+
+    buffer_guard g( buffer );
+
+    if( buffer.len < SEGY_TRACE_HEADER_SIZE )
+        return PyErr_Format( PyExc_ValueError, "trace header too small" );
+
+    char* buf = (char*)buffer.buf;
+    int err = segy_traceheader( fp, traceno, buf, trace0, trace_bsize );
+
+    switch( err ) {
+        case SEGY_OK:
+            Py_INCREF( bufferobj );
+            return bufferobj;
+
+        case SEGY_FSEEK_ERROR:
+        case SEGY_FREAD_ERROR:
+            return PyErr_SetFromErrno( PyExc_IOError );
+
+        default:
+            return PyErr_Format( PyExc_RuntimeError,
+                                 "unknown error code %d", err  );
+    }
+}
+
 
 
 PyMethodDef methods [] = {
@@ -281,6 +344,7 @@ PyMethodDef methods [] = {
     { "getbin", (PyCFunction) fd::getbin, METH_VARARGS, "Get binary header." },
     { "putbin", (PyCFunction) fd::putbin, METH_VARARGS, "Put binary header." },
 
+    { "getth", (PyCFunction) fd::getth, METH_VARARGS,  "Get trace header." },
     { NULL }
 };
 
@@ -330,7 +394,7 @@ PyTypeObject Segyiofd = {
 
 static segy_file* get_FILE_pointer_from_capsule( PyObject* self ) {
     if( !self ) {
-        PyErr_SetString( PyExc_TypeError, "The object was not of type FILE" );
+        PyErr_SetString( PyExc_TypeError, "The object was not of type FILE, was NULL" );
         return NULL;
     }
 
@@ -443,12 +507,17 @@ static char *get_header_pointer_from_capsule(PyObject *capsule, int *length) {
         return PyBytes_AsString( capsule );
     }
 
-    if (PyCapsule_IsValid(capsule, "TraceHeader=char*")) {
-        if (length) {
-            *length = SEGY_TRACE_HEADER_SIZE;
+    if( PyByteArray_Check( capsule ) ) {
+        Py_ssize_t len = PyByteArray_Size( capsule );
+        if( len < SEGY_TRACE_HEADER_SIZE ) {
+            PyErr_SetString( PyExc_TypeError, "trace header too small" );
+            return NULL;
         }
-        return (char*)PyCapsule_GetPointer(capsule, "TraceHeader=char*");
+
+        if( length ) *length = len;
+        return PyByteArray_AsString( capsule );
     }
+
     PyErr_SetString(PyExc_TypeError, "The object was not a header type");
     return NULL;
 }
@@ -519,71 +588,26 @@ static PyObject *py_empty_binaryhdr(PyObject *self) {
 }
 
 // -------------- Trace Headers ----------
-static char *get_trace_header_pointer_from_capsule(PyObject *capsule) {
-    if (!PyCapsule_IsValid(capsule, "TraceHeader=char*")) {
-        PyErr_Format(PyExc_TypeError, "The object was not of type TraceHeader.");
-        return NULL;
-    }
-    return (char*)PyCapsule_GetPointer(capsule, "TraceHeader=char*");
-}
-
-static void *py_trace_header_destructor(PyObject *capsule) {
-    char *trace_header = get_trace_header_pointer_from_capsule(capsule);
-    free(trace_header);
-    return NULL;
-}
-
 static PyObject *py_empty_trace_header(PyObject *self) {
-    errno = 0;
-    char *buffer = (char*)calloc(SEGY_TRACE_HEADER_SIZE, sizeof(char));
-    return PyCapsule_New(buffer, "TraceHeader=char*", (PyCapsule_Destructor) py_trace_header_destructor);
-}
-
-static PyObject *py_read_trace_header(PyObject *self, PyObject *args) {
-    errno = 0;
-    PyObject *file_capsule = NULL;
-    int traceno;
-    PyObject *trace_header_capsule = NULL;
-    long trace0;
-    int trace_bsize;
-
-    PyArg_ParseTuple(args, "OiOli", &file_capsule, &traceno, &trace_header_capsule, &trace0, &trace_bsize);
-
-    segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
-
-    if (PyErr_Occurred()) { return NULL; }
-
-    char *buffer = get_trace_header_pointer_from_capsule(trace_header_capsule);
-
-    if (PyErr_Occurred()) { return NULL; }
-
-    int error = segy_traceheader(p_FILE, traceno, buffer, trace0, trace_bsize);
-
-    if (error == 0) {
-        Py_IncRef(trace_header_capsule);
-        return trace_header_capsule;
-    } else {
-        return py_handle_segy_error(error, errno);
-    }
+    char buffer[ SEGY_TRACE_HEADER_SIZE ] = {};
+    return PyByteArray_FromStringAndSize( buffer, sizeof( buffer ) );
 }
 
 static PyObject *py_write_trace_header(PyObject *self, PyObject *args) {
     errno = 0;
     PyObject *file_capsule = NULL;
     int traceno;
-    PyObject *trace_header_capsule = NULL;
+    Py_buffer buf;
     long trace0;
     int trace_bsize;
 
-    PyArg_ParseTuple(args, "OiOli", &file_capsule, &traceno, &trace_header_capsule, &trace0, &trace_bsize);
+    PyArg_ParseTuple(args, "Ois*li", &file_capsule, &traceno, &buf, &trace0, &trace_bsize);
 
     segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
 
     if (PyErr_Occurred()) { return NULL; }
 
-    char *buffer = get_trace_header_pointer_from_capsule(trace_header_capsule);
-
-    if (PyErr_Occurred()) { return NULL; }
+    char *buffer = (char*)buf.buf;
 
     int error = segy_write_traceheader(p_FILE, traceno, buffer, trace0, trace_bsize);
 
@@ -1367,7 +1391,6 @@ static PyMethodDef SegyMethods[] = {
         {"empty_binaryheader", (PyCFunction) py_empty_binaryhdr,    METH_NOARGS,  "Create empty binary header for a segy file."},
 
         {"empty_traceheader",  (PyCFunction) py_empty_trace_header, METH_NOARGS,  "Create empty trace header for a segy file."},
-        {"read_traceheader",   (PyCFunction) py_read_trace_header,  METH_VARARGS, "Read a trace header from a segy file."},
         {"write_traceheader",  (PyCFunction) py_write_trace_header, METH_VARARGS, "Write a trace header to a segy file."},
         {"field_forall",       (PyCFunction) py_field_forall,       METH_VARARGS, "Read a single attribute from a set of headers."},
         {"field_foreach",      (PyCFunction) py_field_foreach,      METH_VARARGS, "Read a single attribute from a set of headers, given by a list of indices."},
