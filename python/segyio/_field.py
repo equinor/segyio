@@ -80,7 +80,7 @@ class Field(object):
     @classmethod
     def binary(cls, segy):
         try:
-            buf = segyio._segyio.read_binaryheader(segy.xfd)
+            buf = segy.xfd.getbin()
         except IOError:
             # the file was probably newly created and the binary header hasn't
             # been written yet.  if this is the case we want to try and write

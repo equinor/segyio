@@ -93,9 +93,6 @@ class _segyioTests(unittest.TestCase):
 
     def test_read_and_write_binary_header(self, mmap=False):
         with self.assertRaises(Exception):
-            hdr = _segyio.read_binaryheader(None)
-
-        with self.assertRaises(Exception):
             _segyio.write_binaryheader(None, None)
 
         with TestContext("read_and_write_bin_header") as context:
@@ -104,7 +101,7 @@ class _segyioTests(unittest.TestCase):
             f = _segyio.segyiofd("small.sgy", "r+")
             if mmap: f.mmap()
 
-            binary_header = _segyio.read_binaryheader(f)
+            binary_header = f.getbin()
 
             with self.assertRaises(Exception):
                 _segyio.write_binaryheader(f, "Not the correct type")
@@ -119,7 +116,7 @@ class _segyioTests(unittest.TestCase):
         f = _segyio.segyiofd(self.filename, "r")
         if mmap: f.mmap()
 
-        binary_header = _segyio.read_binaryheader(f)
+        binary_header = f.getbin()
 
         with self.assertRaises(TypeError):
             value = _segyio.get_field("s", 0)
@@ -139,7 +136,7 @@ class _segyioTests(unittest.TestCase):
         f = _segyio.segyiofd(self.filename, "r")
         if mmap: f.mmap()
 
-        binary_header = _segyio.read_binaryheader(f)
+        binary_header = f.getbin()
         ilb = 189
         xlb = 193
         metrics = _segyio.init_metrics(f, binary_header)
@@ -184,7 +181,7 @@ class _segyioTests(unittest.TestCase):
         f = _segyio.segyiofd(self.filename, "r")
         if mmap: f.mmap()
 
-        binary_header = _segyio.read_binaryheader(f)
+        binary_header = f.getbin()
         ilb = 189
         xlb = 193
 
@@ -229,7 +226,7 @@ class _segyioTests(unittest.TestCase):
         f = _segyio.segyiofd(self.filename, "r")
         if mmap: f.mmap()
 
-        binary_header = _segyio.read_binaryheader(f)
+        binary_header = f.getbin()
         ilb = 189
         xlb = 193
         metrics = _segyio.init_metrics(f, binary_header)
@@ -294,7 +291,7 @@ class _segyioTests(unittest.TestCase):
         f = _segyio.segyiofd(self.filename, "r")
         if mmap: f.mmap()
 
-        binary_header = _segyio.read_binaryheader(f)
+        binary_header = f.getbin()
         ilb = 189
         xlb = 193
 
@@ -370,7 +367,7 @@ class _segyioTests(unittest.TestCase):
             f = _segyio.segyiofd("small.sgy", "r+")
             if mmap: f.mmap()
 
-            binary_header = _segyio.read_binaryheader(f)
+            binary_header = f.getbin()
             ilb = 189
             xlb = 193
             metrics = _segyio.init_metrics(f, binary_header)
@@ -442,7 +439,7 @@ class _segyioTests(unittest.TestCase):
 
         if mmap: f.mmap()
 
-        binary_header = _segyio.read_binaryheader(f)
+        binary_header = f.getbin()
         ilb = 189
         xlb = 193
 
