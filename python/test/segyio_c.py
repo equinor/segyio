@@ -92,9 +92,6 @@ class _segyioTests(unittest.TestCase):
         self.test_write_text_header(True)
 
     def test_read_and_write_binary_header(self, mmap=False):
-        with self.assertRaises(Exception):
-            _segyio.write_binaryheader(None, None)
-
         with TestContext("read_and_write_bin_header") as context:
             context.copy_file(self.filename)
 
@@ -103,10 +100,10 @@ class _segyioTests(unittest.TestCase):
 
             binary_header = f.getbin()
 
-            with self.assertRaises(Exception):
-                _segyio.write_binaryheader(f, "Not the correct type")
+            with self.assertRaises(ValueError):
+                f.putbin("Buffer too small")
 
-            _segyio.write_binaryheader(f, binary_header)
+            f.putbin(binary_header)
             f.close()
 
     def test_read_and_write_binary_header_mmap(self):
