@@ -89,7 +89,7 @@ class Field(object):
             buf = segyio._segyio.empty_binaryheader()
 
         def wr(buf, *_):
-            segyio._segyio.write_binaryheader(segy.xfd, buf)
+            segy.xfd.putbin(buf)
 
         return Field(buf, write=wr, field_type=BinField, keys = Field._bin_keys)
 

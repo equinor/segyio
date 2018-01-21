@@ -243,6 +243,32 @@ PyObject* getbin( segyiofd* self ) {
     }
 }
 
+PyObject* putbin( segyiofd* self, PyObject* args ) {
+    segy_file* fp = self->fd;
+    if( !fp ) return NULL;
+
+    const char* buffer;
+    int len;
+    if( !PyArg_ParseTuple(args, "s#", &buffer, &len ) ) return NULL;
+
+    if( len < SEGY_BINARY_HEADER_SIZE )
+        return ValueError( "binary header too small" );
+
+    const int err = segy_write_binheader( fp, buffer );
+
+    switch( err ) {
+        case SEGY_OK: return Py_BuildValue("");
+        case SEGY_FSEEK_ERROR:
+        case SEGY_FREAD_ERROR:
+            return PyErr_SetFromErrno( PyExc_IOError );
+
+        default:
+            return PyErr_Format( PyExc_RuntimeError,
+                                 "unknown error code %d", err  );
+    }
+}
+
+
 
 PyMethodDef methods [] = {
     { "close", (PyCFunction) fd::close, METH_VARARGS, "Close file." },
@@ -252,7 +278,8 @@ PyMethodDef methods [] = {
     { "gettext", (PyCFunction) fd::gettext, METH_VARARGS, "Get text header." },
     { "puttext", (PyCFunction) fd::puttext, METH_VARARGS, "Put text header." },
 
-    { "getbin", (PyCFunction) fd::getbin, METH_NOARGS, "Get binary header." },
+    { "getbin", (PyCFunction) fd::getbin, METH_VARARGS, "Get binary header." },
+    { "putbin", (PyCFunction) fd::putbin, METH_VARARGS, "Put binary header." },
 
     { NULL }
 };
@@ -489,28 +516,6 @@ static PyObject *py_binheader_size(PyObject *self) {
 static PyObject *py_empty_binaryhdr(PyObject *self) {
     char buffer[ SEGY_BINARY_HEADER_SIZE ] = {};
     return PyBytes_FromStringAndSize( buffer, sizeof( buffer ) );
-}
-
-static PyObject *py_write_binaryhdr(PyObject *self, PyObject *args) {
-    errno = 0;
-    PyObject *file_capsule = NULL;
-    PyObject *binary_header_capsule = NULL;
-
-    PyArg_ParseTuple(args, "OO", &file_capsule, &binary_header_capsule);
-
-    segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
-    if (PyErr_Occurred()) { return NULL; }
-
-    char *binary_header = get_header_pointer_from_capsule(binary_header_capsule, NULL);
-    if (PyErr_Occurred()) { return NULL; }
-
-    int error = segy_write_binheader(p_FILE, binary_header);
-
-    if (error == 0) {
-        return Py_BuildValue("");
-    } else {
-        return py_handle_segy_error(error, errno);
-    }
 }
 
 // -------------- Trace Headers ----------
@@ -1360,7 +1365,6 @@ static PyMethodDef SegyMethods[] = {
         {"textheader_size",    (PyCFunction) py_textheader_size,    METH_NOARGS,  "Return the size of the text header."},
 
         {"empty_binaryheader", (PyCFunction) py_empty_binaryhdr,    METH_NOARGS,  "Create empty binary header for a segy file."},
-        {"write_binaryheader", (PyCFunction) py_write_binaryhdr,    METH_VARARGS, "Write the binary header to a segy file."},
 
         {"empty_traceheader",  (PyCFunction) py_empty_trace_header, METH_NOARGS,  "Create empty trace header for a segy file."},
         {"read_traceheader",   (PyCFunction) py_read_trace_header,  METH_VARARGS, "Read a trace header from a segy file."},
