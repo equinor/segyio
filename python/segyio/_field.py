@@ -105,7 +105,7 @@ class Field(object):
             buf = segyio._segyio.empty_traceheader()
 
         try:
-            segyio._segyio.read_traceheader(segy.xfd, traceno, buf, segy._tr0, segy._bsz)
+            segy.xfd.getth(traceno, buf, segy._tr0, segy._bsz)
         except IOError:
             # the file was probably newly created and the trace header hasn't
             # been written yet.  if this is the case we want to try and write
