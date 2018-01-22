@@ -785,6 +785,51 @@ PyObject* gettr( segyiofd* self, PyObject* args ) {
     return bufferobj;
 }
 
+PyObject* puttr( segyiofd* self, PyObject* args ) {
+    segy_file* fp = self->fd;
+    if( !fp ) return NULL;
+
+    int trace_no;
+    float* buffer;
+    Py_ssize_t buflen;
+    long trace0;
+    int trace_bsize;
+    int format;
+    int samples;
+
+    if( !PyArg_ParseTuple( args, "is#liii", &trace_no,
+                                            &buffer, &buflen,
+                                            &trace0, &trace_bsize,
+                                            &format, &samples ) )
+        return NULL;
+
+    int err = segy_from_native( format, samples, buffer );
+
+    if( err != SEGY_OK )
+        return RuntimeError( "unable to convert to native format" );
+
+    err = segy_writetrace( fp, trace_no,
+                               buffer,
+                               trace0, trace_bsize );
+
+    const int conv_err = segy_to_native( format, samples, buffer );
+
+    if( conv_err != SEGY_OK )
+        return RuntimeError( "unable to preserve native float format" );
+
+    switch( err ) {
+        case SEGY_OK: return Py_BuildValue("");
+
+        case SEGY_FSEEK_ERROR:
+        case SEGY_FWRITE_ERROR:
+            return PyErr_SetFromErrno( PyExc_IOError );
+
+        default:
+            return PyErr_Format( PyExc_RuntimeError,
+                                 "unknown error code %d", err  );
+    }
+}
+
 
 PyMethodDef methods [] = {
     { "close", (PyCFunction) fd::close, METH_VARARGS, "Close file." },
@@ -804,6 +849,7 @@ PyMethodDef methods [] = {
     { "field_foreach", (PyCFunction) fd::field_foreach, METH_VARARGS, "Field for-each." },
 
     { "gettr", (PyCFunction) fd::gettr, METH_VARARGS, "Get trace." },
+    { "puttr", (PyCFunction) fd::puttr, METH_VARARGS, "Put trace." },
 
     { "metrics",      (PyCFunction) fd::metrics,      METH_VARARGS, "Cube metrics."    },
     { "cube_metrics", (PyCFunction) fd::cube_metrics, METH_VARARGS, "Cube metrics."    },
@@ -1169,53 +1215,6 @@ static PyObject *py_fread_trace0(PyObject *self, PyObject *args) {
     return Py_BuildValue("i", trace_no);
 }
 
-static PyObject *py_write_trace(PyObject *self, PyObject *args) {
-    errno = 0;
-    PyObject *file_capsule = NULL;
-    int trace_no;
-    PyObject *buffer_in;
-    long trace0;
-    int trace_bsize;
-    int format;
-    int samples;
-
-    PyArg_ParseTuple(args, "OiOliii", &file_capsule, &trace_no, &buffer_in, &trace0, &trace_bsize, &format, &samples);
-
-    segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
-
-    if (PyErr_Occurred()) { return NULL; }
-
-    if (!PyObject_CheckBuffer(buffer_in)) {
-        PyErr_SetString(PyExc_TypeError, "The source buffer is not of the correct type.");
-        return NULL;
-    }
-    Py_buffer buffer;
-    PyObject_GetBuffer(buffer_in, &buffer, PyBUF_FORMAT | PyBUF_C_CONTIGUOUS | PyBUF_WRITEABLE);
-
-    int error = segy_from_native(format, samples, (float*)buffer.buf);
-
-    if (error != 0) {
-        PyErr_SetString(PyExc_TypeError, "Unable to convert buffer from native format.");
-        PyBuffer_Release( &buffer );
-        return NULL;
-    }
-
-    error = segy_writetrace(p_FILE, trace_no, (float*)buffer.buf, trace0, trace_bsize);
-    int conv_error = segy_to_native(format, samples, (float*)buffer.buf);
-    PyBuffer_Release( &buffer );
-
-    if (error != 0) {
-        return py_handle_segy_error_with_index_and_name(error, errno, trace_no, "Trace");
-    }
-
-    if (conv_error != 0) {
-        PyErr_SetString(PyExc_TypeError, "Unable to convert buffer to native format.");
-        return NULL;
-    }
-
-    return Py_BuildValue("");
-}
-
 static PyObject *py_read_line(PyObject *self, PyObject *args) {
     errno = 0;
     PyObject *file_capsule = NULL;
@@ -1414,7 +1413,6 @@ static PyMethodDef SegyMethods[] = {
 
         {"init_line_metrics",  (PyCFunction) py_init_line_metrics,  METH_VARARGS, "Find the length and stride of inline and crossline."},
         {"fread_trace0",       (PyCFunction) py_fread_trace0,       METH_VARARGS, "Find trace0 of a line."},
-        {"write_trace",        (PyCFunction) py_write_trace,        METH_VARARGS, "Write trace data."},
         {"read_line",          (PyCFunction) py_read_line,          METH_VARARGS, "Read a xline/iline from file."},
         {"depth_slice",        (PyCFunction) py_read_depth_slice,   METH_VARARGS, "Read a depth slice."},
         {"get_dt",             (PyCFunction) py_get_dt,             METH_VARARGS, "Read dt from file."},

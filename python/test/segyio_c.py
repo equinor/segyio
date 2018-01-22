@@ -396,9 +396,9 @@ class _segyioTests(unittest.TestCase):
 
             buf = numpy.ones(25, dtype=numpy.single)
             buf[11] = 3.1415
-            _segyio.write_trace(f, 0, buf, 0, 100, 1, 25)
+            f.puttr(0, buf, 0, 100, 1, 25)
             buf[:] = 42.0
-            _segyio.write_trace(f, 1, buf, 0, 100, 1, 25)
+            f.puttr(1, buf, 0, 100, 1, 25)
 
             f.flush()
 

@@ -104,10 +104,9 @@ class Trace:
         if isinstance(buf, np.ndarray) and buf.dtype != np.single:
             raise TypeError("Numpy array must be of type single")
 
-        segyio._segyio.write_trace(segy.xfd, traceno,
-                                   buf,
-                                   segy._tr0, segy._bsz,
-                                   segy._fmt, len(segy.samples))
+        segy.xfd.puttr(traceno, buf,
+                       segy._tr0, segy._bsz,
+                       segy._fmt, len(segy.samples))
 
     @property
     def raw(self):
