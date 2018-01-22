@@ -137,10 +137,10 @@ class _segyioTests(unittest.TestCase):
         ilb = 189
         xlb = 193
         metrics = _segyio.init_metrics(f, binary_header)
-        metrics.update(_segyio.init_cube_metrics(f, ilb, xlb,
-                                                 metrics['trace_count'],
-                                                 metrics['trace0'],
-                                                 metrics['trace_bsize']))
+        metrics.update(f.cube_metrics(ilb, xlb,
+                                      metrics['trace_count'],
+                                      metrics['trace0'],
+                                      metrics['trace_bsize']))
         f.close()
 
         sorting = metrics['sorting']
@@ -190,16 +190,16 @@ class _segyioTests(unittest.TestCase):
 
         with self.assertRaises(IndexError):
             metrics = _segyio.init_metrics(f, binary_header)
-            metrics.update(_segyio.init_cube_metrics(f, ilb + 1, xlb,
-                                                     metrics['trace_count'],
-                                                     metrics['trace0'],
-                                                     metrics['trace_bsize']))
+            metrics.update(f.cube_metrics(ilb + 1, xlb,
+                                          metrics['trace_count'],
+                                          metrics['trace0'],
+                                          metrics['trace_bsize']))
 
         metrics = _segyio.init_metrics(f, binary_header)
-        metrics.update(_segyio.init_cube_metrics(f, ilb, xlb,
-                                                 metrics['trace_count'],
-                                                 metrics['trace0'],
-                                                 metrics['trace_bsize']))
+        metrics.update(f.cube_metrics(ilb, xlb,
+                                      metrics['trace_count'],
+                                      metrics['trace0'],
+                                      metrics['trace_bsize']))
 
         self.assertEqual(metrics['trace0'], _segyio.textheader_size() + _segyio.binheader_size())
         self.assertEqual(metrics['sample_count'], 50)
@@ -264,10 +264,10 @@ class _segyioTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             _segyio.init_indices(f, dummy_metrics, two, one, off)
 
-        metrics.update(_segyio.init_cube_metrics(f, ilb, xlb,
-                                                 metrics['trace_count'],
-                                                 metrics['trace0'],
-                                                 metrics['trace_bsize']))
+        metrics.update(f.cube_metrics(ilb, xlb,
+                                      metrics['trace_count'],
+                                      metrics['trace0'],
+                                      metrics['trace_bsize']))
 
         # Happy Path
         iline_indexes = numpy.zeros(metrics['iline_count'], dtype=numpy.intc)
@@ -293,10 +293,10 @@ class _segyioTests(unittest.TestCase):
         xlb = 193
 
         metrics = _segyio.init_metrics(f, binary_header)
-        metrics.update(_segyio.init_cube_metrics(f, ilb, xlb,
-                                                 metrics['trace_count'],
-                                                 metrics['trace0'],
-                                                 metrics['trace_bsize']))
+        metrics.update(f.cube_metrics(ilb, xlb,
+                                      metrics['trace_count'],
+                                      metrics['trace0'],
+                                      metrics['trace_bsize']))
 
         sorting = metrics['sorting']
         trace_count = metrics['trace_count']
@@ -441,10 +441,10 @@ class _segyioTests(unittest.TestCase):
         xlb = 193
 
         metrics = _segyio.init_metrics(f, binary_header)
-        metrics.update(_segyio.init_cube_metrics(f, ilb, xlb,
-                                                 metrics['trace_count'],
-                                                 metrics['trace0'],
-                                                 metrics['trace_bsize']))
+        metrics.update(f.cube_metrics(ilb, xlb,
+                                      metrics['trace_count'],
+                                      metrics['trace0'],
+                                      metrics['trace_bsize']))
 
         sorting = metrics['sorting']
         trace_count = metrics['trace_count']
