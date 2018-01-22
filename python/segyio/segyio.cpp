@@ -481,6 +481,46 @@ PyObject* field_foreach( segyiofd* self, PyObject* args ) {
     return buffer_out;
 }
 
+PyObject* metrics( segyiofd* self, PyObject* args ) {
+    segy_file* fp = self->fd;
+    if( !fp ) return NULL;
+
+    const char* binary;
+    int len = 0;
+    if( !PyArg_ParseTuple(args, "s#", &binary, &len ) ) return NULL;
+
+    if( len < SEGY_BINARY_HEADER_SIZE )
+        return ValueError( "binary header too small" );
+
+    long trace0 = segy_trace0( binary );
+    int sample_count = segy_samples( binary );
+    int format = segy_format( binary );
+    int trace_bsize = segy_trace_bsize( sample_count );
+
+    int trace_count = 0;
+    const int err = segy_traces( fp, &trace_count, trace0, trace_bsize );
+
+    switch( err )  {
+        case SEGY_OK: break;
+
+        case SEGY_FSEEK_ERROR:
+        case SEGY_FWRITE_ERROR:
+            return PyErr_SetFromErrno( PyExc_IOError );
+
+        default:
+            return PyErr_Format( PyExc_RuntimeError,
+                                 "unknown error code %d", err  );
+    }
+
+    return Py_BuildValue( "{s:l, s:i, s:i, s:i, s:i}",
+                            "trace0", trace0,
+                            "sample_count", sample_count,
+                            "format", format,
+                            "trace_bsize", trace_bsize,
+                            "trace_count", trace_count );
+}
+
+
 PyObject* cube_metrics( segyiofd* self, PyObject* args ) {
     segy_file* fp = self->fd;
     if( !fp ) return NULL;
@@ -608,6 +648,7 @@ PyMethodDef methods [] = {
     { "field_forall",  (PyCFunction) fd::field_forall,  METH_VARARGS, "Field for-all."  },
     { "field_foreach", (PyCFunction) fd::field_foreach, METH_VARARGS, "Field for-each." },
 
+    { "metrics",      (PyCFunction) fd::metrics,      METH_VARARGS, "Cube metrics." },
     { "cube_metrics", (PyCFunction) fd::cube_metrics, METH_VARARGS, "Cube metrics." },
 
     { NULL }
@@ -940,43 +981,6 @@ static PyObject *py_init_line_metrics(PyObject *self, PyObject *args) {
     return Py_BuildValue("O", dict);
 }
 
-
-static PyObject *py_init_metrics(PyObject *self, PyObject *args) {
-    errno = 0;
-    PyObject *file_capsule = NULL;
-    PyObject *binary_header_capsule = NULL;
-
-    PyArg_ParseTuple(args, "OO", &file_capsule, &binary_header_capsule);
-
-    segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
-
-    if (PyErr_Occurred()) { return NULL; }
-
-    char *binary_header = get_header_pointer_from_capsule(binary_header_capsule, NULL);
-
-    if (PyErr_Occurred()) { return NULL; }
-
-    long trace0 = segy_trace0(binary_header);
-    int sample_count = segy_samples(binary_header);
-    int format = segy_format(binary_header);
-    int trace_bsize = segy_trace_bsize(sample_count);
-
-    int trace_count;
-    int error = segy_traces(p_FILE, &trace_count, trace0, trace_bsize);
-
-    if (error != 0) {
-        return py_handle_segy_error(error, errno);
-    }
-
-    PyObject *dict = PyDict_New();
-    PyDict_SetItemString(dict, "trace0", Py_BuildValue("l", trace0));
-    PyDict_SetItemString(dict, "sample_count", Py_BuildValue("i", sample_count));
-    PyDict_SetItemString(dict, "format", Py_BuildValue("i", format));
-    PyDict_SetItemString(dict, "trace_bsize", Py_BuildValue("i", trace_bsize));
-    PyDict_SetItemString(dict, "trace_count", Py_BuildValue("i", trace_count));
-
-    return Py_BuildValue("O", dict);
-}
 
 static Py_buffer check_and_get_buffer(PyObject *object, const char *name, unsigned int expected) {
     static const Py_buffer zero_buffer = { 0 };
@@ -1434,7 +1438,6 @@ static PyMethodDef SegyMethods[] = {
         {"set_field",          (PyCFunction) py_set_field,          METH_VARARGS, "Set a header field."},
 
         {"init_line_metrics",  (PyCFunction) py_init_line_metrics,  METH_VARARGS, "Find the length and stride of inline and crossline."},
-        {"init_metrics",       (PyCFunction) py_init_metrics,       METH_VARARGS, "Find most metrics for a segy file."},
         {"init_indices",       (PyCFunction) py_init_indices,       METH_VARARGS, "Find the indices for inline, crossline and offsets."},
         {"fread_trace0",       (PyCFunction) py_fread_trace0,       METH_VARARGS, "Find trace0 of a line."},
         {"read_trace",         (PyCFunction) py_read_trace,         METH_VARARGS, "Read trace data."},
