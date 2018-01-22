@@ -390,8 +390,8 @@ class SegyFile(object):
 
                 xs = xs.astype(dtype = np.intc, order = 'C', copy = False)
                 attrs = np.empty(len(xs), dtype = np.intc)
-                return _segyio.field_foreach(self.xfd, attrs, xs, field,
-                                          self._tr0, self._bsz)
+                return self.xfd.field_foreach(attrs, xs, field,
+                                              self._tr0, self._bsz)
 
         return attr()
 

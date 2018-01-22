@@ -426,6 +426,57 @@ PyObject* field_forall( segyiofd* self, PyObject* args ) {
     }
 }
 
+PyObject* field_foreach( segyiofd* self, PyObject* args ) {
+    segy_file* fp = self->fd;
+    if( !fp ) return NULL;
+
+    PyObject* buffer_out;
+    Py_buffer indices;
+    int field;
+    long trace0;
+    int trace_bsize;
+
+    if( !PyArg_ParseTuple(args, "Os*ili", &buffer_out,
+                                          &indices,
+                                          &field,
+                                          &trace0,
+                                          &trace_bsize ) )
+        return NULL;
+
+    buffer_guard gind( indices );
+
+    Py_buffer bufout;
+    if( PyObject_GetBuffer( buffer_out, &bufout, PyBUF_FORMAT
+                                               | PyBUF_C_CONTIGUOUS
+                                               | PyBUF_WRITEABLE ) )
+        return NULL;
+
+    buffer_guard gbuf( bufout );
+
+    const int len = indices.len / indices.itemsize;
+    if( bufout.len / bufout.itemsize != len )
+        return ValueError( "attributes array length != indices" );
+
+    const int* ind = (int*)indices.buf;
+    int* out = (int*)bufout.buf;
+    for( int i = 0; i < len; ++i ) {
+        int err = segy_field_forall( fp, field,
+                                     ind[ i ],
+                                     ind[ i ] + 1,
+                                     1,
+                                     out + i,
+                                     trace0,
+                                     trace_bsize );
+
+        if( err != SEGY_OK )
+            return PyErr_SetFromErrno( PyExc_IOError );
+    }
+
+    Py_INCREF( buffer_out );
+    return buffer_out;
+}
+
+
 
 PyMethodDef methods [] = {
     { "close", (PyCFunction) fd::close, METH_VARARGS, "Close file." },
@@ -441,8 +492,8 @@ PyMethodDef methods [] = {
     { "getth", (PyCFunction) fd::getth, METH_VARARGS, "Get trace header." },
     { "putth", (PyCFunction) fd::putth, METH_VARARGS, "Put trace header." },
 
-    { "field_forall", (PyCFunction) fd::field_forall, METH_VARARGS, "Field for-all." },
-
+    { "field_forall",  (PyCFunction) fd::field_forall,  METH_VARARGS, "Field for-all."  },
+    { "field_foreach", (PyCFunction) fd::field_foreach, METH_VARARGS, "Field for-each." },
 
     { NULL }
 };
@@ -690,75 +741,6 @@ static PyObject *py_empty_binaryhdr(PyObject *self) {
 static PyObject *py_empty_trace_header(PyObject *self) {
     char buffer[ SEGY_TRACE_HEADER_SIZE ] = {};
     return PyByteArray_FromStringAndSize( buffer, sizeof( buffer ) );
-}
-
-static PyObject *py_field_foreach(PyObject *self, PyObject *args ) {
-    errno = 0;
-    PyObject *file_capsule = NULL;
-    PyObject *buffer_out;
-    PyObject *indices;
-    int field;
-    long trace0;
-    int trace_bsize;
-
-    PyArg_ParseTuple(args, "OOOili", &file_capsule,
-                                     &buffer_out,
-                                     &indices,
-                                     &field,
-                                     &trace0,
-                                     &trace_bsize );
-
-    segy_file* fp = get_FILE_pointer_from_capsule(file_capsule);
-
-    if (PyErr_Occurred()) { return NULL; }
-
-    if (!PyObject_CheckBuffer(buffer_out)) {
-        PyErr_SetString(PyExc_TypeError, "The destination buffer is not of the correct type.");
-        return NULL;
-    }
-
-    if (!PyObject_CheckBuffer(indices)) {
-        PyErr_SetString(PyExc_TypeError, "The indices buffer is not of the correct type.");
-        return NULL;
-    }
-
-    Py_buffer bufout;
-    PyObject_GetBuffer(buffer_out, &bufout, PyBUF_FORMAT | PyBUF_C_CONTIGUOUS | PyBUF_WRITEABLE);
-
-    Py_buffer bufindices;
-    PyObject_GetBuffer(indices, &bufindices, PyBUF_FORMAT | PyBUF_C_CONTIGUOUS);
-
-    int len = bufindices.len / bufindices.itemsize;
-    if( bufout.len / bufout.itemsize != len ) {
-        PyErr_SetString(PyExc_ValueError, "Attributes array length != indices" );
-        PyBuffer_Release( &bufout );
-        PyBuffer_Release( &bufindices );
-        return NULL;
-    }
-
-    const int* ind = (int*)bufindices.buf;
-    int* out = (int*)bufout.buf;
-    for( int i = 0; i < len; ++i ) {
-        int err = segy_field_forall( fp, field,
-                                     ind[ i ],
-                                     ind[ i ] + 1,
-                                     1,
-                                     out + i,
-                                     trace0,
-                                     trace_bsize );
-
-        if( err != SEGY_OK ) {
-            PyBuffer_Release( &bufout );
-            PyBuffer_Release( &bufindices );
-            return py_handle_segy_error( err, errno );
-        }
-    }
-
-    PyBuffer_Release( &bufout );
-    PyBuffer_Release( &bufindices );
-
-    Py_IncRef(buffer_out);
-    return buffer_out;
 }
 
 static PyObject *py_trace_bsize(PyObject *self, PyObject *args) {
@@ -1410,7 +1392,6 @@ static PyMethodDef SegyMethods[] = {
         {"empty_binaryheader", (PyCFunction) py_empty_binaryhdr,    METH_NOARGS,  "Create empty binary header for a segy file."},
 
         {"empty_traceheader",  (PyCFunction) py_empty_trace_header, METH_NOARGS,  "Create empty trace header for a segy file."},
-        {"field_foreach",      (PyCFunction) py_field_foreach,      METH_VARARGS, "Read a single attribute from a set of headers, given by a list of indices."},
 
         {"trace_bsize",        (PyCFunction) py_trace_bsize,        METH_VARARGS, "Returns the number of bytes in a trace."},
         {"get_field",          (PyCFunction) py_get_field,          METH_VARARGS, "Get a header field."},
