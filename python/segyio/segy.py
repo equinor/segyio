@@ -380,9 +380,9 @@ class SegyFile(object):
                 traces = self.tracecount
                 start, stop, step = rng.indices(traces)
                 attrs = np.empty(len(range(*rng.indices(traces))), dtype = np.intc)
-                return _segyio.field_forall(self.xfd, attrs,
-                                            start, stop, step, field,
-                                            self._tr0, self._bsz)
+                return self.xfd.field_forall(attrs,
+                                             start, stop, step, field,
+                                             self._tr0, self._bsz)
 
             def _getitem_list(inner, xs):
                 if not isinstance(xs, np.ndarray):
