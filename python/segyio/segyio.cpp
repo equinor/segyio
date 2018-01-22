@@ -446,11 +446,9 @@ PyObject* field_foreach( segyiofd* self, PyObject* args ) {
     buffer_guard gind( indices );
 
     Py_buffer bufout;
-    if( PyObject_GetBuffer( buffer_out, &bufout,
-                              PyBUF_FORMAT
-                            | PyBUF_C_CONTIGUOUS
-                            | PyBUF_WRITEABLE
-                           ) )
+    if( PyObject_GetBuffer( buffer_out, &bufout, PyBUF_FORMAT
+                                               | PyBUF_C_CONTIGUOUS
+                                               | PyBUF_WRITEABLE ) )
         return NULL;
 
     buffer_guard gbuf( bufout );
