@@ -114,7 +114,7 @@ class Field(object):
             pass
 
         def wr(buf, traceno):
-            segyio._segyio.write_traceheader(segy.xfd, traceno, buf, segy._tr0, segy._bsz)
+            segy.xfd.putth(traceno, buf, segy._tr0, segy._bsz)
 
         return Field(buf, traceno=traceno,
                           write=wr,
