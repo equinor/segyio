@@ -631,6 +631,94 @@ PyObject* cube_metrics( segyiofd* self, PyObject* args ) {
                           "xline_count",  xl_count );
 }
 
+long getitem( PyObject* dict, const char* key ) {
+    return PyLong_AsLong( PyDict_GetItemString( dict, key ) );
+}
+
+PyObject* indices( segyiofd* self, PyObject* args ) {
+    segy_file* fp = self->fd;
+    if( !fp ) return NULL;
+
+    PyObject* metrics;
+    Py_buffer iline_out;
+    Py_buffer xline_out;
+    Py_buffer offset_out;
+
+    if( !PyArg_ParseTuple( args, "O!w*w*w*", &PyDict_Type, &metrics,
+                                             &iline_out,
+                                             &xline_out,
+                                             &offset_out ) )
+        return NULL;
+
+    buffer_guard gil( iline_out );
+    buffer_guard xil( xline_out );
+    buffer_guard oil( offset_out );
+
+    const int iline_count  = getitem( metrics, "iline_count" );
+    const int xline_count  = getitem( metrics, "xline_count" );
+    const int offset_count = getitem( metrics, "offset_count" );
+
+    if( iline_out.len < Py_ssize_t(iline_count * sizeof( int )) )
+        return ValueError( "inline indices buffer too small" );
+
+    if( xline_out.len < Py_ssize_t(xline_count * sizeof( int )) )
+        return ValueError( "crossline indices buffer too small" );
+
+    if( offset_out.len < Py_ssize_t(offset_count * sizeof( int )) )
+        return ValueError( "offset indices buffer too small" );
+
+    const int il_field     = getitem( metrics, "iline_field" );
+    const int xl_field     = getitem( metrics, "xline_field" );
+    const int offset_field = getitem( metrics, "offset_field" );
+    const int sorting      = getitem( metrics, "sorting" );
+    const long trace0      = getitem( metrics, "trace0" );
+    const int trace_bsize  = getitem( metrics, "trace_bsize" );
+    if( PyErr_Occurred() ) return NULL;
+
+    int err = segy_inline_indices( fp, il_field,
+                                       sorting,
+                                       iline_count,
+                                       xline_count,
+                                       offset_count,
+                                       (int*)iline_out.buf,
+                                       trace0,
+                                       trace_bsize);
+    if( err != SEGY_OK ) goto error;
+
+    err = segy_crossline_indices( fp, xl_field,
+                                      sorting,
+                                      iline_count,
+                                      xline_count,
+                                      offset_count,
+                                      (int*)xline_out.buf,
+                                      trace0,
+                                      trace_bsize);
+    if( err != SEGY_OK ) goto error;
+
+    err = segy_offset_indices( fp, offset_field,
+                                   offset_count,
+                                   (int*)offset_out.buf,
+                                   trace0,
+                                   trace_bsize );
+    if( err != SEGY_OK ) goto error;
+
+    return Py_BuildValue( "" );
+
+error:
+    switch( err ) {
+        case SEGY_FSEEK_ERROR:
+        case SEGY_FREAD_ERROR:
+            return PyErr_SetFromErrno( PyExc_IOError );
+
+        case SEGY_INVALID_SORTING:
+            return ValueError( "invalid sorting. corrupted file?" );
+
+        default:
+            return PyErr_Format( PyExc_RuntimeError,
+                                 "unknown error code %d", err  );
+    }
+}
+
 PyMethodDef methods [] = {
     { "close", (PyCFunction) fd::close, METH_VARARGS, "Close file." },
     { "flush", (PyCFunction) fd::flush, METH_VARARGS, "Flush file." },
@@ -648,8 +736,9 @@ PyMethodDef methods [] = {
     { "field_forall",  (PyCFunction) fd::field_forall,  METH_VARARGS, "Field for-all."  },
     { "field_foreach", (PyCFunction) fd::field_foreach, METH_VARARGS, "Field for-each." },
 
-    { "metrics",      (PyCFunction) fd::metrics,      METH_VARARGS, "Cube metrics." },
-    { "cube_metrics", (PyCFunction) fd::cube_metrics, METH_VARARGS, "Cube metrics." },
+    { "metrics",      (PyCFunction) fd::metrics,      METH_VARARGS, "Cube metrics."    },
+    { "cube_metrics", (PyCFunction) fd::cube_metrics, METH_VARARGS, "Cube metrics."    },
+    { "indices",      (PyCFunction) fd::indices,      METH_VARARGS, "Indices." },
 
     { NULL }
 };
@@ -981,133 +1070,6 @@ static PyObject *py_init_line_metrics(PyObject *self, PyObject *args) {
     return Py_BuildValue("O", dict);
 }
 
-
-static Py_buffer check_and_get_buffer(PyObject *object, const char *name, unsigned int expected) {
-    static const Py_buffer zero_buffer = { 0 };
-    Py_buffer buffer = zero_buffer;
-    if (!PyObject_CheckBuffer(object)) {
-        PyErr_Format(PyExc_TypeError, "The destination for %s is not a buffer object", name);
-        return zero_buffer;
-    }
-    PyObject_GetBuffer(object, &buffer, PyBUF_FORMAT | PyBUF_C_CONTIGUOUS | PyBUF_WRITEABLE);
-
-    if (strcmp(buffer.format, "i") != 0) {
-        PyErr_Format(PyExc_TypeError, "The destination for %s is not a buffer object of type 'intc'", name);
-        PyBuffer_Release(&buffer);
-        return zero_buffer;
-    }
-
-    size_t buffer_len = (size_t)buffer.len;
-    if (buffer_len < expected * sizeof(unsigned int)) {
-        PyErr_Format(PyExc_ValueError, "The destination for %s is too small. ", name);
-        PyBuffer_Release(&buffer);
-        return zero_buffer;
-    }
-
-    return buffer;
-}
-
-
-static PyObject *py_init_indices(PyObject *self, PyObject *args) {
-    errno = 0;
-    PyObject *file_capsule = NULL;
-    PyObject *metrics = NULL;
-    PyObject *iline_out = NULL;
-    PyObject *xline_out = NULL;
-    PyObject *offset_out = NULL;
-
-    PyArg_ParseTuple(args, "OOOOO", &file_capsule, &metrics,
-                            &iline_out, &xline_out, &offset_out);
-
-    segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
-
-    if (PyErr_Occurred()) { return NULL; }
-
-    if (!PyDict_Check(metrics)) {
-        PyErr_SetString(PyExc_TypeError, "metrics is not a dictionary!");
-        return NULL;
-    }
-
-    int iline_count;
-    int xline_count;
-    int offset_count;
-    PyArg_Parse(PyDict_GetItemString(metrics, "iline_count"), "i", &iline_count);
-    PyArg_Parse(PyDict_GetItemString(metrics, "xline_count"), "i", &xline_count);
-    PyArg_Parse(PyDict_GetItemString(metrics, "offset_count"), "i", &offset_count);
-
-    if (PyErr_Occurred()) { return NULL; }
-
-    Py_buffer iline_buffer = check_and_get_buffer(iline_out, "inline", iline_count);
-
-    if (PyErr_Occurred()) { return NULL; }
-
-    Py_buffer xline_buffer = check_and_get_buffer(xline_out, "crossline", xline_count);
-
-    if (PyErr_Occurred()) {
-        PyBuffer_Release(&iline_buffer);
-        return NULL;
-    }
-
-    Py_buffer offsets_buffer = check_and_get_buffer(offset_out, "offsets", offset_count);
-
-    if (PyErr_Occurred()) {
-        PyBuffer_Release(&iline_buffer);
-        PyBuffer_Release(&xline_buffer);
-        return NULL;
-    }
-
-    int il_field;
-    int xl_field;
-    int offset_field;
-    int sorting;
-    long trace0;
-    int trace_bsize;
-
-    PyArg_Parse(PyDict_GetItemString(metrics, "iline_field"), "i", &il_field);
-    PyArg_Parse(PyDict_GetItemString(metrics, "xline_field"), "i", &xl_field);
-    PyArg_Parse(PyDict_GetItemString(metrics, "offset_field"), "i", &offset_field);
-    PyArg_Parse(PyDict_GetItemString(metrics, "sorting"), "i", &sorting);
-    PyArg_Parse(PyDict_GetItemString(metrics, "trace0"), "l", &trace0);
-    PyArg_Parse(PyDict_GetItemString(metrics, "trace_bsize"), "i", &trace_bsize);
-
-    int error = segy_inline_indices(p_FILE, il_field, sorting, iline_count, xline_count, offset_count, (int*)iline_buffer.buf,
-                                    trace0, trace_bsize);
-
-    if (error != 0) {
-        py_handle_segy_error_with_fields(error, errno, il_field, xl_field, 2);
-        goto cleanup;
-    }
-
-    error = segy_crossline_indices(p_FILE, xl_field, sorting, iline_count, xline_count, offset_count, (int*)xline_buffer.buf,
-                                   trace0, trace_bsize);
-
-    if (error != 0) {
-        py_handle_segy_error_with_fields(error, errno, il_field, xl_field, 2);
-        goto cleanup;
-    }
-
-    error = segy_offset_indices( p_FILE, offset_field, offset_count,
-                                 (int*)offsets_buffer.buf,
-                                 trace0, trace_bsize );
-
-    if (error != 0) {
-        py_handle_segy_error_with_fields(error, errno, il_field, xl_field, 2);
-        goto cleanup;
-    }
-
-    PyBuffer_Release(&offsets_buffer);
-    PyBuffer_Release(&xline_buffer);
-    PyBuffer_Release(&iline_buffer);
-    return Py_BuildValue("");
-
-cleanup:
-    PyBuffer_Release(&offsets_buffer);
-    PyBuffer_Release(&xline_buffer);
-    PyBuffer_Release(&iline_buffer);
-    return NULL;
-}
-
-
 static PyObject *py_fread_trace0(PyObject *self, PyObject *args) {
     errno = 0;
     int lineno;
@@ -1438,7 +1400,6 @@ static PyMethodDef SegyMethods[] = {
         {"set_field",          (PyCFunction) py_set_field,          METH_VARARGS, "Set a header field."},
 
         {"init_line_metrics",  (PyCFunction) py_init_line_metrics,  METH_VARARGS, "Find the length and stride of inline and crossline."},
-        {"init_indices",       (PyCFunction) py_init_indices,       METH_VARARGS, "Find the indices for inline, crossline and offsets."},
         {"fread_trace0",       (PyCFunction) py_fread_trace0,       METH_VARARGS, "Find trace0 of a line."},
         {"read_trace",         (PyCFunction) py_read_trace,         METH_VARARGS, "Read trace data."},
         {"write_trace",        (PyCFunction) py_write_trace,        METH_VARARGS, "Write trace data."},

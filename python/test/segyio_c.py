@@ -231,35 +231,25 @@ class _segyioTests(unittest.TestCase):
                          'offset_count':  1}
 
         with self.assertRaises(TypeError):
-            _segyio.init_indices(".", {}, dmy, dmy, dmy)
+            f.indices("-", dmy, dmy, dmy)
 
         with self.assertRaises(TypeError):
-            _segyio.init_indices(f, "-", dmy, dmy, dmy)
-
-        # with self.assertRaises(KeyError):
-        #     _segyio.init_indices(f, {}, dmy, dmy, dmy)
+            f.indices(dummy_metrics, 1, dmy, dmy)
 
         with self.assertRaises(TypeError):
-            _segyio.init_indices(f, dummy_metrics, 1, dmy, dmy)
+            f.indices(dummy_metrics, dmy, 2, dmy)
 
         with self.assertRaises(TypeError):
-            _segyio.init_indices(f, dummy_metrics, dmy, 2, dmy)
-
-        with self.assertRaises(TypeError):
-            _segyio.init_indices(f, dummy_metrics, dmy, dmy, 2)
-
-        with self.assertRaises(TypeError):
-            fdmy = numpy.zeros(1, dtype=numpy.single)
-            _segyio.init_indices(f, dummy_metrics, fdmy, dmy, dmy)
+            f.indices(dummy_metrics, dmy, dmy, 2)
 
         one = numpy.zeros(1, dtype=numpy.intc)
         two = numpy.zeros(2, dtype=numpy.intc)
         off = numpy.zeros(1, dtype=numpy.intc)
         with self.assertRaises(ValueError):
-            _segyio.init_indices(f, dummy_metrics, one, two, off)
+            f.indices(dummy_metrics, one, two, off)
 
         with self.assertRaises(ValueError):
-            _segyio.init_indices(f, dummy_metrics, two, one, off)
+            f.indices(dummy_metrics, two, one, off)
 
         metrics.update(f.cube_metrics(ilb, xlb,
                                       metrics['trace_count'],
@@ -270,7 +260,7 @@ class _segyioTests(unittest.TestCase):
         iline_indexes = numpy.zeros(metrics['iline_count'], dtype=numpy.intc)
         xline_indexes = numpy.zeros(metrics['xline_count'], dtype=numpy.intc)
         offsets       = numpy.zeros(metrics['offset_count'], dtype=numpy.intc)
-        _segyio.init_indices(f, metrics, iline_indexes, xline_indexes, offsets)
+        f.indices(metrics, iline_indexes, xline_indexes, offsets)
 
         self.assertListEqual([1, 2, 3, 4, 5], list(iline_indexes))
         self.assertListEqual([20, 21, 22, 23, 24], list(xline_indexes))
@@ -306,7 +296,7 @@ class _segyioTests(unittest.TestCase):
         iline_indexes = numpy.zeros(metrics['iline_count'], dtype=numpy.intc)
         xline_indexes = numpy.zeros(metrics['xline_count'], dtype=numpy.intc)
         offsets       = numpy.zeros(metrics['offset_count'], dtype=numpy.intc)
-        _segyio.init_indices(f, metrics, iline_indexes, xline_indexes, offsets)
+        f.indices(metrics, iline_indexes, xline_indexes, offsets)
 
         with self.assertRaises(KeyError):
             _segyio.fread_trace0(0, len(xline_indexes), line_metrics['iline_stride'], offset_count, iline_indexes, "inline")
@@ -456,7 +446,7 @@ class _segyioTests(unittest.TestCase):
         iline_indexes = numpy.zeros(metrics['iline_count'], dtype=numpy.intc)
         xline_indexes = numpy.zeros(metrics['xline_count'], dtype=numpy.intc)
         offsets       = numpy.zeros(metrics['offset_count'], dtype=numpy.intc)
-        _segyio.init_indices(f, metrics, iline_indexes, xline_indexes, offsets)
+        f.indices(metrics, iline_indexes, xline_indexes, offsets)
 
         return f, metrics, iline_indexes, xline_indexes
 
