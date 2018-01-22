@@ -331,6 +331,45 @@ PyObject* getth( segyiofd* self, PyObject *args ) {
     }
 }
 
+PyObject* putth( segyiofd* self, PyObject* args ) {
+    segy_file* fp = self->fd;
+    if( !fp ) return NULL;
+
+    int traceno;
+    Py_buffer buf;
+    long trace0;
+    int trace_bsize;
+
+    if( !PyArg_ParseTuple( args, "is*li", &traceno,
+                                          &buf,
+                                          &trace0,
+                                          &trace_bsize ) )
+        return NULL;
+
+    buffer_guard g( buf );
+
+    if( buf.len < SEGY_TRACE_HEADER_SIZE )
+        return ValueError( "trace header too small" );
+
+    const char* buffer = (const char*)buf.buf;
+
+    const int err = segy_write_traceheader( fp,
+                                            traceno,
+                                            buffer,
+                                            trace0,
+                                            trace_bsize );
+
+    switch( err ) {
+        case SEGY_OK: return Py_BuildValue("");
+        case SEGY_FSEEK_ERROR:
+        case SEGY_FWRITE_ERROR:
+            return PyErr_SetFromErrno( PyExc_IOError );
+
+        default:
+            return PyErr_Format( PyExc_RuntimeError,
+                                 "unknown error code %d", err  );
+    }
+}
 
 
 PyMethodDef methods [] = {
@@ -344,7 +383,9 @@ PyMethodDef methods [] = {
     { "getbin", (PyCFunction) fd::getbin, METH_VARARGS, "Get binary header." },
     { "putbin", (PyCFunction) fd::putbin, METH_VARARGS, "Put binary header." },
 
-    { "getth", (PyCFunction) fd::getth, METH_VARARGS,  "Get trace header." },
+    { "getth", (PyCFunction) fd::getth, METH_VARARGS, "Get trace header." },
+    { "putth", (PyCFunction) fd::putth, METH_VARARGS, "Put trace header." },
+
     { NULL }
 };
 
@@ -591,31 +632,6 @@ static PyObject *py_empty_binaryhdr(PyObject *self) {
 static PyObject *py_empty_trace_header(PyObject *self) {
     char buffer[ SEGY_TRACE_HEADER_SIZE ] = {};
     return PyByteArray_FromStringAndSize( buffer, sizeof( buffer ) );
-}
-
-static PyObject *py_write_trace_header(PyObject *self, PyObject *args) {
-    errno = 0;
-    PyObject *file_capsule = NULL;
-    int traceno;
-    Py_buffer buf;
-    long trace0;
-    int trace_bsize;
-
-    PyArg_ParseTuple(args, "Ois*li", &file_capsule, &traceno, &buf, &trace0, &trace_bsize);
-
-    segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
-
-    if (PyErr_Occurred()) { return NULL; }
-
-    char *buffer = (char*)buf.buf;
-
-    int error = segy_write_traceheader(p_FILE, traceno, buffer, trace0, trace_bsize);
-
-    if (error == 0) {
-        return Py_BuildValue("");
-    } else {
-        return py_handle_segy_error(error, errno);
-    }
 }
 
 static PyObject *py_field_forall(PyObject *self, PyObject *args ) {
@@ -1391,7 +1407,6 @@ static PyMethodDef SegyMethods[] = {
         {"empty_binaryheader", (PyCFunction) py_empty_binaryhdr,    METH_NOARGS,  "Create empty binary header for a segy file."},
 
         {"empty_traceheader",  (PyCFunction) py_empty_trace_header, METH_NOARGS,  "Create empty trace header for a segy file."},
-        {"write_traceheader",  (PyCFunction) py_write_trace_header, METH_VARARGS, "Write a trace header to a segy file."},
         {"field_forall",       (PyCFunction) py_field_forall,       METH_VARARGS, "Read a single attribute from a set of headers."},
         {"field_foreach",      (PyCFunction) py_field_foreach,      METH_VARARGS, "Read a single attribute from a set of headers, given by a list of indices."},
 
