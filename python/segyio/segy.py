@@ -522,7 +522,7 @@ class SegyFile(object):
 
     def _fread_line(self, trace0, length, stride, buf):
         offsets = len(self.offsets)
-        return _segyio.read_line(self.xfd, trace0,
+        return self.xfd.getline(trace0,
                                 length, stride, offsets,
                                 buf,
                                 self._tr0, self._bsz,
