@@ -1003,7 +1003,49 @@ PyObject* getdt( segyiofd* self, PyObject* args ) {
     return PyErr_Format( PyExc_RuntimeError, "unknown error code %d", err  );
 }
 
+PyObject* rotation( segyiofd* self, PyObject* args ) {
+    segy_file* fp = self->fd;
+    if( !fp ) return NULL;
 
+    int line_length;
+    int stride;
+    int offsets;
+    Py_buffer linenos;
+    long trace0;
+    int trace_bsize;
+
+    if( !PyArg_ParseTuple( args, "iiis*li", &line_length,
+                                            &stride,
+                                            &offsets,
+                                            &linenos,
+                                            &trace0,
+                                            &trace_bsize ) )
+        return NULL;
+
+    buffer_guard g( linenos );
+
+    float rotation;
+    int err = segy_rotation_cw( fp, line_length,
+                                    stride,
+                                    offsets,
+                                    (const int*)linenos.buf,
+                                    linenos.len / sizeof( int ),
+                                    &rotation,
+                                    trace0,
+                                    trace_bsize );
+
+    switch( err ) {
+        case SEGY_OK: return PyFloat_FromDouble( rotation );
+
+        case SEGY_FSEEK_ERROR:
+        case SEGY_FREAD_ERROR:
+            return PyErr_SetFromErrno( PyExc_IOError );
+
+        default:
+           return PyErr_Format( PyExc_RuntimeError,
+                                "unknown error code %d", err  );
+    }
+}
 
 PyMethodDef methods [] = {
     { "close", (PyCFunction) fd::close, METH_VARARGS, "Close file." },
@@ -1028,7 +1070,8 @@ PyMethodDef methods [] = {
     { "getline",  (PyCFunction) fd::getline,  METH_VARARGS, "Get line." },
     { "getdepth", (PyCFunction) fd::getdepth, METH_VARARGS, "Get depth." },
 
-    { "getdt", (PyCFunction) fd::getdt, METH_VARARGS, "Get sample interval (dt)." },
+    { "getdt",    (PyCFunction) fd::getdt, METH_VARARGS,    "Get sample interval (dt)." },
+    { "rotation", (PyCFunction) fd::rotation, METH_VARARGS, "Get clockwise rotation."   },
 
     { "metrics",      (PyCFunction) fd::metrics,      METH_VARARGS, "Cube metrics."    },
     { "cube_metrics", (PyCFunction) fd::cube_metrics, METH_VARARGS, "Cube metrics."    },
@@ -1078,27 +1121,6 @@ PyTypeObject Segyiofd = {
     (initproc)fd::init,             /* tp_init */
 };
 
-}
-
-
-static segy_file* get_FILE_pointer_from_capsule( PyObject* self ) {
-    if( !self ) {
-        PyErr_SetString( PyExc_TypeError, "The object was not of type FILE, was NULL" );
-        return NULL;
-    }
-
-    if( !PyObject_TypeCheck( self, &Segyiofd ) ) {
-        PyErr_SetString( PyExc_TypeError, "The object was not of type FILE" );
-        return NULL;
-    }
-
-    segy_file* fp = ((segyiofd*)self)->fd;
-    if( !fp ) {
-        PyErr_SetString( PyExc_IOError, "I/O operation invalid on closed file" );
-        return NULL;
-    }
-
-    return fp;
 }
 
 // ------------- ERROR Handling -------------
@@ -1377,53 +1399,6 @@ static PyObject * py_format(PyObject *self, PyObject *args) {
     return out;
 }
 
-static PyObject* py_rotation(PyObject *self, PyObject* args) {
-    PyObject* file = NULL;
-    int line_length;
-    int stride;
-    int offsets;
-    PyObject* linenos;
-    long trace0;
-    int trace_bsize;
-
-    PyArg_ParseTuple( args, "OiiiOli", &file,
-                                       &line_length,
-                                       &stride,
-                                       &offsets,
-                                       &linenos,
-                                       &trace0,
-                                       &trace_bsize );
-
-    segy_file* fp = get_FILE_pointer_from_capsule( file );
-    if( PyErr_Occurred() ) { return NULL; }
-
-    if ( !PyObject_CheckBuffer( linenos ) ) {
-        PyErr_SetString(PyExc_TypeError, "The linenos object is not a correct buffer object");
-        return NULL;
-    }
-
-    Py_buffer buffer;
-    PyObject_GetBuffer(linenos, &buffer, PyBUF_FORMAT | PyBUF_C_CONTIGUOUS);
-    int linenos_sz = PyObject_Length( linenos );
-
-    errno = 0;
-    float rotation;
-    int err = segy_rotation_cw( fp, line_length,
-                                    stride,
-                                    offsets,
-                                    (const int*)buffer.buf,
-                                    linenos_sz,
-                                    &rotation,
-                                    trace0,
-                                    trace_bsize );
-    int errn = errno;
-    PyBuffer_Release( &buffer );
-
-    if( err != 0 ) return py_handle_segy_error_with_index_and_name( err, errn, 0, "Inline" );
-    return PyFloat_FromDouble( rotation );
-}
-
-
 /*  define functions in module */
 static PyMethodDef SegyMethods[] = {
         {"binheader_size",     (PyCFunction) py_binheader_size,     METH_NOARGS,  "Return the size of the binary header."},
@@ -1440,7 +1415,6 @@ static PyMethodDef SegyMethods[] = {
         {"init_line_metrics",  (PyCFunction) py_init_line_metrics,  METH_VARARGS, "Find the length and stride of inline and crossline."},
         {"fread_trace0",       (PyCFunction) py_fread_trace0,       METH_VARARGS, "Find trace0 of a line."},
         {"native",             (PyCFunction) py_format,             METH_VARARGS, "Convert to native float."},
-        {"rotation",           (PyCFunction) py_rotation,           METH_VARARGS, "Find survey clock-wise rotation in radians"},
         {NULL, NULL, 0, NULL}
 };
 
