@@ -71,6 +71,11 @@ PyObject* BufferError( const char* msg ) {
     return NULL;
 }
 
+PyObject* RuntimeError( const char* msg ) {
+    PyErr_SetString( PyExc_RuntimeError, msg );
+    return NULL;
+}
+
 namespace fd {
 
 int init( segyiofd* self, PyObject* args, PyObject* ) {
@@ -476,7 +481,115 @@ PyObject* field_foreach( segyiofd* self, PyObject* args ) {
     return buffer_out;
 }
 
+PyObject* cube_metrics( segyiofd* self, PyObject* args ) {
+    segy_file* fp = self->fd;
+    if( !fp ) return NULL;
 
+    int il;
+    int xl;
+    int trace_count;
+    long trace0;
+    int trace_bsize;
+
+    if( !PyArg_ParseTuple( args, "iiili", &il,
+                                          &xl,
+                                          &trace_count,
+                                          &trace0,
+                                          &trace_bsize ) )
+        return NULL;
+
+    int sorting = -1;
+    int err = segy_sorting( fp, il,
+                                xl,
+                                SEGY_TR_OFFSET,
+                                &sorting,
+                                trace0,
+                                trace_bsize);
+
+    switch( err ) {
+        case SEGY_OK: break;
+        case SEGY_INVALID_FIELD:
+            return IndexError( "wrong field value" );
+
+        case SEGY_FSEEK_ERROR:
+        case SEGY_FREAD_ERROR:
+            return PyErr_SetFromErrno( PyExc_IOError );
+
+        case SEGY_INVALID_SORTING:
+            return RuntimeError( "unable to find sorting. corrupted file?" );
+
+        default:
+            return PyErr_Format( PyExc_RuntimeError,
+                                 "unknown error code %d", err  );
+    }
+
+    int offset_count = -1;
+    err = segy_offsets( fp, il,
+                            xl,
+                            trace_count,
+                            &offset_count,
+                            trace0,
+                            trace_bsize);
+
+    switch( err ) {
+        case SEGY_OK: break;
+        case SEGY_INVALID_FIELD:
+            return IndexError( "wrong field value" );
+
+        case SEGY_FSEEK_ERROR:
+        case SEGY_FREAD_ERROR:
+            return PyErr_SetFromErrno( PyExc_IOError );
+
+        default:
+            return PyErr_Format( PyExc_RuntimeError,
+                                 "unknown error code %d", err  );
+    }
+
+    int xl_count = 0;
+    int il_count = 0;
+    if( trace_count == offset_count ) {
+        /*
+         * handle the case where there's only one trace in the file, as it
+         * doesn't make sense to count 1 line from segyio's point of view
+         *
+         * TODO: hande inside lines_count?
+         */
+        il_count = xl_count = 1;
+    }
+    else {
+        err = segy_lines_count( fp, il,
+                                    xl,
+                                    sorting,
+                                    offset_count,
+                                    &il_count,
+                                    &xl_count,
+                                    trace0,
+                                    trace_bsize );
+
+        switch( err ) {
+            case SEGY_OK: break;
+            case SEGY_INVALID_FIELD:
+                return IndexError( "wrong field value" );
+
+            case SEGY_FSEEK_ERROR:
+            case SEGY_FREAD_ERROR:
+                return PyErr_SetFromErrno( PyExc_IOError );
+
+            default:
+                return PyErr_Format( PyExc_RuntimeError,
+                                     "unknown error code %d", err  );
+        }
+    }
+
+    return Py_BuildValue( "{s:i, s:i, s:i, s:i, s:i, s:i, s:i}",
+                          "sorting",      sorting,
+                          "iline_field",  il,
+                          "xline_field",  xl,
+                          "offset_field", 37,
+                          "offset_count", offset_count,
+                          "iline_count",  il_count,
+                          "xline_count",  xl_count );
+}
 
 PyMethodDef methods [] = {
     { "close", (PyCFunction) fd::close, METH_VARARGS, "Close file." },
@@ -494,6 +607,8 @@ PyMethodDef methods [] = {
 
     { "field_forall",  (PyCFunction) fd::field_forall,  METH_VARARGS, "Field for-all."  },
     { "field_foreach", (PyCFunction) fd::field_foreach, METH_VARARGS, "Field for-each." },
+
+    { "cube_metrics", (PyCFunction) fd::cube_metrics, METH_VARARGS, "Cube metrics." },
 
     { NULL }
 };
@@ -859,85 +974,6 @@ static PyObject *py_init_metrics(PyObject *self, PyObject *args) {
     PyDict_SetItemString(dict, "format", Py_BuildValue("i", format));
     PyDict_SetItemString(dict, "trace_bsize", Py_BuildValue("i", trace_bsize));
     PyDict_SetItemString(dict, "trace_count", Py_BuildValue("i", trace_count));
-
-    return Py_BuildValue("O", dict);
-}
-
-static PyObject *py_init_cube_metrics(PyObject *self, PyObject *args) {
-    errno = 0;
-
-    PyObject *file_capsule = NULL;
-    int il_field;
-    int xl_field;
-    int trace_count;
-    long trace0;
-    int trace_bsize;
-
-    PyArg_ParseTuple(args, "Oiiili", &file_capsule,
-                                     &il_field,
-                                     &xl_field,
-                                     &trace_count,
-                                     &trace0,
-                                     &trace_bsize);
-
-    segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
-
-    if (PyErr_Occurred()) { return NULL; }
-
-    int sorting;
-    int error = segy_sorting(p_FILE, il_field,
-                                     xl_field,
-                                     SEGY_TR_OFFSET,
-                                     &sorting,
-                                     trace0, trace_bsize);
-
-    if (error != 0) {
-        return py_handle_segy_error_with_fields(error, errno, il_field, xl_field, 2);
-    }
-
-    int offset_count;
-    error = segy_offsets(p_FILE, il_field, xl_field, trace_count, &offset_count, trace0, trace_bsize);
-
-    if (error != 0) {
-        return py_handle_segy_error_with_fields(error, errno, il_field, xl_field, 2);
-    }
-
-    int field;
-    int xl_count;
-    int il_count;
-    int *l1out;
-    int *l2out;
-
-    if (sorting == SEGY_CROSSLINE_SORTING) {
-        field = il_field;
-        l1out = &xl_count;
-        l2out = &il_count;
-    } else if (sorting == SEGY_INLINE_SORTING) {
-        field = xl_field;
-        l1out = &il_count;
-        l2out = &xl_count;
-    } else {
-        return PyErr_Format(PyExc_RuntimeError, "Unable to determine sorting. File may be corrupt.");
-    }
-
-    if( trace_count != offset_count ) {
-        error = segy_count_lines(p_FILE, field, offset_count, l1out, l2out, trace0, trace_bsize);
-    } else {
-        il_count = xl_count = 1;
-    }
-
-    if (error != 0) {
-        return py_handle_segy_error_with_fields(error, errno, il_field, xl_field, 2);
-    }
-
-    PyObject *dict = PyDict_New();
-    PyDict_SetItemString(dict, "sorting",      Py_BuildValue("i", sorting));
-    PyDict_SetItemString(dict, "iline_field",  Py_BuildValue("i", il_field));
-    PyDict_SetItemString(dict, "xline_field",  Py_BuildValue("i", xl_field));
-    PyDict_SetItemString(dict, "offset_field", Py_BuildValue("i", 37));
-    PyDict_SetItemString(dict, "offset_count", Py_BuildValue("i", offset_count));
-    PyDict_SetItemString(dict, "iline_count",  Py_BuildValue("i", il_count));
-    PyDict_SetItemString(dict, "xline_count",  Py_BuildValue("i", xl_count));
 
     return Py_BuildValue("O", dict);
 }
@@ -1398,7 +1434,6 @@ static PyMethodDef SegyMethods[] = {
         {"set_field",          (PyCFunction) py_set_field,          METH_VARARGS, "Set a header field."},
 
         {"init_line_metrics",  (PyCFunction) py_init_line_metrics,  METH_VARARGS, "Find the length and stride of inline and crossline."},
-        {"init_cube_metrics",  (PyCFunction) py_init_cube_metrics,  METH_VARARGS, "Find the cube properties sorting, number of ilines, crosslines and offsets."},
         {"init_metrics",       (PyCFunction) py_init_metrics,       METH_VARARGS, "Find most metrics for a segy file."},
         {"init_indices",       (PyCFunction) py_init_indices,       METH_VARARGS, "Find the indices for inline, crossline and offsets."},
         {"fread_trace0",       (PyCFunction) py_fread_trace0,       METH_VARARGS, "Find trace0 of a line."},
