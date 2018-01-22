@@ -136,7 +136,7 @@ class _segyioTests(unittest.TestCase):
         binary_header = f.getbin()
         ilb = 189
         xlb = 193
-        metrics = _segyio.init_metrics(f, binary_header)
+        metrics = f.metrics(binary_header)
         metrics.update(f.cube_metrics(ilb, xlb,
                                       metrics['trace_count'],
                                       metrics['trace0'],
@@ -183,19 +183,16 @@ class _segyioTests(unittest.TestCase):
         xlb = 193
 
         with self.assertRaises(TypeError):
-            metrics = _segyio.init_metrics("?", binary_header)
-
-        with self.assertRaises(TypeError):
-            metrics = _segyio.init_metrics(f, "?")
+            metrics = f.metrics(1423)
 
         with self.assertRaises(IndexError):
-            metrics = _segyio.init_metrics(f, binary_header)
+            metrics = f.metrics(binary_header)
             metrics.update(f.cube_metrics(ilb + 1, xlb,
                                           metrics['trace_count'],
                                           metrics['trace0'],
                                           metrics['trace_bsize']))
 
-        metrics = _segyio.init_metrics(f, binary_header)
+        metrics = f.metrics(binary_header)
         metrics.update(f.cube_metrics(ilb, xlb,
                                       metrics['trace_count'],
                                       metrics['trace0'],
@@ -214,7 +211,7 @@ class _segyioTests(unittest.TestCase):
         f.close()
 
         with self.assertRaises(IOError):
-            metrics = _segyio.init_metrics(f, binary_header)
+            metrics = f.metrics(binary_header)
 
     def test_metrics_mmap(self):
         self.test_metrics(True)
@@ -226,7 +223,7 @@ class _segyioTests(unittest.TestCase):
         binary_header = f.getbin()
         ilb = 189
         xlb = 193
-        metrics = _segyio.init_metrics(f, binary_header)
+        metrics = f.metrics(binary_header)
         dmy = numpy.zeros(2, dtype=numpy.intc)
 
         dummy_metrics = {'xline_count':   2,
@@ -292,7 +289,7 @@ class _segyioTests(unittest.TestCase):
         ilb = 189
         xlb = 193
 
-        metrics = _segyio.init_metrics(f, binary_header)
+        metrics = f.metrics(binary_header)
         metrics.update(f.cube_metrics(ilb, xlb,
                                       metrics['trace_count'],
                                       metrics['trace0'],
@@ -367,7 +364,7 @@ class _segyioTests(unittest.TestCase):
             binary_header = f.getbin()
             ilb = 189
             xlb = 193
-            metrics = _segyio.init_metrics(f, binary_header)
+            metrics = f.metrics(binary_header)
 
             empty = _segyio.empty_traceheader()
 
@@ -440,7 +437,7 @@ class _segyioTests(unittest.TestCase):
         ilb = 189
         xlb = 193
 
-        metrics = _segyio.init_metrics(f, binary_header)
+        metrics = f.metrics(binary_header)
         metrics.update(f.cube_metrics(ilb, xlb,
                                       metrics['trace_count'],
                                       metrics['trace0'],

@@ -76,7 +76,7 @@ def open(filename, mode="r", iline = 189,
     f = segyio.SegyFile(filename, mode, iline, xline)
 
     try:
-        metrics = segyio._segyio.init_metrics(f.xfd, f.bin.buf)
+        metrics = f.xfd.metrics(f.bin.buf)
 
     except RuntimeError:
         f.close()
