@@ -3,15 +3,15 @@ import numpy as np
 import textwrap
 
 
-def dt(segyfile, fallback_dt=4000.0):
+def dt(f, fallback_dt=4000.0):
     """Since v1.1
     Find a *dt* value in the SegyFile. If none is found use the provided *fallback_dt* value.
 
-    :type segyfile: segyio.SegyFile
+    :type f: segyio.SegyFile
     :type fallback_dt: float
     :rtype: float
     """
-    return segyio._segyio.get_dt(segyfile.xfd, fallback_dt)
+    return f.xfd.getdt(fallback_dt)
 
 
 def sample_indexes(segyfile, t0=0.0, dt_override=None):

@@ -76,6 +76,11 @@ PyObject* RuntimeError( const char* msg ) {
     return NULL;
 }
 
+PyObject* IOError( const char* msg ) {
+    PyErr_SetString( PyExc_IOError, msg );
+    return NULL;
+}
+
 namespace fd {
 
 int init( segyiofd* self, PyObject* args, PyObject* ) {
@@ -960,6 +965,46 @@ PyObject* getdepth( segyiofd* self, PyObject* args ) {
     return bufferobj;
 }
 
+PyObject* getdt( segyiofd* self, PyObject* args ) {
+    segy_file* fp = self->fd;
+    if( !fp ) return NULL;
+
+    float fallback;
+    if( !PyArg_ParseTuple(args, "f", &fallback ) ) return NULL;
+
+    float dt;
+    int err = segy_sample_interval( fp, fallback, &dt );
+
+    if( err == SEGY_OK )
+        return PyFloat_FromDouble( dt );
+
+    if( err != SEGY_FREAD_ERROR && err != SEGY_FSEEK_ERROR )
+        return PyErr_Format( PyExc_RuntimeError,
+                             "unknown error code %d", err  );
+
+    /*
+     * Figure out if the problem is reading the trace header
+     * or the binary header
+     */
+    char buffer[ SEGY_BINARY_HEADER_SIZE ];
+    err = segy_binheader( fp, buffer );
+
+    if( err != SEGY_OK )
+        return IOError( "unable to parse global binary header" );
+
+    const long trace0 = segy_trace0( buffer );
+    const int samples = segy_samples( buffer );
+    const int trace_bsize = segy_trace_bsize( samples );
+    err = segy_traceheader( fp, 0, buffer, trace0, trace_bsize );
+
+    if( err != SEGY_OK )
+        return IOError( "unable to read trace header (0)" );
+
+    return PyErr_Format( PyExc_RuntimeError, "unknown error code %d", err  );
+}
+
+
+
 PyMethodDef methods [] = {
     { "close", (PyCFunction) fd::close, METH_VARARGS, "Close file." },
     { "flush", (PyCFunction) fd::flush, METH_VARARGS, "Flush file." },
@@ -982,6 +1027,8 @@ PyMethodDef methods [] = {
 
     { "getline",  (PyCFunction) fd::getline,  METH_VARARGS, "Get line." },
     { "getdepth", (PyCFunction) fd::getdepth, METH_VARARGS, "Get depth." },
+
+    { "getdt", (PyCFunction) fd::getdt, METH_VARARGS, "Get sample interval (dt)." },
 
     { "metrics",      (PyCFunction) fd::metrics,      METH_VARARGS, "Cube metrics."    },
     { "cube_metrics", (PyCFunction) fd::cube_metrics, METH_VARARGS, "Cube metrics."    },
@@ -1246,46 +1293,6 @@ static PyObject *py_trace_bsize(PyObject *self, PyObject *args) {
     return Py_BuildValue("i", byte_count);
 }
 
-static PyObject *py_get_dt(PyObject *self, PyObject *args) {
-    errno = 0;
-
-    PyObject *file_capsule = NULL;
-    float fallback;
-    PyArg_ParseTuple(args, "Of", &file_capsule, &fallback);
-    segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
-
-    if (PyErr_Occurred()) { return NULL; }
-
-    float dt;
-    int error = segy_sample_interval(p_FILE, fallback, &dt);
-    if( error == 0 )
-        return PyFloat_FromDouble( dt );
-
-    if( error != SEGY_FREAD_ERROR )
-        return py_handle_segy_error( error, errno );
-
-    /*
-     * Figure out if the problem is reading the trace header
-     * or the binary header
-     */
-    char buffer[ SEGY_BINARY_HEADER_SIZE ];
-    error = segy_binheader( p_FILE, buffer );
-    if( error != 0 )
-        return PyErr_Format( PyExc_RuntimeError,
-                             "Error reading global binary header" );
-
-    const long trace0 = segy_trace0( buffer );
-    const int samples = segy_samples( buffer );
-    const int trace_bsize = segy_trace_bsize( samples );
-    error = segy_traceheader( p_FILE, 0, buffer, trace0, trace_bsize );
-    if( error != 0 )
-        return PyErr_Format( PyExc_RuntimeError,
-                             "Error reading trace header (index 0)" );
-
-    return py_handle_segy_error( error, errno );
-}
-
-
 static PyObject *py_init_line_metrics(PyObject *self, PyObject *args) {
     errno = 0;
     SEGY_SORTING sorting;
@@ -1432,7 +1439,6 @@ static PyMethodDef SegyMethods[] = {
 
         {"init_line_metrics",  (PyCFunction) py_init_line_metrics,  METH_VARARGS, "Find the length and stride of inline and crossline."},
         {"fread_trace0",       (PyCFunction) py_fread_trace0,       METH_VARARGS, "Find trace0 of a line."},
-        {"get_dt",             (PyCFunction) py_get_dt,             METH_VARARGS, "Read dt from file."},
         {"native",             (PyCFunction) py_format,             METH_VARARGS, "Convert to native float."},
         {"rotation",           (PyCFunction) py_rotation,           METH_VARARGS, "Find survey clock-wise rotation in radians"},
         {NULL, NULL, 0, NULL}
