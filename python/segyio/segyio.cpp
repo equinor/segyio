@@ -371,6 +371,61 @@ PyObject* putth( segyiofd* self, PyObject* args ) {
     }
 }
 
+PyObject* field_forall( segyiofd* self, PyObject* args ) {
+    segy_file* fp = self->fd;
+    if( !fp ) return NULL;
+
+    PyObject* bufferobj;
+    int start, stop, step;
+    long trace0;
+    int trace_bsize;
+    int field;
+
+    if( !PyArg_ParseTuple( args, "Oiiiili", &bufferobj,
+                                            &start,
+                                            &stop,
+                                            &step,
+                                            &field,
+                                            &trace0,
+                                            &trace_bsize ) )
+        return NULL;
+
+    if( step == 0 ) return ValueError( "slice step cannot be zero" );
+
+    if( !PyObject_CheckBuffer( bufferobj ) )
+        return TypeError( "expected buffer object" );
+
+    Py_buffer buffer;
+    if( PyObject_GetBuffer( bufferobj, &buffer,
+        PyBUF_WRITEABLE | PyBUF_C_CONTIGUOUS ) )
+        return BufferError( "buffer not contiguous-writeable" );
+
+    buffer_guard g( buffer );
+
+    const int err = segy_field_forall( fp,
+                                       field,
+                                       start,
+                                       stop,
+                                       step,
+                                       (int*)buffer.buf,
+                                       trace0,
+                                       trace_bsize );
+
+    switch( err ) {
+        case SEGY_OK:
+            Py_INCREF( bufferobj );
+            return bufferobj;
+
+        case SEGY_FSEEK_ERROR:
+        case SEGY_FREAD_ERROR:
+            return PyErr_SetFromErrno( PyExc_IOError );
+
+        default:
+            return PyErr_Format( PyExc_RuntimeError,
+                                 "unknown error code %d", err  );
+    }
+}
+
 
 PyMethodDef methods [] = {
     { "close", (PyCFunction) fd::close, METH_VARARGS, "Close file." },
@@ -385,6 +440,9 @@ PyMethodDef methods [] = {
 
     { "getth", (PyCFunction) fd::getth, METH_VARARGS, "Get trace header." },
     { "putth", (PyCFunction) fd::putth, METH_VARARGS, "Put trace header." },
+
+    { "field_forall", (PyCFunction) fd::field_forall, METH_VARARGS, "Field for-all." },
+
 
     { NULL }
 };
@@ -632,61 +690,6 @@ static PyObject *py_empty_binaryhdr(PyObject *self) {
 static PyObject *py_empty_trace_header(PyObject *self) {
     char buffer[ SEGY_TRACE_HEADER_SIZE ] = {};
     return PyByteArray_FromStringAndSize( buffer, sizeof( buffer ) );
-}
-
-static PyObject *py_field_forall(PyObject *self, PyObject *args ) {
-    errno = 0;
-    PyObject *file_capsule = NULL;
-    PyObject *buffer_out;
-    int start, stop, step;
-    long trace0;
-    int trace_bsize;
-    int field;
-
-    PyArg_ParseTuple(args, "OOiiiili", &file_capsule,
-                                       &buffer_out,
-                                       &start,
-                                       &stop,
-                                       &step,
-                                       &field,
-                                       &trace0,
-                                       &trace_bsize );
-
-    segy_file* fp = get_FILE_pointer_from_capsule(file_capsule);
-
-    if (PyErr_Occurred()) { return NULL; }
-
-    if (!PyObject_CheckBuffer(buffer_out)) {
-        PyErr_SetString(PyExc_TypeError, "The destination buffer is not of the correct type.");
-        return NULL;
-    }
-
-    if(step == 0) {
-        PyErr_SetString(PyExc_TypeError, "slice step cannot be zero");
-        return NULL;
-    }
-
-    Py_buffer buffer;
-    PyObject_GetBuffer(buffer_out, &buffer, PyBUF_FORMAT | PyBUF_C_CONTIGUOUS | PyBUF_WRITEABLE);
-
-    int error = segy_field_forall( fp,
-                                   field,
-                                   start,
-                                   stop,
-                                   step,
-                                   (int*)buffer.buf,
-                                   trace0,
-                                   trace_bsize );
-
-    int errorno = errno;
-
-    PyBuffer_Release( &buffer );
-    if( error != SEGY_OK ) {
-        return py_handle_segy_error( error, errorno );
-    }
-
-    Py_IncRef(buffer_out);
-    return buffer_out;
 }
 
 static PyObject *py_field_foreach(PyObject *self, PyObject *args ) {
@@ -1407,7 +1410,6 @@ static PyMethodDef SegyMethods[] = {
         {"empty_binaryheader", (PyCFunction) py_empty_binaryhdr,    METH_NOARGS,  "Create empty binary header for a segy file."},
 
         {"empty_traceheader",  (PyCFunction) py_empty_trace_header, METH_NOARGS,  "Create empty trace header for a segy file."},
-        {"field_forall",       (PyCFunction) py_field_forall,       METH_VARARGS, "Read a single attribute from a set of headers."},
         {"field_foreach",      (PyCFunction) py_field_foreach,      METH_VARARGS, "Read a single attribute from a set of headers, given by a list of indices."},
 
         {"trace_bsize",        (PyCFunction) py_trace_bsize,        METH_VARARGS, "Returns the number of bytes in a trace."},
