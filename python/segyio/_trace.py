@@ -87,10 +87,10 @@ class Trace:
         fmt = self._file._fmt
         smp = len(self._file.samples)
 
-        buf1 = segyio._segyio.read_trace(self._file.xfd, buf1,
-                                         start, step, length,
-                                         fmt, smp,
-                                         trace0, bsz)
+        buf1 = self._file.xfd.gettr(buf1,
+                                    start, step, length,
+                                    fmt, smp,
+                                    trace0, bsz)
 
         return buf1, buf
 

@@ -719,6 +719,73 @@ error:
     }
 }
 
+PyObject* gettr( segyiofd* self, PyObject* args ) {
+    segy_file* fp = self->fd;
+    if( !fp ) return NULL;
+
+    PyObject* bufferobj;
+    int start, length, step;
+    long trace0;
+    int trace_bsize;
+    int format;
+    int samples;
+
+    if( !PyArg_ParseTuple(args, "Oiiiiili", &bufferobj,
+                                            &start,
+                                            &step,
+                                            &length,
+                                            &format,
+                                            &samples,
+                                            &trace0,
+                                            &trace_bsize ) )
+        return NULL;
+
+    if( !PyObject_CheckBuffer( bufferobj ) )
+        return TypeError( "expected buffer object" );
+
+    Py_buffer buffer;
+    if( PyObject_GetBuffer( bufferobj, &buffer,
+        PyBUF_WRITEABLE | PyBUF_C_CONTIGUOUS ) )
+        return BufferError( "buffer not contiguous-writeable" );
+
+    buffer_guard g( buffer );
+
+    const long long bufsize = (long long) length * samples;
+    if( buffer.len < bufsize )
+        return ValueError( "buffer too small" );
+
+    int err = 0;
+    float* buf = (float*)buffer.buf;
+
+    for( int i = 0; err == 0 && i < length; ++i, buf += samples ) {
+        err = segy_readtrace( fp, start + (i * step),
+                                  buf,
+                                  trace0,
+                                  trace_bsize );
+    }
+
+    switch( err ) {
+        case SEGY_OK: break;
+
+        case SEGY_FSEEK_ERROR:
+        case SEGY_FREAD_ERROR:
+            return PyErr_SetFromErrno( PyExc_IOError );
+
+        default:
+           return PyErr_Format( PyExc_RuntimeError,
+                                "unknown error code %d", err  );
+    }
+
+    err = segy_to_native( format, bufsize, (float*)buffer.buf );
+
+    if( err != SEGY_OK )
+        return RuntimeError( "unable to convert to native format" );
+
+    Py_INCREF( bufferobj );
+    return bufferobj;
+}
+
+
 PyMethodDef methods [] = {
     { "close", (PyCFunction) fd::close, METH_VARARGS, "Close file." },
     { "flush", (PyCFunction) fd::flush, METH_VARARGS, "Flush file." },
@@ -735,6 +802,8 @@ PyMethodDef methods [] = {
 
     { "field_forall",  (PyCFunction) fd::field_forall,  METH_VARARGS, "Field for-all."  },
     { "field_foreach", (PyCFunction) fd::field_foreach, METH_VARARGS, "Field for-each." },
+
+    { "gettr", (PyCFunction) fd::gettr, METH_VARARGS, "Get trace." },
 
     { "metrics",      (PyCFunction) fd::metrics,      METH_VARARGS, "Cube metrics."    },
     { "cube_metrics", (PyCFunction) fd::cube_metrics, METH_VARARGS, "Cube metrics."    },
@@ -1100,62 +1169,6 @@ static PyObject *py_fread_trace0(PyObject *self, PyObject *args) {
     return Py_BuildValue("i", trace_no);
 }
 
-static PyObject *py_read_trace(PyObject *self, PyObject *args) {
-    errno = 0;
-    PyObject *file_capsule = NULL;
-    PyObject *buffer_out;
-    int start, length, step;
-    long trace0;
-    int trace_bsize;
-    int format;
-    int samples;
-
-    PyArg_ParseTuple(args, "OOiiiiili", &file_capsule,
-                                        &buffer_out,
-                                        &start,
-                                        &step,
-                                        &length,
-                                        &format,
-                                        &samples,
-                                        &trace0,
-                                        &trace_bsize );
-
-    segy_file *p_FILE = get_FILE_pointer_from_capsule(file_capsule);
-
-    if (PyErr_Occurred()) { return NULL; }
-
-    if (!PyObject_CheckBuffer(buffer_out)) {
-        PyErr_SetString(PyExc_TypeError, "The destination buffer is not of the correct type.");
-        return NULL;
-    }
-    Py_buffer buffer;
-    PyObject_GetBuffer(buffer_out, &buffer, PyBUF_FORMAT | PyBUF_C_CONTIGUOUS | PyBUF_WRITEABLE);
-
-    int error = 0;
-    float* buf = (float*)buffer.buf;
-    Py_ssize_t i;
-
-    for( i = 0; error == 0 && i < length; ++i, buf += samples ) {
-        error = segy_readtrace(p_FILE, start + (i * step), buf, trace0, trace_bsize);
-    }
-
-    long long bufsize = (long long) length * samples;
-    int conv_error = segy_to_native(format, bufsize, (float*)buffer.buf);
-    PyBuffer_Release( &buffer );
-
-    if (error != 0) {
-        return py_handle_segy_error_with_index_and_name(error, errno, start + (i * step), "Trace");
-    }
-
-    if (conv_error != 0) {
-        PyErr_SetString(PyExc_TypeError, "Unable to convert buffer to native format.");
-        return NULL;
-    }
-
-    Py_IncRef(buffer_out);
-    return buffer_out;
-}
-
 static PyObject *py_write_trace(PyObject *self, PyObject *args) {
     errno = 0;
     PyObject *file_capsule = NULL;
@@ -1401,7 +1414,6 @@ static PyMethodDef SegyMethods[] = {
 
         {"init_line_metrics",  (PyCFunction) py_init_line_metrics,  METH_VARARGS, "Find the length and stride of inline and crossline."},
         {"fread_trace0",       (PyCFunction) py_fread_trace0,       METH_VARARGS, "Find trace0 of a line."},
-        {"read_trace",         (PyCFunction) py_read_trace,         METH_VARARGS, "Read trace data."},
         {"write_trace",        (PyCFunction) py_write_trace,        METH_VARARGS, "Write trace data."},
         {"read_line",          (PyCFunction) py_read_line,          METH_VARARGS, "Read a xline/iline from file."},
         {"depth_slice",        (PyCFunction) py_read_depth_slice,   METH_VARARGS, "Read a depth slice."},
