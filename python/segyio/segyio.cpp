@@ -1137,6 +1137,12 @@ PyObject* textsize(PyObject* ) {
     return PyLong_FromLong( SEGY_TEXT_HEADER_SIZE );
 }
 
+PyObject* trbsize( PyObject*, PyObject* args ) {
+    int sample_count;
+    if( !PyArg_ParseTuple( args, "i", &sample_count ) ) return NULL;
+    return PyLong_FromLong( segy_trace_bsize( sample_count ) );
+}
+
 }
 
 // ------------- ERROR Handling -------------
@@ -1265,17 +1271,6 @@ static PyObject *py_set_field(PyObject *self, PyObject *args) {
     }
 }
 
-static PyObject *py_trace_bsize(PyObject *self, PyObject *args) {
-    errno = 0;
-    int sample_count;
-
-    PyArg_ParseTuple(args, "i", &sample_count);
-
-    int byte_count = segy_trace_bsize(sample_count);
-
-    return Py_BuildValue("i", byte_count);
-}
-
 static PyObject *py_init_line_metrics(PyObject *self, PyObject *args) {
     errno = 0;
     SEGY_SORTING sorting;
@@ -1366,7 +1361,8 @@ static PyMethodDef SegyMethods[] = {
     { "thsize",   (PyCFunction) thsize,   METH_NOARGS, "Size of the trace header."  },
     { "textsize", (PyCFunction) textsize, METH_NOARGS, "Size of the text header."   },
 
-        {"trace_bsize",        (PyCFunction) py_trace_bsize,        METH_VARARGS, "Returns the number of bytes in a trace."},
+    { "trace_bsize", (PyCFunction) trbsize, METH_VARARGS, "Size of a trace (in bytes)." },
+
         {"get_field",          (PyCFunction) py_get_field,          METH_VARARGS, "Get a header field."},
         {"set_field",          (PyCFunction) py_set_field,          METH_VARARGS, "Set a header field."},
 
