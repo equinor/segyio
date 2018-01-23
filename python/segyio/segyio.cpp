@@ -1306,10 +1306,7 @@ PyObject* format( PyObject* , PyObject* args ) {
     return out;
 }
 
-}
-
-/*  define functions in module */
-static PyMethodDef SegyMethods[] = {
+PyMethodDef SegyMethods[] = {
     { "binsize",  (PyCFunction) binsize,  METH_NOARGS, "Size of the binary header." },
     { "thsize",   (PyCFunction) thsize,   METH_NOARGS, "Size of the trace header."  },
     { "textsize", (PyCFunction) textsize, METH_NOARGS, "Size of the text header."   },
@@ -1325,6 +1322,8 @@ static PyMethodDef SegyMethods[] = {
 
     { NULL }
 };
+
+}
 
 /* module initialization */
 #ifdef IS_PY3K
