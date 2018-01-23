@@ -20,10 +20,10 @@ class Field(object):
         self._write = write
 
     def _get_field(self, *args):
-        return segyio._segyio.get_field(self.buf, *args)
+        return segyio._segyio.getfield(self.buf, *args)
 
     def _set_field(self, *args):
-        return segyio._segyio.set_field(self.buf, *args)
+        return segyio._segyio.putfield(self.buf, *args)
 
     def __getitem__(self, field):
         # add some structure so we can always iterate over fields

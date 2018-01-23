@@ -1143,6 +1143,63 @@ PyObject* trbsize( PyObject*, PyObject* args ) {
     return PyLong_FromLong( segy_trace_bsize( sample_count ) );
 }
 
+PyObject* getfield( PyObject*, PyObject *args ) {
+    Py_buffer buffer;
+    int field;
+
+    if( !PyArg_ParseTuple( args, "s*i", &buffer, &field ) ) return NULL;
+
+    buffer_guard g( buffer );
+
+    if( buffer.len != SEGY_BINARY_HEADER_SIZE &&
+        buffer.len != SEGY_TRACE_HEADER_SIZE )
+        return TypeError( "header too small" );
+
+    int value = 0;
+    int err = buffer.len == segy_binheader_size()
+            ? segy_get_bfield((const char*)buffer.buf, field, &value)
+            : segy_get_field( (const char*)buffer.buf, field, &value)
+            ;
+
+    switch( err ) {
+        case SEGY_OK:            return PyLong_FromLong( value );
+        case SEGY_INVALID_FIELD: return IndexError( "wrong field value" );
+
+        default:
+            return PyErr_Format( PyExc_RuntimeError,
+                                "unknown error code %d", err  );
+    }
+}
+
+PyObject* putfield( PyObject*, PyObject *args ) {
+
+    Py_buffer buffer;
+    int field;
+    int value;
+    if( !PyArg_ParseTuple( args, "w*ii", &buffer, &field, &value ) )
+        return NULL;
+
+    buffer_guard g( buffer );
+
+    if( buffer.len != SEGY_BINARY_HEADER_SIZE &&
+        buffer.len != SEGY_TRACE_HEADER_SIZE )
+        return TypeError( "header too small" );
+
+    int err = buffer.len == segy_binheader_size()
+            ? segy_set_bfield( (char*)buffer.buf, field, value )
+            : segy_set_field(  (char*)buffer.buf, field, value )
+            ;
+
+    switch( err ) {
+        case SEGY_OK:            return PyLong_FromLong( value );
+        case SEGY_INVALID_FIELD: return IndexError( "wrong field value" );
+
+        default:
+            return PyErr_Format( PyExc_RuntimeError,
+                                "unknown error code %d", err  );
+    }
+}
+
 }
 
 // ------------- ERROR Handling -------------
@@ -1199,17 +1256,6 @@ static PyObject *py_handle_segy_error(int error, int errno_err) {
     return py_handle_segy_error_(args);
 }
 
-static PyObject *py_handle_segy_error_with_fields(int error, int errno_err, int field_1, int field_2, int field_count) {
-    struct error_args args;
-    args.error = error;
-    args.errno_err = errno_err;
-    args.field_1 = field_1;
-    args.field_2 = field_2;
-    args.field_count = field_count;
-    args.name = "";
-    return py_handle_segy_error_(args);
-}
-
 static PyObject *py_handle_segy_error_with_index_and_name(int error, int errno_err, int index, const char *name) {
     struct error_args args;
     args.error = error;
@@ -1219,56 +1265,6 @@ static PyObject *py_handle_segy_error_with_index_and_name(int error, int errno_e
     args.field_count = 1;
     args.name = name;
     return py_handle_segy_error_(args);
-}
-
-static PyObject *py_get_field(PyObject *self, PyObject *args) {
-    Py_buffer buffer;
-    int field;
-
-    PyArg_ParseTuple(args, "s*i", &buffer, &field);
-
-    buffer_guard g( buffer );
-
-    if( buffer.len != SEGY_BINARY_HEADER_SIZE &&
-        buffer.len != SEGY_TRACE_HEADER_SIZE )
-        return TypeError( "header too small" );
-
-    int value = 0;
-    int err = buffer.len == segy_binheader_size()
-            ? segy_get_bfield((const char*)buffer.buf, field, &value)
-            : segy_get_field( (const char*)buffer.buf, field, &value)
-            ;
-
-    if (err == 0) {
-        return Py_BuildValue("i", value);
-    } else {
-        return py_handle_segy_error_with_fields(err, errno, field, 0, 1);
-    }
-}
-
-static PyObject *py_set_field(PyObject *self, PyObject *args) {
-    Py_buffer buffer;
-    int field;
-    int value;
-
-    PyArg_ParseTuple(args, "s*ii", &buffer, &field, &value);
-
-    buffer_guard g( buffer );
-
-    if( buffer.len != SEGY_BINARY_HEADER_SIZE &&
-        buffer.len != SEGY_TRACE_HEADER_SIZE )
-        return TypeError( "header too small" );
-
-    int err = buffer.len == segy_binheader_size()
-            ? segy_set_bfield((char*)buffer.buf, field, value)
-            : segy_set_field( (char*)buffer.buf, field, value)
-            ;
-
-    if (err == 0) {
-        return Py_BuildValue("");
-    } else {
-        return py_handle_segy_error_with_fields(err, errno, field, 0, 1);
-    }
 }
 
 static PyObject *py_init_line_metrics(PyObject *self, PyObject *args) {
@@ -1363,8 +1359,8 @@ static PyMethodDef SegyMethods[] = {
 
     { "trace_bsize", (PyCFunction) trbsize, METH_VARARGS, "Size of a trace (in bytes)." },
 
-        {"get_field",          (PyCFunction) py_get_field,          METH_VARARGS, "Get a header field."},
-        {"set_field",          (PyCFunction) py_set_field,          METH_VARARGS, "Set a header field."},
+    { "getfield", (PyCFunction) getfield, METH_VARARGS, "Get a header field." },
+    { "putfield", (PyCFunction) putfield, METH_VARARGS, "Put a header field." },
 
         {"init_line_metrics",  (PyCFunction) py_init_line_metrics,  METH_VARARGS, "Find the length and stride of inline and crossline."},
         {"fread_trace0",       (PyCFunction) py_fread_trace0,       METH_VARARGS, "Find trace0 of a line."},

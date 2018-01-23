@@ -116,13 +116,13 @@ class _segyioTests(unittest.TestCase):
         binary_header = f.getbin()
 
         with self.assertRaises(TypeError):
-            value = _segyio.get_field("s", 0)
+            value = _segyio.getfield("s", 0)
 
         with self.assertRaises(IndexError):
-            value = _segyio.get_field(binary_header, -1)
+            value = _segyio.getfield(binary_header, -1)
 
-        self.assertEqual(_segyio.get_field(binary_header, 3225), 1)
-        self.assertEqual(_segyio.get_field(binary_header, 3221), 50)
+        self.assertEqual(_segyio.getfield(binary_header, 3225), 1)
+        self.assertEqual(_segyio.getfield(binary_header, 3221), 50)
 
         f.close()
 
@@ -321,28 +321,28 @@ class _segyioTests(unittest.TestCase):
     def test_fread_trace0_mmap(self):
         self.test_fread_trace0(True)
 
-    def test_get_and_set_field(self):
+    def test_get_and_putfield(self):
         hdr = bytearray(_segyio.thsize())
 
         with self.assertRaises(TypeError):
-            _segyio.get_field(".", 0)
+            _segyio.getfield(".", 0)
 
         with self.assertRaises(TypeError):
-            _segyio.set_field(".", 0, 1)
+            _segyio.putfield(".", 0, 1)
 
         with self.assertRaises(IndexError):
-            _segyio.get_field(hdr, 0)
+            _segyio.getfield(hdr, 0)
 
         with self.assertRaises(IndexError):
-            _segyio.set_field(hdr, 0, 1)
+            _segyio.putfield(hdr, 0, 1)
 
-        _segyio.set_field(hdr, 1, 127)
-        _segyio.set_field(hdr, 5, 67)
-        _segyio.set_field(hdr, 9, 19)
+        _segyio.putfield(hdr, 1, 127)
+        _segyio.putfield(hdr, 5, 67)
+        _segyio.putfield(hdr, 9, 19)
 
-        self.assertEqual(_segyio.get_field(hdr, 1), 127)
-        self.assertEqual(_segyio.get_field(hdr, 5), 67)
-        self.assertEqual(_segyio.get_field(hdr, 9), 19)
+        self.assertEqual(_segyio.getfield(hdr, 1), 127)
+        self.assertEqual(_segyio.getfield(hdr, 5), 67)
+        self.assertEqual(_segyio.getfield(hdr, 9), 19)
 
     def test_read_and_write_traceheader(self, mmap=False):
         with TestContext("read_and_write_trace_header") as context:
@@ -369,23 +369,23 @@ class _segyioTests(unittest.TestCase):
 
             trace_header = f.getth(0, mkempty(), metrics['trace0'], metrics['trace_bsize'])
 
-            self.assertEqual(_segyio.get_field(trace_header, ilb), 1)
-            self.assertEqual(_segyio.get_field(trace_header, xlb), 20)
+            self.assertEqual(_segyio.getfield(trace_header, ilb), 1)
+            self.assertEqual(_segyio.getfield(trace_header, xlb), 20)
 
             trace_header = f.getth(1, mkempty(), metrics['trace0'], metrics['trace_bsize'])
 
-            self.assertEqual(_segyio.get_field(trace_header, ilb), 1)
-            self.assertEqual(_segyio.get_field(trace_header, xlb), 21)
+            self.assertEqual(_segyio.getfield(trace_header, ilb), 1)
+            self.assertEqual(_segyio.getfield(trace_header, xlb), 21)
 
-            _segyio.set_field(trace_header, ilb, 99)
-            _segyio.set_field(trace_header, xlb, 42)
+            _segyio.putfield(trace_header, ilb, 99)
+            _segyio.putfield(trace_header, xlb, 42)
 
             f.putth(0, trace_header, metrics['trace0'], metrics['trace_bsize'])
 
             trace_header = f.getth(0, mkempty(), metrics['trace0'], metrics['trace_bsize'])
 
-            self.assertEqual(_segyio.get_field(trace_header, ilb), 99)
-            self.assertEqual(_segyio.get_field(trace_header, xlb), 42)
+            self.assertEqual(_segyio.getfield(trace_header, ilb), 99)
+            self.assertEqual(_segyio.getfield(trace_header, xlb), 42)
 
             f.close()
 
