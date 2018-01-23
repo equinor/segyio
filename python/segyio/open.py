@@ -117,11 +117,11 @@ def open(filename, mode="r", iline = 189,
         offset_count = cube_metrics['offset_count']
         metrics.update(cube_metrics)
 
-        line_metrics = segyio._segyio.init_line_metrics(f.sorting,
-                                                        f.tracecount,
-                                                        iline_count,
-                                                        xline_count,
-                                                        offset_count)
+        line_metrics = segyio._segyio.line_metrics(f.sorting,
+                                                   f.tracecount,
+                                                   iline_count,
+                                                   xline_count,
+                                                   offset_count)
 
         f._iline_length = line_metrics['iline_length']
         f._iline_stride = line_metrics['iline_stride']

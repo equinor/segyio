@@ -1200,6 +1200,48 @@ PyObject* putfield( PyObject*, PyObject *args ) {
     }
 }
 
+PyObject* line_metrics( PyObject*, PyObject *args) {
+    SEGY_SORTING sorting;
+    int trace_count;
+    int inline_count;
+    int crossline_count;
+    int offset_count;
+
+    if( !PyArg_ParseTuple( args, "iiiii", &sorting,
+                                          &trace_count,
+                                          &inline_count,
+                                          &crossline_count,
+                                          &offset_count ) )
+        return NULL;
+
+    int iline_length = segy_inline_length( crossline_count );
+    int xline_length = segy_crossline_length( inline_count );
+
+    int iline_stride = 0;
+    int err = segy_inline_stride( sorting, inline_count, &iline_stride );
+
+    // only check first call since the only error that can occur is
+    // SEGY_INVALID_SORTING
+    switch( err ) {
+        case SEGY_OK: break;
+        case SEGY_INVALID_SORTING:
+            return ValueError( "invalid sorting. file corrupted?" );
+
+        default:
+            return PyErr_Format( PyExc_RuntimeError,
+                                "unknown error code %d", err  );
+    }
+
+    int xline_stride;
+    segy_crossline_stride( sorting, crossline_count, &xline_stride );
+
+    return Py_BuildValue( "{s:i, s:i, s:i, s:i}",
+                          "xline_length", xline_length,
+                          "xline_stride", xline_stride,
+                          "iline_length", iline_length,
+                          "iline_stride", iline_stride );
+}
+
 }
 
 // ------------- ERROR Handling -------------
@@ -1245,17 +1287,6 @@ static PyObject *py_handle_segy_error_(struct error_args args) {
     }
 }
 
-static PyObject *py_handle_segy_error(int error, int errno_err) {
-    struct error_args args;
-    args.error = error;
-    args.errno_err = errno_err;
-    args.field_1 = 0;
-    args.field_2 = 0;
-    args.field_count = 0;
-    args.name = "";
-    return py_handle_segy_error_(args);
-}
-
 static PyObject *py_handle_segy_error_with_index_and_name(int error, int errno_err, int index, const char *name) {
     struct error_args args;
     args.error = error;
@@ -1265,37 +1296,6 @@ static PyObject *py_handle_segy_error_with_index_and_name(int error, int errno_e
     args.field_count = 1;
     args.name = name;
     return py_handle_segy_error_(args);
-}
-
-static PyObject *py_init_line_metrics(PyObject *self, PyObject *args) {
-    errno = 0;
-    SEGY_SORTING sorting;
-    int trace_count;
-    int inline_count;
-    int crossline_count;
-    int offset_count;
-
-    PyArg_ParseTuple(args, "iiiii", &sorting, &trace_count, &inline_count, &crossline_count, &offset_count);
-
-    int iline_length = segy_inline_length(crossline_count);
-
-    int xline_length = segy_crossline_length(inline_count);
-
-    int iline_stride;
-    int error = segy_inline_stride(sorting, inline_count, &iline_stride);
-    //Only check first call since the only error that can occur is SEGY_INVALID_SORTING
-    if( error ) { return py_handle_segy_error( error, errno ); }
-
-    int xline_stride;
-    segy_crossline_stride(sorting, crossline_count, &xline_stride);
-
-    PyObject *dict = PyDict_New();
-    PyDict_SetItemString(dict, "xline_length", Py_BuildValue("i", xline_length));
-    PyDict_SetItemString(dict, "xline_stride", Py_BuildValue("i", xline_stride));
-    PyDict_SetItemString(dict, "iline_length", Py_BuildValue("i", iline_length));
-    PyDict_SetItemString(dict, "iline_stride", Py_BuildValue("i", iline_stride));
-
-    return Py_BuildValue("O", dict);
 }
 
 static PyObject *py_fread_trace0(PyObject *self, PyObject *args) {
@@ -1362,7 +1362,7 @@ static PyMethodDef SegyMethods[] = {
     { "getfield", (PyCFunction) getfield, METH_VARARGS, "Get a header field." },
     { "putfield", (PyCFunction) putfield, METH_VARARGS, "Put a header field." },
 
-        {"init_line_metrics",  (PyCFunction) py_init_line_metrics,  METH_VARARGS, "Find the length and stride of inline and crossline."},
+    { "line_metrics", (PyCFunction) line_metrics,  METH_VARARGS, "Find the length and stride of lines." },
         {"fread_trace0",       (PyCFunction) py_fread_trace0,       METH_VARARGS, "Find trace0 of a line."},
         {"native",             (PyCFunction) py_format,             METH_VARARGS, "Convert to native float."},
         {NULL, NULL, 0, NULL}

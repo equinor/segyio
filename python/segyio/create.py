@@ -154,7 +154,11 @@ def create(filename, spec):
         f._ilines        = numpy.copy(numpy.asarray(spec.ilines, dtype=numpy.intc))
         f._xlines        = numpy.copy(numpy.asarray(spec.xlines, dtype=numpy.intc))
 
-        line_metrics = _segyio.init_line_metrics(f.sorting, f.tracecount, len(f.ilines), len(f.xlines), len(f.offsets))
+        line_metrics = _segyio.line_metrics(f.sorting,
+                                            f.tracecount,
+                                            len(f.ilines),
+                                            len(f.xlines),
+                                            len(f.offsets))
 
         f._iline_length = line_metrics['iline_length']
         f._iline_stride = line_metrics['iline_stride']
