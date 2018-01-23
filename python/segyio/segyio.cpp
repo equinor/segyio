@@ -1284,29 +1284,28 @@ PyObject* fread_trace0( PyObject* , PyObject* args ) {
     }
 }
 
-}
-
-static PyObject * py_format(PyObject *self, PyObject *args) {
+PyObject* format( PyObject* , PyObject* args ) {
     PyObject *out;
     int format;
 
-    PyArg_ParseTuple( args, "Oi", &out, &format );
+    if( !PyArg_ParseTuple( args, "Oi", &out, &format ) ) return NULL;
 
     Py_buffer buffer;
-    PyObject_GetBuffer( out, &buffer,
-                        PyBUF_FORMAT | PyBUF_C_CONTIGUOUS | PyBUF_WRITEABLE );
-
-    int err = segy_to_native( format, buffer.len / buffer.itemsize, (float*)buffer.buf );
-
-    PyBuffer_Release( &buffer );
-
-    if( err != SEGY_OK ) {
-        PyErr_SetString( PyExc_RuntimeError, "Unable to convert to native float." );
+    if( PyObject_GetBuffer( out, &buffer, PyBUF_CONTIG ) )
         return NULL;
-    }
 
-    Py_IncRef( out );
+    buffer_guard g( buffer );
+
+    const int len = buffer.len / buffer.itemsize;
+    const int err = segy_to_native( format, len, (float*)buffer.buf );
+
+    if( err != SEGY_OK )
+        return RuntimeError( "unable to convert to native float" );
+
+    Py_INCREF( out );
     return out;
+}
+
 }
 
 /*  define functions in module */
@@ -1321,9 +1320,10 @@ static PyMethodDef SegyMethods[] = {
     { "putfield", (PyCFunction) putfield, METH_VARARGS, "Put a header field." },
 
     { "line_metrics", (PyCFunction) line_metrics,  METH_VARARGS, "Find the length and stride of lines." },
-    {"fread_trace0",  (PyCFunction) fread_trace0,  METH_VARARGS, "Find trace0 of a line."               },
-        {"native",             (PyCFunction) py_format,             METH_VARARGS, "Convert to native float."},
-        {NULL, NULL, 0, NULL}
+    { "fread_trace0", (PyCFunction) fread_trace0,  METH_VARARGS, "Find trace0 of a line."               },
+    { "native",       (PyCFunction) format,        METH_VARARGS, "Convert to native float."             },
+
+    { NULL }
 };
 
 /* module initialization */
