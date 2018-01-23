@@ -81,6 +81,11 @@ PyObject* IOError( const char* msg ) {
     return NULL;
 }
 
+template< typename T1, typename T2 >
+PyObject* KeyError( const char* msg, T1 t1, T2 t2 ) {
+    return PyErr_Format( PyExc_KeyError, msg, t1, t2 );
+}
+
 namespace fd {
 
 int init( segyiofd* self, PyObject* args, PyObject* ) {
@@ -1242,90 +1247,43 @@ PyObject* line_metrics( PyObject*, PyObject *args) {
                           "iline_stride", iline_stride );
 }
 
-}
-
-// ------------- ERROR Handling -------------
-struct error_args {
-    int error;
-    int errno_err;
-    int field_1;
-    int field_2;
-    int field_count;
-    const char *name;
-};
-
-static PyObject *py_handle_segy_error_(struct error_args args) {
-    switch (args.error) {
-        case SEGY_TRACE_SIZE_MISMATCH:
-            return PyErr_Format(PyExc_RuntimeError,
-                                "Number of traces is not consistent with file size. File may be corrupt.");
-
-        case SEGY_INVALID_FIELD:
-            if (args.field_count == 1) {
-                return PyErr_Format(PyExc_IndexError, "Field value out of range: %d", args.field_1);
-            } else {
-                int inline_field = args.field_1;
-                int crossline_field = args.field_2;
-                return PyErr_Format(PyExc_IndexError, "Invalid inline (%d) or crossline (%d) field/byte offset. "
-                        "Too large or between valid byte offsets.", inline_field, crossline_field);
-            }
-        case SEGY_INVALID_OFFSETS:
-            return PyErr_Format(PyExc_RuntimeError, "Found more offsets than traces. File may be corrupt.");
-
-        case SEGY_INVALID_SORTING:
-            return PyErr_Format(PyExc_RuntimeError, "Unable to determine sorting. File may be corrupt.");
-
-        case SEGY_INVALID_ARGS:
-            return PyErr_Format(PyExc_RuntimeError, "Input arguments are invalid.");
-
-        case SEGY_MISSING_LINE_INDEX:
-            return PyErr_Format(PyExc_KeyError, "%s number %d does not exist.", args.name, args.field_1);
-
-        default:
-            errno = args.errno_err;
-            return PyErr_SetFromErrno(PyExc_IOError);
-    }
-}
-
-static PyObject *py_handle_segy_error_with_index_and_name(int error, int errno_err, int index, const char *name) {
-    struct error_args args;
-    args.error = error;
-    args.errno_err = errno_err;
-    args.field_1 = index;
-    args.field_2 = 0;
-    args.field_count = 1;
-    args.name = name;
-    return py_handle_segy_error_(args);
-}
-
-static PyObject *py_fread_trace0(PyObject *self, PyObject *args) {
-    errno = 0;
+PyObject* fread_trace0( PyObject* , PyObject* args ) {
     int lineno;
     int other_line_length;
     int stride;
     int offsets;
-    PyObject *indices_object;
-    char *type_name;
+    int* indices;
+    int indiceslen;
+    char* linetype;
 
-    PyArg_ParseTuple(args, "iiiiOs", &lineno, &other_line_length, &stride, &offsets, &indices_object, &type_name);
-
-    Py_buffer buffer;
-    if (!PyObject_CheckBuffer(indices_object)) {
-        PyErr_Format(PyExc_TypeError, "The destination for %s is not a buffer object", type_name);
+    if( !PyArg_ParseTuple( args, "iiiis#s", &lineno,
+                                            &other_line_length,
+                                            &stride,
+                                            &offsets,
+                                            &indices,
+                                            &indiceslen,
+                                            &linetype ) )
         return NULL;
+
+    int trace_no = 0;
+    int err = segy_line_trace0( lineno,
+                                other_line_length,
+                                stride,
+                                offsets,
+                                indices, indiceslen / sizeof( int ),
+                                &trace_no );
+
+    switch( err ) {
+        case SEGY_OK: return PyLong_FromLong( trace_no );
+        case SEGY_MISSING_LINE_INDEX:
+            return KeyError( "no such %s %d", linetype, lineno );
+
+        default:
+            return PyErr_Format( PyExc_RuntimeError,
+                                "unknown error code %d", err  );
     }
-    PyObject_GetBuffer(indices_object, &buffer, PyBUF_FORMAT | PyBUF_C_CONTIGUOUS);
+}
 
-    int trace_no;
-    int linenos_sz = PyObject_Length(indices_object);
-    int error = segy_line_trace0(lineno, other_line_length, stride, offsets, (int*)buffer.buf, linenos_sz, &trace_no);
-    PyBuffer_Release( &buffer );
-
-    if (error != 0) {
-        return py_handle_segy_error_with_index_and_name(error, errno, lineno, type_name);
-    }
-
-    return Py_BuildValue("i", trace_no);
 }
 
 static PyObject * py_format(PyObject *self, PyObject *args) {
@@ -1363,7 +1321,7 @@ static PyMethodDef SegyMethods[] = {
     { "putfield", (PyCFunction) putfield, METH_VARARGS, "Put a header field." },
 
     { "line_metrics", (PyCFunction) line_metrics,  METH_VARARGS, "Find the length and stride of lines." },
-        {"fread_trace0",       (PyCFunction) py_fread_trace0,       METH_VARARGS, "Find trace0 of a line."},
+    {"fread_trace0",  (PyCFunction) fread_trace0,  METH_VARARGS, "Find trace0 of a line."               },
         {"native",             (PyCFunction) py_format,             METH_VARARGS, "Convert to native float."},
         {NULL, NULL, 0, NULL}
 };
