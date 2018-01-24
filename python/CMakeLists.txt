@@ -28,7 +28,7 @@ set(python ${PYTHON_EXECUTABLE})
 
 if (NOT WIN32)
     # setuptools on microsoft compilers doesn't support the --library-dir or
-    # --buil-dir flag and crashes, so only pass it on non-microsoft platforms
+    # --build-dir flag and crashes, so only pass it on non-microsoft platforms
     set(setup-py-libdir build_ext
                             --rpath        $<TARGET_FILE_DIR:segyio-shared>
                             --library-dirs $<TARGET_FILE_DIR:segyio-shared>)
@@ -36,7 +36,12 @@ if (NOT WIN32)
     set(install-no-rpath install_lib --build-dir build/install)
     set(build-no-rpath --library-dirs $<TARGET_FILE_DIR:segyio-shared>
                        build --build-lib build/install)
+else ()
+    set(copy-dll-to-src ${CMAKE_COMMAND} -E
+        copy $<TARGET_FILE:segyio-shared>
+        ${CMAKE_CURRENT_SOURCE_DIR}/segyio/$<TARGET_FILE_NAME:segyio-shared>)
 endif ()
+
 
 set(setup-py ${CMAKE_SOURCE_DIR}/setup.py)
 add_custom_target(
@@ -67,6 +72,16 @@ add_custom_target(
 
     COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_LINKER_FILE:segyio-shared>
                                      $<TARGET_LINKER_FILE_NAME:segyio-shared>
+
+    # on windows, copy the freshly-built dll to the source directory. this
+    # voilates the cmake spirit (as does the version.py writing from
+    # setuptools-scm), but there's no auditwheel like tool to help fix the
+    # wheel, and the dll must still be bundled in order to make the package
+    # work. it's paired with package_data in setup.py. this is necessary
+    # because setup.py assumes all files to bundled with the package are
+    # relative downwards and in the package itself, with poor support for
+    # grabbing other files and adding to it later.
+    COMMAND ${copy-dll-to-src}
 
     # install the lib in the build-dir so that the examples can load that from
     # current working dir
