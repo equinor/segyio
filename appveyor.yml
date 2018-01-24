@@ -14,6 +14,7 @@ platform:
 
 environment:
     MEX: -DBUILD_MEX=OFF
+    INSTALL_DIR: C:\projects\segyio-install
     TWINE_PASSWORD:
         secure: kTga6+rLL1fNpKqFNcX0QZNyqiYaHsEfSS4k6wvUoTE=
     matrix:
@@ -29,9 +30,6 @@ environment:
 
 matrix:
     fast_finish: true
-
-init:
-    - INSTALL_DIR: C:\projects\segyio-install
 
 install:
     - git submodule update --init --recursive
