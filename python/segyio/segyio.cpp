@@ -1016,10 +1016,7 @@ PyObject* getdt( segyiofd* self, PyObject* args ) {
     if( err != SEGY_OK )
         return IOError( "unable to parse global binary header" );
 
-    const long trace0 = segy_trace0( buffer );
-    const int samples = segy_samples( buffer );
-    const int trace_bsize = segy_trace_bsize( samples );
-    err = segy_traceheader( fp, 0, buffer, trace0, trace_bsize );
+    err = segy_traceheader( fp, 0, buffer, self->trace0, self->trace_bsize );
 
     if( err != SEGY_OK )
         return IOError( "unable to read trace header (0)" );
