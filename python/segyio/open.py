@@ -89,11 +89,7 @@ def open(filename, mode="r", iline = 189,
         return f
 
     try:
-        cube_metrics = f.xfd.cube_metrics(iline,
-                                          xline,
-                                          f.tracecount,
-                                          f._tr0,
-                                          f._bsz)
+        cube_metrics = f.xfd.cube_metrics(iline, xline)
         f._sorting   = cube_metrics['sorting']
         iline_count  = cube_metrics['iline_count']
         xline_count  = cube_metrics['xline_count']

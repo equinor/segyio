@@ -589,24 +589,15 @@ PyObject* cube_metrics( segyiofd* self, PyObject* args ) {
 
     int il;
     int xl;
-    int trace_count;
-    long trace0;
-    int trace_bsize;
-
-    if( !PyArg_ParseTuple( args, "iiili", &il,
-                                          &xl,
-                                          &trace_count,
-                                          &trace0,
-                                          &trace_bsize ) )
-        return NULL;
+    if( !PyArg_ParseTuple( args, "ii", &il, &xl ) ) return NULL;
 
     int sorting = -1;
     int err = segy_sorting( fp, il,
                                 xl,
                                 SEGY_TR_OFFSET,
                                 &sorting,
-                                trace0,
-                                trace_bsize);
+                                self->trace0,
+                                self->trace_bsize );
 
     switch( err ) {
         case SEGY_OK: break;
@@ -628,10 +619,10 @@ PyObject* cube_metrics( segyiofd* self, PyObject* args ) {
     int offset_count = -1;
     err = segy_offsets( fp, il,
                             xl,
-                            trace_count,
+                            self->tracecount,
                             &offset_count,
-                            trace0,
-                            trace_bsize);
+                            self->trace0,
+                            self->trace_bsize );
 
     switch( err ) {
         case SEGY_OK: break;
@@ -649,7 +640,7 @@ PyObject* cube_metrics( segyiofd* self, PyObject* args ) {
 
     int xl_count = 0;
     int il_count = 0;
-    if( trace_count == offset_count ) {
+    if( self->tracecount == offset_count ) {
         /*
          * handle the case where there's only one trace in the file, as it
          * doesn't make sense to count 1 line from segyio's point of view
@@ -665,8 +656,8 @@ PyObject* cube_metrics( segyiofd* self, PyObject* args ) {
                                     offset_count,
                                     &il_count,
                                     &xl_count,
-                                    trace0,
-                                    trace_bsize );
+                                    self->trace0,
+                                    self->trace_bsize );
 
         switch( err ) {
             case SEGY_OK: break;
