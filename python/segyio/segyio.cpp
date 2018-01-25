@@ -1032,15 +1032,11 @@ PyObject* rotation( segyiofd* self, PyObject* args ) {
     int stride;
     int offsets;
     Py_buffer linenos;
-    long trace0;
-    int trace_bsize;
 
-    if( !PyArg_ParseTuple( args, "iiis*li", &line_length,
-                                            &stride,
-                                            &offsets,
-                                            &linenos,
-                                            &trace0,
-                                            &trace_bsize ) )
+    if( !PyArg_ParseTuple( args, "iiis*", &line_length,
+                                          &stride,
+                                          &offsets,
+                                          &linenos ) )
         return NULL;
 
     buffer_guard g( linenos );
@@ -1052,8 +1048,8 @@ PyObject* rotation( segyiofd* self, PyObject* args ) {
                                     (const int*)linenos.buf,
                                     linenos.len / sizeof( int ),
                                     &rotation,
-                                    trace0,
-                                    trace_bsize );
+                                    self->trace0,
+                                    self->trace_bsize );
 
     switch( err ) {
         case SEGY_OK: return PyFloat_FromDouble( rotation );
