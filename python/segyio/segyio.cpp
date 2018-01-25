@@ -724,8 +724,6 @@ PyObject* indices( segyiofd* self, PyObject* args ) {
     const int xl_field     = getitem( metrics, "xline_field" );
     const int offset_field = getitem( metrics, "offset_field" );
     const int sorting      = getitem( metrics, "sorting" );
-    const long trace0      = getitem( metrics, "trace0" );
-    const int trace_bsize  = getitem( metrics, "trace_bsize" );
     if( PyErr_Occurred() ) return NULL;
 
     int err = segy_inline_indices( fp, il_field,
@@ -734,8 +732,8 @@ PyObject* indices( segyiofd* self, PyObject* args ) {
                                        xline_count,
                                        offset_count,
                                        (int*)iline_out.buf,
-                                       trace0,
-                                       trace_bsize);
+                                       self->trace0,
+                                       self->trace_bsize );
     if( err != SEGY_OK ) goto error;
 
     err = segy_crossline_indices( fp, xl_field,
@@ -744,15 +742,15 @@ PyObject* indices( segyiofd* self, PyObject* args ) {
                                       xline_count,
                                       offset_count,
                                       (int*)xline_out.buf,
-                                      trace0,
-                                      trace_bsize);
+                                      self->trace0,
+                                      self->trace_bsize );
     if( err != SEGY_OK ) goto error;
 
     err = segy_offset_indices( fp, offset_field,
                                    offset_count,
                                    (int*)offset_out.buf,
-                                   trace0,
-                                   trace_bsize );
+                                   self->trace0,
+                                   self->trace_bsize );
     if( err != SEGY_OK ) goto error;
 
     return Py_BuildValue( "" );
