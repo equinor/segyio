@@ -932,17 +932,11 @@ PyObject* getdepth( segyiofd* self, PyObject* args ) {
     int count;
     int offsets;
     PyObject* bufferobj;
-    long trace0;
-    int trace_bsize;
-    int format;
-    int samples;
 
-    if( !PyArg_ParseTuple( args, "iiiOliii", &depth,
-                                             &count,
-                                             &offsets,
-                                             &bufferobj,
-                                             &trace0, &trace_bsize,
-                                             &format, &samples ) )
+    if( !PyArg_ParseTuple( args, "iiiO", &depth,
+                                         &count,
+                                         &offsets,
+                                         &bufferobj ) )
         return NULL;;
 
     if( !PyObject_CheckBuffer( bufferobj ) )
@@ -958,6 +952,9 @@ PyObject* getdepth( segyiofd* self, PyObject* args ) {
     int trace_no = 0;
     int err = 0;
     float* buf = (float*)buffer.buf;
+
+    const long trace0 = self->trace0;
+    const int trace_bsize = self->trace_bsize;
 
     for( ; err == 0 && trace_no < count; ++trace_no) {
         err = segy_readsubtr( fp,
@@ -983,7 +980,7 @@ PyObject* getdepth( segyiofd* self, PyObject* args ) {
     }
 
 
-    err = segy_to_native( format, count, (float*)buffer.buf );
+    err = segy_to_native( self->format, count, (float*)buffer.buf );
 
     if( err != SEGY_OK )
         return RuntimeError( "unable to preserve native float format" );

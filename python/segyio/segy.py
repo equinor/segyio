@@ -918,11 +918,7 @@ class SegyFile(object):
         fmt = self._fmt
 
         def readfn(depth, length, stride, buf):
-            return self.xfd.getdepth( depth,
-                                      slice_trace_count, offsets,
-                                      buf,
-                                      tr0, bsz,
-                                      fmt, len(self.samples))
+            return self.xfd.getdepth(depth, slice_trace_count, offsets, buf)
 
         def writefn(depth, length, stride, val):
             val = buffn(val)
