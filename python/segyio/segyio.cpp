@@ -481,17 +481,13 @@ PyObject* field_forall( segyiofd* self, PyObject* args ) {
 
     PyObject* bufferobj;
     int start, stop, step;
-    long trace0;
-    int trace_bsize;
     int field;
 
-    if( !PyArg_ParseTuple( args, "Oiiiili", &bufferobj,
-                                            &start,
-                                            &stop,
-                                            &step,
-                                            &field,
-                                            &trace0,
-                                            &trace_bsize ) )
+    if( !PyArg_ParseTuple( args, "Oiiii", &bufferobj,
+                                          &start,
+                                          &stop,
+                                          &step,
+                                          &field ) )
         return NULL;
 
     if( step == 0 ) return ValueError( "slice step cannot be zero" );
@@ -512,8 +508,8 @@ PyObject* field_forall( segyiofd* self, PyObject* args ) {
                                        stop,
                                        step,
                                        (int*)buffer.buf,
-                                       trace0,
-                                       trace_bsize );
+                                       self->trace0,
+                                       self->trace_bsize );
 
     switch( err ) {
         case SEGY_OK:
@@ -537,14 +533,8 @@ PyObject* field_foreach( segyiofd* self, PyObject* args ) {
     PyObject* buffer_out;
     Py_buffer indices;
     int field;
-    long trace0;
-    int trace_bsize;
 
-    if( !PyArg_ParseTuple(args, "Os*ili", &buffer_out,
-                                          &indices,
-                                          &field,
-                                          &trace0,
-                                          &trace_bsize ) )
+    if( !PyArg_ParseTuple(args, "Os*i", &buffer_out, &indices, &field ) )
         return NULL;
 
     buffer_guard gind( indices );
@@ -569,8 +559,8 @@ PyObject* field_foreach( segyiofd* self, PyObject* args ) {
                                      ind[ i ] + 1,
                                      1,
                                      out + i,
-                                     trace0,
-                                     trace_bsize );
+                                     self->trace0,
+                                     self->trace_bsize );
 
         if( err != SEGY_OK )
             return PyErr_SetFromErrno( PyExc_IOError );
