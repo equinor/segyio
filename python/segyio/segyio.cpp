@@ -776,19 +776,8 @@ PyObject* gettr( segyiofd* self, PyObject* args ) {
 
     PyObject* bufferobj;
     int start, length, step;
-    long trace0;
-    int trace_bsize;
-    int format;
-    int samples;
 
-    if( !PyArg_ParseTuple(args, "Oiiiiili", &bufferobj,
-                                            &start,
-                                            &step,
-                                            &length,
-                                            &format,
-                                            &samples,
-                                            &trace0,
-                                            &trace_bsize ) )
+    if( !PyArg_ParseTuple( args, "Oiii", &bufferobj, &start, &step, &length ) )
         return NULL;
 
     if( !PyObject_CheckBuffer( bufferobj ) )
@@ -801,13 +790,16 @@ PyObject* gettr( segyiofd* self, PyObject* args ) {
 
     buffer_guard g( buffer );
 
+    const int samples = self->samplecount;
     const long long bufsize = (long long) length * samples;
+    const long trace0 = self->trace0;
+    const int trace_bsize = self->trace_bsize;
+
     if( buffer.len < bufsize )
         return ValueError( "buffer too small" );
 
     int err = 0;
     float* buf = (float*)buffer.buf;
-
     for( int i = 0; err == 0 && i < length; ++i, buf += samples ) {
         err = segy_readtrace( fp, start + (i * step),
                                   buf,
@@ -827,7 +819,7 @@ PyObject* gettr( segyiofd* self, PyObject* args ) {
                                 "unknown error code %d", err  );
     }
 
-    err = segy_to_native( format, bufsize, (float*)buffer.buf );
+    err = segy_to_native( self->format, bufsize, (float*)buffer.buf );
 
     if( err != SEGY_OK )
         return RuntimeError( "unable to convert to native format" );
@@ -843,29 +835,22 @@ PyObject* puttr( segyiofd* self, PyObject* args ) {
     int trace_no;
     float* buffer;
     Py_ssize_t buflen;
-    long trace0;
-    int trace_bsize;
-    int format;
-    int samples;
 
-    if( !PyArg_ParseTuple( args, "is#liii", &trace_no,
-                                            &buffer, &buflen,
-                                            &trace0, &trace_bsize,
-                                            &format, &samples ) )
+    if( !PyArg_ParseTuple( args, "is#", &trace_no, &buffer, &buflen ) )
         return NULL;
 
-    int err = segy_from_native( format, samples, buffer );
+    int err = segy_from_native( self->format, self->samplecount, buffer );
 
     if( err != SEGY_OK )
         return RuntimeError( "unable to convert to native format" );
 
     err = segy_writetrace( fp, trace_no,
                                buffer,
-                               trace0, trace_bsize );
+                               self->trace0, self->trace_bsize );
 
-    const int conv_err = segy_to_native( format, samples, buffer );
+    const int conv = segy_to_native( self->format, self->samplecount, buffer );
 
-    if( conv_err != SEGY_OK )
+    if( conv != SEGY_OK )
         return RuntimeError( "unable to preserve native float format" );
 
     switch( err ) {

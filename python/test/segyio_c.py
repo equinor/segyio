@@ -366,26 +366,27 @@ class _segyioTests(unittest.TestCase):
     def test_read_and_write_trace(self, mmap=False):
         with TestContext("read_and_write_trace"):
             binary = bytearray(_segyio.binsize())
-            _segyio.putfield(binary, 3213, 25)
-            f = _segyio.segyiofd("trace-wrt.sgy", "w+")
+            _segyio.putfield(binary, 3213, 100)
+            _segyio.putfield(binary, 3221, 25)
+            f = _segyio.segyiofd("trace-wrt.sgy", "w+", binary)
             if mmap: f.mmap()
 
             buf = numpy.ones(25, dtype=numpy.single)
             buf[11] = 3.1415
-            f.puttr(0, buf, 0, 100, 1, 25)
+            f.puttr(0, buf)
             buf[:] = 42.0
-            f.puttr(1, buf, 0, 100, 1, 25)
+            f.puttr(1, buf)
 
             f.flush()
 
             buf = numpy.zeros(25, dtype=numpy.single)
 
-            f.gettr(buf, 0, 1, 1, 1, 25, 0, 100)
+            f.gettr(buf, 0, 1, 1)
 
             self.assertAlmostEqual(buf[10], 1.0, places=4)
             self.assertAlmostEqual(buf[11], 3.1415, places=4)
 
-            f.gettr(buf, 1, 1, 1, 1, 25, 0, 100)
+            f.gettr(buf, 1, 1, 1)
 
             self.assertAlmostEqual(sum(buf), 42.0 * 25, places=4)
 
