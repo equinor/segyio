@@ -353,12 +353,12 @@ class _segyioTests(unittest.TestCase):
             with self.assertRaises(TypeError):
                 trace_header = f.getth(0, None)
 
-            trace_header = f.getth(0, mkempty(), metrics['trace0'], metrics['trace_bsize'])
+            trace_header = f.getth(0, mkempty())
 
             self.assertEqual(_segyio.getfield(trace_header, ilb), 1)
             self.assertEqual(_segyio.getfield(trace_header, xlb), 20)
 
-            trace_header = f.getth(1, mkempty(), metrics['trace0'], metrics['trace_bsize'])
+            trace_header = f.getth(1, mkempty())
 
             self.assertEqual(_segyio.getfield(trace_header, ilb), 1)
             self.assertEqual(_segyio.getfield(trace_header, xlb), 21)
@@ -366,9 +366,9 @@ class _segyioTests(unittest.TestCase):
             _segyio.putfield(trace_header, ilb, 99)
             _segyio.putfield(trace_header, xlb, 42)
 
-            f.putth(0, trace_header, metrics['trace0'], metrics['trace_bsize'])
+            f.putth(0, trace_header)
 
-            trace_header = f.getth(0, mkempty(), metrics['trace0'], metrics['trace_bsize'])
+            trace_header = f.getth(0, mkempty())
 
             self.assertEqual(_segyio.getfield(trace_header, ilb), 99)
             self.assertEqual(_segyio.getfield(trace_header, xlb), 42)

@@ -105,7 +105,7 @@ class Field(object):
             buf = bytes(segyio._segyio.thsize())
 
         try:
-            segy.xfd.getth(traceno, buf, segy._tr0, segy._bsz)
+            segy.xfd.getth(traceno, buf)
         except IOError:
             # the file was probably newly created and the trace header hasn't
             # been written yet.  if this is the case we want to try and write
@@ -114,7 +114,7 @@ class Field(object):
             pass
 
         def wr(buf, traceno):
-            segy.xfd.putth(traceno, buf, segy._tr0, segy._bsz)
+            segy.xfd.putth(traceno, buf)
 
         return Field(buf, traceno=traceno,
                           write=wr,

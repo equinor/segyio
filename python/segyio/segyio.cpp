@@ -403,14 +403,8 @@ PyObject* getth( segyiofd* self, PyObject *args ) {
 
     int traceno;
     PyObject* bufferobj;
-    long trace0;
-    int trace_bsize;
 
-    if( !PyArg_ParseTuple( args, "iOli", &traceno,
-                                         &bufferobj,
-                                         &trace0,
-                                         &trace_bsize ) )
-        return NULL;
+    if( !PyArg_ParseTuple( args, "iO", &traceno, &bufferobj ) ) return NULL;
 
     Py_buffer buffer;
     if( !PyObject_CheckBuffer( bufferobj ) )
@@ -426,7 +420,10 @@ PyObject* getth( segyiofd* self, PyObject *args ) {
         return PyErr_Format( PyExc_ValueError, "trace header too small" );
 
     char* buf = (char*)buffer.buf;
-    int err = segy_traceheader( fp, traceno, buf, trace0, trace_bsize );
+    int err = segy_traceheader( fp, traceno,
+                                    buf,
+                                    self->trace0,
+                                    self->trace_bsize );
 
     switch( err ) {
         case SEGY_OK:
@@ -449,14 +446,8 @@ PyObject* putth( segyiofd* self, PyObject* args ) {
 
     int traceno;
     Py_buffer buf;
-    long trace0;
-    int trace_bsize;
 
-    if( !PyArg_ParseTuple( args, "is*li", &traceno,
-                                          &buf,
-                                          &trace0,
-                                          &trace_bsize ) )
-        return NULL;
+    if( !PyArg_ParseTuple( args, "is*", &traceno, &buf ) ) return NULL;
 
     buffer_guard g( buf );
 
@@ -468,11 +459,12 @@ PyObject* putth( segyiofd* self, PyObject* args ) {
     const int err = segy_write_traceheader( fp,
                                             traceno,
                                             buffer,
-                                            trace0,
-                                            trace_bsize );
+                                            self->trace0,
+                                            self->trace_bsize );
 
     switch( err ) {
         case SEGY_OK: return Py_BuildValue("");
+
         case SEGY_FSEEK_ERROR:
         case SEGY_FWRITE_ERROR:
             return PyErr_SetFromErrno( PyExc_IOError );
