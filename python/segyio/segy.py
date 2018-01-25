@@ -190,7 +190,7 @@ class SegyFile(object):
 
     @property
     def samples(self):
-        """ :rtype: int """
+        """ :rtype: numpy.ndarray """
         return self._samples
 
     @property
