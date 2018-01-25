@@ -437,10 +437,10 @@ class _segyioTests(unittest.TestCase):
 
         buf = numpy.zeros((len(iline_idx), samples), dtype=numpy.single)
 
-        f.getline(xline_trace0, len(iline_idx), xline_stride, offsets, buf, tr0, bsz, 1, samples)
+        f.getline(xline_trace0, len(iline_idx), xline_stride, offsets, buf)
         self.assertAlmostEqual(sum(sum(buf)), 800.061169624, places=6)
 
-        f.getline(iline_trace0, len(xline_idx), iline_stride, offsets, buf, tr0, bsz, 1, samples)
+        f.getline(iline_trace0, len(xline_idx), iline_stride, offsets, buf)
         self.assertAlmostEqual(sum(sum(buf)), 305.061146736, places=6)
 
         f.close()
@@ -459,10 +459,10 @@ class _segyioTests(unittest.TestCase):
 
         buf = numpy.zeros((len(iline_idx), samples), dtype=numpy.single)
 
-        f.getline(xline_trace0, len(iline_idx), xline_stride, offsets, buf, tr0, bsz, 1, samples)
+        f.getline(xline_trace0, len(iline_idx), xline_stride, offsets, buf)
         self.assertAlmostEqual(sum(sum(buf)), 800.061169624, places=6)
 
-        f.getline(iline_trace0, len(xline_idx), iline_stride, offsets, buf, tr0, bsz, 1, samples)
+        f.getline(iline_trace0, len(xline_idx), iline_stride, offsets, buf)
         self.assertAlmostEqual(sum(sum(buf)), 305.061146736, places=6)
 
         f.close()

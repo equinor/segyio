@@ -875,18 +875,12 @@ PyObject* getline( segyiofd* self, PyObject* args) {
     int stride;
     int offsets;
     PyObject* bufferobj;
-    long trace0;
-    int trace_bsize;
-    int format;
-    int samples;
 
-    if( !PyArg_ParseTuple( args, "iiiiOliii", &line_trace0,
-                                              &line_length,
-                                              &stride,
-                                              &offsets,
-                                              &bufferobj,
-                                              &trace0, &trace_bsize,
-                                              &format, &samples ) )
+    if( !PyArg_ParseTuple( args, "iiiiO", &line_trace0,
+                                          &line_length,
+                                          &stride,
+                                          &offsets,
+                                          &bufferobj ) )
         return NULL;
 
     if( !PyObject_CheckBuffer( bufferobj ) )
@@ -904,8 +898,8 @@ PyObject* getline( segyiofd* self, PyObject* args) {
                                   stride,
                                   offsets,
                                   (float*)buffer.buf,
-                                  trace0,
-                                  trace_bsize);
+                                  self->trace0,
+                                  self->trace_bsize);
 
     switch( err ) {
         case SEGY_OK: break;
@@ -919,7 +913,9 @@ PyObject* getline( segyiofd* self, PyObject* args) {
                                 "unknown error code %d", err  );
     }
 
-    err = segy_to_native( format, samples * line_length, (float*)buffer.buf );
+    err = segy_to_native( self->format,
+                          self->samplecount * line_length,
+                          (float*)buffer.buf );
 
     if( err != SEGY_OK )
         return RuntimeError( "unable to preserve native float format" );
