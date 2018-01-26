@@ -76,7 +76,7 @@ def open(filename, mode="r", iline = 189,
     f = segyio.SegyFile(filename, mode, iline, xline)
 
     try:
-        metrics = segyio._segyio.init_metrics(f.xfd, f.bin.buf)
+        metrics = f.xfd.metrics(f.bin.buf)
 
     except RuntimeError:
         f.close()
@@ -106,12 +106,11 @@ def open(filename, mode="r", iline = 189,
         return f
 
     try:
-        cube_metrics = segyio._segyio.init_cube_metrics(f.xfd,
-                                                        iline,
-                                                        xline,
-                                                        f.tracecount,
-                                                        f._tr0,
-                                                        f._bsz)
+        cube_metrics = f.xfd.cube_metrics(iline,
+                                          xline,
+                                          f.tracecount,
+                                          f._tr0,
+                                          f._bsz)
         f._sorting   = cube_metrics['sorting']
         iline_count  = cube_metrics['iline_count']
         xline_count  = cube_metrics['xline_count']
@@ -133,7 +132,7 @@ def open(filename, mode="r", iline = 189,
         f._ilines  = numpy.zeros(iline_count,  dtype = numpy.intc)
         f._xlines  = numpy.zeros(xline_count,  dtype = numpy.intc)
         f._offsets = numpy.zeros(offset_count, dtype = numpy.intc)
-        segyio._segyio.init_indices(f.xfd, metrics, f.ilines, f.xlines, f.offsets)
+        f.xfd.indices(metrics, f.ilines, f.xlines, f.offsets)
 
         if numpy.unique(f.ilines).size != f.ilines.size:
             raise ValueError( "Inlines inconsistent - expect all inlines to be unique")

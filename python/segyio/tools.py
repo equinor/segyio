@@ -3,15 +3,15 @@ import numpy as np
 import textwrap
 
 
-def dt(segyfile, fallback_dt=4000.0):
+def dt(f, fallback_dt=4000.0):
     """Since v1.1
     Find a *dt* value in the SegyFile. If none is found use the provided *fallback_dt* value.
 
-    :type segyfile: segyio.SegyFile
+    :type f: segyio.SegyFile
     :type fallback_dt: float
     :rtype: float
     """
-    return segyio._segyio.get_dt(segyfile.xfd, fallback_dt)
+    return f.xfd.getdt(fallback_dt)
 
 
 def sample_indexes(segyfile, t0=0.0, dt_override=None):
@@ -179,13 +179,12 @@ def rotation(f, line = 'fast'):
     origin = f.header[0][segyio.su.cdpx, segyio.su.cdpy]
     cdpx, cdpy = origin[segyio.su.cdpx], origin[segyio.su.cdpy]
 
-    rot = segyio._segyio.rotation(f.xfd,
-                                  l.len,
-                                  l.stride,
-                                  len(f.offsets),
-                                  l.lines,
-                                  f._tr0,
-                                  f._bsz)
+    rot = f.xfd.rotation( l.len,
+                          l.stride,
+                          len(f.offsets),
+                          np.asarray(l.lines, order = 'C', dtype = np.intc),
+                          f._tr0,
+                          f._bsz)
     return rot, cdpx, cdpy
 
 def metadata(f):

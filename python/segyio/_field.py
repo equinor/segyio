@@ -80,7 +80,7 @@ class Field(object):
     @classmethod
     def binary(cls, segy):
         try:
-            buf = segyio._segyio.read_binaryheader(segy.xfd)
+            buf = segy.xfd.getbin()
         except IOError:
             # the file was probably newly created and the binary header hasn't
             # been written yet.  if this is the case we want to try and write
@@ -89,7 +89,7 @@ class Field(object):
             buf = segyio._segyio.empty_binaryheader()
 
         def wr(buf, *_):
-            segyio._segyio.write_binaryheader(segy.xfd, buf)
+            segy.xfd.putbin(buf)
 
         return Field(buf, write=wr, field_type=BinField, keys = Field._bin_keys)
 
@@ -105,7 +105,7 @@ class Field(object):
             buf = segyio._segyio.empty_traceheader()
 
         try:
-            segyio._segyio.read_traceheader(segy.xfd, traceno, buf, segy._tr0, segy._bsz)
+            segy.xfd.getth(traceno, buf, segy._tr0, segy._bsz)
         except IOError:
             # the file was probably newly created and the trace header hasn't
             # been written yet.  if this is the case we want to try and write
@@ -114,7 +114,7 @@ class Field(object):
             pass
 
         def wr(buf, traceno):
-            segyio._segyio.write_traceheader(segy.xfd, traceno, buf, segy._tr0, segy._bsz)
+            segy.xfd.putth(traceno, buf, segy._tr0, segy._bsz)
 
         return Field(buf, traceno=traceno,
                           write=wr,

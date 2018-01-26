@@ -73,7 +73,7 @@ class SegyFile(object):
         self._xline = None
         self._gather = None
 
-        self.xfd = _segyio.open(filename, mode)
+        self.xfd = _segyio.segyiofd(filename, mode)
 
         super(SegyFile, self).__init__()
 
@@ -134,7 +134,7 @@ class SegyFile(object):
                 ...     # write something to f
                 ...     f.flush()
         """
-        _segyio.flush(self.xfd)
+        self.xfd.flush()
 
     def close(self):
         """Close the file.
@@ -146,7 +146,7 @@ class SegyFile(object):
         It is not necessary to call this method if you're using the `with`
         statement, which will close the file for you.
         """
-        _segyio.close(self.xfd)
+        self.xfd.close()
 
     def mmap(self):
         """Memory map the file
@@ -176,7 +176,7 @@ class SegyFile(object):
             >>> # keep using segyio as per usual
             >>> print( f.trace[10] )
         """
-        return _segyio.mmap(self.xfd)
+        return self.xfd.mmap()
 
     @property
     def sorting(self):
@@ -380,9 +380,9 @@ class SegyFile(object):
                 traces = self.tracecount
                 start, stop, step = rng.indices(traces)
                 attrs = np.empty(len(range(*rng.indices(traces))), dtype = np.intc)
-                return _segyio.field_forall(self.xfd, attrs,
-                                            start, stop, step, field,
-                                            self._tr0, self._bsz)
+                return self.xfd.field_forall(attrs,
+                                             start, stop, step, field,
+                                             self._tr0, self._bsz)
 
             def _getitem_list(inner, xs):
                 if not isinstance(xs, np.ndarray):
@@ -390,8 +390,8 @@ class SegyFile(object):
 
                 xs = xs.astype(dtype = np.intc, order = 'C', copy = False)
                 attrs = np.empty(len(xs), dtype = np.intc)
-                return _segyio.field_foreach(self.xfd, attrs, xs, field,
-                                          self._tr0, self._bsz)
+                return self.xfd.field_foreach(attrs, xs, field,
+                                              self._tr0, self._bsz)
 
         return attr()
 
@@ -522,7 +522,7 @@ class SegyFile(object):
 
     def _fread_line(self, trace0, length, stride, buf):
         offsets = len(self.offsets)
-        return _segyio.read_line(self.xfd, trace0,
+        return self.xfd.getline(trace0,
                                 length, stride, offsets,
                                 buf,
                                 self._tr0, self._bsz,
@@ -930,13 +930,11 @@ class SegyFile(object):
         fmt = self._fmt
 
         def readfn(depth, length, stride, buf):
-            _segyio.depth_slice(self.xfd, depth,
-                                slice_trace_count, offsets,
-                                buf,
-                                tr0, bsz,
-                                fmt,
-                                len(self.samples))
-            return buf
+            return self.xfd.getdepth( depth,
+                                      slice_trace_count, offsets,
+                                      buf,
+                                      tr0, bsz,
+                                      fmt, len(self.samples))
 
         def writefn(depth, length, stride, val):
             val = buffn(val)
@@ -1142,7 +1140,7 @@ class TextHeader(object):
         if index > self.outer.ext_headers:
             raise IndexError("Textual header {} not in file".format(index))
 
-        return _segyio.read_textheader(self.outer.xfd, index)
+        return self.outer.xfd.gettext(index)
 
     def __setitem__(self, index, val):
         if isinstance(val, TextHeader):
@@ -1152,7 +1150,7 @@ class TextHeader(object):
         if index > self.outer.ext_headers:
             raise IndexError("Textual header {} not in file".format(index))
 
-        _segyio.write_textheader(self.outer.xfd, index, val)
+        self.outer.xfd.puttext(index, val)
 
     def __repr__(self):
         return "Text(external_headers = {})".format(self.outer.ext_headers)

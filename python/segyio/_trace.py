@@ -87,10 +87,10 @@ class Trace:
         fmt = self._file._fmt
         smp = len(self._file.samples)
 
-        buf1 = segyio._segyio.read_trace(self._file.xfd, buf1,
-                                         start, step, length,
-                                         fmt, smp,
-                                         trace0, bsz)
+        buf1 = self._file.xfd.gettr(buf1,
+                                    start, step, length,
+                                    fmt, smp,
+                                    trace0, bsz)
 
         return buf1, buf
 
@@ -104,10 +104,9 @@ class Trace:
         if isinstance(buf, np.ndarray) and buf.dtype != np.single:
             raise TypeError("Numpy array must be of type single")
 
-        segyio._segyio.write_trace(segy.xfd, traceno,
-                                   buf,
-                                   segy._tr0, segy._bsz,
-                                   segy._fmt, len(segy.samples))
+        segy.xfd.puttr(traceno, buf,
+                       segy._tr0, segy._bsz,
+                       segy._fmt, len(segy.samples))
 
     @property
     def raw(self):

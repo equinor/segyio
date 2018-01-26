@@ -37,3 +37,10 @@ mandatory text header is `f.text[0]`
 The implicit string conversion should be either tied to fmt or other explicit
 methods, instead of implicitly resolving into a newline-interleaved
 80-linewidth string
+
+### f.text[n] always returns 3200 bytes buffer object
+Currently, the returned buffer assumes the contents are somewhat string-like,
+and has some wonky behaviour when there are 0-bytes in the text headers, and
+not proper whitespace paddings. In segyio2, this behaviour will be reviewed for
+consistency, so that 0-bytes-in-buffers are handled gracefully, and textheaders
+can be indexed into reliably and safely.
