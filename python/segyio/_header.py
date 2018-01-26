@@ -17,7 +17,7 @@ class Header(object):
     @staticmethod
     def _header_buffer(buf=None):
         if buf is None:
-            buf = segyio._segyio.empty_traceheader()
+            buf = bytearray(segyio._segyio.thsize())
         return buf
 
     def __getitem__(self, traceno, buf=None):

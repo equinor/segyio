@@ -86,7 +86,7 @@ class Field(object):
             # been written yet.  if this is the case we want to try and write
             # it. if the file was broken, permissions were wrong etc writing
             # will fail too
-            buf = segyio._segyio.empty_binaryheader()
+            buf = bytearray(segyio._segyio.binsize())
 
         def wr(buf, *_):
             segy.xfd.putbin(buf)
@@ -102,7 +102,7 @@ class Field(object):
             raise IndexError("Header out of range: 0 <= {} < {}".format(traceno, segy.tracecount))
 
         if buf is None:
-            buf = segyio._segyio.empty_traceheader()
+            buf = bytes(segyio._segyio.thsize())
 
         try:
             segy.xfd.getth(traceno, buf, segy._tr0, segy._bsz)

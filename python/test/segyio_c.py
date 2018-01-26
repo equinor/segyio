@@ -28,10 +28,10 @@ class _segyioTests(unittest.TestCase):
         self.ACTUAL_TEXT_HEADER = bytes(rows)
 
     def test_binary_header_size(self):
-        self.assertEqual(400, _segyio.binheader_size())
+        self.assertEqual(400, _segyio.binsize())
 
     def test_textheader_size(self):
-        self.assertEqual(3200, _segyio.textheader_size())
+        self.assertEqual(3200, _segyio.textsize())
 
     def test_open_non_existing_file(self):
         with self.assertRaises(IOError):
@@ -198,7 +198,7 @@ class _segyioTests(unittest.TestCase):
                                       metrics['trace0'],
                                       metrics['trace_bsize']))
 
-        self.assertEqual(metrics['trace0'], _segyio.textheader_size() + _segyio.binheader_size())
+        self.assertEqual(metrics['trace0'], _segyio.textsize() + _segyio.binsize())
         self.assertEqual(metrics['sample_count'], 50)
         self.assertEqual(metrics['format'], 1)
         self.assertEqual(metrics['trace_bsize'], 200)
@@ -322,7 +322,7 @@ class _segyioTests(unittest.TestCase):
         self.test_fread_trace0(True)
 
     def test_get_and_set_field(self):
-        hdr = _segyio.empty_traceheader()
+        hdr = bytearray(_segyio.thsize())
 
         with self.assertRaises(TypeError):
             _segyio.get_field(".", 0)
@@ -356,7 +356,10 @@ class _segyioTests(unittest.TestCase):
             xlb = 193
             metrics = f.metrics(binary_header)
 
-            empty = _segyio.empty_traceheader()
+            def mkempty():
+                return bytearray(_segyio.thsize())
+
+            empty = mkempty()
 
             with self.assertRaises(TypeError):
                 trace_header = f.getth("+")
@@ -364,12 +367,12 @@ class _segyioTests(unittest.TestCase):
             with self.assertRaises(TypeError):
                 trace_header = f.getth(0, None)
 
-            trace_header = f.getth(0, _segyio.empty_traceheader(), metrics['trace0'], metrics['trace_bsize'])
+            trace_header = f.getth(0, mkempty(), metrics['trace0'], metrics['trace_bsize'])
 
             self.assertEqual(_segyio.get_field(trace_header, ilb), 1)
             self.assertEqual(_segyio.get_field(trace_header, xlb), 20)
 
-            trace_header = f.getth(1, _segyio.empty_traceheader(), metrics['trace0'], metrics['trace_bsize'])
+            trace_header = f.getth(1, mkempty(), metrics['trace0'], metrics['trace_bsize'])
 
             self.assertEqual(_segyio.get_field(trace_header, ilb), 1)
             self.assertEqual(_segyio.get_field(trace_header, xlb), 21)
@@ -379,7 +382,7 @@ class _segyioTests(unittest.TestCase):
 
             f.putth(0, trace_header, metrics['trace0'], metrics['trace_bsize'])
 
-            trace_header = f.getth(0, _segyio.empty_traceheader(), metrics['trace0'], metrics['trace_bsize'])
+            trace_header = f.getth(0, mkempty(), metrics['trace0'], metrics['trace_bsize'])
 
             self.assertEqual(_segyio.get_field(trace_header, ilb), 99)
             self.assertEqual(_segyio.get_field(trace_header, xlb), 42)

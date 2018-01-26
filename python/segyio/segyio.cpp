@@ -210,24 +210,27 @@ PyObject* gettext( segyiofd* self, PyObject* args ) {
                              "Could not read text header: %s", strerror(errno));
 
     const size_t len = std::strlen( buffer );
-    return PyBytes_FromStringAndSize( buffer, len );
+    return PyByteArray_FromStringAndSize( buffer, len );
 }
 
 PyObject* puttext( segyiofd* self, PyObject* args ) {
-    int index;
-    char* buffer;
-    int size;
-
-    if( !PyArg_ParseTuple(args, "is#", &index, &buffer, &size ) )
-        return NULL;
-
     segy_file* fp = self->fd;
     if( !fp ) return NULL;
 
-    size = std::min( size, SEGY_TEXT_HEADER_SIZE );
+    int index;
+    Py_buffer buffer;
+
+    if( !PyArg_ParseTuple( args, "is*", &index, &buffer ) )
+        return NULL;
+
+    buffer_guard g( buffer );
+
+    int size = std::min( int(buffer.len), SEGY_TEXT_HEADER_SIZE );
     heapbuffer buf( SEGY_TEXT_HEADER_SIZE );
     if( !buf ) return NULL;
-    std::copy( buffer, buffer + size, buf.ptr );
+
+    const char* src = (const char*)buffer.buf;
+    std::copy( src, src + size, buf.ptr );
 
     const int err = segy_write_textheader( fp, index, buf );
 
@@ -258,7 +261,7 @@ PyObject* getbin( segyiofd* self ) {
 
     switch( err ) {
         case SEGY_OK:
-            return PyBytes_FromStringAndSize( buffer, sizeof( buffer ) );
+            return PyByteArray_FromStringAndSize( buffer, sizeof( buffer ) );
 
         case SEGY_FSEEK_ERROR:
         case SEGY_FREAD_ERROR:
@@ -274,14 +277,15 @@ PyObject* putbin( segyiofd* self, PyObject* args ) {
     segy_file* fp = self->fd;
     if( !fp ) return NULL;
 
-    const char* buffer;
-    int len;
-    if( !PyArg_ParseTuple(args, "s#", &buffer, &len ) ) return NULL;
+    Py_buffer buffer;
+    if( !PyArg_ParseTuple(args, "s*", &buffer ) ) return NULL;
 
-    if( len < SEGY_BINARY_HEADER_SIZE )
+    buffer_guard g( buffer );
+
+    if( buffer.len < SEGY_BINARY_HEADER_SIZE )
         return ValueError( "binary header too small" );
 
-    const int err = segy_write_binheader( fp, buffer );
+    const int err = segy_write_binheader( fp, (const char*)buffer.buf );
 
     switch( err ) {
         case SEGY_OK: return Py_BuildValue("");
@@ -490,13 +494,13 @@ PyObject* metrics( segyiofd* self, PyObject* args ) {
     segy_file* fp = self->fd;
     if( !fp ) return NULL;
 
-    const char* binary;
-    int len = 0;
-    if( !PyArg_ParseTuple(args, "s#", &binary, &len ) ) return NULL;
+    Py_buffer buffer;
+    if( !PyArg_ParseTuple( args, "s*", &buffer ) ) return NULL;
 
-    if( len < SEGY_BINARY_HEADER_SIZE )
+    if( buffer.len < SEGY_BINARY_HEADER_SIZE )
         return ValueError( "binary header too small" );
 
+    const char* binary = (const char*)buffer.buf;
     long trace0 = segy_trace0( binary );
     int sample_count = segy_samples( binary );
     int format = segy_format( binary );
@@ -1121,6 +1125,18 @@ PyTypeObject Segyiofd = {
     (initproc)fd::init,             /* tp_init */
 };
 
+PyObject* binsize( PyObject* ) {
+    return PyLong_FromLong( segy_binheader_size() );
+}
+
+PyObject* thsize( PyObject* ) {
+    return PyLong_FromLong( SEGY_TRACE_HEADER_SIZE );
+}
+
+PyObject* textsize(PyObject* ) {
+    return PyLong_FromLong( SEGY_TEXT_HEADER_SIZE );
+}
+
 }
 
 // ------------- ERROR Handling -------------
@@ -1199,109 +1215,54 @@ static PyObject *py_handle_segy_error_with_index_and_name(int error, int errno_e
     return py_handle_segy_error_(args);
 }
 
-// ------------ Text Header -------------
-
-static PyObject *py_textheader_size(PyObject *self) {
-    return Py_BuildValue("i", SEGY_TEXT_HEADER_SIZE);
-}
-
-// ------------ Binary and Trace Header ------------
-static char *get_header_pointer_from_capsule(PyObject *capsule, int *length) {
-    if( PyBytes_Check( capsule ) ) {
-        Py_ssize_t len = PyBytes_Size( capsule );
-        if( len < SEGY_BINARY_HEADER_SIZE ) {
-            PyErr_SetString( PyExc_TypeError, "binary header too small" );
-            return NULL;
-        }
-
-        if( length ) *length = len;
-        return PyBytes_AsString( capsule );
-    }
-
-    if( PyByteArray_Check( capsule ) ) {
-        Py_ssize_t len = PyByteArray_Size( capsule );
-        if( len < SEGY_TRACE_HEADER_SIZE ) {
-            PyErr_SetString( PyExc_TypeError, "trace header too small" );
-            return NULL;
-        }
-
-        if( length ) *length = len;
-        return PyByteArray_AsString( capsule );
-    }
-
-    PyErr_SetString(PyExc_TypeError, "The object was not a header type");
-    return NULL;
-}
-
-
 static PyObject *py_get_field(PyObject *self, PyObject *args) {
-    errno = 0;
-    PyObject *header_capsule = NULL;
+    Py_buffer buffer;
     int field;
 
-    PyArg_ParseTuple(args, "Oi", &header_capsule, &field);
+    PyArg_ParseTuple(args, "s*i", &buffer, &field);
 
-    int length = 0;
-    char *header = get_header_pointer_from_capsule(header_capsule, &length);
+    buffer_guard g( buffer );
 
-    if (PyErr_Occurred()) { return NULL; }
+    if( buffer.len != SEGY_BINARY_HEADER_SIZE &&
+        buffer.len != SEGY_TRACE_HEADER_SIZE )
+        return TypeError( "header too small" );
 
-    int value;
-    int error;
-    if (length == segy_binheader_size()) {
-        error = segy_get_bfield(header, field, &value);
-    } else {
-        error = segy_get_field(header, field, &value);
-    }
+    int value = 0;
+    int err = buffer.len == segy_binheader_size()
+            ? segy_get_bfield((const char*)buffer.buf, field, &value)
+            : segy_get_field( (const char*)buffer.buf, field, &value)
+            ;
 
-    if (error == 0) {
+    if (err == 0) {
         return Py_BuildValue("i", value);
     } else {
-        return py_handle_segy_error_with_fields(error, errno, field, 0, 1);
+        return py_handle_segy_error_with_fields(err, errno, field, 0, 1);
     }
 }
 
 static PyObject *py_set_field(PyObject *self, PyObject *args) {
-    errno = 0;
-    PyObject *header_capsule = NULL;
+    Py_buffer buffer;
     int field;
     int value;
 
-    PyArg_ParseTuple(args, "Oii", &header_capsule, &field, &value);
+    PyArg_ParseTuple(args, "s*ii", &buffer, &field, &value);
 
-    int length = 0;
-    char *header = get_header_pointer_from_capsule(header_capsule, &length);
+    buffer_guard g( buffer );
 
-    if (PyErr_Occurred()) { return NULL; }
+    if( buffer.len != SEGY_BINARY_HEADER_SIZE &&
+        buffer.len != SEGY_TRACE_HEADER_SIZE )
+        return TypeError( "header too small" );
 
-    int error;
-    if (length == segy_binheader_size()) {
-        error = segy_set_bfield(header, field, value);
-    } else {
-        error = segy_set_field(header, field, value);
-    }
+    int err = buffer.len == segy_binheader_size()
+            ? segy_set_bfield((char*)buffer.buf, field, value)
+            : segy_set_field( (char*)buffer.buf, field, value)
+            ;
 
-    if (error == 0) {
+    if (err == 0) {
         return Py_BuildValue("");
     } else {
-        return py_handle_segy_error_with_fields(error, errno, field, 0, 1);
+        return py_handle_segy_error_with_fields(err, errno, field, 0, 1);
     }
-}
-
-// ------------ Binary Header -------------
-static PyObject *py_binheader_size(PyObject *self) {
-    return Py_BuildValue("i", segy_binheader_size());
-}
-
-static PyObject *py_empty_binaryhdr(PyObject *self) {
-    char buffer[ SEGY_BINARY_HEADER_SIZE ] = {};
-    return PyBytes_FromStringAndSize( buffer, sizeof( buffer ) );
-}
-
-// -------------- Trace Headers ----------
-static PyObject *py_empty_trace_header(PyObject *self) {
-    char buffer[ SEGY_TRACE_HEADER_SIZE ] = {};
-    return PyByteArray_FromStringAndSize( buffer, sizeof( buffer ) );
 }
 
 static PyObject *py_trace_bsize(PyObject *self, PyObject *args) {
@@ -1401,12 +1362,9 @@ static PyObject * py_format(PyObject *self, PyObject *args) {
 
 /*  define functions in module */
 static PyMethodDef SegyMethods[] = {
-        {"binheader_size",     (PyCFunction) py_binheader_size,     METH_NOARGS,  "Return the size of the binary header."},
-        {"textheader_size",    (PyCFunction) py_textheader_size,    METH_NOARGS,  "Return the size of the text header."},
-
-        {"empty_binaryheader", (PyCFunction) py_empty_binaryhdr,    METH_NOARGS,  "Create empty binary header for a segy file."},
-
-        {"empty_traceheader",  (PyCFunction) py_empty_trace_header, METH_NOARGS,  "Create empty trace header for a segy file."},
+    { "binsize",  (PyCFunction) binsize,  METH_NOARGS, "Size of the binary header." },
+    { "thsize",   (PyCFunction) thsize,   METH_NOARGS, "Size of the trace header."  },
+    { "textsize", (PyCFunction) textsize, METH_NOARGS, "Size of the text header."   },
 
         {"trace_bsize",        (PyCFunction) py_trace_bsize,        METH_VARARGS, "Returns the number of bytes in a trace."},
         {"get_field",          (PyCFunction) py_get_field,          METH_VARARGS, "Get a header field."},

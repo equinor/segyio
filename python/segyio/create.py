@@ -136,8 +136,8 @@ def create(filename, spec):
     f._ext_headers   = spec.ext_headers if hasattr(spec, 'ext_headers') else 0
     f._bsz           = _segyio.trace_bsize(len(f.samples))
 
-    txt_hdr_sz       = _segyio.textheader_size()
-    bin_hdr_sz       = _segyio.binheader_size()
+    txt_hdr_sz       = _segyio.textsize()
+    bin_hdr_sz       = _segyio.binsize()
     f._tr0           = txt_hdr_sz + bin_hdr_sz + (f.ext_headers * txt_hdr_sz)
     f._fmt           = int(spec.format)
 
