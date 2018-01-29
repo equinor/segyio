@@ -130,26 +130,32 @@ def create(filename, spec):
             ...         dst.trace = src.trace
     :rtype: segyio.SegyFile
     """
-    f = segyio.SegyFile(filename, "w+")
 
-    f._samples       = numpy.asarray(spec.samples, dtype = numpy.single)
-    f._ext_headers   = spec.ext_headers if hasattr(spec, 'ext_headers') else 0
-    f._bsz           = _segyio.trace_bsize(len(f.samples))
 
-    txt_hdr_sz       = _segyio.textsize()
-    bin_hdr_sz       = _segyio.binsize()
-    f._tr0           = txt_hdr_sz + bin_hdr_sz + (f.ext_headers * txt_hdr_sz)
-    f._fmt           = int(spec.format)
+    if not structured(spec):
+        tracecount = spec.tracecount
+    else:
+        tracecount    = len(spec.ilines) * len(spec.xlines) * len(spec.offsets)
+
+    ext_headers = spec.ext_headers if hasattr(spec, 'ext_headers') else 0
+    samples = numpy.asarray(spec.samples, dtype = numpy.single)
+
+    binary = bytearray(_segyio.binsize())
+    _segyio.putfield(binary, 3213, tracecount)
+    _segyio.putfield(binary, 3217, 4000)
+    _segyio.putfield(binary, 3221, len(samples))
+    _segyio.putfield(binary, 3225, int(spec.format))
+    _segyio.putfield(binary, 3505, int(ext_headers))
+
+    f = segyio.SegyFile(filename, "w+", binary = binary)
 
     f._il            = int(spec.iline)
     f._xl            = int(spec.xline)
+    f._samples       = samples
 
-    if not structured(spec):
-        f._tracecount = spec.tracecount
-    else:
+    if structured(spec):
         f._sorting       = spec.sorting
         f._offsets       = numpy.copy(numpy.asarray(spec.offsets, dtype = numpy.intc))
-        f._tracecount    = len(spec.ilines) * len(spec.xlines) * len(spec.offsets)
 
         f._ilines        = numpy.copy(numpy.asarray(spec.ilines, dtype=numpy.intc))
         f._xlines        = numpy.copy(numpy.asarray(spec.xlines, dtype=numpy.intc))
@@ -167,12 +173,6 @@ def create(filename, spec):
         f._xline_stride = line_metrics['xline_stride']
 
     f.text[0] = default_text_header(f._il, f._xl, segyio.TraceField.offset)
-    f.bin     = {
-        3213: f.tracecount,
-        3217: 4000,
-        3221: len(f.samples),
-        3225: f.format,
-        3505: f.ext_headers,
-    }
+    f.xfd.putbin(binary)
 
     return f

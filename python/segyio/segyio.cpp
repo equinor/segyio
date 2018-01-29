@@ -42,11 +42,17 @@ autofd::operator bool() const { return this->fd; }
 struct segyiofd {
     PyObject_HEAD
     autofd fd;
+    long trace0;
+    int trace_bsize;
+    int tracecount;
+    int samplecount;
+    int format;
 };
 
 struct buffer_guard {
-    explicit buffer_guard( Py_buffer& b ) : buffer( &b ) {}
-    ~buffer_guard() { PyBuffer_Release( this->buffer ); }
+    explicit buffer_guard( Py_buffer& b ) : buffer( b.buf ? &b : NULL ) {}
+    ~buffer_guard() {
+        if( this->buffer ) PyBuffer_Release( this->buffer ); }
 
     Py_buffer* buffer;
 };
@@ -89,21 +95,31 @@ PyObject* KeyError( const char* msg, T1 t1, T2 t2 ) {
 namespace fd {
 
 int init( segyiofd* self, PyObject* args, PyObject* ) {
-    char *filename = NULL;
-    char *mode = NULL;
-    int mode_len = 0;
-    if( !PyArg_ParseTuple( args, "ss#", &filename, &mode, &mode_len ) )
+    char* filename = NULL;
+    char* mode = NULL;
+    Py_buffer buffer = {};
+
+    if( !PyArg_ParseTuple( args, "ss|z*", &filename, &mode, &buffer ) )
         return -1;
 
-    if( mode_len == 0 ) {
+    buffer_guard g( buffer );
+    const char* binary = (const char*) buffer.buf;
+
+    if( binary && buffer.len < SEGY_BINARY_HEADER_SIZE ) {
+        PyErr_SetString( PyExc_ValueError, "binary header too small" );
+        return -1;
+    }
+
+    if( std::strlen( mode ) == 0 ) {
         PyErr_SetString( PyExc_ValueError, "Mode string must be non-empty" );
         return -1;
     }
 
-    if( mode_len > 3 ) {
-        PyErr_Format( PyExc_ValueError, "Invalid mode string '%s'", mode );
-        return -1;
-    }
+   if( std::strlen( mode ) > 3 ) {
+       PyErr_Format( PyExc_ValueError, "Invalid mode string '%s'", mode );
+       return -1;
+   }
+
 
     /* init can be called multiple times, which is treated as opening a new
      * file on the same object. That means the previous file handle must be
@@ -121,8 +137,85 @@ int init( segyiofd* self, PyObject* args, PyObject* ) {
         return -1;
     }
 
+
+    int tracecount = 0;
+    char bin[ SEGY_BINARY_HEADER_SIZE ] = {};
+
+    if( !binary ) {
+        const int err = segy_binheader( fd, bin );
+        switch( err )  {
+            case SEGY_OK: break;
+
+            case SEGY_FSEEK_ERROR:
+            case SEGY_FREAD_ERROR:
+                PyErr_SetFromErrno( PyExc_IOError );
+                break;
+
+            default:
+                PyErr_Format( PyExc_RuntimeError,
+                              "unknown error code %d", err  );
+                break;
+        }
+
+        if( err != SEGY_OK ) {
+            segy_close( fd );
+            return -1;
+        }
+
+        binary = bin;
+    } else {
+        /*
+         * usually we wouldn't trust the bin-traces in the binary header, but
+         * this code path is only taken with create() (or similarly
+         * pre-verified header), in which case we can just read the tracecount.
+         */
+        segy_get_bfield( binary, SEGY_BIN_TRACES, &tracecount );
+    }
+
+    const long trace0 = segy_trace0( binary );
+    const int samplecount = segy_samples( binary );
+    const int format = segy_format( binary );
+    const int trace_bsize = segy_trace_bsize( samplecount );
+
+    if( tracecount == 0 ) {
+        const int err = segy_traces( fd, &tracecount, trace0, trace_bsize );
+        switch( err ) {
+            case SEGY_OK: break;
+
+            case SEGY_FSEEK_ERROR:
+            case SEGY_FREAD_ERROR:
+                PyErr_SetFromErrno( PyExc_IOError );
+                break;
+
+            case SEGY_INVALID_ARGS:
+                RuntimeError( "unable to count traces, "
+                              "file smaller than headers" );
+                break;
+
+            case SEGY_TRACE_SIZE_MISMATCH:
+                RuntimeError( "trace count inconsistent with file size, "
+                              "trace lengths possibly of non-uniform" );
+
+            default:
+                PyErr_Format( PyExc_RuntimeError,
+                              "unknown error code %d", err  );
+                break;
+        }
+
+        if( err != SEGY_OK ) {
+            segy_close( fd );
+            return -1;
+        }
+
+    }
+
     if( self->fd.fd ) segy_close( self->fd.fd );
     self->fd.fd = fd;
+    self->trace0 = trace0;
+    self->trace_bsize = trace_bsize;
+    self->format = format;
+    self->samplecount = samplecount;
+    self->tracecount = tracecount;
 
     return 0;
 }
@@ -495,45 +588,18 @@ PyObject* field_foreach( segyiofd* self, PyObject* args ) {
     return buffer_out;
 }
 
-PyObject* metrics( segyiofd* self, PyObject* args ) {
-    segy_file* fp = self->fd;
-    if( !fp ) return NULL;
-
-    Py_buffer buffer;
-    if( !PyArg_ParseTuple( args, "s*", &buffer ) ) return NULL;
-
-    if( buffer.len < SEGY_BINARY_HEADER_SIZE )
-        return ValueError( "binary header too small" );
-
-    const char* binary = (const char*)buffer.buf;
-    long trace0 = segy_trace0( binary );
-    int sample_count = segy_samples( binary );
-    int format = segy_format( binary );
-    int trace_bsize = segy_trace_bsize( sample_count );
-
-    int trace_count = 0;
-    const int err = segy_traces( fp, &trace_count, trace0, trace_bsize );
-
-    switch( err )  {
-        case SEGY_OK: break;
-
-        case SEGY_FSEEK_ERROR:
-        case SEGY_FWRITE_ERROR:
-            return PyErr_SetFromErrno( PyExc_IOError );
-
-        default:
-            return PyErr_Format( PyExc_RuntimeError,
-                                 "unknown error code %d", err  );
-    }
-
-    return Py_BuildValue( "{s:l, s:i, s:i, s:i, s:i}",
-                            "trace0", trace0,
-                            "sample_count", sample_count,
-                            "format", format,
-                            "trace_bsize", trace_bsize,
-                            "trace_count", trace_count );
+PyObject* metrics( segyiofd* self ) {
+    static const int text = SEGY_TEXT_HEADER_SIZE;
+    static const int bin  = SEGY_BINARY_HEADER_SIZE;
+    const int ext = (self->trace0 - (text + bin)) / text;
+    return Py_BuildValue( "{s:i, s:l, s:i, s:i, s:i, s:i}",
+                          "tracecount",  self->tracecount,
+                          "trace0",      self->trace0,
+                          "trace_bsize", self->trace_bsize,
+                          "samplecount", self->samplecount,
+                          "format",      self->format,
+                          "ext_headers", ext );
 }
-
 
 PyObject* cube_metrics( segyiofd* self, PyObject* args ) {
     segy_file* fp = self->fd;
@@ -1082,9 +1148,9 @@ PyMethodDef methods [] = {
     { "getdt",    (PyCFunction) fd::getdt, METH_VARARGS,    "Get sample interval (dt)." },
     { "rotation", (PyCFunction) fd::rotation, METH_VARARGS, "Get clockwise rotation."   },
 
-    { "metrics",      (PyCFunction) fd::metrics,      METH_VARARGS, "Cube metrics."    },
+    { "metrics",      (PyCFunction) fd::metrics,      METH_NOARGS,  "Metrics."         },
     { "cube_metrics", (PyCFunction) fd::cube_metrics, METH_VARARGS, "Cube metrics."    },
-    { "indices",      (PyCFunction) fd::indices,      METH_VARARGS, "Indices." },
+    { "indices",      (PyCFunction) fd::indices,      METH_VARARGS, "Indices."         },
 
     { NULL }
 };

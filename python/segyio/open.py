@@ -76,26 +76,9 @@ def open(filename, mode="r", iline = 189,
     f = segyio.SegyFile(filename, mode, iline, xline)
 
     try:
-        metrics = f.xfd.metrics(f.bin.buf)
-
-    except RuntimeError:
-        f.close()
-        raise RuntimeError("Unable to parse global binary header. Corrupted file?")
-
-    except:
-        f.close()
-        raise
-
-    f._tr0 = metrics['trace0']
-    f._fmt = metrics['format']
-    f._bsz = metrics['trace_bsize']
-    f._tracecount = metrics['trace_count']
-    f._ext_headers = (f._tr0 - 3600) // 3200  # should probably be from C
-
-    try:
         dt = segyio.tools.dt(f, fallback_dt = 4000.0) / 1000.0
         t0 = f.header[0][segyio.TraceField.DelayRecordingTime]
-        samples = metrics['sample_count']
+        samples = f._metrics['samplecount']
         f._samples = (numpy.arange(samples, dtype = numpy.single) * dt) + t0
 
     except:
@@ -115,6 +98,7 @@ def open(filename, mode="r", iline = 189,
         iline_count  = cube_metrics['iline_count']
         xline_count  = cube_metrics['xline_count']
         offset_count = cube_metrics['offset_count']
+        metrics = f._metrics
         metrics.update(cube_metrics)
 
         line_metrics = segyio._segyio.line_metrics(f.sorting,

@@ -36,7 +36,7 @@ class SegyFile(object):
 
     _unstructured_errmsg = "File opened in unstructured mode."
 
-    def __init__(self, filename, mode, iline=189, xline=193):
+    def __init__(self, filename, mode, iline=189, xline=193, binary=None):
         """
         Constructor, internal.
         """
@@ -49,10 +49,7 @@ class SegyFile(object):
         # property value holders
         self._ilines = None
         self._xlines = None
-        self._tracecount = None
-        self._sorting = None
         self._offsets = None
-        self._ext_headers = None
         self._samples = None
 
         # private values
@@ -60,9 +57,6 @@ class SegyFile(object):
         self._iline_stride = None
         self._xline_length = None
         self._xline_stride = None
-        self._fmt = None
-        self._tr0 = None
-        self._bsz = None
 
         self._trace = Trace(self)
         self._header = Header(self)
@@ -70,7 +64,11 @@ class SegyFile(object):
         self._xline = None
         self._gather = None
 
-        self.xfd = _segyio.segyiofd(filename, mode)
+        self.xfd = _segyio.segyiofd(filename, mode, binary)
+        self._metrics = self.xfd.metrics()
+        self._fmt = self._metrics['format']
+        self._tr0 = self._metrics['trace0']
+        self._bsz = self._metrics['trace_bsize']
 
         super(SegyFile, self).__init__()
 
@@ -183,7 +181,7 @@ class SegyFile(object):
     @property
     def tracecount(self):
         """ :rtype: int """
-        return self._tracecount
+        return self._metrics['tracecount']
 
     @property
     def samples(self):
@@ -198,7 +196,7 @@ class SegyFile(object):
     @property
     def ext_headers(self):
         """ :rtype: int """
-        return self._ext_headers if self._ext_headers is not None else 0
+        return self._metrics['ext_headers']
 
     @property
     def unstructured(self):
@@ -1123,7 +1121,6 @@ class spec:
         self.xlines = None
         self.offsets = [1]
         self.samples = None
-        self.tracecount = None
         self.ext_headers = 0
         self.format = None
         self.sorting = None

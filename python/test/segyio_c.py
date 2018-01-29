@@ -133,18 +133,17 @@ class _segyioTests(unittest.TestCase):
         f = _segyio.segyiofd(self.filename, "r")
         if mmap: f.mmap()
 
-        binary_header = f.getbin()
         ilb = 189
         xlb = 193
-        metrics = f.metrics(binary_header)
+        metrics = f.metrics()
         metrics.update(f.cube_metrics(ilb, xlb,
-                                      metrics['trace_count'],
+                                      metrics['tracecount'],
                                       metrics['trace0'],
                                       metrics['trace_bsize']))
         f.close()
 
         sorting = metrics['sorting']
-        trace_count = metrics['trace_count']
+        trace_count = metrics['tracecount']
         inline_count = metrics['iline_count']
         crossline_count = metrics['xline_count']
         offset_count = metrics['offset_count']
@@ -178,40 +177,33 @@ class _segyioTests(unittest.TestCase):
         f = _segyio.segyiofd(self.filename, "r")
         if mmap: f.mmap()
 
-        binary_header = f.getbin()
         ilb = 189
         xlb = 193
 
-        with self.assertRaises(TypeError):
-            metrics = f.metrics(1423)
-
         with self.assertRaises(IndexError):
-            metrics = f.metrics(binary_header)
+            metrics = f.metrics()
             metrics.update(f.cube_metrics(ilb + 1, xlb,
-                                          metrics['trace_count'],
+                                          metrics['tracecount'],
                                           metrics['trace0'],
                                           metrics['trace_bsize']))
 
-        metrics = f.metrics(binary_header)
+        metrics = f.metrics()
         metrics.update(f.cube_metrics(ilb, xlb,
-                                      metrics['trace_count'],
+                                      metrics['tracecount'],
                                       metrics['trace0'],
                                       metrics['trace_bsize']))
 
         self.assertEqual(metrics['trace0'], _segyio.textsize() + _segyio.binsize())
-        self.assertEqual(metrics['sample_count'], 50)
+        self.assertEqual(metrics['samplecount'], 50)
         self.assertEqual(metrics['format'], 1)
         self.assertEqual(metrics['trace_bsize'], 200)
         self.assertEqual(metrics['sorting'], 2) # inline sorting = 2, crossline sorting = 1
-        self.assertEqual(metrics['trace_count'], 25)
+        self.assertEqual(metrics['tracecount'], 25)
         self.assertEqual(metrics['offset_count'], 1)
         self.assertEqual(metrics['iline_count'], 5)
         self.assertEqual(metrics['xline_count'], 5)
 
         f.close()
-
-        with self.assertRaises(IOError):
-            metrics = f.metrics(binary_header)
 
     def test_metrics_mmap(self):
         self.test_metrics(True)
@@ -220,10 +212,9 @@ class _segyioTests(unittest.TestCase):
         f = _segyio.segyiofd(self.filename, "r")
         if mmap: f.mmap()
 
-        binary_header = f.getbin()
         ilb = 189
         xlb = 193
-        metrics = f.metrics(binary_header)
+        metrics = f.metrics()
         dmy = numpy.zeros(2, dtype=numpy.intc)
 
         dummy_metrics = {'xline_count':   2,
@@ -252,7 +243,7 @@ class _segyioTests(unittest.TestCase):
             f.indices(dummy_metrics, two, one, off)
 
         metrics.update(f.cube_metrics(ilb, xlb,
-                                      metrics['trace_count'],
+                                      metrics['tracecount'],
                                       metrics['trace0'],
                                       metrics['trace_bsize']))
 
@@ -275,18 +266,17 @@ class _segyioTests(unittest.TestCase):
         f = _segyio.segyiofd(self.filename, "r")
         if mmap: f.mmap()
 
-        binary_header = f.getbin()
         ilb = 189
         xlb = 193
 
-        metrics = f.metrics(binary_header)
+        metrics = f.metrics()
         metrics.update(f.cube_metrics(ilb, xlb,
-                                      metrics['trace_count'],
+                                      metrics['tracecount'],
                                       metrics['trace0'],
                                       metrics['trace_bsize']))
 
         sorting = metrics['sorting']
-        trace_count = metrics['trace_count']
+        trace_count = metrics['tracecount']
         inline_count = metrics['iline_count']
         crossline_count = metrics['xline_count']
         offset_count = metrics['offset_count']
@@ -351,10 +341,8 @@ class _segyioTests(unittest.TestCase):
             f = _segyio.segyiofd("small.sgy", "r+")
             if mmap: f.mmap()
 
-            binary_header = f.getbin()
             ilb = 189
             xlb = 193
-            metrics = f.metrics(binary_header)
 
             def mkempty():
                 return bytearray(_segyio.thsize())
@@ -392,6 +380,8 @@ class _segyioTests(unittest.TestCase):
 
     def test_read_and_write_trace(self, mmap=False):
         with TestContext("read_and_write_trace"):
+            binary = bytearray(_segyio.binsize())
+            _segyio.putfield(binary, 3213, 25)
             f = _segyio.segyiofd("trace-wrt.sgy", "w+")
             if mmap: f.mmap()
 
@@ -424,18 +414,17 @@ class _segyioTests(unittest.TestCase):
 
         if mmap: f.mmap()
 
-        binary_header = f.getbin()
         ilb = 189
         xlb = 193
 
-        metrics = f.metrics(binary_header)
+        metrics = f.metrics()
         metrics.update(f.cube_metrics(ilb, xlb,
-                                      metrics['trace_count'],
+                                      metrics['tracecount'],
                                       metrics['trace0'],
                                       metrics['trace_bsize']))
 
         sorting = metrics['sorting']
-        trace_count = metrics['trace_count']
+        trace_count = metrics['tracecount']
         inline_count = metrics['iline_count']
         crossline_count = metrics['xline_count']
         offset_count = metrics['offset_count']
@@ -455,8 +444,7 @@ class _segyioTests(unittest.TestCase):
         f, metrics, iline_idx, xline_idx = self.read_small()
 
         tr0 = metrics['trace0']
-        bsz = metrics['trace_bsize']
-        samples = metrics['sample_count']
+        samples = metrics['samplecount']
         xline_stride = metrics['xline_stride']
         iline_stride = metrics['iline_stride']
         offsets = metrics['offset_count']
@@ -478,8 +466,7 @@ class _segyioTests(unittest.TestCase):
         f, metrics, iline_idx, xline_idx = self.read_small(True)
 
         tr0 = metrics['trace0']
-        bsz = metrics['trace_bsize']
-        samples = metrics['sample_count']
+        samples = metrics['samplecount']
         xline_stride = metrics['xline_stride']
         iline_stride = metrics['iline_stride']
         offsets = metrics['offset_count']
