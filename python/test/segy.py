@@ -438,7 +438,7 @@ class TestSegy(unittest.TestCase):
                 self.assertTrue(np.array_equal(iline, fline))
 
             for xline, sline in zip(f.xline, f.slow):
-                self.assertTrue(np.array_equal(iline, fline))
+                self.assertTrue(np.array_equal(xline, sline))
 
     def test_traces_raw(self):
         with segyio.open(self.filename, "r") as f:
