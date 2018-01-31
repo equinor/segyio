@@ -1,3 +1,5 @@
+#!/bin/sh
+
 function run_tests {
     set -x
     python -c "import segyio; print(segyio.__version__)"
