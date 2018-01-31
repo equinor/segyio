@@ -131,8 +131,6 @@ class Line:
             lineno, offset = lineno
 
         if isinstance(lineno, slice) or isinstance(offset, slice):
-            lines, offsets = self._indices(lineno, offset)
-
             indices = itertools.product(*self._indices(lineno, offset))
             for (line, offset), x in zip(indices, val):
                 t0 = self._index(line, offset)

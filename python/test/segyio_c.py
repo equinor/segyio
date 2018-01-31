@@ -359,8 +359,6 @@ class _segyioTests(unittest.TestCase):
             def mkempty():
                 return bytearray(_segyio.thsize())
 
-            empty = mkempty()
-
             with self.assertRaises(TypeError):
                 trace_header = f.getth("+")
 

@@ -72,7 +72,7 @@ class Enum(object):
     @classmethod
     def enums(cls):
         result = []
-        for k, v in cls.__dict__.items():
+        for v in cls.__dict__.values():
             if isinstance(v, int):
                 result.append(cls(v))
 

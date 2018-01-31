@@ -854,8 +854,6 @@ class TestSegy(unittest.TestCase):
             spec.xlines  = range(1, 3)
             spec.offsets = range(1, 6)
 
-            cube_size = len(spec.ilines) * len(spec.xlines)
-
             with segyio.create(fname, spec) as dst:
                 arr = np.arange( start = 0.000,
                                  stop = 0.007,
