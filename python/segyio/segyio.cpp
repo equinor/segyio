@@ -231,7 +231,7 @@ PyObject* close( segyiofd* self ) {
     /* multiple close() is a no-op */
     if( !self->fd ) return Py_BuildValue( "" );
 
-    segy_close( self->fd );
+    segy_close( self->fd.fd );
     self->fd.fd = NULL;
 
     if( errno ) return PyErr_SetFromErrno( PyExc_IOError );
