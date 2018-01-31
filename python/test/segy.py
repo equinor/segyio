@@ -746,7 +746,7 @@ class TestSegy(unittest.TestCase):
 
             self.assertTrue(filecmp.cmp(src_file, dst_file))
 
-    def test_create_sgy(self):
+    def test_create_sgy_truncate(self):
         with TestContext("truncate-text") as context:
             context.copy_file(self.filename)
             src_file = "small.sgy"
