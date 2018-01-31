@@ -1,10 +1,8 @@
 import numpy as np
-import segyio
 
 try: xrange
 except NameError: pass
 else: range = xrange
-
 
 class RawTrace(object):
     def __init__(self, trace):

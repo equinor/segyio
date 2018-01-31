@@ -3,7 +3,6 @@ except ImportError: pass
 
 import numpy as np
 
-import segyio
 from segyio._raw_trace import RawTrace
 
 class Trace:

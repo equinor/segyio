@@ -2,7 +2,6 @@ from __future__ import absolute_import
 from __future__ import division
 import unittest
 
-import math
 from segyio import BinField
 from segyio import TraceField
 import numpy as np
