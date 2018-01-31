@@ -62,6 +62,7 @@ if (NOT BUILD_TESTING)
 endif ()
 
 set(small ${testdata}/small.sgy)
+set(test ${CMAKE_CURRENT_SOURCE_DIR}/test)
 add_test(NAME catr.arg.t        COMMAND segyio-catr -t 5 ${small})
 add_test(NAME catr.arg.r1       COMMAND segyio-catr -r 5 ${small})
 add_test(NAME catr.arg.r2       COMMAND segyio-catr -r 1 2 ${small})
@@ -70,12 +71,12 @@ add_test(NAME catr.arg.multiple COMMAND segyio-catr "-r 1" 5 2 ${small} -r 1 6)
 add_test(NAME catr.arg.rt       COMMAND segyio-catr -r 1 2 ${small} -t 5)
 
 add_test(NAME catb.arg.help     COMMAND segyio-catb --help)
-add_test(NAME catb.fail.nosegy  COMMAND segyio-catb ${CMAKE_CURRENT_LIST_FILE})
+add_test(NAME catb.fail.nosegy  COMMAND segyio-catb ${test}/catb.output)
 add_test(NAME catb.fail.nofile  COMMAND segyio-catb not-exist)
 add_test(NAME catb.fail.noarg   COMMAND segyio-catb)
 
 add_test(NAME cath.arg.help     COMMAND segyio-cath --help)
-add_test(NAME cath.fail.nosegy  COMMAND segyio-cath ${CMAKE_CURRENT_LIST_FILE})
+add_test(NAME cath.fail.nosegy  COMMAND segyio-cath ${test}/cath.output)
 add_test(NAME cath.fail.nofile  COMMAND segyio-cath --strict not-exist)
 add_test(NAME cath.fail.noarg   COMMAND segyio-cath)
 
@@ -87,13 +88,25 @@ set_tests_properties(catb.fail.nosegy
                      cath.fail.noarg
     PROPERTIES WILL_FAIL ON)
 
-find_package(PythonInterp)
+add_custom_target(test-app-output ALL DEPENDS catb.out cath.out catr.out)
+add_custom_command(
+    OUTPUT catb.out cath.out catr.out
+    COMMENT "running applications for output comparison"
+    DEPENDS segyio-catb segyio-cath segyio-catr
+            test/catb.output
+            test/cath.output
+            test/catr.output
+    COMMAND segyio-catb ${small} > catb.out
+    COMMAND segyio-cath ${small} > cath.out
+    COMMAND segyio-catr -r 4 9 -t 12 ${small} > catr.out
+)
 
-if (NOT PYTHON_EXECUTABLE)
-    message(WARNING "Could not find python, skipping application output tests")
-endif()
-
-set(test ${CMAKE_CURRENT_SOURCE_DIR}/test)
-add_test(NAME catr.output COMMAND ${PYTHON_EXECUTABLE} ${test}/catr.py)
-add_test(NAME catb.output COMMAND ${PYTHON_EXECUTABLE} ${test}/catb.py)
-add_test(NAME cath.output COMMAND ${PYTHON_EXECUTABLE} ${test}/cath.py)
+add_test(NAME catb.output
+         COMMAND ${CMAKE_COMMAND} -E compare_files ${test}/catb.output catb.out
+)
+add_test(NAME cath.output
+         COMMAND ${CMAKE_COMMAND} -E compare_files ${test}/cath.output cath.out
+)
+add_test(NAME catr.output
+         COMMAND ${CMAKE_COMMAND} -E compare_files ${test}/catr.output catr.out
+)
