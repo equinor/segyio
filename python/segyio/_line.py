@@ -1,12 +1,8 @@
 import itertools
+try: from future_builtins import zip
+except ImportError: pass
 
 import segyio._segyio as _segyio
-
-try:
-    from itertools import izip as zip
-except ImportError:  # will be 3.x series
-    pass
-
 
 class Line:
     """ Line mode for traces and trace headers. Internal.

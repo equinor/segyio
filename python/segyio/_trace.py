@@ -1,14 +1,10 @@
+try: from future_builtins import zip
+except ImportError: pass
+
 import numpy as np
+
 import segyio
 from segyio._raw_trace import RawTrace
-import itertools
-
-try:
-    from itertools import izip as zip
-    from itertools import imap as map
-except ImportError:  # will be 3.x series
-    pass
-
 
 class Trace:
 

@@ -1,4 +1,6 @@
 from __future__ import absolute_import
+try: from future_builtins import zip, map
+except ImportError: pass
 
 from types import GeneratorType
 
@@ -15,13 +17,6 @@ from segyio._field import Field
 from segyio._line import Line
 from segyio._header import Header
 from segyio._trace import Trace
-
-try:
-    from itertools import izip as zip
-    from itertools import imap as map
-except ImportError:  # will be 3.x series
-    pass
-
 
 def mklines(fname):
     spec = segyio.spec()

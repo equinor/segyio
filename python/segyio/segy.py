@@ -15,6 +15,11 @@ segyio which you can find in the examples directory or where your distribution
 installs example programs.
 """
 import itertools
+try:
+    from future_builtins import zip
+    range = xrange
+except (NameError, ImportError): pass
+
 import numpy as np
 
 from segyio._header import Header
@@ -26,14 +31,6 @@ import segyio._segyio as _segyio
 
 from segyio.tracesortingformat import TraceSortingFormat
 
-try:
-    from itertools import izip as zip
-except ImportError:  # will be 3.x series
-    pass
-
-try: xrange
-except NameError: pass
-else: range = xrange
 
 class SegyFile(object):
 
