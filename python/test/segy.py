@@ -154,7 +154,6 @@ class TestSegy(unittest.TestCase):
         with segyio.open(self.filename, "r", segyio.TraceField.CROSSLINE_3D, segyio.TraceField.INLINE_3D) as f:
             self.assertListEqual(list(il), list(f.xlines))
             self.assertListEqual(list(xl), list(f.ilines))
-            pass
 
     def test_file_info(self):
         with segyio.open(self.filename, "r") as f:
@@ -177,7 +176,7 @@ class TestSegy(unittest.TestCase):
     def test_open_ignore_geometry(self):
         with segyio.open(self.filename, ignore_geometry = True) as f:
             with self.assertRaises(ValueError):
-                f.iline[0]
+                _ = f.iline[0]
 
     def test_traces_slicing(self):
         with segyio.open(self.filename, "r") as f:
@@ -324,16 +323,16 @@ class TestSegy(unittest.TestCase):
             self.assertAlmostEqual(201.02001, line2[1][1], places = 4)
 
             with self.assertRaises(KeyError):
-                f.iline[1, 0]
+                _ = f.iline[1, 0]
 
             with self.assertRaises(KeyError):
-                f.iline[1, 3]
+                _ = f.iline[1, 3]
 
             with self.assertRaises(KeyError):
-                f.iline[100, 1]
+                _ = f.iline[100, 1]
 
             with self.assertRaises(TypeError):
-                f.iline[1, {}]
+                _ = f.iline[1, {}]
 
     def test_iline_slice_fixed_offset(self):
         with segyio.open(self.prestack, "r") as f:
@@ -427,10 +426,10 @@ class TestSegy(unittest.TestCase):
 
     def test_line_generators(self):
         with segyio.open(self.filename, "r") as f:
-            for line in f.iline:
+            for _ in f.iline:
                 pass
 
-            for line in f.xline:
+            for _ in f.xline:
                 pass
 
     def test_fast_slow_dimensions(self):
@@ -473,19 +472,19 @@ class TestSegy(unittest.TestCase):
             self.assertEqual(dict(f.header[-1]), dict(f.header[24]))
 
             with self.assertRaises(IndexError):
-                f.header[30]
+                _ = f.header[30]
 
             with self.assertRaises(IndexError):
-                f.header[-30]
+                _ = f.header[-30]
 
             with self.assertRaises(IndexError):
-                f.header[0][188] # between byte offsets
+                _ = f.header[0][188] # between byte offsets
 
             with self.assertRaises(IndexError):
-                f.header[0][-1]
+                _ = f.header[0][-1]
 
             with self.assertRaises(IndexError):
-                f.header[0][700]
+                _ = f.header[0][700]
 
     def test_write_header(self):
         with TestContext("write_header") as context:
@@ -524,7 +523,7 @@ class TestSegy(unittest.TestCase):
                 self.assertEqual(d, f.header[1][TraceField.INLINE_3D, TraceField.CROSSLINE_3D, TraceField.offset])
 
                 # slice-support over headers (similar to trace)
-                for th in f.header[0:10]:
+                for _ in f.header[0:10]:
                     pass
 
                 self.assertEqual(6, len(list(f.header[10::-2])))
@@ -562,7 +561,7 @@ class TestSegy(unittest.TestCase):
                 self.assertEqual( 7, f.header[5][segyio.su.mute])
 
                 # for-each support
-                for th in f.header:
+                for _ in f.header:
                     pass
 
                 # copy a header
@@ -584,13 +583,13 @@ class TestSegy(unittest.TestCase):
 
                 # accessing non-existing offsets raises exceptions
                 with self.assertRaises(IndexError):
-                    f.bin[0]
+                    _ = f.bin[0]
 
                 with self.assertRaises(IndexError):
-                    f.bin[50000]
+                    _ = f.bin[50000]
 
                 with self.assertRaises(IndexError):
-                    f.bin[3214]
+                    _ = f.bin[3214]
 
                 d = { BinField.Traces: 43,
                       BinField.SweepFrequencyStart: 11 }
@@ -642,51 +641,46 @@ class TestSegy(unittest.TestCase):
     def test_wrong_lineno(self):
         with self.assertRaises(KeyError):
             with segyio.open(self.filename, "r") as f:
-                f.iline[3000]
+                _ = f.iline[3000]
 
         with self.assertRaises(KeyError):
             with segyio.open(self.filename, "r") as f:
-                f.xline[2]
+                _ = f.xline[2]
 
     def test_open_wrong_inline(self):
         with self.assertRaises(IndexError):
-            with segyio.open(self.filename, "r", 2) as f:
+            with segyio.open(self.filename, "r", 2):
                 pass
 
-        with segyio.open(self.filename, "r", 2, strict = False) as f:
+        with segyio.open(self.filename, "r", 2, strict = False):
             pass
 
     def test_open_wrong_crossline(self):
         with self.assertRaises(IndexError):
-            with segyio.open(self.filename, "r", 189, 2) as f:
+            with segyio.open(self.filename, "r", 189, 2):
                 pass
 
-        with segyio.open(self.filename, "r", 189, 2, strict = False) as f:
+        with segyio.open(self.filename, "r", 189, 2, strict = False):
             pass
 
     def test_wonky_dimensions(self):
-        with segyio.open(self.fileMx1) as f:
-            pass
-
-        with segyio.open(self.file1xN) as f:
-            pass
-
-        with segyio.open(self.file1x1) as f:
-            pass
+        with segyio.open(self.fileMx1): pass
+        with segyio.open(self.file1xN): pass
+        with segyio.open(self.file1x1): pass
 
     def test_open_fails_unstructured(self):
         with segyio.open(self.filename, "r", 37, strict = False) as f:
             with self.assertRaises(ValueError):
-                f.iline[10]
+                _ = f.iline[10]
 
             with self.assertRaises(ValueError):
-                f.iline[:,:]
+                _ = f.iline[:,:]
 
             with self.assertRaises(ValueError):
-                f.xline[:,:]
+                _ = f.xline[:,:]
 
             with self.assertRaises(ValueError):
-                f.depth_slice[2]
+                _ = f.depth_slice[2]
 
             # operations that don't rely on geometry still works
             self.assertEqual(f.header[2][189], 1)
@@ -712,10 +706,10 @@ class TestSegy(unittest.TestCase):
         c = np.arange(10, dtype = np.int64)
         d = np.arange(10, dtype = np.intc)
         with segyio.open(self.filename) as f:
-            f.trace[a[0]]
-            f.trace[b[1]]
-            f.trace[c[2]]
-            f.trace[d[3]]
+            _ = f.trace[a[0]]
+            _ = f.trace[b[1]]
+            _ = f.trace[c[2]]
+            _ = f.trace[d[3]]
 
     def test_create_sgy(self):
         with TestContext("create_sgy") as context:
@@ -810,7 +804,7 @@ class TestSegy(unittest.TestCase):
                     self.assertEqual([x + 100 for x in src.ilines], list(dst.ilines))
 
     def test_create_from_naught(self):
-        with TestContext("create_from_naught") as context:
+        with TestContext("create_from_naught"):
             fname = "mk.sgy"
             spec = segyio.spec()
             spec.format  = 5
@@ -844,7 +838,7 @@ class TestSegy(unittest.TestCase):
                 self.assertEqual(1, f.header[1][TraceField.offset])
 
     def test_create_from_naught_prestack(self):
-        with TestContext("create_from_naught_prestack") as context:
+        with TestContext("create_from_naught_prestack"):
             fname = "mk-ps.sgy"
             spec = segyio.spec()
             spec.format  = 5
@@ -889,7 +883,7 @@ class TestSegy(unittest.TestCase):
     def test_create_write_lines(self):
         fname = "mklines.sgy"
 
-        with TestContext("create_write_lines") as context:
+        with TestContext("create_write_lines"):
             mklines(fname)
 
             with segyio.open(fname, "r") as f:
@@ -902,7 +896,7 @@ class TestSegy(unittest.TestCase):
         fname = "lines.sgy"
         dstfile = "lines-halved.sgy"
 
-        with TestContext("create_sgy_skip_lines") as context:
+        with TestContext("create_sgy_skip_lines"):
             mklines(fname)
 
             with segyio.open(fname, "r") as src:
@@ -1034,7 +1028,7 @@ class TestSegy(unittest.TestCase):
                     self.assertAlmostEqual(depth_slice[i][j], f.iline[x][j][index], places=6)
 
         with self.assertRaises(KeyError):
-            slice = f.depth_slice[len(f.samples)]
+            _ = f.depth_slice[len(f.samples)]
 
     def test_depth_slice_writing(self):
         with TestContext("depth_slice_writing") as context:

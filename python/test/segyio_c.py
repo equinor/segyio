@@ -35,7 +35,7 @@ class _segyioTests(unittest.TestCase):
 
     def test_open_non_existing_file(self):
         with self.assertRaises(IOError):
-            f = _segyio.segyiofd("non-existing", "r")
+            _ = _segyio.segyiofd("non-existing", "r")
 
     def test_close_non_existing_file(self):
         with self.assertRaises(TypeError):
@@ -116,10 +116,10 @@ class _segyioTests(unittest.TestCase):
         binary_header = f.getbin()
 
         with self.assertRaises(TypeError):
-            value = _segyio.getfield("s", 0)
+            _ = _segyio.getfield("s", 0)
 
         with self.assertRaises(IndexError):
-            value = _segyio.getfield(binary_header, -1)
+            _ = _segyio.getfield(binary_header, -1)
 
         self.assertEqual(_segyio.getfield(binary_header, 3225), 1)
         self.assertEqual(_segyio.getfield(binary_header, 3221), 50)
@@ -391,7 +391,7 @@ class _segyioTests(unittest.TestCase):
         self.test_read_and_write_traceheader(True)
 
     def test_read_and_write_trace(self, mmap=False):
-        with TestContext("read_and_write_trace") as context:
+        with TestContext("read_and_write_trace"):
             f = _segyio.segyiofd("trace-wrt.sgy", "w+")
             if mmap: f.mmap()
 
