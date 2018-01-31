@@ -74,10 +74,10 @@ add_test(NAME catb.fail.nosegy  COMMAND segyio-catb ${CMAKE_CURRENT_LIST_FILE})
 add_test(NAME catb.fail.nofile  COMMAND segyio-catb not-exist)
 add_test(NAME catb.fail.noarg   COMMAND segyio-catb)
 
-add_test(NAME cath.arg.help     COMMAND segyio-catb --help)
-add_test(NAME cath.fail.nosegy  COMMAND segyio-catb ${CMAKE_CURRENT_LIST_FILE})
-add_test(NAME cath.fail.nofile  COMMAND segyio-catb not-exist)
-add_test(NAME cath.fail.noarg   COMMAND segyio-catb)
+add_test(NAME cath.arg.help     COMMAND segyio-cath --help)
+add_test(NAME cath.fail.nosegy  COMMAND segyio-cath ${CMAKE_CURRENT_LIST_FILE})
+add_test(NAME cath.fail.nofile  COMMAND segyio-cath --strict not-exist)
+add_test(NAME cath.fail.noarg   COMMAND segyio-cath)
 
 set_tests_properties(catb.fail.nosegy
                      catb.fail.nofile
