@@ -45,9 +45,6 @@ class Trace:
                 self.write_trace(i, x, self._file)
             return
 
-        if int(index) != index:
-            raise TypeError("Trace index must be integer type")
-
         if not 0 <= abs(index) < len(self):
             raise IndexError("Trace %d not in range (-{},{})".format(index, len(self), len(self)))
 
