@@ -1,14 +1,10 @@
 import itertools
+try: from future_builtins import zip
+except ImportError: pass
 
 import segyio
 from segyio._line import Line
 from segyio._field import Field
-
-try:
-    from itertools import izip as zip
-except ImportError:  # will be 3.x series
-    pass
-
 
 class Header(object):
     def __init__(self, segy):

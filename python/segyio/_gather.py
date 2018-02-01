@@ -63,7 +63,6 @@ class Gather:
         def gen():
             # precompute the xline number -> xline offset
             xlinds = { xlno: i for i, xlno in enumerate(self.xline.lines) }
-            ofinds = { ofno: i for i, ofno in enumerate(self.offsets) }
 
             # doing range over gathers is VERY expensive, because every lookup
             # with a naive implementations would call _getindex to map lineno

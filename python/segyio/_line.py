@@ -1,12 +1,27 @@
 import itertools
+try: from future_builtins import zip
+except ImportError: pass
 
 import segyio._segyio as _segyio
 
-try:
-    from itertools import izip as zip
-except ImportError:  # will be 3.x series
-    pass
+# in order to support [:end] syntax, we must make sure
+# start has a non-None value. lineno.indices() would set it
+# to 0, but we don't know if that's a reasonable value or
+# not. If start is None we set it to the first line
+def sanitize_slice(s, source):
+    if all((s.start, s.stop, s.step)):
+        return s
 
+    start, stop, step = s.start, s.stop, s.step
+    increasing = step is None or step > 0
+
+    if start is None:
+        start = source[0] if increasing else source[-1]
+
+    if stop is None:
+        stop = source[-1] + 1 if increasing else source[0] - 1
+
+    return slice(start, stop, step)
 
 class Line:
     """ Line mode for traces and trace headers. Internal.
@@ -74,8 +89,8 @@ class Line:
         if not isinstance(offset, slice):
             offset = slice(offset, offset + 1, 1)
 
-        lineno = self._sanitize_slice(lineno, self.lines)
-        offset = self._sanitize_slice(offset, offsets)
+        lineno = sanitize_slice(lineno, self.lines)
+        offset = sanitize_slice(offset, offsets)
 
         offs, lns = set(self.segy.offsets), set(self.lines)
 
@@ -83,25 +98,6 @@ class Line:
         lrng = range(*lineno.indices(self.lines[-1] + 1))
 
         return filter(lns.__contains__, lrng), filter(offs.__contains__, orng)
-
-    # in order to support [:end] syntax, we must make sure
-    # start has a non-None value. lineno.indices() would set it
-    # to 0, but we don't know if that's a reasonable value or
-    # not. If start is None we set it to the first line
-    def _sanitize_slice(self, s, source):
-        if all((s.start, s.stop, s.step)):
-            return s
-
-        start, stop, step = s.start, s.stop, s.step
-        increasing = step is None or step > 0
-
-        if start is None:
-            start = source[0] if increasing else source[-1]
-
-        if stop is None:
-            stop = source[-1] + 1 if increasing else source[0] - 1
-
-        return slice(start, stop, step)
 
     def _get(self, lineno, offset, buf):
         """ :rtype: numpy.ndarray"""
@@ -135,8 +131,6 @@ class Line:
             lineno, offset = lineno
 
         if isinstance(lineno, slice) or isinstance(offset, slice):
-            lines, offsets = self._indices(lineno, offset)
-
             indices = itertools.product(*self._indices(lineno, offset))
             for (line, offset), x in zip(indices, val):
                 t0 = self._index(line, offset)

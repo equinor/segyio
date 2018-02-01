@@ -28,7 +28,7 @@ class TestContext(object):
         if not os.path.isabs(source):
             source = os.path.join(self._cwd, source)
 
-        source_dir, source_filename = os.path.split(source)
+        _ , source_filename = os.path.split(source)
 
         target = os.path.join(self._temp_path, target, source_filename)
         try:

@@ -211,7 +211,7 @@ segy_file* segyfopen( const mxArray* filename, const char* mode ) {
     mxFree( (void*)fname );
 
     if( !fp )
-        mexErrMsgIdAndTxt( "segy:c:fopen", strerror( errno ) );
+        mexErrMsgIdAndTxt( "segy:c:fopen", strerror( err ) );
 
     return fp;
 }

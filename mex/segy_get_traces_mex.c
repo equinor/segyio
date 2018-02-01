@@ -73,6 +73,5 @@ void mexFunction(int nlhs, mxArray *plhs[],
 cleanup:
     segy_close( fp );
 
-cleanup_fopen:
     mexErrMsgIdAndTxt( msg1, msg2 );
 }

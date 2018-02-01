@@ -1,17 +1,12 @@
+try: from future_builtins import zip
+except ImportError: pass
+
 import numpy as np
-import segyio
+
 from segyio._raw_trace import RawTrace
-import itertools
-
-try:
-    from itertools import izip as zip
-    from itertools import imap as map
-except ImportError:  # will be 3.x series
-    pass
-
 
 class Trace:
-
+    index_errmsg = "Trace {0} not in range [-{1},{1}]"
     def __init__(self, file):
         self._file = file
         """:type: segyio.file"""
@@ -37,7 +32,7 @@ class Trace:
             return gen()
 
         if not 0 <= abs(index) < len(self):
-            raise IndexError("Trace {} not in range (-{},{})".format(index, len(self), len(self)))
+            raise IndexError(self.index_errmsg.format(index, len(self)-1))
 
         # map negative a negative to the corresponding positive value
         start = (index + len(self)) % len(self)
@@ -49,11 +44,8 @@ class Trace:
                 self.write_trace(i, x, self._file)
             return
 
-        if int(index) != index:
-            raise TypeError("Trace index must be integer type")
-
         if not 0 <= abs(index) < len(self):
-            raise IndexError("Trace %d not in range (-{},{})".format(index, len(self), len(self)))
+            raise IndexError(self.index_errmsg.format(index, len(self)-1))
 
         self.write_trace(index, val, self._file)
 

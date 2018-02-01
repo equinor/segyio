@@ -106,20 +106,24 @@ int main( int argc, char** argv ) {
 
     char header[ SEGY_TEXT_HEADER_SIZE + 1 ] = { 0 };
 
+    if( argc - optind < 1 )
+        exit( errmsg( 2, "missing file operand\n"
+                         "Try 'segyio-cath --help' for more information." ) );
+
     for( int i = optind; i < argc; ++i ) {
         segy_file* fp = segy_open( argv[ i ], "r" );
 
         if( !fp ) fprintf( stderr, "segyio-cath: %s: No such file or directory\n",
                            argv[ i ] );
 
-        if( !fp && strict ) exit( errmsg( errno, NULL ) );
+        if( !fp && strict ) exit( errmsg( 2, NULL ) );
         if( !fp ) continue;
 
         if( num_sz == 0 ) num_sz = 1;
 
         const int exts = ext_headers( fp );
         if( exts < 0 )
-            exit( errmsg( errno, "Unable to read binary header" ) );
+            exit( errmsg( 1, "Unable to read binary header" ) );
 
         if( all ) {
             /* just create the list 0,1,2... as if it was passed explicitly */
