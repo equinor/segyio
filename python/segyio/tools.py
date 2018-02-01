@@ -182,9 +182,7 @@ def rotation(f, line = 'fast'):
     rot = f.xfd.rotation( l.len,
                           l.stride,
                           len(f.offsets),
-                          np.asarray(l.lines, order = 'C', dtype = np.intc),
-                          f._tr0,
-                          f._bsz)
+                          np.asarray(l.lines, order = 'C', dtype = np.intc) )
     return rot, cdpx, cdpy
 
 def metadata(f):

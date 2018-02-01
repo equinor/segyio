@@ -36,7 +36,7 @@ class SegyFile(object):
 
     _unstructured_errmsg = "File opened in unstructured mode."
 
-    def __init__(self, filename, mode, iline=189, xline=193):
+    def __init__(self, filename, mode, iline=189, xline=193, binary=None):
         """
         Constructor, internal.
         """
@@ -49,10 +49,7 @@ class SegyFile(object):
         # property value holders
         self._ilines = None
         self._xlines = None
-        self._tracecount = None
-        self._sorting = None
         self._offsets = None
-        self._ext_headers = None
         self._samples = None
 
         # private values
@@ -60,9 +57,6 @@ class SegyFile(object):
         self._iline_stride = None
         self._xline_length = None
         self._xline_stride = None
-        self._fmt = None
-        self._tr0 = None
-        self._bsz = None
 
         self._trace = Trace(self)
         self._header = Header(self)
@@ -70,7 +64,11 @@ class SegyFile(object):
         self._xline = None
         self._gather = None
 
-        self.xfd = _segyio.segyiofd(filename, mode)
+        self.xfd = _segyio.segyiofd(filename, mode, binary)
+        self._metrics = self.xfd.metrics()
+        self._fmt = self._metrics['format']
+        self._tr0 = self._metrics['trace0']
+        self._bsz = self._metrics['trace_bsize']
 
         super(SegyFile, self).__init__()
 
@@ -183,7 +181,7 @@ class SegyFile(object):
     @property
     def tracecount(self):
         """ :rtype: int """
-        return self._tracecount
+        return self._metrics['tracecount']
 
     @property
     def samples(self):
@@ -198,7 +196,7 @@ class SegyFile(object):
     @property
     def ext_headers(self):
         """ :rtype: int """
-        return self._ext_headers if self._ext_headers is not None else 0
+        return self._metrics['ext_headers']
 
     @property
     def unstructured(self):
@@ -377,9 +375,7 @@ class SegyFile(object):
                 traces = self.tracecount
                 start, stop, step = rng.indices(traces)
                 attrs = np.empty(len(range(*rng.indices(traces))), dtype = np.intc)
-                return self.xfd.field_forall(attrs,
-                                             start, stop, step, field,
-                                             self._tr0, self._bsz)
+                return self.xfd.field_forall(attrs, start, stop, step, field)
 
             def _getitem_list(inner, xs):
                 if not isinstance(xs, np.ndarray):
@@ -387,8 +383,7 @@ class SegyFile(object):
 
                 xs = xs.astype(dtype = np.intc, order = 'C', copy = False)
                 attrs = np.empty(len(xs), dtype = np.intc)
-                return self.xfd.field_foreach(attrs, xs, field,
-                                              self._tr0, self._bsz)
+                return self.xfd.field_foreach(attrs, xs, field)
 
         return attr()
 
@@ -519,11 +514,7 @@ class SegyFile(object):
 
     def _fread_line(self, trace0, length, stride, buf):
         offsets = len(self.offsets)
-        return self.xfd.getline(trace0,
-                                length, stride, offsets,
-                                buf,
-                                self._tr0, self._bsz,
-                                self._fmt, len(self.samples))
+        return self.xfd.getline(trace0, length, stride, offsets, buf)
 
     @property
     def ilines(self):
@@ -927,11 +918,7 @@ class SegyFile(object):
         fmt = self._fmt
 
         def readfn(depth, length, stride, buf):
-            return self.xfd.getdepth( depth,
-                                      slice_trace_count, offsets,
-                                      buf,
-                                      tr0, bsz,
-                                      fmt, len(self.samples))
+            return self.xfd.getdepth(depth, slice_trace_count, offsets, buf)
 
         def writefn(depth, length, stride, val):
             val = buffn(val)
@@ -1123,7 +1110,6 @@ class spec:
         self.xlines = None
         self.offsets = [1]
         self.samples = None
-        self.tracecount = None
         self.ext_headers = 0
         self.format = None
         self.sorting = None
