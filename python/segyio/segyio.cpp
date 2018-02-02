@@ -22,9 +22,10 @@
 namespace {
 
 struct autofd {
-    explicit autofd( segy_file* p = NULL ) : fd( p ) {}
     operator segy_file*() const;
     operator bool() const;
+    void swap( autofd& other );
+    void close();
 
     segy_file* fd;
 };
@@ -36,8 +37,13 @@ autofd::operator segy_file*() const {
     return NULL;
 }
 
-
 autofd::operator bool() const { return this->fd; }
+
+void autofd::swap( autofd& other ) { std::swap( this->fd, other.fd ); }
+void autofd::close() {
+    if( this->fd ) segy_close( this->fd );
+    this->fd = NULL;
+}
 
 struct segyiofd {
     PyObject_HEAD
@@ -115,17 +121,15 @@ int init( segyiofd* self, PyObject* args, PyObject* ) {
         return -1;
     }
 
-   if( std::strlen( mode ) > 3 ) {
-       PyErr_Format( PyExc_ValueError, "Invalid mode string '%s'", mode );
-       return -1;
-   }
+    if( std::strlen( mode ) > 3 ) {
+        PyErr_Format( PyExc_ValueError, "Invalid mode string '%s'", mode );
+        return -1;
+    }
 
-
-    /* init can be called multiple times, which is treated as opening a new
-     * file on the same object. That means the previous file handle must be
-     * properly closed before the new file is set
-     */
-    segy_file* fd = segy_open( filename, mode );
+    struct unique : public autofd {
+        explicit unique( segy_file* p ) { this->fd = p; }
+        ~unique() { this->close(); }
+    } fd( segy_open( filename, mode ) );
 
     if( !fd && !strstr( "rb" "wb" "ab" "r+b" "w+b" "a+b", mode ) ) {
         PyErr_Format( PyExc_ValueError, "Invalid mode string '%s'", mode );
@@ -136,7 +140,6 @@ int init( segyiofd* self, PyObject* args, PyObject* ) {
         PyErr_Format( PyExc_IOError, "Unable to open file '%s'", filename );
         return -1;
     }
-
 
     int tracecount = 0;
     char bin[ SEGY_BINARY_HEADER_SIZE ] = {};
@@ -149,17 +152,12 @@ int init( segyiofd* self, PyObject* args, PyObject* ) {
             case SEGY_FSEEK_ERROR:
             case SEGY_FREAD_ERROR:
                 PyErr_SetFromErrno( PyExc_IOError );
-                break;
+                return -1;
 
             default:
                 PyErr_Format( PyExc_RuntimeError,
                               "unknown error code %d", err  );
-                break;
-        }
-
-        if( err != SEGY_OK ) {
-            segy_close( fd );
-            return -1;
+                return -1;
         }
 
         binary = bin;
@@ -185,32 +183,32 @@ int init( segyiofd* self, PyObject* args, PyObject* ) {
             case SEGY_FSEEK_ERROR:
             case SEGY_FREAD_ERROR:
                 PyErr_SetFromErrno( PyExc_IOError );
-                break;
+                return -1;
 
             case SEGY_INVALID_ARGS:
                 RuntimeError( "unable to count traces, "
                               "file smaller than headers" );
-                break;
+                return -1;
 
             case SEGY_TRACE_SIZE_MISMATCH:
                 RuntimeError( "trace count inconsistent with file size, "
                               "trace lengths possibly of non-uniform" );
+                return -1;
 
             default:
                 PyErr_Format( PyExc_RuntimeError,
                               "unknown error code %d", err  );
-                break;
+                return -1;
         }
-
-        if( err != SEGY_OK ) {
-            segy_close( fd );
-            return -1;
-        }
-
     }
 
-    if( self->fd.fd ) segy_close( self->fd.fd );
-    self->fd.fd = fd;
+    /*
+     * init can be called multiple times, which is treated as opening a new
+     * file on the same object. That means the previous file handle must be
+     * properly closed before the new file is set
+     */
+    self->fd.swap( fd );
+
     self->trace0 = trace0;
     self->trace_bsize = trace_bsize;
     self->format = format;
@@ -221,7 +219,7 @@ int init( segyiofd* self, PyObject* args, PyObject* ) {
 }
 
 void dealloc( segyiofd* self ) {
-    if( self->fd ) segy_close( self->fd.fd );
+    self->fd.close();
     Py_TYPE( self )->tp_free( (PyObject*) self );
 }
 
@@ -231,8 +229,7 @@ PyObject* close( segyiofd* self ) {
     /* multiple close() is a no-op */
     if( !self->fd ) return Py_BuildValue( "" );
 
-    segy_close( self->fd.fd );
-    self->fd.fd = NULL;
+    self->fd.close();
 
     if( errno ) return PyErr_SetFromErrno( PyExc_IOError );
 
