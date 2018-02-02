@@ -65,10 +65,10 @@ class SegyFile(object):
         self._gather = None
 
         self.xfd = _segyio.segyiofd(filename, mode, binary)
-        self._metrics = self.xfd.metrics()
-        self._fmt = self._metrics['format']
-        self._tr0 = self._metrics['trace0']
-        self._bsz = self._metrics['trace_bsize']
+        metrics = self.xfd.metrics()
+        self._fmt = metrics['format']
+        self._tracecount = metrics['tracecount']
+        self._ext_headers = metrics['ext_headers']
 
         super(SegyFile, self).__init__()
 
@@ -181,7 +181,7 @@ class SegyFile(object):
     @property
     def tracecount(self):
         """ :rtype: int """
-        return self._metrics['tracecount']
+        return self._tracecount
 
     @property
     def samples(self):
@@ -196,7 +196,7 @@ class SegyFile(object):
     @property
     def ext_headers(self):
         """ :rtype: int """
-        return self._metrics['ext_headers']
+        return self._ext_headers
 
     @property
     def unstructured(self):
@@ -913,9 +913,6 @@ class SegyFile(object):
 
         slice_trace_count = self._iline_length * self._xline_length
         offsets = len(self.offsets)
-        tr0 = self._tr0
-        bsz = self._bsz
-        fmt = self._fmt
 
         def readfn(depth, length, stride, buf):
             return self.xfd.getdepth(depth, slice_trace_count, offsets, buf)
