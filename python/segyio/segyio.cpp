@@ -55,22 +55,24 @@ struct segyiofd {
     int format;
 };
 
-struct buffer_guard {
-    explicit buffer_guard( Py_buffer& b ) : buffer( b.buf ? &b : NULL ) {}
-    ~buffer_guard() {
-        if( this->buffer ) PyBuffer_Release( this->buffer ); }
-
-    Py_buffer* buffer;
-};
-
 PyObject* TypeError( const char* msg ) {
     PyErr_SetString( PyExc_TypeError, msg );
     return NULL;
 }
 
+template< typename T1 >
+PyObject* TypeError( const char* msg, T1 t1 ) {
+    return PyErr_Format( PyExc_TypeError, msg, t1 );
+}
+
 PyObject* ValueError( const char* msg ) {
     PyErr_SetString( PyExc_ValueError, msg );
     return NULL;
+}
+
+template< typename T1, typename T2 >
+PyObject* ValueError( const char* msg, T1 t1, T2 t2 ) {
+    return PyErr_Format( PyExc_ValueError, msg, t1, t2 );
 }
 
 PyObject* IndexError( const char* msg ) {
@@ -98,20 +100,63 @@ PyObject* KeyError( const char* msg, T1 t1, T2 t2 ) {
     return PyErr_Format( PyExc_KeyError, msg, t1, t2 );
 }
 
+struct buffer_guard {
+    /* automate Py_buffer handling.
+     *
+     * the python documentation does not mention any exception guarantees when
+     * PyArg_ParseTuple, so assume that whenever the function fails, the buffer
+     * object is either zero'd or untouched. That means checking if a
+     * PyBuffer_Release should be called boils down to checking if underlying
+     * buffer is a nullptr or not
+     */
+    buffer_guard() { Py_buffer b = {}; this->buffer = b; }
+    explicit buffer_guard( const Py_buffer& b ) : buffer( b ) {}
+    buffer_guard( PyObject* o, int flags = PyBUF_CONTIG_RO ) {
+        Py_buffer b = {};
+        this->buffer = b;
+
+        if( !PyObject_CheckBuffer( o ) ) {
+            TypeError( "'%s' does not expose buffer interface",
+                       o->ob_type->tp_name );
+            return;
+        }
+
+        const int cont = PyBUF_C_CONTIGUOUS;
+        if( PyObject_GetBuffer( o, &this->buffer, flags | cont ) == 0 )
+            return;
+
+        if( (flags & PyBUF_WRITABLE) == PyBUF_WRITABLE )
+            BufferError( "buffer must be contiguous and writable" );
+        else
+            BufferError( "buffer must be contiguous and readable" );
+    }
+
+    ~buffer_guard() { if( *this ) PyBuffer_Release( &this->buffer ); }
+
+    operator bool() const  { return this->buffer.buf; }
+    Py_ssize_t len() const { return this->buffer.len; }
+    Py_buffer* operator&() { return &this->buffer;    }
+
+    template< typename T >
+    T*    buf() const { return static_cast< T* >( this->buffer.buf ); }
+    char* buf() const { return this->buf< char >(); }
+
+    Py_buffer buffer;
+};
+
 namespace fd {
 
 int init( segyiofd* self, PyObject* args, PyObject* ) {
     char* filename = NULL;
     char* mode = NULL;
-    Py_buffer buffer = {};
+    buffer_guard buffer;
 
     if( !PyArg_ParseTuple( args, "ss|z*", &filename, &mode, &buffer ) )
         return -1;
 
-    buffer_guard g( buffer );
-    const char* binary = (const char*) buffer.buf;
+    const char* binary = buffer.buf< const char >();
 
-    if( binary && buffer.len < SEGY_BINARY_HEADER_SIZE ) {
+    if( binary && buffer.len() < SEGY_BINARY_HEADER_SIZE ) {
         PyErr_SetString( PyExc_ValueError, "binary header too small" );
         return -1;
     }
@@ -313,18 +358,16 @@ PyObject* puttext( segyiofd* self, PyObject* args ) {
     if( !fp ) return NULL;
 
     int index;
-    Py_buffer buffer;
+    buffer_guard buffer;
 
     if( !PyArg_ParseTuple( args, "is*", &index, &buffer ) )
         return NULL;
 
-    buffer_guard g( buffer );
-
-    int size = std::min( int(buffer.len), SEGY_TEXT_HEADER_SIZE );
+    int size = std::min( int(buffer.len()), SEGY_TEXT_HEADER_SIZE );
     heapbuffer buf( SEGY_TEXT_HEADER_SIZE );
     if( !buf ) return NULL;
 
-    const char* src = (const char*)buffer.buf;
+    const char* src = buffer.buf< const char >();
     std::copy( src, src + size, buf.ptr );
 
     const int err = segy_write_textheader( fp, index, buf );
@@ -372,15 +415,13 @@ PyObject* putbin( segyiofd* self, PyObject* args ) {
     segy_file* fp = self->fd;
     if( !fp ) return NULL;
 
-    Py_buffer buffer;
+    buffer_guard buffer;
     if( !PyArg_ParseTuple(args, "s*", &buffer ) ) return NULL;
 
-    buffer_guard g( buffer );
-
-    if( buffer.len < SEGY_BINARY_HEADER_SIZE )
+    if( buffer.len() < SEGY_BINARY_HEADER_SIZE )
         return ValueError( "binary header too small" );
 
-    const int err = segy_write_binheader( fp, (const char*)buffer.buf );
+    const int err = segy_write_binheader( fp, buffer.buf< const char >() );
 
     switch( err ) {
         case SEGY_OK: return Py_BuildValue("");
@@ -403,22 +444,14 @@ PyObject* getth( segyiofd* self, PyObject *args ) {
 
     if( !PyArg_ParseTuple( args, "iO", &traceno, &bufferobj ) ) return NULL;
 
-    Py_buffer buffer;
-    if( !PyObject_CheckBuffer( bufferobj ) )
-        return TypeError( "expected buffer object" );
+    buffer_guard buffer( bufferobj, PyBUF_CONTIG );
+    if( !buffer ) return NULL;
 
-    if( PyObject_GetBuffer( bufferobj, &buffer,
-        PyBUF_WRITEABLE | PyBUF_C_CONTIGUOUS ) )
-        return BufferError( "buffer not contiguous-writeable" );
-
-    buffer_guard g( buffer );
-
-    if( buffer.len < SEGY_TRACE_HEADER_SIZE )
+    if( buffer.len() < SEGY_TRACE_HEADER_SIZE )
         return PyErr_Format( PyExc_ValueError, "trace header too small" );
 
-    char* buf = (char*)buffer.buf;
     int err = segy_traceheader( fp, traceno,
-                                    buf,
+                                    buffer.buf(),
                                     self->trace0,
                                     self->trace_bsize );
 
@@ -442,16 +475,14 @@ PyObject* putth( segyiofd* self, PyObject* args ) {
     if( !fp ) return NULL;
 
     int traceno;
-    Py_buffer buf;
+    buffer_guard buf;
 
     if( !PyArg_ParseTuple( args, "is*", &traceno, &buf ) ) return NULL;
 
-    buffer_guard g( buf );
-
-    if( buf.len < SEGY_TRACE_HEADER_SIZE )
+    if( buf.len() < SEGY_TRACE_HEADER_SIZE )
         return ValueError( "trace header too small" );
 
-    const char* buffer = (const char*)buf.buf;
+    const char* buffer = buf.buf< const char >();
 
     const int err = segy_write_traceheader( fp,
                                             traceno,
@@ -489,22 +520,15 @@ PyObject* field_forall( segyiofd* self, PyObject* args ) {
 
     if( step == 0 ) return ValueError( "slice step cannot be zero" );
 
-    if( !PyObject_CheckBuffer( bufferobj ) )
-        return TypeError( "expected buffer object" );
-
-    Py_buffer buffer;
-    if( PyObject_GetBuffer( bufferobj, &buffer,
-        PyBUF_WRITEABLE | PyBUF_C_CONTIGUOUS ) )
-        return BufferError( "buffer not contiguous-writeable" );
-
-    buffer_guard g( buffer );
+    buffer_guard buffer( bufferobj, PyBUF_CONTIG );
+    if( !buffer ) return NULL;
 
     const int err = segy_field_forall( fp,
                                        field,
                                        start,
                                        stop,
                                        step,
-                                       (int*)buffer.buf,
+                                       buffer.buf< int >(),
                                        self->trace0,
                                        self->trace_bsize );
 
@@ -527,29 +551,22 @@ PyObject* field_foreach( segyiofd* self, PyObject* args ) {
     segy_file* fp = self->fd;
     if( !fp ) return NULL;
 
-    PyObject* buffer_out;
-    Py_buffer indices;
+    PyObject* bufferobj;
+    buffer_guard indices;
     int field;
-
-    if( !PyArg_ParseTuple(args, "Os*i", &buffer_out, &indices, &field ) )
+    if( !PyArg_ParseTuple( args, "Os*i", &bufferobj, &indices, &field ) )
         return NULL;
 
-    buffer_guard gind( indices );
+    buffer_guard bufout( bufferobj, PyBUF_CONTIG );
+    if( !bufout ) return NULL;
 
-    Py_buffer bufout;
-    if( PyObject_GetBuffer( buffer_out, &bufout, PyBUF_FORMAT
-                                               | PyBUF_C_CONTIGUOUS
-                                               | PyBUF_WRITEABLE ) )
-        return NULL;
+    if( bufout.len() != indices.len() )
+        return ValueError( "array size mismatch (output %zi, indices %zi)",
+                           bufout.len(), indices.len() );
 
-    buffer_guard gbuf( bufout );
-
-    const int len = indices.len / indices.itemsize;
-    if( bufout.len / bufout.itemsize != len )
-        return ValueError( "attributes array length != indices" );
-
-    const int* ind = (int*)indices.buf;
-    int* out = (int*)bufout.buf;
+    const int* ind = indices.buf< const int >();
+    int* out = bufout.buf< int >();
+    Py_ssize_t len = bufout.len() / sizeof(int);
     for( int i = 0; i < len; ++i ) {
         int err = segy_field_forall( fp, field,
                                      ind[ i ],
@@ -563,8 +580,8 @@ PyObject* field_foreach( segyiofd* self, PyObject* args ) {
             return PyErr_SetFromErrno( PyExc_IOError );
     }
 
-    Py_INCREF( buffer_out );
-    return buffer_out;
+    Py_INCREF( bufferobj );
+    return bufferobj;
 }
 
 PyObject* metrics( segyiofd* self ) {
@@ -690,9 +707,9 @@ PyObject* indices( segyiofd* self, PyObject* args ) {
     if( !fp ) return NULL;
 
     PyObject* metrics;
-    Py_buffer iline_out;
-    Py_buffer xline_out;
-    Py_buffer offset_out;
+    buffer_guard iline_out;
+    buffer_guard xline_out;
+    buffer_guard offset_out;
 
     if( !PyArg_ParseTuple( args, "O!w*w*w*", &PyDict_Type, &metrics,
                                              &iline_out,
@@ -700,21 +717,17 @@ PyObject* indices( segyiofd* self, PyObject* args ) {
                                              &offset_out ) )
         return NULL;
 
-    buffer_guard gil( iline_out );
-    buffer_guard xil( xline_out );
-    buffer_guard oil( offset_out );
-
     const int iline_count  = getitem( metrics, "iline_count" );
     const int xline_count  = getitem( metrics, "xline_count" );
     const int offset_count = getitem( metrics, "offset_count" );
 
-    if( iline_out.len < Py_ssize_t(iline_count * sizeof( int )) )
+    if( iline_out.len() < Py_ssize_t(iline_count * sizeof( int )) )
         return ValueError( "inline indices buffer too small" );
 
-    if( xline_out.len < Py_ssize_t(xline_count * sizeof( int )) )
+    if( xline_out.len() < Py_ssize_t(xline_count * sizeof( int )) )
         return ValueError( "crossline indices buffer too small" );
 
-    if( offset_out.len < Py_ssize_t(offset_count * sizeof( int )) )
+    if( offset_out.len() < Py_ssize_t(offset_count * sizeof( int )) )
         return ValueError( "offset indices buffer too small" );
 
     const int il_field     = getitem( metrics, "iline_field" );
@@ -728,7 +741,7 @@ PyObject* indices( segyiofd* self, PyObject* args ) {
                                        iline_count,
                                        xline_count,
                                        offset_count,
-                                       (int*)iline_out.buf,
+                                       iline_out.buf< int >(),
                                        self->trace0,
                                        self->trace_bsize );
     if( err != SEGY_OK ) goto error;
@@ -738,14 +751,14 @@ PyObject* indices( segyiofd* self, PyObject* args ) {
                                       iline_count,
                                       xline_count,
                                       offset_count,
-                                      (int*)xline_out.buf,
+                                      xline_out.buf< int >(),
                                       self->trace0,
                                       self->trace_bsize );
     if( err != SEGY_OK ) goto error;
 
     err = segy_offset_indices( fp, offset_field,
                                    offset_count,
-                                   (int*)offset_out.buf,
+                                   offset_out.buf< int >(),
                                    self->trace0,
                                    self->trace_bsize );
     if( err != SEGY_OK ) goto error;
@@ -777,26 +790,20 @@ PyObject* gettr( segyiofd* self, PyObject* args ) {
     if( !PyArg_ParseTuple( args, "Oiii", &bufferobj, &start, &step, &length ) )
         return NULL;
 
-    if( !PyObject_CheckBuffer( bufferobj ) )
-        return TypeError( "expected buffer object" );
-
-    Py_buffer buffer;
-    if( PyObject_GetBuffer( bufferobj, &buffer,
-        PyBUF_WRITEABLE | PyBUF_C_CONTIGUOUS ) )
-        return BufferError( "buffer not contiguous-writeable" );
-
-    buffer_guard g( buffer );
+    buffer_guard buffer( bufferobj, PyBUF_CONTIG );
+    if( !buffer) return NULL;
 
     const int samples = self->samplecount;
     const long long bufsize = (long long) length * samples;
     const long trace0 = self->trace0;
     const int trace_bsize = self->trace_bsize;
 
-    if( buffer.len < bufsize )
-        return ValueError( "buffer too small" );
+    if( buffer.len() < bufsize )
+        return ValueError( "trace buffer too small (was %zi, minimum %zi)",
+                            buffer.len(), bufsize );
 
     int err = 0;
-    float* buf = (float*)buffer.buf;
+    float* buf = buffer.buf< float >();
     for( int i = 0; err == 0 && i < length; ++i, buf += samples ) {
         err = segy_readtrace( fp, start + (i * step),
                                   buf,
@@ -816,7 +823,7 @@ PyObject* gettr( segyiofd* self, PyObject* args ) {
                                 "unknown error code %d", err  );
     }
 
-    err = segy_to_native( self->format, bufsize, (float*)buffer.buf );
+    err = segy_to_native( self->format, bufsize, buffer.buf< float >() );
 
     if( err != SEGY_OK )
         return RuntimeError( "unable to convert to native format" );
@@ -880,21 +887,14 @@ PyObject* getline( segyiofd* self, PyObject* args) {
                                           &bufferobj ) )
         return NULL;
 
-    if( !PyObject_CheckBuffer( bufferobj ) )
-        return TypeError( "expected buffer object" );
-
-    Py_buffer buffer;
-    if( PyObject_GetBuffer( bufferobj, &buffer,
-        PyBUF_WRITEABLE | PyBUF_C_CONTIGUOUS ) )
-        return BufferError( "buffer not contiguous-writeable" );
-
-    buffer_guard g( buffer );
+    buffer_guard buffer( bufferobj, PyBUF_CONTIG );
+    if( !buffer ) return NULL;
 
     int err = segy_read_line( fp, line_trace0,
                                   line_length,
                                   stride,
                                   offsets,
-                                  (float*)buffer.buf,
+                                  buffer.buf< float >(),
                                   self->trace0,
                                   self->trace_bsize);
 
@@ -912,7 +912,7 @@ PyObject* getline( segyiofd* self, PyObject* args) {
 
     err = segy_to_native( self->format,
                           self->samplecount * line_length,
-                          (float*)buffer.buf );
+                          buffer.buf< float >() );
 
     if( err != SEGY_OK )
         return RuntimeError( "unable to preserve native float format" );
@@ -934,21 +934,14 @@ PyObject* getdepth( segyiofd* self, PyObject* args ) {
                                          &count,
                                          &offsets,
                                          &bufferobj ) )
-        return NULL;;
+        return NULL;
 
-    if( !PyObject_CheckBuffer( bufferobj ) )
-        return TypeError( "expected buffer object" );
-
-    Py_buffer buffer;
-    if( PyObject_GetBuffer( bufferobj, &buffer,
-        PyBUF_WRITEABLE | PyBUF_C_CONTIGUOUS ) )
-        return BufferError( "buffer not contiguous-writeable" );
-
-    buffer_guard g( buffer );
+    buffer_guard buffer( bufferobj, PyBUF_CONTIG );
+    if( !buffer ) return NULL;
 
     int trace_no = 0;
     int err = 0;
-    float* buf = (float*)buffer.buf;
+    float* buf = buffer.buf< float >();
 
     const long trace0 = self->trace0;
     const int trace_bsize = self->trace_bsize;
@@ -977,7 +970,7 @@ PyObject* getdepth( segyiofd* self, PyObject* args ) {
     }
 
 
-    err = segy_to_native( self->format, count, (float*)buffer.buf );
+    err = segy_to_native( self->format, count, buffer.buf< float >() );
 
     if( err != SEGY_OK )
         return RuntimeError( "unable to preserve native float format" );
@@ -1028,7 +1021,7 @@ PyObject* rotation( segyiofd* self, PyObject* args ) {
     int line_length;
     int stride;
     int offsets;
-    Py_buffer linenos;
+    buffer_guard linenos;
 
     if( !PyArg_ParseTuple( args, "iiis*", &line_length,
                                           &stride,
@@ -1036,14 +1029,12 @@ PyObject* rotation( segyiofd* self, PyObject* args ) {
                                           &linenos ) )
         return NULL;
 
-    buffer_guard g( linenos );
-
     float rotation;
     int err = segy_rotation_cw( fp, line_length,
                                     stride,
                                     offsets,
-                                    (const int*)linenos.buf,
-                                    linenos.len / sizeof( int ),
+                                    linenos.buf< const int >(),
+                                    linenos.len() / sizeof( int ),
                                     &rotation,
                                     self->trace0,
                                     self->trace_bsize );
@@ -1154,21 +1145,19 @@ PyObject* trbsize( PyObject*, PyObject* args ) {
 }
 
 PyObject* getfield( PyObject*, PyObject *args ) {
-    Py_buffer buffer;
+    buffer_guard buffer;
     int field;
 
     if( !PyArg_ParseTuple( args, "s*i", &buffer, &field ) ) return NULL;
 
-    buffer_guard g( buffer );
-
-    if( buffer.len != SEGY_BINARY_HEADER_SIZE &&
-        buffer.len != SEGY_TRACE_HEADER_SIZE )
+    if( buffer.len() != SEGY_BINARY_HEADER_SIZE &&
+        buffer.len() != SEGY_TRACE_HEADER_SIZE )
         return TypeError( "header too small" );
 
     int value = 0;
-    int err = buffer.len == segy_binheader_size()
-            ? segy_get_bfield((const char*)buffer.buf, field, &value)
-            : segy_get_field( (const char*)buffer.buf, field, &value)
+    int err = buffer.len() == segy_binheader_size()
+            ? segy_get_bfield( buffer.buf< const char >(), field, &value )
+            : segy_get_field(  buffer.buf< const char >(), field, &value )
             ;
 
     switch( err ) {
@@ -1183,21 +1172,19 @@ PyObject* getfield( PyObject*, PyObject *args ) {
 
 PyObject* putfield( PyObject*, PyObject *args ) {
 
-    Py_buffer buffer;
+    buffer_guard buffer;
     int field;
     int value;
     if( !PyArg_ParseTuple( args, "w*ii", &buffer, &field, &value ) )
         return NULL;
 
-    buffer_guard g( buffer );
-
-    if( buffer.len != SEGY_BINARY_HEADER_SIZE &&
-        buffer.len != SEGY_TRACE_HEADER_SIZE )
+    if( buffer.len() != SEGY_BINARY_HEADER_SIZE &&
+        buffer.len() != SEGY_TRACE_HEADER_SIZE )
         return TypeError( "header too small" );
 
-    int err = buffer.len == segy_binheader_size()
-            ? segy_set_bfield( (char*)buffer.buf, field, value )
-            : segy_set_field(  (char*)buffer.buf, field, value )
+    int err = buffer.len() == segy_binheader_size()
+            ? segy_set_bfield( buffer.buf< char >(), field, value )
+            : segy_set_field(  buffer.buf< char >(), field, value )
             ;
 
     switch( err ) {
@@ -1295,14 +1282,10 @@ PyObject* format( PyObject* , PyObject* args ) {
 
     if( !PyArg_ParseTuple( args, "Oi", &out, &format ) ) return NULL;
 
-    Py_buffer buffer;
-    if( PyObject_GetBuffer( out, &buffer, PyBUF_CONTIG ) )
-        return NULL;
+    buffer_guard buffer( out, PyBUF_CONTIG );;
 
-    buffer_guard g( buffer );
-
-    const int len = buffer.len / buffer.itemsize;
-    const int err = segy_to_native( format, len, (float*)buffer.buf );
+    const int len = buffer.len() / sizeof( float );
+    const int err = segy_to_native( format, len, buffer.buf< float >() );
 
     if( err != SEGY_OK )
         return RuntimeError( "unable to convert to native float" );
