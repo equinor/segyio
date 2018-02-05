@@ -1117,7 +1117,7 @@ class TextHeader(object):
         self.outer = outer
 
     def __getitem__(self, index):
-        if index > self.outer.ext_headers:
+        if not 0 <= index <= self.outer.ext_headers:
             raise IndexError("Textual header {} not in file".format(index))
 
         return self.outer.xfd.gettext(index)
@@ -1127,7 +1127,7 @@ class TextHeader(object):
             self[index] = val[0]
             return
 
-        if index > self.outer.ext_headers:
+        if not 0 <= index <= self.outer.ext_headers:
             raise IndexError("Textual header {} not in file".format(index))
 
         self.outer.xfd.puttext(index, val)
