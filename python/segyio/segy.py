@@ -647,7 +647,7 @@ class SegyFile(object):
             for i, v in zip(range(t0, t0 + (step * length), step), val):
                 Trace.write_trace(i, v, self)
 
-        self._iline = Line(self, il_len, il_stride, lines, other_lines, buffn, readfn, writefn, "Inline")
+        self._iline = Line(self, il_len, il_stride, lines, other_lines, buffn, readfn, writefn, "inline")
         return self._iline
 
     @iline.setter
@@ -785,7 +785,7 @@ class SegyFile(object):
             for i, v in zip(range(t0, t0 + step * length, step), val):
                 Trace.write_trace(i, v, self)
 
-        self._xline = Line(self, xl_len, xl_stride, lines, other_lines, buffn, readfn, writefn, "Crossline")
+        self._xline = Line(self, xl_len, xl_stride, lines, other_lines, buffn, readfn, writefn, "crossline")
         return self._xline
 
     @xline.setter
@@ -926,7 +926,7 @@ class SegyFile(object):
                 trace_buf[depth] = buf_view[i]
                 self.trace[i] = trace_buf
 
-        return Line(self, len(self.samples), 1, indices, other_indices, buffn, readfn, writefn, "Depth")
+        return Line(self, len(self.samples), 1, indices, other_indices, buffn, readfn, writefn, "depth")
 
     @depth_slice.setter
     def depth_slice(self, value):

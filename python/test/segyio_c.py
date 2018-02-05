@@ -116,7 +116,7 @@ class _segyioTests(unittest.TestCase):
         binary_header = f.getbin()
 
         with self.assertRaises(TypeError):
-            _ = _segyio.getfield("s", 0)
+            _ = _segyio.getfield([], 0)
 
         with self.assertRaises(IndexError):
             _ = _segyio.getfield(binary_header, -1)
@@ -299,11 +299,14 @@ class _segyioTests(unittest.TestCase):
     def test_get_and_putfield(self):
         hdr = bytearray(_segyio.thsize())
 
-        with self.assertRaises(TypeError):
+        with self.assertRaises(BufferError):
             _segyio.getfield(".", 0)
 
         with self.assertRaises(TypeError):
-            _segyio.putfield(".", 0, 1)
+            _segyio.getfield([], 0)
+
+        with self.assertRaises(TypeError):
+            _segyio.putfield({}, 0, 1)
 
         with self.assertRaises(IndexError):
             _segyio.getfield(hdr, 0)

@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <sstream>
 #include <stdexcept>
 
 #if PY_MAJOR_VERSION >= 3
@@ -21,43 +22,28 @@
 
 namespace {
 
-struct autofd {
-    operator segy_file*() const;
-    operator bool() const;
-    void swap( autofd& other );
-    void close();
+std::string segy_errstr( int err ) {
+    std::stringstream ss;
 
-    segy_file* fd;
-};
+    switch( err ) {
+        case SEGY_OK:                  return "segyio.ok";
+        case SEGY_FOPEN_ERROR:         return "segyio.fopen";
+        case SEGY_FSEEK_ERROR:         return "segyio.fseek";
+        case SEGY_FREAD_ERROR:         return "segyio.fread";
+        case SEGY_FWRITE_ERROR:        return "segyio.fwrite";
+        case SEGY_INVALID_FIELD:       return "segyio.invalid.field";
+        case SEGY_INVALID_SORTING:     return "segyio.invalid.sorting";
+        case SEGY_MISSING_LINE_INDEX:  return "segyio.missing.lineindex";
+        case SEGY_INVALID_OFFSETS:     return "segyio.invalid.offsets";
+        case SEGY_TRACE_SIZE_MISMATCH: return "segyio.trace.size.mismatch";
+        case SEGY_INVALID_ARGS:        return "segyio.invalid.args";
+        case SEGY_MMAP_ERROR:          return "segyio.mmap.error";
+        case SEGY_MMAP_INVALID:        return "segyio.mmap.invalid";
 
-autofd::operator segy_file*() const {
-    if( this->fd ) return this->fd;
-
-    PyErr_SetString( PyExc_IOError, "I/O operation on closed file" );
-    return NULL;
-}
-
-autofd::operator bool() const { return this->fd; }
-
-void autofd::swap( autofd& other ) { std::swap( this->fd, other.fd ); }
-void autofd::close() {
-    if( this->fd ) segy_close( this->fd );
-    this->fd = NULL;
-}
-
-struct segyiofd {
-    PyObject_HEAD
-    autofd fd;
-    long trace0;
-    int trace_bsize;
-    int tracecount;
-    int samplecount;
-    int format;
-};
-
-PyObject* TypeError( const char* msg ) {
-    PyErr_SetString( PyExc_TypeError, msg );
-    return NULL;
+        default:
+            ss << "code " << err << "";
+            return ss.str();
+    }
 }
 
 template< typename T1 >
@@ -80,6 +66,16 @@ PyObject* IndexError( const char* msg ) {
     return NULL;
 }
 
+template< typename T1, typename T2 >
+PyObject* IndexError( const char* msg, T1 t1, T2 t2 ) {
+    return PyErr_Format( PyExc_IndexError, msg, t1, t2 );
+}
+
+template< typename T1, typename T2, typename T3 >
+PyObject* IndexError( const char* msg, T1 t1, T2 t2, T3 t3 ) {
+    return PyErr_Format( PyExc_IndexError, msg, t1, t2, t3 );
+}
+
 PyObject* BufferError( const char* msg ) {
     PyErr_SetString( PyExc_BufferError, msg );
     return NULL;
@@ -90,15 +86,87 @@ PyObject* RuntimeError( const char* msg ) {
     return NULL;
 }
 
+PyObject* RuntimeError( int err ) {
+    const std::string msg = "uncaught exception: " + segy_errstr( err );
+    return RuntimeError( msg.c_str() );
+}
+
+PyObject* IOErrno() {
+    return PyErr_SetFromErrno( PyExc_IOError );
+}
+
 PyObject* IOError( const char* msg ) {
     PyErr_SetString( PyExc_IOError, msg );
     return NULL;
 }
 
 template< typename T1, typename T2 >
+PyObject* IOError( const char* msg, T1 t1, T2 t2 ) {
+    return PyErr_Format( PyExc_IOError, msg, t1, t2 );
+}
+
+template< typename T1 >
+PyObject* IOError( const char* msg, T1 t1 ) {
+    return PyErr_Format( PyExc_IOError, msg, t1 );
+}
+
+template< typename T1, typename T2 >
 PyObject* KeyError( const char* msg, T1 t1, T2 t2 ) {
     return PyErr_Format( PyExc_KeyError, msg, t1, t2 );
 }
+
+PyObject* Error( int err ) {
+    /*
+     * a default error handler. The fseek errors are sufficiently described
+     * with errno, and all cases that raise fwrite and fread errors get
+     * sufficient context from stack trace to be generalised with a better
+     * message.
+     *
+     * Anything else falls through to a generic RuntimeError "uncaught
+     * exception"
+     */
+    switch( err ) {
+        case SEGY_FSEEK_ERROR: return IOErrno();
+        case SEGY_FWRITE_ERROR: // fallthrough
+        case SEGY_FREAD_ERROR: return IOError( "I/O operation failed, "
+                                               "likely corrupted file" );
+        default:               return RuntimeError( err );
+    }
+}
+
+struct autofd {
+    operator segy_file*() const;
+    operator bool() const;
+    void swap( autofd& other );
+    void close();
+
+    segy_file* fd;
+};
+
+autofd::operator segy_file*() const {
+    if( this->fd ) return this->fd;
+
+    IOError( "I/O operation on closed file" );
+    return NULL;
+}
+
+autofd::operator bool() const { return this->fd; }
+
+void autofd::swap( autofd& other ) { std::swap( this->fd, other.fd ); }
+void autofd::close() {
+    if( this->fd ) segy_close( this->fd );
+    this->fd = NULL;
+}
+
+struct segyiofd {
+    PyObject_HEAD
+    autofd fd;
+    long trace0;
+    int trace_bsize;
+    int tracecount;
+    int samplecount;
+    int format;
+};
 
 struct buffer_guard {
     /* automate Py_buffer handling.
@@ -157,17 +225,19 @@ int init( segyiofd* self, PyObject* args, PyObject* ) {
     const char* binary = buffer.buf< const char >();
 
     if( binary && buffer.len() < SEGY_BINARY_HEADER_SIZE ) {
-        PyErr_SetString( PyExc_ValueError, "binary header too small" );
+        ValueError( "internal: binary buffer too small, expected %i, was %zd",
+                    SEGY_BINARY_HEADER_SIZE, buffer.len() );
         return -1;
     }
 
     if( std::strlen( mode ) == 0 ) {
-        PyErr_SetString( PyExc_ValueError, "Mode string must be non-empty" );
+        ValueError( "mode string must be non-empty" );
         return -1;
     }
 
     if( std::strlen( mode ) > 3 ) {
-        PyErr_Format( PyExc_ValueError, "Invalid mode string '%s'", mode );
+        ValueError( "invalid mode string '%s', good strings are %s",
+                     mode, "'r' (read-only) and 'r+' (read-write)" );
         return -1;
     }
 
@@ -177,12 +247,13 @@ int init( segyiofd* self, PyObject* args, PyObject* ) {
     } fd( segy_open( filename, mode ) );
 
     if( !fd && !strstr( "rb" "wb" "ab" "r+b" "w+b" "a+b", mode ) ) {
-        PyErr_Format( PyExc_ValueError, "Invalid mode string '%s'", mode );
+        ValueError( "invalid mode string '%s', good strings are %s",
+                mode, "'r' (read-only) and 'r+' (read-write)" );
         return -1;
     }
 
     if( !fd ) {
-        PyErr_Format( PyExc_IOError, "Unable to open file '%s'", filename );
+        IOErrno();
         return -1;
     }
 
@@ -191,18 +262,10 @@ int init( segyiofd* self, PyObject* args, PyObject* ) {
 
     if( !binary ) {
         const int err = segy_binheader( fd, bin );
-        switch( err )  {
-            case SEGY_OK: break;
 
-            case SEGY_FSEEK_ERROR:
-            case SEGY_FREAD_ERROR:
-                PyErr_SetFromErrno( PyExc_IOError );
-                return -1;
-
-            default:
-                PyErr_Format( PyExc_RuntimeError,
-                              "unknown error code %d", err  );
-                return -1;
+        if( err ) {
+            Error( err );
+            return -1;
         }
 
         binary = bin;
@@ -226,13 +289,12 @@ int init( segyiofd* self, PyObject* args, PyObject* ) {
             case SEGY_OK: break;
 
             case SEGY_FSEEK_ERROR:
-            case SEGY_FREAD_ERROR:
-                PyErr_SetFromErrno( PyExc_IOError );
+                IOErrno();
                 return -1;
 
             case SEGY_INVALID_ARGS:
                 RuntimeError( "unable to count traces, "
-                              "file smaller than headers" );
+                              "no data traces past headers" );
                 return -1;
 
             case SEGY_TRACE_SIZE_MISMATCH:
@@ -241,8 +303,7 @@ int init( segyiofd* self, PyObject* args, PyObject* ) {
                 return -1;
 
             default:
-                PyErr_Format( PyExc_RuntimeError,
-                              "unknown error code %d", err  );
+                Error( err );
                 return -1;
         }
     }
@@ -269,26 +330,24 @@ void dealloc( segyiofd* self ) {
 }
 
 PyObject* close( segyiofd* self ) {
-    errno = 0;
-
     /* multiple close() is a no-op */
     if( !self->fd ) return Py_BuildValue( "" );
 
+    errno = 0;
     self->fd.close();
 
-    if( errno ) return PyErr_SetFromErrno( PyExc_IOError );
+    if( errno ) return IOErrno();
 
     return Py_BuildValue( "" );
 }
 
 PyObject* flush( segyiofd* self ) {
-    errno = 0;
-
     segy_file* fp = self->fd;
     if( !fp ) return NULL;
 
+    errno = 0;
     segy_flush( self->fd, false );
-    if( errno ) return PyErr_SetFromErrno( PyExc_IOError );
+    if( errno ) return IOErrno();
 
     return Py_BuildValue( "" );
 }
@@ -336,18 +395,16 @@ PyObject* gettext( segyiofd* self, PyObject* args ) {
     if( !fp ) return NULL;
 
     int index = 0;
-    if( !PyArg_ParseTuple(args, "i", &index ) ) return NULL;
+    if( !PyArg_ParseTuple( args, "i", &index ) ) return NULL;
 
     heapbuffer buffer( segy_textheader_size() );
     if( !buffer ) return NULL;
 
-    const int error = index == 0
+    const int err = index == 0
               ? segy_read_textheader( fp, buffer )
               : segy_read_ext_textheader( fp, index - 1, buffer );
 
-    if( error != SEGY_OK )
-        return PyErr_Format( PyExc_Exception,
-                             "Could not read text header: %s", strerror(errno));
+    if( err ) return Error( err );
 
     const size_t len = std::strlen( buffer );
     return PyByteArray_FromStringAndSize( buffer, len );
@@ -372,21 +429,9 @@ PyObject* puttext( segyiofd* self, PyObject* args ) {
 
     const int err = segy_write_textheader( fp, index, buf );
 
-    switch( err ) {
-        case SEGY_OK:
-            return Py_BuildValue("");
+    if( err ) return Error( err );
 
-        case SEGY_FSEEK_ERROR:
-        case SEGY_FWRITE_ERROR:
-            return PyErr_SetFromErrno( PyExc_IOError );
-
-        case SEGY_INVALID_ARGS:
-            return IndexError( "text header index out of range" );
-
-        default:
-            return PyErr_Format( PyExc_RuntimeError,
-                                 "unknown error code %d", err  );
-    }
+    return Py_BuildValue( "" );
 }
 
 PyObject* getbin( segyiofd* self ) {
@@ -396,19 +441,9 @@ PyObject* getbin( segyiofd* self ) {
     char buffer[ SEGY_BINARY_HEADER_SIZE ] = {};
 
     const int err = segy_binheader( fp, buffer );
+    if( err ) return Error( err );
 
-    switch( err ) {
-        case SEGY_OK:
-            return PyByteArray_FromStringAndSize( buffer, sizeof( buffer ) );
-
-        case SEGY_FSEEK_ERROR:
-        case SEGY_FREAD_ERROR:
-            return PyErr_SetFromErrno( PyExc_IOError );
-
-        default:
-            return PyErr_Format( PyExc_RuntimeError,
-                                 "unknown error code %d", err  );
-    }
+    return PyByteArray_FromStringAndSize( buffer, sizeof( buffer ) );
 }
 
 PyObject* putbin( segyiofd* self, PyObject* args ) {
@@ -419,20 +454,15 @@ PyObject* putbin( segyiofd* self, PyObject* args ) {
     if( !PyArg_ParseTuple(args, "s*", &buffer ) ) return NULL;
 
     if( buffer.len() < SEGY_BINARY_HEADER_SIZE )
-        return ValueError( "binary header too small" );
+        return ValueError( "internal: binary buffer too small, "
+                           "expected %i, was %zd",
+                           SEGY_BINARY_HEADER_SIZE, buffer.len() );
 
     const int err = segy_write_binheader( fp, buffer.buf< const char >() );
 
-    switch( err ) {
-        case SEGY_OK: return Py_BuildValue("");
-        case SEGY_FSEEK_ERROR:
-        case SEGY_FREAD_ERROR:
-            return PyErr_SetFromErrno( PyExc_IOError );
+    if( err ) return Error( err );
 
-        default:
-            return PyErr_Format( PyExc_RuntimeError,
-                                 "unknown error code %d", err  );
-    }
+    return Py_BuildValue( "" );
 }
 
 PyObject* getth( segyiofd* self, PyObject *args ) {
@@ -448,7 +478,9 @@ PyObject* getth( segyiofd* self, PyObject *args ) {
     if( !buffer ) return NULL;
 
     if( buffer.len() < SEGY_TRACE_HEADER_SIZE )
-        return PyErr_Format( PyExc_ValueError, "trace header too small" );
+        return ValueError( "internal: trace header buffer too small, "
+                           "expected %i, was %zd",
+                           SEGY_TRACE_HEADER_SIZE, buffer.len() );
 
     int err = segy_traceheader( fp, traceno,
                                     buffer.buf(),
@@ -460,13 +492,12 @@ PyObject* getth( segyiofd* self, PyObject *args ) {
             Py_INCREF( bufferobj );
             return bufferobj;
 
-        case SEGY_FSEEK_ERROR:
         case SEGY_FREAD_ERROR:
-            return PyErr_SetFromErrno( PyExc_IOError );
+            return IOError( "I/O operation failed on trace header %d",
+                            traceno );
 
         default:
-            return PyErr_Format( PyExc_RuntimeError,
-                                 "unknown error code %d", err  );
+            return Error( err );
     }
 }
 
@@ -476,11 +507,12 @@ PyObject* putth( segyiofd* self, PyObject* args ) {
 
     int traceno;
     buffer_guard buf;
-
     if( !PyArg_ParseTuple( args, "is*", &traceno, &buf ) ) return NULL;
 
     if( buf.len() < SEGY_TRACE_HEADER_SIZE )
-        return ValueError( "trace header too small" );
+        return ValueError( "internal: trace header buffer too small, "
+                           "expected %i, was %zd",
+                           SEGY_TRACE_HEADER_SIZE, buf.len() );
 
     const char* buffer = buf.buf< const char >();
 
@@ -491,15 +523,14 @@ PyObject* putth( segyiofd* self, PyObject* args ) {
                                             self->trace_bsize );
 
     switch( err ) {
-        case SEGY_OK: return Py_BuildValue("");
+        case SEGY_OK:
+            return Py_BuildValue( "" );
 
-        case SEGY_FSEEK_ERROR:
         case SEGY_FWRITE_ERROR:
-            return PyErr_SetFromErrno( PyExc_IOError );
-
+            return IOError( "I/O operation failed on trace header %d",
+                            traceno );
         default:
-            return PyErr_Format( PyExc_RuntimeError,
-                                 "unknown error code %d", err  );
+            return Error( err );
     }
 }
 
@@ -532,19 +563,10 @@ PyObject* field_forall( segyiofd* self, PyObject* args ) {
                                        self->trace0,
                                        self->trace_bsize );
 
-    switch( err ) {
-        case SEGY_OK:
-            Py_INCREF( bufferobj );
-            return bufferobj;
+    if( err ) return Error( err );
 
-        case SEGY_FSEEK_ERROR:
-        case SEGY_FREAD_ERROR:
-            return PyErr_SetFromErrno( PyExc_IOError );
-
-        default:
-            return PyErr_Format( PyExc_RuntimeError,
-                                 "unknown error code %d", err  );
-    }
+    Py_INCREF( bufferobj );
+    return bufferobj;
 }
 
 PyObject* field_foreach( segyiofd* self, PyObject* args ) {
@@ -561,24 +583,25 @@ PyObject* field_foreach( segyiofd* self, PyObject* args ) {
     if( !bufout ) return NULL;
 
     if( bufout.len() != indices.len() )
-        return ValueError( "array size mismatch (output %zi, indices %zi)",
+        return ValueError( "internal: array size mismatch "
+                           "(output %zd, indices %zd)",
                            bufout.len(), indices.len() );
 
     const int* ind = indices.buf< const int >();
     int* out = bufout.buf< int >();
     Py_ssize_t len = bufout.len() / sizeof(int);
-    for( int i = 0; i < len; ++i ) {
-        int err = segy_field_forall( fp, field,
+    int err = 0;
+    for( int i = 0; err == 0 && i < len; ++i ) {
+        err = segy_field_forall( fp, field,
                                      ind[ i ],
                                      ind[ i ] + 1,
                                      1,
                                      out + i,
                                      self->trace0,
                                      self->trace_bsize );
-
-        if( err != SEGY_OK )
-            return PyErr_SetFromErrno( PyExc_IOError );
     }
+
+    if( err ) return Error( err );
 
     Py_INCREF( bufferobj );
     return bufferobj;
@@ -597,6 +620,23 @@ PyObject* metrics( segyiofd* self ) {
                           "ext_headers", ext );
 }
 
+struct metrics_errmsg {
+    int il, xl, of;
+    PyObject* operator()( int err ) const {
+        switch( err ) {
+            case SEGY_INVALID_FIELD:
+                return IndexError( "invalid iline, (%i), xline (%i), "
+                                   "or offset (%i) field", il, xl, of );
+
+            case SEGY_INVALID_SORTING:
+                return RuntimeError( "unable to find sorting." );
+
+            default:
+                return Error( err );
+        }
+    }
+};
+
 PyObject* cube_metrics( segyiofd* self, PyObject* args ) {
     segy_file* fp = self->fd;
     if( !fp ) return NULL;
@@ -604,6 +644,8 @@ PyObject* cube_metrics( segyiofd* self, PyObject* args ) {
     int il;
     int xl;
     if( !PyArg_ParseTuple( args, "ii", &il, &xl ) ) return NULL;
+
+    metrics_errmsg errmsg = { il, xl, SEGY_TR_OFFSET };
 
     int sorting = -1;
     int err = segy_sorting( fp, il,
@@ -613,22 +655,7 @@ PyObject* cube_metrics( segyiofd* self, PyObject* args ) {
                                 self->trace0,
                                 self->trace_bsize );
 
-    switch( err ) {
-        case SEGY_OK: break;
-        case SEGY_INVALID_FIELD:
-            return IndexError( "wrong field value" );
-
-        case SEGY_FSEEK_ERROR:
-        case SEGY_FREAD_ERROR:
-            return PyErr_SetFromErrno( PyExc_IOError );
-
-        case SEGY_INVALID_SORTING:
-            return RuntimeError( "unable to find sorting. corrupted file?" );
-
-        default:
-            return PyErr_Format( PyExc_RuntimeError,
-                                 "unknown error code %d", err  );
-    }
+    if( err ) return errmsg( err );
 
     int offset_count = -1;
     err = segy_offsets( fp, il,
@@ -638,19 +665,7 @@ PyObject* cube_metrics( segyiofd* self, PyObject* args ) {
                             self->trace0,
                             self->trace_bsize );
 
-    switch( err ) {
-        case SEGY_OK: break;
-        case SEGY_INVALID_FIELD:
-            return IndexError( "wrong field value" );
-
-        case SEGY_FSEEK_ERROR:
-        case SEGY_FREAD_ERROR:
-            return PyErr_SetFromErrno( PyExc_IOError );
-
-        default:
-            return PyErr_Format( PyExc_RuntimeError,
-                                 "unknown error code %d", err  );
-    }
+    if( err ) return errmsg( err );
 
     int xl_count = 0;
     int il_count = 0;
@@ -673,19 +688,7 @@ PyObject* cube_metrics( segyiofd* self, PyObject* args ) {
                                     self->trace0,
                                     self->trace_bsize );
 
-        switch( err ) {
-            case SEGY_OK: break;
-            case SEGY_INVALID_FIELD:
-                return IndexError( "wrong field value" );
-
-            case SEGY_FSEEK_ERROR:
-            case SEGY_FREAD_ERROR:
-                return PyErr_SetFromErrno( PyExc_IOError );
-
-            default:
-                return PyErr_Format( PyExc_RuntimeError,
-                                     "unknown error code %d", err  );
-        }
+        if( err ) return errmsg( err );
     }
 
     return Py_BuildValue( "{s:i, s:i, s:i, s:i, s:i, s:i, s:i}",
@@ -722,19 +725,27 @@ PyObject* indices( segyiofd* self, PyObject* args ) {
     const int offset_count = getitem( metrics, "offset_count" );
 
     if( iline_out.len() < Py_ssize_t(iline_count * sizeof( int )) )
-        return ValueError( "inline indices buffer too small" );
+        return ValueError( "internal: inline indices buffer too small, "
+                           "expected %i, was %zd",
+                           iline_count, iline_out.len() );
 
     if( xline_out.len() < Py_ssize_t(xline_count * sizeof( int )) )
-        return ValueError( "crossline indices buffer too small" );
+        return ValueError( "internal: crossline indices buffer too small, "
+                           "expected %i, was %zd",
+                           xline_count, xline_out.len() );
 
     if( offset_out.len() < Py_ssize_t(offset_count * sizeof( int )) )
-        return ValueError( "offset indices buffer too small" );
+        return ValueError( "internal: offset indices buffer too small, "
+                           "expected %i, was %zd",
+                           offset_count, offset_out.len() );
 
     const int il_field     = getitem( metrics, "iline_field" );
     const int xl_field     = getitem( metrics, "xline_field" );
     const int offset_field = getitem( metrics, "offset_field" );
     const int sorting      = getitem( metrics, "sorting" );
     if( PyErr_Occurred() ) return NULL;
+
+    metrics_errmsg errmsg = { il_field, xl_field, SEGY_TR_OFFSET };
 
     int err = segy_inline_indices( fp, il_field,
                                        sorting,
@@ -744,7 +755,7 @@ PyObject* indices( segyiofd* self, PyObject* args ) {
                                        iline_out.buf< int >(),
                                        self->trace0,
                                        self->trace_bsize );
-    if( err != SEGY_OK ) goto error;
+    if( err ) return errmsg( err );
 
     err = segy_crossline_indices( fp, xl_field,
                                       sorting,
@@ -754,30 +765,16 @@ PyObject* indices( segyiofd* self, PyObject* args ) {
                                       xline_out.buf< int >(),
                                       self->trace0,
                                       self->trace_bsize );
-    if( err != SEGY_OK ) goto error;
+    if( err ) return errmsg( err );
 
     err = segy_offset_indices( fp, offset_field,
                                    offset_count,
                                    offset_out.buf< int >(),
                                    self->trace0,
                                    self->trace_bsize );
-    if( err != SEGY_OK ) goto error;
+    if( err ) return errmsg( err );
 
     return Py_BuildValue( "" );
-
-error:
-    switch( err ) {
-        case SEGY_FSEEK_ERROR:
-        case SEGY_FREAD_ERROR:
-            return PyErr_SetFromErrno( PyExc_IOError );
-
-        case SEGY_INVALID_SORTING:
-            return ValueError( "invalid sorting. corrupted file?" );
-
-        default:
-            return PyErr_Format( PyExc_RuntimeError,
-                                 "unknown error code %d", err  );
-    }
 }
 
 PyObject* gettr( segyiofd* self, PyObject* args ) {
@@ -799,34 +796,26 @@ PyObject* gettr( segyiofd* self, PyObject* args ) {
     const int trace_bsize = self->trace_bsize;
 
     if( buffer.len() < bufsize )
-        return ValueError( "trace buffer too small (was %zi, minimum %zi)",
-                            buffer.len(), bufsize );
+        return ValueError( "internal: data trace buffer too small, "
+                           "expected %zi, was %zd",
+                            bufsize, buffer.len() );
 
     int err = 0;
+    int i = 0;
     float* buf = buffer.buf< float >();
-    for( int i = 0; err == 0 && i < length; ++i, buf += samples ) {
+    for( ; err == 0 && i < length; ++i, buf += samples ) {
         err = segy_readtrace( fp, start + (i * step),
                                   buf,
                                   trace0,
                                   trace_bsize );
     }
 
-    switch( err ) {
-        case SEGY_OK: break;
+    if( err == SEGY_FREAD_ERROR )
+        return IOError( "I/O operation failed on data trace %d", i );
 
-        case SEGY_FSEEK_ERROR:
-        case SEGY_FREAD_ERROR:
-            return PyErr_SetFromErrno( PyExc_IOError );
+    if( err ) return Error( err );
 
-        default:
-           return PyErr_Format( PyExc_RuntimeError,
-                                "unknown error code %d", err  );
-    }
-
-    err = segy_to_native( self->format, bufsize, buffer.buf< float >() );
-
-    if( err != SEGY_OK )
-        return RuntimeError( "unable to convert to native format" );
+    segy_to_native( self->format, bufsize, buffer.buf< float >() );
 
     Py_INCREF( bufferobj );
     return bufferobj;
@@ -836,37 +825,31 @@ PyObject* puttr( segyiofd* self, PyObject* args ) {
     segy_file* fp = self->fd;
     if( !fp ) return NULL;
 
-    int trace_no;
+    int traceno;
     float* buffer;
     Py_ssize_t buflen;
 
-    if( !PyArg_ParseTuple( args, "is#", &trace_no, &buffer, &buflen ) )
+    if( !PyArg_ParseTuple( args, "is#", &traceno, &buffer, &buflen ) )
         return NULL;
 
-    int err = segy_from_native( self->format, self->samplecount, buffer );
+    segy_from_native( self->format, self->samplecount, buffer );
 
-    if( err != SEGY_OK )
-        return RuntimeError( "unable to convert to native format" );
+    int err = segy_writetrace( fp, traceno,
+                                   buffer,
+                                   self->trace0,
+                                   self->trace_bsize );
 
-    err = segy_writetrace( fp, trace_no,
-                               buffer,
-                               self->trace0, self->trace_bsize );
-
-    const int conv = segy_to_native( self->format, self->samplecount, buffer );
-
-    if( conv != SEGY_OK )
-        return RuntimeError( "unable to preserve native float format" );
+    segy_to_native( self->format, self->samplecount, buffer );
 
     switch( err ) {
-        case SEGY_OK: return Py_BuildValue("");
+        case SEGY_OK:
+            return Py_BuildValue("");
 
-        case SEGY_FSEEK_ERROR:
-        case SEGY_FWRITE_ERROR:
-            return PyErr_SetFromErrno( PyExc_IOError );
+        case SEGY_FREAD_ERROR:
+            return IOError( "I/O operation failed on data trace %d", traceno );
 
         default:
-            return PyErr_Format( PyExc_RuntimeError,
-                                 "unknown error code %d", err  );
+            return Error( err );
     }
 }
 
@@ -897,25 +880,11 @@ PyObject* getline( segyiofd* self, PyObject* args) {
                                   buffer.buf< float >(),
                                   self->trace0,
                                   self->trace_bsize);
+    if( err ) return Error( err );
 
-    switch( err ) {
-        case SEGY_OK: break;
-
-        case SEGY_FSEEK_ERROR:
-        case SEGY_FREAD_ERROR:
-            return PyErr_SetFromErrno( PyExc_IOError );
-
-        default:
-           return PyErr_Format( PyExc_RuntimeError,
-                                "unknown error code %d", err  );
-    }
-
-    err = segy_to_native( self->format,
-                          self->samplecount * line_length,
-                          buffer.buf< float >() );
-
-    if( err != SEGY_OK )
-        return RuntimeError( "unable to preserve native float format" );
+    segy_to_native( self->format,
+                    self->samplecount * line_length,
+                    buffer.buf< float >() );
 
     Py_INCREF( bufferobj );
     return bufferobj;
@@ -939,16 +908,16 @@ PyObject* getdepth( segyiofd* self, PyObject* args ) {
     buffer_guard buffer( bufferobj, PyBUF_CONTIG );
     if( !buffer ) return NULL;
 
-    int trace_no = 0;
+    int traceno = 0;
     int err = 0;
     float* buf = buffer.buf< float >();
 
     const long trace0 = self->trace0;
     const int trace_bsize = self->trace_bsize;
 
-    for( ; err == 0 && trace_no < count; ++trace_no) {
+    for( ; err == 0 && traceno < count; ++traceno) {
         err = segy_readsubtr( fp,
-                              trace_no * offsets,
+                              traceno * offsets,
                               depth,
                               depth + 1,
                               1,
@@ -957,23 +926,13 @@ PyObject* getdepth( segyiofd* self, PyObject* args ) {
                               trace0, trace_bsize);
     }
 
-    switch( err ) {
-        case SEGY_OK: break;
+    if( err == SEGY_FREAD_ERROR )
+        return IOError( "I/O operation failed on data trace %d at depth %d",
+                        traceno, depth );
 
-        case SEGY_FSEEK_ERROR:
-        case SEGY_FREAD_ERROR:
-            return PyErr_SetFromErrno( PyExc_IOError );
+    if( err ) return Error( err );
 
-        default:
-           return PyErr_Format( PyExc_RuntimeError,
-                                "unknown error code %d", err  );
-    }
-
-
-    err = segy_to_native( self->format, count, buffer.buf< float >() );
-
-    if( err != SEGY_OK )
-        return RuntimeError( "unable to preserve native float format" );
+    segy_to_native( self->format, count, buffer.buf< float >() );
 
     Py_INCREF( bufferobj );
     return bufferobj;
@@ -993,8 +952,7 @@ PyObject* getdt( segyiofd* self, PyObject* args ) {
         return PyFloat_FromDouble( dt );
 
     if( err != SEGY_FREAD_ERROR && err != SEGY_FSEEK_ERROR )
-        return PyErr_Format( PyExc_RuntimeError,
-                             "unknown error code %d", err  );
+        return Error( err );
 
     /*
      * Figure out if the problem is reading the trace header
@@ -1003,15 +961,17 @@ PyObject* getdt( segyiofd* self, PyObject* args ) {
     char buffer[ SEGY_BINARY_HEADER_SIZE ];
     err = segy_binheader( fp, buffer );
 
-    if( err != SEGY_OK )
-        return IOError( "unable to parse global binary header" );
+    if( err )
+        return IOError( "I/O operation failed on binary header, "
+                        "likely corrupted file" );
 
     err = segy_traceheader( fp, 0, buffer, self->trace0, self->trace_bsize );
 
-    if( err != SEGY_OK )
-        return IOError( "unable to read trace header (0)" );
+    if( err == SEGY_FREAD_ERROR )
+        return IOError( "I/O operation failed on trace header 0, "
+                        "likely corrupted file" );
 
-    return PyErr_Format( PyExc_RuntimeError, "unknown error code %d", err  );
+    return Error( err );
 }
 
 PyObject* rotation( segyiofd* self, PyObject* args ) {
@@ -1039,17 +999,9 @@ PyObject* rotation( segyiofd* self, PyObject* args ) {
                                     self->trace0,
                                     self->trace_bsize );
 
-    switch( err ) {
-        case SEGY_OK: return PyFloat_FromDouble( rotation );
+    if( err ) return Error( err );
 
-        case SEGY_FSEEK_ERROR:
-        case SEGY_FREAD_ERROR:
-            return PyErr_SetFromErrno( PyExc_IOError );
-
-        default:
-           return PyErr_Format( PyExc_RuntimeError,
-                                "unknown error code %d", err  );
-    }
+    return PyFloat_FromDouble( rotation );
 }
 
 PyMethodDef methods [] = {
@@ -1152,7 +1104,7 @@ PyObject* getfield( PyObject*, PyObject *args ) {
 
     if( buffer.len() != SEGY_BINARY_HEADER_SIZE &&
         buffer.len() != SEGY_TRACE_HEADER_SIZE )
-        return TypeError( "header too small" );
+        return BufferError( "buffer too small" );
 
     int value = 0;
     int err = buffer.len() == segy_binheader_size()
@@ -1162,11 +1114,8 @@ PyObject* getfield( PyObject*, PyObject *args ) {
 
     switch( err ) {
         case SEGY_OK:            return PyLong_FromLong( value );
-        case SEGY_INVALID_FIELD: return IndexError( "wrong field value" );
-
-        default:
-            return PyErr_Format( PyExc_RuntimeError,
-                                "unknown error code %d", err  );
+        case SEGY_INVALID_FIELD: return IndexError( "invalid field value" );
+        default:                 return Error( err );
     }
 }
 
@@ -1180,7 +1129,7 @@ PyObject* putfield( PyObject*, PyObject *args ) {
 
     if( buffer.len() != SEGY_BINARY_HEADER_SIZE &&
         buffer.len() != SEGY_TRACE_HEADER_SIZE )
-        return TypeError( "header too small" );
+        return BufferError( "buffer too small" );
 
     int err = buffer.len() == segy_binheader_size()
             ? segy_set_bfield( buffer.buf< char >(), field, value )
@@ -1189,11 +1138,8 @@ PyObject* putfield( PyObject*, PyObject *args ) {
 
     switch( err ) {
         case SEGY_OK:            return PyLong_FromLong( value );
-        case SEGY_INVALID_FIELD: return IndexError( "wrong field value" );
-
-        default:
-            return PyErr_Format( PyExc_RuntimeError,
-                                "unknown error code %d", err  );
+        case SEGY_INVALID_FIELD: return IndexError( "invalid field value" );
+        default:                 return Error( err );
     }
 }
 
@@ -1219,15 +1165,11 @@ PyObject* line_metrics( PyObject*, PyObject *args) {
 
     // only check first call since the only error that can occur is
     // SEGY_INVALID_SORTING
-    switch( err ) {
-        case SEGY_OK: break;
-        case SEGY_INVALID_SORTING:
-            return ValueError( "invalid sorting. file corrupted?" );
+    if( err == SEGY_INVALID_SORTING )
+        return ValueError( "internal: invalid sorting." );
 
-        default:
-            return PyErr_Format( PyExc_RuntimeError,
-                                "unknown error code %d", err  );
-    }
+    if( err )
+        return Error( err );
 
     int xline_stride;
     segy_crossline_stride( sorting, crossline_count, &xline_stride );
@@ -1265,15 +1207,13 @@ PyObject* fread_trace0( PyObject* , PyObject* args ) {
                                 indices, indiceslen / sizeof( int ),
                                 &trace_no );
 
-    switch( err ) {
-        case SEGY_OK: return PyLong_FromLong( trace_no );
-        case SEGY_MISSING_LINE_INDEX:
-            return KeyError( "no such %s %d", linetype, lineno );
+    if( err == SEGY_MISSING_LINE_INDEX )
+        return KeyError( "no such %s %d", linetype, lineno );
 
-        default:
-            return PyErr_Format( PyExc_RuntimeError,
-                                "unknown error code %d", err  );
-    }
+    if( err )
+        return Error( err );
+
+    return PyLong_FromLong( trace_no );
 }
 
 PyObject* format( PyObject* , PyObject* args ) {
@@ -1285,10 +1225,7 @@ PyObject* format( PyObject* , PyObject* args ) {
     buffer_guard buffer( out, PyBUF_CONTIG );;
 
     const int len = buffer.len() / sizeof( float );
-    const int err = segy_to_native( format, len, buffer.buf< float >() );
-
-    if( err != SEGY_OK )
-        return RuntimeError( "unable to convert to native float" );
+    segy_to_native( format, len, buffer.buf< float >() );
 
     Py_INCREF( out );
     return out;
