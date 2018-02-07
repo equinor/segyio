@@ -343,6 +343,7 @@ struct segy_file_handle {
     FILE* fp;
     size_t fsize;
     char mode[ MODEBUF_SIZE ];
+    int writable;
 };
 
 segy_file* segy_open( const char* path, const char* mode ) {
@@ -376,6 +377,9 @@ segy_file* segy_open( const char* path, const char* mode ) {
     file->fp = fp;
     strcpy( file->mode, binary_mode );
 
+    bool rw = strstr( file->mode, "+" ) || strstr( file->mode, "w" );
+    if( rw ) file->writable = 1;
+
     return file;
 }
 
@@ -392,8 +396,7 @@ int segy_mmap( segy_file* fp ) {
 
     if( err != 0 ) return SEGY_FSEEK_ERROR;
 
-    bool rw = strstr( fp->mode, "+" ) || strstr( fp->mode, "w" );
-    const int prot =  rw ? PROT_READ | PROT_WRITE : PROT_READ;
+    const int prot = fp->writable ? PROT_READ | PROT_WRITE : PROT_READ;
 
     int fd = fileno( fp->fp );
     void* addr = mmap( NULL, fsize, prot, MAP_SHARED, fd, 0 );
@@ -411,6 +414,9 @@ int segy_mmap( segy_file* fp ) {
 }
 
 int segy_flush( segy_file* fp, bool async ) {
+
+    // flush is a no-op for read-only files
+    if( !fp->writable ) return SEGY_OK;
 
 #ifdef HAVE_MMAP
     if( fp->addr ) {
@@ -638,9 +644,7 @@ int segy_binheader( segy_file* fp, char* buf ) {
 }
 
 int segy_write_binheader( segy_file* fp, const char* buf ) {
-    if(fp == NULL) {
-        return SEGY_INVALID_ARGS;
-    }
+    if( !fp->writable ) return SEGY_READONLY;
 
 #ifdef HAVE_MMAP
     if( fp->addr ) {
@@ -756,6 +760,7 @@ int segy_write_traceheader( segy_file* fp,
                             const char* buf,
                             long trace0,
                             int trace_bsize ) {
+    if( !fp->writable ) return SEGY_READONLY;
 
     const int err = segy_seek( fp, traceno, trace0, trace_bsize );
     if( err != 0 ) return err;
@@ -1328,6 +1333,8 @@ int segy_writesubtr( segy_file* fp,
                      long trace0,
                      int trace_bsize ) {
 
+    if( !fp->writable ) return SEGY_READONLY;
+
     int err = subtr_seek( fp, traceno, start, stop, trace0, trace_bsize );
     if( err != SEGY_OK ) return err;
 
@@ -1500,6 +1507,7 @@ int segy_write_line( segy_file* fp,
                      const float* buf,
                      long trace0,
                      int trace_bsize ) {
+    if( !fp->writable ) return SEGY_READONLY;
 
     assert( sizeof( float ) == sizeof( int32_t ) );
     assert( trace_bsize % 4 == 0 );
@@ -1601,6 +1609,8 @@ int segy_read_ext_textheader( segy_file* fp, int pos, char *buf) {
 }
 
 int segy_write_textheader( segy_file* fp, int pos, const char* buf ) {
+    if( !fp->writable ) return SEGY_READONLY;
+
     int err;
     char mbuf[ SEGY_TEXT_HEADER_SIZE ];
 

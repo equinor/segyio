@@ -39,6 +39,7 @@ std::string segy_errstr( int err ) {
         case SEGY_INVALID_ARGS:        return "segyio.invalid.args";
         case SEGY_MMAP_ERROR:          return "segyio.mmap.error";
         case SEGY_MMAP_INVALID:        return "segyio.mmap.invalid";
+        case SEGY_READONLY:            return "segyio.readonly";
 
         default:
             ss << "code " << err << "";
@@ -130,6 +131,8 @@ PyObject* Error( int err ) {
         case SEGY_FWRITE_ERROR: // fallthrough
         case SEGY_FREAD_ERROR: return IOError( "I/O operation failed, "
                                                "likely corrupted file" );
+        case SEGY_READONLY:    return IOError( "file not open for writing. "
+                                               "open with 'r+'" );
         default:               return RuntimeError( err );
     }
 }
@@ -460,6 +463,8 @@ PyObject* putbin( segyiofd* self, PyObject* args ) {
 
     const int err = segy_write_binheader( fp, buffer.buf< const char >() );
 
+    if( err == SEGY_INVALID_ARGS )
+        return IOError( "file not open for writing. open with 'r+'" );
     if( err ) return Error( err );
 
     return Py_BuildValue( "" );
