@@ -675,31 +675,20 @@ PyObject* cube_metrics( segyiofd* self, PyObject* args ) {
 
     int xl_count = 0;
     int il_count = 0;
-    if( self->tracecount == offset_count ) {
-        /*
-         * handle the case where there's only one trace in the file, as it
-         * doesn't make sense to count 1 line from segyio's point of view
-         *
-         * TODO: hande inside lines_count?
-         */
-        il_count = xl_count = 1;
-    }
-    else {
-        err = segy_lines_count( fp, il,
-                                    xl,
-                                    sorting,
-                                    offset_count,
-                                    &il_count,
-                                    &xl_count,
-                                    self->trace0,
-                                    self->trace_bsize );
+    err = segy_lines_count( fp, il,
+                                xl,
+                                sorting,
+                                offset_count,
+                                &il_count,
+                                &xl_count,
+                                self->trace0,
+                                self->trace_bsize );
 
-        if( err == SEGY_NOTFOUND )
-            return ValueError( "could not parse geometry, "
-                               "open with strict=False" );
+    if( err == SEGY_NOTFOUND )
+        return ValueError( "could not parse geometry, "
+                           "open with strict=False" );
 
-        if( err ) return errmsg( err );
-    }
+    if( err ) return errmsg( err );
 
     return Py_BuildValue( "{s:i, s:i, s:i, s:i, s:i, s:i, s:i}",
                           "sorting",      sorting,

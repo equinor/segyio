@@ -253,6 +253,9 @@ int segy_write_line( segy_file* fp,
  *
  * `offsets` is the number of offsets in the file and be found with
  * `segy_offsets`.
+ *
+ * If the file has only 1 trace (or, for pre-stack files, 1-trace-per-offset),
+ * segyio considers this as 1 line in each direction.
  */
 int segy_count_lines( segy_file*,
                       int field,

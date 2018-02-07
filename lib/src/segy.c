@@ -1134,6 +1134,16 @@ int segy_count_lines( segy_file* fp,
     int err = segy_traces( fp, &traces, trace0, trace_bsize );
     if( err != 0 ) return err;
 
+    /*
+     * handle the case where there's only one trace (per offset) in the file,
+     * and interpret is as a 1 line in each direction, with 1 trace (per
+     * offset).
+     */
+    if( traces == offsets ) {
+        *l1out = *l2out = 1;
+        return SEGY_OK;
+    }
+
     int l2count;
     err = count_lines( fp, field,
                            offsets,
