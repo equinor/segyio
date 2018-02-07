@@ -1,3 +1,15 @@
+# 1.5.0
+* A bug making an external text header disappear has been fixed
+* The python extension has been changed to use C++ features, simplifying code
+  and dropping the use of capsules
+* segyio-cath sets non-zero status code on failures
+* Application testing is moved from python to cmake, giving a large speedup
+* The IndexError message when accessing headers out-of-range has been improved
+* Some work has been moved from python into the extension
+* Error messages in python have received an overhaul
+* Errors produced when memory-mapping files are made consistent with fstream
+  sourced errors
+
 # 1.4.0
 * segyio has learned how to resample a file (`segyio.tools.resample`). This
   function does not actually touch the data traces, but rewrites the header
