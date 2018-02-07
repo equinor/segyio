@@ -621,6 +621,36 @@ int segy_field_forall( segy_file* fp,
     return SEGY_OK;
 }
 
+/*
+ * memread/memwrite are small utilities to give reading/writing to
+ * memory-mapped files fread/fwrite like behaviour and fail if going outside
+ * the file. Returns SEGY_FREAD/WRITE_ERROR, so that functions that are
+ * read-and-return can just return this function's result
+ */
+static int memread( void* dest, const segy_file* fp, const void* src, size_t n ) {
+    const void* begin = fp->addr;
+    const void* end = (const char*)fp->addr + fp->fsize;
+    const void* srcend = (const char*)src + n;
+
+    if( src < begin || src > end || srcend > end )
+        return SEGY_FREAD_ERROR;
+
+    memcpy( dest, src, n );
+    return SEGY_OK;
+}
+
+static int memwrite( segy_file* fp, void* dest, const void* src, size_t n ) {
+    const void* begin = fp->addr;
+    const void* end = (const char*)fp->addr + fp->fsize;
+    const void* destend = (const char*)dest + n;
+
+    if( dest < begin || dest > end || destend > end )
+        return SEGY_FWRITE_ERROR;
+
+    memcpy( dest, src, n );
+    return SEGY_OK;
+}
+
 int segy_binheader( segy_file* fp, char* buf ) {
     if(fp == NULL) {
         return SEGY_INVALID_ARGS;
@@ -628,8 +658,10 @@ int segy_binheader( segy_file* fp, char* buf ) {
 
 #ifdef HAVE_MMAP
     if( fp->addr ) {
-        memcpy( buf, (char*)fp->addr + SEGY_TEXT_HEADER_SIZE, SEGY_BINARY_HEADER_SIZE );
-        return SEGY_OK;
+        return memread( buf,
+                        fp,
+                        (char*)fp->addr + SEGY_TEXT_HEADER_SIZE,
+                        SEGY_BINARY_HEADER_SIZE );
     }
 #endif //HAVE_MMAP
 
@@ -648,8 +680,10 @@ int segy_write_binheader( segy_file* fp, const char* buf ) {
 
 #ifdef HAVE_MMAP
     if( fp->addr ) {
-        memcpy( (char*)fp->addr + SEGY_TEXT_HEADER_SIZE, buf, SEGY_BINARY_HEADER_SIZE );
-        return SEGY_OK;
+        return memwrite( fp,
+                        (char*)fp->addr + SEGY_TEXT_HEADER_SIZE,
+                         buf,
+                         SEGY_BINARY_HEADER_SIZE );
     }
 #endif //HAVE_MMAP
 
@@ -699,8 +733,11 @@ int segy_seek( segy_file* fp,
 
 #ifdef HAVE_MMAP
     if( fp->addr ) {
-        if( (size_t)pos >= fp->fsize ) return SEGY_FSEEK_ERROR;
-
+        /*
+         * mmap fseek doesn't fail (it's just a pointer readjustment) and won't
+         * set errno, in order to keep its behaviour consistent with fseek,
+         * which can easily reposition itself past the end-of-file
+         */
         fp->cur = (char*)fp->addr + pos;
         return SEGY_OK;
     }
@@ -742,10 +779,7 @@ int segy_traceheader( segy_file* fp,
     const int err = segy_seek( fp, traceno, trace0, trace_bsize );
     if( err != 0 ) return err;
 
-    if( fp->addr ) {
-        memcpy( buf, fp->cur, SEGY_TRACE_HEADER_SIZE );
-        return SEGY_OK;
-    }
+    if( fp->addr ) return memread( buf, fp, fp->cur, SEGY_TRACE_HEADER_SIZE );
 
     const size_t readc = fread( buf, 1, SEGY_TRACE_HEADER_SIZE, fp->fp );
 
@@ -765,10 +799,7 @@ int segy_write_traceheader( segy_file* fp,
     const int err = segy_seek( fp, traceno, trace0, trace_bsize );
     if( err != 0 ) return err;
 
-    if( fp->addr ) {
-        memcpy( fp->cur, buf, SEGY_TRACE_HEADER_SIZE );
-        return SEGY_OK;
-    }
+    if( fp->addr ) return memwrite( fp, fp->cur, buf, SEGY_TRACE_HEADER_SIZE );
 
     const size_t writec = fwrite( buf, 1, SEGY_TRACE_HEADER_SIZE, fp->fp );
 
@@ -1265,7 +1296,8 @@ int segy_readsubtr( segy_file* fp,
     if( step == 1 || step == -1 ) {
 
         if( fp->addr ) {
-            memcpy( buf, fp->cur, sizeof( float ) * elems );
+            err = memread( buf, fp, fp->cur, sizeof( float ) * elems );
+            if( err != SEGY_OK ) return err;
         } else {
             const size_t readc = fread( buf, sizeof( float ), elems, fp->fp );
             if( readc != elems ) return SEGY_FREAD_ERROR;
@@ -1348,7 +1380,8 @@ int segy_writesubtr( segy_file* fp,
          * be handled by the stride-aware code path
          */
         if( fp->addr ) {
-            memcpy( fp->cur, buf, sizeof( float ) * elems );
+            err = memread( fp, fp->cur, buf, sizeof( float ) * elems );
+            if( err != SEGY_OK ) return err;
         } else {
             const size_t writec = fwrite( buf, sizeof( float ), elems, fp->fp );
             if( writec != elems ) return SEGY_FWRITE_ERROR;
@@ -1626,8 +1659,10 @@ int segy_write_textheader( segy_file* fp, int pos, const char* buf ) {
 
 #ifdef HAVE_MMAP
     if( fp->addr ) {
-        memcpy( (char*)fp->addr + offset, mbuf, SEGY_TEXT_HEADER_SIZE );
-        return SEGY_OK;
+        return memwrite( fp,
+                        (char*)fp->addr + offset,
+                        mbuf,
+                        SEGY_TEXT_HEADER_SIZE );
     }
 #endif //HAVE_MMAP
 
