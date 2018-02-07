@@ -1082,6 +1082,7 @@ static int segy_line_indices( segy_file* fp,
 static int count_lines( segy_file* fp,
                         int field,
                         int offsets,
+                        int traces,
                         int* out,
                         long trace0,
                         int trace_bsize ) {
@@ -1103,6 +1104,8 @@ static int count_lines( segy_file* fp,
     int curr = offsets;
 
     while( true ) {
+        if( curr >= traces ) return SEGY_NOTFOUND;
+
         err = segy_traceheader( fp, curr, header, trace0, trace_bsize );
         if( err != 0 ) return err;
 
@@ -1127,13 +1130,17 @@ int segy_count_lines( segy_file* fp,
                       long trace0,
                       int trace_bsize ) {
 
-    int err;
-    int l2count;
-    err = count_lines( fp, field, offsets, &l2count, trace0, trace_bsize );
+    int traces;
+    int err = segy_traces( fp, &traces, trace0, trace_bsize );
     if( err != 0 ) return err;
 
-    int traces;
-    err = segy_traces( fp, &traces, trace0, trace_bsize );
+    int l2count;
+    err = count_lines( fp, field,
+                           offsets,
+                           traces,
+                           &l2count,
+                           trace0,
+                           trace_bsize );
     if( err != 0 ) return err;
 
     const int line_length = l2count * offsets;

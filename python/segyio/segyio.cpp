@@ -40,6 +40,7 @@ std::string segy_errstr( int err ) {
         case SEGY_MMAP_ERROR:          return "segyio.mmap.error";
         case SEGY_MMAP_INVALID:        return "segyio.mmap.invalid";
         case SEGY_READONLY:            return "segyio.readonly";
+        case SEGY_NOTFOUND:            return "segyio.notfound";
 
         default:
             ss << "code " << err << "";
@@ -692,6 +693,10 @@ PyObject* cube_metrics( segyiofd* self, PyObject* args ) {
                                     &xl_count,
                                     self->trace0,
                                     self->trace_bsize );
+
+        if( err == SEGY_NOTFOUND )
+            return ValueError( "could not parse geometry, "
+                               "open with strict=False" );
 
         if( err ) return errmsg( err );
     }
