@@ -74,11 +74,12 @@ def open(filename, mode="r", iline = 189,
         raise ValueError(', '.join((problem, solution)))
 
     f = segyio.SegyFile(filename, mode, iline, xline)
+    metrics = f.xfd.metrics()
 
     try:
         dt = segyio.tools.dt(f, fallback_dt = 4000.0) / 1000.0
         t0 = f.header[0][segyio.TraceField.DelayRecordingTime]
-        samples = f._metrics['samplecount']
+        samples = metrics['samplecount']
         f._samples = (numpy.arange(samples, dtype = numpy.single) * dt) + t0
 
     except:
@@ -94,7 +95,6 @@ def open(filename, mode="r", iline = 189,
         iline_count  = cube_metrics['iline_count']
         xline_count  = cube_metrics['xline_count']
         offset_count = cube_metrics['offset_count']
-        metrics = f._metrics
         metrics.update(cube_metrics)
 
         line_metrics = segyio._segyio.line_metrics(f.sorting,

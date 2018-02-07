@@ -1,55 +1,47 @@
 language: python
+python:
+  - 2.7
+  - 3.4
+  - 3.5
+  - 3.6
 
 env:
     global:
         - UNICODE_WIDTH=32
         - PLAT=x86_64
+        - MB_PYTHON_VERSION=$TRAVIS_PYTHON_VERSION
         - VERSION=$(echo $TRAVIS_TAG | sed s/v//)
-        - SOURCEDEPLOY=0
-        - SCAN=""
-    matrix:
-        - MB_PYTHON_VERSION=2.7
-        - MB_PYTHON_VERSION=3.4
-        - MB_PYTHON_VERSION=3.5
-        - MB_PYTHON_VERSION=3.6
 os:
   - linux
-  - osx
-
-compiler:
-  - gcc
-  - clang
 
 services: docker
 sudo: required
 
 matrix:
     fast_finish: true
-    exclude:
-        - os: osx
     include:
         - os: linux
           compiler: clang
+          python: 3.6
           env:
             - SCAN="scan-build --status-bugs"
-            - MB_PYTHON_VERSION=3.6
+            - SOURCEDEPLOY=1
         - os: osx
           language: generic
           env: MB_PYTHON_VERSION=2.7
+          python: 2.7
         - os: osx
           language: generic
           env: MB_PYTHON_VERSION=3.4
+          python: 3.4
         - os: osx
           language: generic
           env: MB_PYTHON_VERSION=3.5
+          python: 3.5
         - os: osx
           language: generic
           env: MB_PYTHON_VERSION=3.6
-        - os: linux
-          compiler: gcc
-          env:
-            - MB_PYTHON_VERSION=3.6
-            - SOURCEDEPLOY=1
+          python: 3.6
 
 addons:
     apt:

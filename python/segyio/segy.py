@@ -65,10 +65,10 @@ class SegyFile(object):
         self._gather = None
 
         self.xfd = _segyio.segyiofd(filename, mode, binary)
-        self._metrics = self.xfd.metrics()
-        self._fmt = self._metrics['format']
-        self._tr0 = self._metrics['trace0']
-        self._bsz = self._metrics['trace_bsize']
+        metrics = self.xfd.metrics()
+        self._fmt = metrics['format']
+        self._tracecount = metrics['tracecount']
+        self._ext_headers = metrics['ext_headers']
 
         super(SegyFile, self).__init__()
 
@@ -181,7 +181,7 @@ class SegyFile(object):
     @property
     def tracecount(self):
         """ :rtype: int """
-        return self._metrics['tracecount']
+        return self._tracecount
 
     @property
     def samples(self):
@@ -196,7 +196,7 @@ class SegyFile(object):
     @property
     def ext_headers(self):
         """ :rtype: int """
-        return self._metrics['ext_headers']
+        return self._ext_headers
 
     @property
     def unstructured(self):
@@ -647,7 +647,7 @@ class SegyFile(object):
             for i, v in zip(range(t0, t0 + (step * length), step), val):
                 Trace.write_trace(i, v, self)
 
-        self._iline = Line(self, il_len, il_stride, lines, other_lines, buffn, readfn, writefn, "Inline")
+        self._iline = Line(self, il_len, il_stride, lines, other_lines, buffn, readfn, writefn, "inline")
         return self._iline
 
     @iline.setter
@@ -785,7 +785,7 @@ class SegyFile(object):
             for i, v in zip(range(t0, t0 + step * length, step), val):
                 Trace.write_trace(i, v, self)
 
-        self._xline = Line(self, xl_len, xl_stride, lines, other_lines, buffn, readfn, writefn, "Crossline")
+        self._xline = Line(self, xl_len, xl_stride, lines, other_lines, buffn, readfn, writefn, "crossline")
         return self._xline
 
     @xline.setter
@@ -913,9 +913,6 @@ class SegyFile(object):
 
         slice_trace_count = self._iline_length * self._xline_length
         offsets = len(self.offsets)
-        tr0 = self._tr0
-        bsz = self._bsz
-        fmt = self._fmt
 
         def readfn(depth, length, stride, buf):
             return self.xfd.getdepth(depth, slice_trace_count, offsets, buf)
@@ -929,7 +926,7 @@ class SegyFile(object):
                 trace_buf[depth] = buf_view[i]
                 self.trace[i] = trace_buf
 
-        return Line(self, len(self.samples), 1, indices, other_indices, buffn, readfn, writefn, "Depth")
+        return Line(self, len(self.samples), 1, indices, other_indices, buffn, readfn, writefn, "depth")
 
     @depth_slice.setter
     def depth_slice(self, value):
@@ -1120,7 +1117,7 @@ class TextHeader(object):
         self.outer = outer
 
     def __getitem__(self, index):
-        if index > self.outer.ext_headers:
+        if not 0 <= index <= self.outer.ext_headers:
             raise IndexError("Textual header {} not in file".format(index))
 
         return self.outer.xfd.gettext(index)
@@ -1130,7 +1127,7 @@ class TextHeader(object):
             self[index] = val[0]
             return
 
-        if index > self.outer.ext_headers:
+        if not 0 <= index <= self.outer.ext_headers:
             raise IndexError("Textual header {} not in file".format(index))
 
         self.outer.xfd.puttext(index, val)
