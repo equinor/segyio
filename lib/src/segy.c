@@ -335,12 +335,14 @@ static int file_size( FILE* fp, long long* size ) {
  * addr is NULL if mmap is not found under compilation or if the file is
  * not requested mmap'd. If so, the fallback code path of FILE* is taken
  */
+
+#define MODEBUF_SIZE 5
 struct segy_file_handle {
     void* addr;
     void* cur;
     FILE* fp;
     size_t fsize;
-    char mode[ 4 ];
+    char mode[ MODEBUF_SIZE ];
 };
 
 segy_file* segy_open( const char* path, const char* mode ) {
@@ -349,7 +351,7 @@ segy_file* segy_open( const char* path, const char* mode ) {
 
     // append a 'b' if it is not passed by the user; not a problem on unix, but
     // windows and other platforms fail without it
-    char binary_mode[ 5 ] = { 0 };
+    char binary_mode[ MODEBUF_SIZE ] = { 0 };
     strncpy( binary_mode, mode, 3 );
 
     size_t mode_len = strlen( binary_mode );
