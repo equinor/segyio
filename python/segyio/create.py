@@ -90,7 +90,7 @@ def create(filename, spec):
     `segyio.spec()`.
 
     Args:
-        filename (str): Path to file to open.
+        filename (str-like): Path to file to open.
         spec (:obj: `spec`): Structure of the segy file.
 
     Examples:
@@ -147,7 +147,7 @@ def create(filename, spec):
     _segyio.putfield(binary, 3225, int(spec.format))
     _segyio.putfield(binary, 3505, int(ext_headers))
 
-    f = segyio.SegyFile(filename, "w+", binary = binary)
+    f = segyio.SegyFile(str(filename), "w+", binary = binary)
 
     f._il            = int(spec.iline)
     f._xl            = int(spec.xline)

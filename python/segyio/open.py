@@ -38,7 +38,7 @@ def open(filename, mode="r", iline = 189,
     has no geometry.
 
     Args:
-        filename (str): Path to file to open.
+        filename (str-like): Path to file to open.
         mode (str, optional): File access mode, defaults to "r".
         iline (TraceField): Inline number field in the trace headers. Defaults
                             to 189 as per the SEGY specification.
@@ -73,7 +73,7 @@ def open(filename, mode="r", iline = 189,
         solution = 'use r+ to open in read-write'
         raise ValueError(', '.join((problem, solution)))
 
-    f = segyio.SegyFile(filename, mode, iline, xline)
+    f = segyio.SegyFile(str(filename), mode, iline, xline)
     metrics = f.xfd.metrics()
 
     try:
