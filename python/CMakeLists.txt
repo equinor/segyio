@@ -130,10 +130,7 @@ foreach (sgy ${sgys})
 endforeach ()
 
 set(pytest ${python} -m pytest -v)
-add_test(NAME python.segy        COMMAND ${pytest} test/segy.py)
-add_test(NAME python.h.segy      COMMAND ${pytest} test/segyio_c.py)
-add_test(NAME python.enum.segy   COMMAND ${pytest} test/segyioenum.py)
-add_test(NAME python.tools       COMMAND ${pytest} test/tools.py)
+add_test(NAME python.unit COMMAND ${pytest} test/)
 
 configure_file(${testdata}/small.sgy
                test-data/write.sgy
