@@ -129,9 +129,6 @@ foreach (sgy ${sgys})
     configure_file(${sgy} test-data/${fl} COPYONLY)
 endforeach ()
 
-set(py-test ${python} -m unittest -v)
-add_test(NAME python.context   COMMAND ${py-test} test.context)
-
 set(pytest ${python} -m pytest -v)
 add_test(NAME python.segy        COMMAND ${pytest} test/segy.py)
 add_test(NAME python.h.segy      COMMAND ${pytest} test/segyio_c.py)
