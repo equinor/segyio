@@ -73,7 +73,7 @@ before_script:
   - if [[ -n "${MB_PYTHON_VERSION+1}" ]]; then
         enabled="$enabled -DBUILD_PYTHON=ON -DREQUIRE_PYTHON=ON";
     fi
-  - bandit -r python
+  - bandit -c bandit.yml -r python
   - cmake --version
   - mkdir build
   - pushd build
