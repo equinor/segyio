@@ -136,6 +136,8 @@ add_test(NAME python.enum.segy COMMAND ${py-test} test.segyioenum)
 add_test(NAME python.tools     COMMAND ${py-test} test.tools)
 add_test(NAME python.context   COMMAND ${py-test} test.context)
 
+set(pytest ${python} -m pytest -v)
+
 configure_file(${testdata}/small.sgy
                test-data/write.sgy
                COPYONLY)
