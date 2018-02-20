@@ -133,10 +133,10 @@ set(py-test ${python} -m unittest -v)
 add_test(NAME python.segy      COMMAND ${py-test} test.segy)
 add_test(NAME python.h.segy    COMMAND ${py-test} test.segyio_c)
 add_test(NAME python.enum.segy COMMAND ${py-test} test.segyioenum)
-add_test(NAME python.tools     COMMAND ${py-test} test.tools)
 add_test(NAME python.context   COMMAND ${py-test} test.context)
 
 set(pytest ${python} -m pytest -v)
+add_test(NAME python.tools       COMMAND ${pytest} test/tools.py)
 
 configure_file(${testdata}/small.sgy
                test-data/write.sgy
