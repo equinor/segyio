@@ -104,6 +104,7 @@ setup(name='segyio',
       platforms='any',
       install_requires=['numpy >=1.10'],
       setup_requires=['setuptools >=28', 'setuptools_scm', 'pytest-runner'],
+      tests_require=['pytest'],
       classifiers=[
           'Development Status :: 5 - Production/Stable',
           'Environment :: Other Environment',
