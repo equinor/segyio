@@ -163,7 +163,7 @@ with segyio.open(filename) as f:
 Open accepts several options (for more a more comprehensive reference, check
 the open function's docstring with `help(segyio.open)`. The most important
 option is the second (optional) positional argument. To open a file for
-reading, do `segyio.open(filename, 'r+')`, from the C `fopen` function.
+writing, do `segyio.open(filename, 'r+')`, from the C `fopen` function.
 
 Files can be opened in *unstructured* mode, either by passing `segyio.open` the
 optional arguments `strict=False`, in which case not establishing structure
