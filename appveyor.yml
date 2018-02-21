@@ -35,7 +35,8 @@ install:
     - git submodule update --init --recursive
     - IF DEFINED PYTHON (IF "%platform%" == "x64" SET PYTHON=%PYTHON%-x64)
     - IF DEFINED PYTHON SET PATH=%PYTHON%;%PYTHON%\Scripts;%PATH%
-    - IF DEFINED PYTHON pip install twine wheel numpy
+    - IF DEFINED PYTHON pip install -r requirements.txt
+    - IF DEFINED PYTHON pip install twine wheel pytest
 
 before_build:
     - IF DEFINED PYTHON SET LANG=%LANG% -DPYTHON_EXECUTABLE=%PYTHON%\python
