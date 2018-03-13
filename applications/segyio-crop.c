@@ -410,8 +410,8 @@ int main( int argc, char** argv ) {
         if( sz != 1 && ferror( src ) )
             exit( errmsg( ferror( src ), "Unable to read trace header" ) );
 
-        int ilno = trfield( trheader, SEGY_TR_INLINE );
-        int xlno = trfield( trheader, SEGY_TR_CROSSLINE );
+        int ilno = trfield( trheader, il );
+        int xlno = trfield( trheader, xl );
 
         /* outside copy interval - skip this trace */
         if( ilno < ibeg || ilno > iend || xlno < xbeg || xlno > xend ) {
