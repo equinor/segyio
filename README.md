@@ -485,7 +485,7 @@ file_out = 'test1.sgy'
 
 spec.sorting = 2
 spec.format = 1
-spec.samples = 30
+spec.samples = np.arange(30)
 spec.ilines = np.arange(10)
 spec.xlines = np.arange(20)
 
