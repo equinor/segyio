@@ -135,19 +135,19 @@ def create(filename, spec):
     if not structured(spec):
         tracecount = spec.tracecount
     else:
-        tracecount    = len(spec.ilines) * len(spec.xlines) * len(spec.offsets)
+        tracecount = len(spec.ilines) * len(spec.xlines) * len(spec.offsets)
 
     ext_headers = spec.ext_headers if hasattr(spec, 'ext_headers') else 0
     samples = numpy.asarray(spec.samples, dtype = numpy.single)
 
     binary = bytearray(_segyio.binsize())
-    _segyio.putfield(binary, 3213, tracecount)
     _segyio.putfield(binary, 3217, 4000)
     _segyio.putfield(binary, 3221, len(samples))
     _segyio.putfield(binary, 3225, int(spec.format))
     _segyio.putfield(binary, 3505, int(ext_headers))
 
-    f = segyio.SegyFile(str(filename), "w+", binary = binary)
+    f = segyio.SegyFile(str(filename), "w+", tracecount = tracecount,
+                                             binary = binary)
 
     f._il            = int(spec.iline)
     f._xl            = int(spec.xline)
@@ -161,7 +161,7 @@ def create(filename, spec):
         f._xlines        = numpy.copy(numpy.asarray(spec.xlines, dtype=numpy.intc))
 
         line_metrics = _segyio.line_metrics(f.sorting,
-                                            f.tracecount,
+                                            tracecount,
                                             len(f.ilines),
                                             len(f.xlines),
                                             len(f.offsets))

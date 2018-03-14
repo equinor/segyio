@@ -221,9 +221,13 @@ namespace fd {
 int init( segyiofd* self, PyObject* args, PyObject* ) {
     char* filename = NULL;
     char* mode = NULL;
+    int tracecount = 0;
     buffer_guard buffer;
 
-    if( !PyArg_ParseTuple( args, "ss|z*", &filename, &mode, &buffer ) )
+    if( !PyArg_ParseTuple( args, "ss|iz*", &filename,
+                                           &mode,
+                                           &tracecount,
+                                           &buffer ) )
         return -1;
 
     const char* binary = buffer.buf< const char >();
@@ -261,7 +265,6 @@ int init( segyiofd* self, PyObject* args, PyObject* ) {
         return -1;
     }
 
-    int tracecount = 0;
     char bin[ SEGY_BINARY_HEADER_SIZE ] = {};
 
     if( !binary ) {
@@ -273,13 +276,6 @@ int init( segyiofd* self, PyObject* args, PyObject* ) {
         }
 
         binary = bin;
-    } else {
-        /*
-         * usually we wouldn't trust the bin-traces in the binary header, but
-         * this code path is only taken with create() (or similarly
-         * pre-verified header), in which case we can just read the tracecount.
-         */
-        segy_get_bfield( binary, SEGY_BIN_TRACES, &tracecount );
     }
 
     const long trace0 = segy_trace0( binary );

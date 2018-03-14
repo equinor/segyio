@@ -36,7 +36,7 @@ class SegyFile(object):
 
     _unstructured_errmsg = "File opened in unstructured mode."
 
-    def __init__(self, filename, mode, iline=189, xline=193, binary=None):
+    def __init__(self, filename, mode, iline=189, xline=193, tracecount=0, binary=None):
         """
         Constructor, internal.
         """
@@ -64,7 +64,7 @@ class SegyFile(object):
         self._xline = None
         self._gather = None
 
-        self.xfd = _segyio.segyiofd(filename, mode, binary)
+        self.xfd = _segyio.segyiofd(filename, mode, tracecount, binary)
         metrics = self.xfd.metrics()
         self._fmt = metrics['format']
         self._tracecount = metrics['tracecount']
