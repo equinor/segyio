@@ -1065,4 +1065,25 @@ def test_depth_slice_writing(tmpdir):
         for index, depth_slice in enumerate(f.depth_slice):
             assert np.allclose(depth_slice, buf * index)
 
+def test_no_16bit_overflow_tracecount(tmpdir):
+    spec = segyio.spec()
+    spec.format = 1
+    spec.sorting = 2
+    spec.samples = np.arange(501)
+    spec.ilines = np.arange(345)
+    spec.xlines = np.arange(250)
 
+    # build a file with more than 65k traces, which would cause a 16bit int to
+    # overflow.
+    # see https://github.com/Statoil/segyio/issues/235
+    ones = np.ones(len(spec.samples), dtype = np.single)
+    with segyio.create(tmpdir / 'foo.sgy', spec) as f:
+        assert f.tracecount > 0
+        assert f.tracecount > 2**16 - 1
+        for i in range(f.tracecount):
+            f.trace[i] = ones
+            f.header[i] = {
+                    segyio.TraceField.INLINE_3D: i,
+                    segyio.TraceField.CROSSLINE_3D: i,
+                    segyio.TraceField.offset: 1,
+            }
