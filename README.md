@@ -20,6 +20,7 @@
 * [Goals](#project-goals)
 * [Contributing](#contributing)
 * [Examples](#examples)
+* [Common issues](#common-issues)
 * [History](#history)
 
 ## Introduction ##
@@ -543,6 +544,25 @@ data = Segy.get_traces(input_file);
 data1 = 2*data;
 Segy.put_traces(output_file, data1);
 ```
+
+## Common issues ##
+
+### ImportError: libsegyio.so.1: cannot open shared object file
+
+This error shows up when the loader cannot find the core segyio library. If
+you've explicitly set the install prefix (with `-DCMAKE_INSTALL_PREFIX`) you
+must configure your loader to also look in this prefix, either with a
+`ld.conf.d` file or the `LD_LIBRARY_PATH` variable.
+
+If you haven't set `CMAKE_INSTALL_PREFIX`, cmake will by default install to
+`/usr/local`, which your loader usually knows about. On Debian based systems,
+the library often gets installed to `/usr/local/lib`, which the loader may not
+know about. See [issue #239](https://github.com/Statoil/segyio/issues/239).
+
+#### Possible solutions
+
+* Configure the loader (`sudo ldconfig` often does the trick)
+* Install with a different, known prefix, e.g. `-DCMAKE_INSTALL_LIBDIR=lib64`
 
 ## History ##
 Segyio was initially written and is maintained by [Statoil
