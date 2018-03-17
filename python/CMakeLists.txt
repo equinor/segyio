@@ -119,6 +119,36 @@ ${python} ${setup-py}
 WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )")
 
+option(BUILD_PYDOC "Build python documentation" OFF)
+
+if(BUILD_DOC)
+    set(BUILD_PYDOC ON)
+endif()
+
+if(BUILD_PYDOC)
+    find_program(sphinx sphinx-build)
+
+    if(NOT sphinx)
+        message(WARNING "Could not find sphinx, skipping python documentation")
+        set(BUILD_PYDOC OFF)
+    endif()
+
+endif()
+
+if(BUILD_PYDOC AND sphinx)
+    add_custom_target(pydoc
+        COMMAND ${sphinx}
+            ${SPHINX_ARGS}
+            ${CMAKE_CURRENT_SOURCE_DIR}/docs
+            ${CMAKE_CURRENT_BINARY_DIR}/docs
+        DEPENDS docs/conf.py
+                docs/index.rst
+                docs/segyio.rst
+        COMMENT Building python documentation with sphinx
+    )
+    add_dependencies(doc pydoc)
+endif()
+
 if(NOT BUILD_TESTING)
     return()
 endif()
