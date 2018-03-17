@@ -1,3 +1,12 @@
+# 1.5.2
+* `open` and `create` handle anything string-convertible as filename argument
+* pytest replaces unittest, both as library and test driver
+* segyio-crop now respects the byte-offset arguments, instead of just ignoring
+  them and using 189 & 193 from SEG-Y revision 1
+* Some errors in readme and documentation is cleared up
+* Fixed a bug in create that would trigger 16-bit integer overflow, effectively
+  breaking any file with more than 65k traces.
+
 # 1.5.0
 * A bug making an external text header disappear has been fixed
 * The python extension has been changed to use C++ features, simplifying code
