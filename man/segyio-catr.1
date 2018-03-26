@@ -11,7 +11,7 @@ Print selected traceheaders from SEG-Y file FILE
 
 .PP
 
-The flag\fB-r\fR takes up to three vales; START, STOP, STEP, which is a closed inteval from START to STOP.
+The flag \fB--range\fR takes up to three vales; START, STOP, STEP, which is a closed inteval from START to STOP.
 The third value STEP can be specified to print i.e. every other trace in the interval. All values are defaulted to zero.
 Flags \fB-r\fR and \fB-t\fR can be called multiple times.
 
@@ -24,7 +24,7 @@ Mandatory arguments to long options are mandatory for short options too.
 trace(s) to print
 
 .TP
-.BR \-r ", " \-\-range \fISTART\fR [\fSTOP\fR \fISTEP\fR]
+.BR \-r ", " \-\-range " " "\fISTART\fR [\fISTOP\fR \fISTEP\fR]"
 range of trace(s) to print. \fISTOP\fR and \fISTEP\fR are optional, and
 defaults to \fISTART\fR and 1 respectively.
 
