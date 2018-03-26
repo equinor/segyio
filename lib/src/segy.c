@@ -855,10 +855,10 @@ int segy_sample_interval( segy_file* fp, float fallback, float* dt ) {
     }
 
     const long trace0 = segy_trace0( bin_header );
-    int samples = segy_samples( bin_header );
-    const int trace_bsize = segy_trace_bsize( samples );
 
-    err = segy_traceheader(fp, 0, trace_header, trace0, trace_bsize);
+    /* we don't need to figure out a trace size, since we're not advancing
+     * beyond the first header */
+    err = segy_traceheader(fp, 0, trace_header, trace0, 0);
     if (err != 0) {
         return err;
     }
