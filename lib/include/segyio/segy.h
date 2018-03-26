@@ -61,6 +61,22 @@ int segy_sample_interval( segy_file*, float fallback , float* dt );
 
 /* exception: the int returned is an enum, SEGY_FORMAT, not an error code */
 int segy_format( const char* binheader );
+/* override the assumed format of the samples.
+ *
+ * by default, segyio assumes a 4-byte float format (usually IBM float). The
+ * to/from native functions take this parameter explicitly, but functions like
+ * read_subtrace requires the size of each element.
+ *
+ * `format` is the SEGY_FORMAT enum. if this function is not called, for
+ * backwards compatibility reasons, the format is always assumed to be IBM
+ * float.
+ *
+ * The binary header is not implicitly queried, because it's often broken and
+ * unreliable with this information - however, if the header IS considered to
+ * be reliable, the result of `segy_format` can be passed to this function.
+ */
+int segy_set_format( segy_file*, int format );
+
 int segy_get_field( const char* traceheader, int field, int32_t* f );
 int segy_get_bfield( const char* binheader, int field, int32_t* f );
 int segy_set_field( char* traceheader, int field, int32_t val );
@@ -77,9 +93,15 @@ int segy_field_forall( segy_file*,
 
 /*
  * exception: segy_trace_bsize computes the size of the traces in bytes. Cannot
- * fail.
+ * fail. Equivalent to segy_trsize(SEGY_IBM_FLOAT_4_BYTE, samples);
  */
 int segy_trace_bsize( int samples );
+/*
+ * segy_trsize computes the size of a trace in bytes, determined by the trace
+ * format. If format is unknown, invalid, or unsupported, this function returns
+ * a negative value. If `samples` is zero or negative, the result is undefined.
+ */
+int segy_trsize( int format, int samples );
 /* byte-offset of the first trace header. */
 long segy_trace0( const char* binheader );
 /*

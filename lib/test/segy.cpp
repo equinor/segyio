@@ -103,11 +103,21 @@ SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
         REQUIRE( Err( segy_binheader( fp, header ) ) == Err::ok() );
         int samples = segy_samples( header );
         long trace0 = segy_trace0( header );
-        int trace_bsize = segy_trace_bsize( samples );
+        int trace_bsize = segy_trsize( SEGY_IBM_FLOAT_4_BYTE, samples );
 
         CHECK( trace0      == 3600 );
         CHECK( samples     == 50 );
         CHECK( trace_bsize == 50 * 4 );
+    }
+
+    WHEN( "overriding sample format" ) {
+        Err err = segy_set_format( fp, SEGY_IEEE_FLOAT_4_BYTE );
+        CHECK( err == Err::ok() );
+
+        THEN( "it fails on invalid formats" ) {
+            err = segy_set_format( fp, 10 );
+            CHECK( err == Err::args() );
+        }
     }
 
     const long trace0 = 3600;
@@ -621,7 +631,7 @@ SCENARIO( MMAP_TAG "extracting header fields", "[c.segy]" MMAP_TAG ) {
 SCENARIO( MMAP_TAG "modifying trace header", "[c.segy]" MMAP_TAG ) {
 
     const int samples = 10;
-    const int trace_bsize = segy_trace_bsize( samples );
+    int trace_bsize = segy_trsize( SEGY_IBM_FLOAT_4_BYTE, samples );
     const int trace0 = 0;
     const float emptytr[ samples ] = {};
     const char emptyhdr[ SEGY_TRACE_HEADER_SIZE ] = {};

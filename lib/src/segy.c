@@ -331,6 +331,22 @@ static int file_size( FILE* fp, long long* size ) {
 }
 #endif //HAVE_SYS_STAT_H
 
+static int formatsize( int format ) {
+    switch( format ) {
+        case SEGY_IBM_FLOAT_4_BYTE:             return 4;
+        case SEGY_SIGNED_INTEGER_4_BYTE:        return 4;
+        case SEGY_SIGNED_SHORT_2_BYTE:          return 2;
+        case SEGY_FIXED_POINT_WITH_GAIN_4_BYTE: return 4;
+        case SEGY_IEEE_FLOAT_4_BYTE:            return 4;
+        case SEGY_SIGNED_CHAR_1_BYTE:           return 1;
+
+        case SEGY_NOT_IN_USE_1:
+        case SEGY_NOT_IN_USE_2:
+        default:
+            return -1;
+    }
+}
+
 /*
  * addr is NULL if mmap is not found under compilation or if the file is
  * not requested mmap'd. If so, the fallback code path of FILE* is taken
@@ -344,6 +360,7 @@ struct segy_file_handle {
     size_t fsize;
     char mode[ MODEBUF_SIZE ];
     int writable;
+    int elemsize;
 };
 
 segy_file* segy_open( const char* path, const char* mode ) {
@@ -379,6 +396,10 @@ segy_file* segy_open( const char* path, const char* mode ) {
 
     bool rw = strstr( file->mode, "+" ) || strstr( file->mode, "w" );
     if( rw ) file->writable = 1;
+
+    // assume a size of 4-bytes-per-element, until the set_format function
+    // tells us otherwise.
+    file->elemsize = 4;
 
     return file;
 }
@@ -703,6 +724,13 @@ int segy_format( const char* binheader ) {
     return format;
 }
 
+int segy_set_format( segy_file* fp, int format ) {
+    const int elemsize = formatsize( format );
+    if( elemsize < 0 ) return SEGY_INVALID_ARGS;
+    fp->elemsize = elemsize;
+    return SEGY_OK;
+}
+
 int segy_samples( const char* binheader ) {
     int32_t samples = 0;
     segy_get_bfield( binheader, SEGY_BIN_SAMPLES, &samples );
@@ -711,8 +739,13 @@ int segy_samples( const char* binheader ) {
 
 int segy_trace_bsize( int samples ) {
     assert( samples >= 0 );
-    /* Hard four-byte float assumption */
-    return samples * 4;
+    return segy_trsize( SEGY_IBM_FLOAT_4_BYTE, samples );
+}
+
+int segy_trsize( int format, int samples ) {
+    const int elemsize = formatsize( format );
+    if( elemsize < 0 ) return -1;
+    return samples * elemsize;
 }
 
 long segy_trace0( const char* binheader ) {
@@ -1257,20 +1290,20 @@ static inline int subtr_seek( segy_file* fp,
                               int traceno,
                               int start,
                               int stop,
+                              int elemsize,
                               long trace0,
                               int trace_bsize ) {
     /*
      * Optimistically assume that indices are correct by the time they're given
      * to subtr_seek.
      */
-    int min = start < stop ? start : stop + 1;
-    assert( sizeof( float ) == 4 );
+    const int min = start < stop ? start : stop + 1;
     assert( start >= 0 );
     assert( stop >= -1 );
-    assert( abs(stop - start) * (int)sizeof( float ) <= trace_bsize );
+    assert( abs(stop - start) * elemsize <= trace_bsize );
 
     // skip the trace header and skip everything before min
-    trace0 += (min * (int)sizeof( float )) + SEGY_TRACE_HEADER_SIZE;
+    trace0 += (min * elemsize) + SEGY_TRACE_HEADER_SIZE;
     return segy_seek( fp, traceno, trace0, trace_bsize );
 }
 
@@ -1281,7 +1314,7 @@ static int reverse( void* buf, int elems, int elemsize ) {
     for( int i = 0; i < elems / 2; ++i ) {
         memcpy( tmp, arr + i * elemsize, elemsize );
         memcpy( arr + i * elemsize, arr + (last - i) * elemsize, elemsize );
-        memcpy( arr + (last - 1) * elemsize, tmp, elemsize );
+        memcpy( arr + (last - i) * elemsize, tmp, elemsize );
     }
 
     return SEGY_OK;
@@ -1292,8 +1325,7 @@ int segy_readtrace( segy_file* fp,
                     void* buf,
                     long trace0,
                     int trace_bsize ) {
-    const int elemsize = sizeof( float );
-    const int stop = trace_bsize / elemsize;
+    const int stop = trace_bsize / fp->elemsize;
     return segy_readsubtr( fp, traceno, 0, stop, 1, buf, NULL, trace0, trace_bsize );
 }
 
@@ -1307,11 +1339,11 @@ int segy_readsubtr( segy_file* fp,
                     long trace0,
                     int trace_bsize ) {
 
-    int err = subtr_seek( fp, traceno, start, stop, trace0, trace_bsize );
-    if( err != SEGY_OK ) return err;
-
     const int elems = abs( stop - start );
-    const int elemsize = sizeof( float );
+    const int elemsize = fp->elemsize;
+
+    int err = subtr_seek( fp, traceno, start, stop, elemsize, trace0, trace_bsize );
+    if( err != SEGY_OK ) return err;
 
     // most common case: step == abs(1), reading contiguously
     if( step == 1 || step == -1 ) {
@@ -1377,7 +1409,7 @@ int segy_writetrace( segy_file* fp,
                      long trace0,
                      int trace_bsize ) {
 
-    const int stop = trace_bsize / sizeof( float );
+    const int stop = trace_bsize / fp->elemsize;
     return segy_writesubtr( fp, traceno, 0, stop, 1, buf, NULL, trace0, trace_bsize );
 }
 
@@ -1393,11 +1425,11 @@ int segy_writesubtr( segy_file* fp,
 
     if( !fp->writable ) return SEGY_READONLY;
 
-    int err = subtr_seek( fp, traceno, start, stop, trace0, trace_bsize );
-    if( err != SEGY_OK ) return err;
-
     const int elems = abs( stop - start );
-    const int elemsize = sizeof( float );
+    const int elemsize = fp->elemsize;
+
+    int err = subtr_seek( fp, traceno, start, stop, elemsize, trace0, trace_bsize );
+    if( err != SEGY_OK ) return err;
 
 
     if( step == 1 ) {
@@ -1463,16 +1495,28 @@ int segy_to_native( int format,
                     long long size,
                     void* buf ) {
 
-    assert( sizeof( float ) == sizeof( uint32_t ) );
-    const int elemsize = sizeof( float );
+    const int elemsize = formatsize( format );
+    if( elemsize < 0 ) return SEGY_INVALID_ARGS;
     char* dst = (char*)buf;
 
-    uint32_t u;
-    for( long long i = 0; i < size; ++i ) {
-        const long long pos = i * elemsize;
-        memcpy( &u, dst + pos, sizeof( uint32_t ) );
-        u = ntohl( u );
-        memcpy( dst + pos, &u, sizeof( uint32_t ) );
+    if( elemsize == sizeof( uint32_t ) ) {
+        uint32_t u;
+        for( long long i = 0; i < size; ++i ) {
+            const long long pos = i * elemsize;
+            memcpy( &u, dst + pos, sizeof( uint32_t ) );
+            u = ntohl( u );
+            memcpy( dst + pos, &u, sizeof( uint32_t ) );
+        }
+    }
+
+    if( elemsize == sizeof( uint16_t ) ) {
+        uint16_t u;
+        for( long long i = 0; i < size; ++i ) {
+            const long long pos = i * elemsize;
+            memcpy( &u, dst + pos, sizeof( uint16_t ) );
+            u = ntohs( u );
+            memcpy( dst + pos, &u, sizeof( uint16_t ) );
+        }
     }
 
     if( format == SEGY_IBM_FLOAT_4_BYTE ) {
@@ -1487,22 +1531,34 @@ int segy_from_native( int format,
                       long long size,
                       void* buf ) {
 
-    assert( sizeof( float ) == sizeof( uint32_t ) );
-    const int elemsize = sizeof( float );
-    char* dst = (char*)buf;
+    const int elemsize = formatsize( format );
+    if( elemsize < 0 ) return SEGY_INVALID_ARGS;
 
-    uint32_t u;
+    char* dst = (char*)buf;
 
     if( format == SEGY_IBM_FLOAT_4_BYTE ) {
         for( long long i = 0; i < size; ++i )
             native_ibm( dst + i * elemsize );
     }
 
-    for( long long i = 0; i < size; ++i ) {
-        const long long pos = i * elemsize;
-        memcpy( &u, dst + pos, sizeof( uint32_t ) );
-        u = htonl( u );
-        memcpy( dst + pos, &u, sizeof( uint32_t ) );
+    if( elemsize == sizeof( uint32_t ) ) {
+        uint32_t u;
+        for( long long i = 0; i < size; ++i ) {
+            const long long pos = i * elemsize;
+            memcpy( &u, dst + pos, sizeof( uint32_t ) );
+            u = htonl( u );
+            memcpy( dst + pos, &u, sizeof( uint32_t ) );
+        }
+    }
+
+    if( elemsize == sizeof( uint16_t ) ) {
+        uint16_t u;
+        for( long long i = 0; i < size; ++i ) {
+            const long long pos = i * elemsize;
+            memcpy( &u, dst + pos, sizeof( uint16_t ) );
+            u = htons( u );
+            memcpy( dst + pos, &u, sizeof( uint16_t ) );
+        }
     }
 
     return SEGY_OK;
@@ -1544,8 +1600,6 @@ int segy_read_line( segy_file* fp,
                     long trace0,
                     int trace_bsize ) {
 
-    assert( sizeof( float ) == sizeof( int32_t ) );
-
     char* dst = (char*) buf;
     stride *= offsets;
 
@@ -1577,8 +1631,6 @@ int segy_write_line( segy_file* fp,
                      long trace0,
                      int trace_bsize ) {
     if( !fp->writable ) return SEGY_READONLY;
-
-    assert( sizeof( float ) == sizeof( int32_t ) );
 
     const char* src = (const char*) buf;
     line_trace0 *= offsets;
