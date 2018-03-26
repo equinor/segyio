@@ -8,17 +8,21 @@
 int errmsg( int errcode, const char* msg ) {
     if( !msg ) return errcode;
 
+    fflush( stdout );
     fputs( msg,  stderr );
     fputc( '\n', stderr );
+    fflush( stderr );
     return errcode;
 }
 
 int errmsg2( int errcode, const char* prelude, const char* msg ) {
     if( !prelude ) return errmsg( errcode, msg );
 
+    fflush( stdout );
     fputs( prelude, stderr );
     fputc( ':', stderr );
     fputc( ' ', stderr );
+    fflush( stderr );
     return errmsg( errcode, msg );
 }
 
