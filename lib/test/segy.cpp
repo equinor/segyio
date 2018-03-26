@@ -86,6 +86,113 @@ struct StringMaker< Err > {
 };
 }
 
+namespace {
+
+void regular_geometry( segy_file* fp,
+                       int traces,
+                       long trace0,
+                       int trace_bsize,
+                       int expected_ilines,
+                       int expected_xlines,
+                       int expected_offset) {
+    /* A simple "no-surprises" type of file, that's inline sorted, post-stack
+     * (1 offset only), no weird header field positions, meaning the test would
+     * be pure repetition for common files
+     */
+
+    const int il = SEGY_TR_INLINE;
+    const int xl = SEGY_TR_CROSSLINE;
+    const int of = SEGY_TR_OFFSET;
+    GIVEN( "an inline sorted file" ) {
+        THEN( "inline sorting is inferred" ) {
+            int sorting = -1;
+            const Err err = segy_sorting( fp,
+                                          il, xl, of,
+                                          &sorting,
+                                          trace0, trace_bsize );
+            CHECK( err == Err::ok() );
+            CHECK( sorting == SEGY_INLINE_SORTING );
+        }
+
+        WHEN( "swapping inline and crossline position" ) {
+            THEN( "crossline sorting is inferred" ) {
+                int sorting = -1;
+                const Err err = segy_sorting( fp,
+                                              xl, il, of,
+                                              &sorting,
+                                              trace0, trace_bsize );
+                CHECK( err == Err::ok() );
+                CHECK( sorting == SEGY_CROSSLINE_SORTING );
+            }
+        }
+    }
+
+    const int sorting = SEGY_INLINE_SORTING;
+
+    GIVEN( "a post stack file" ) {
+        int offsets = -1;
+        const Err err = segy_offsets( fp,
+                                      il, xl, traces,
+                                      &offsets,
+                                      trace0, trace_bsize );
+        THEN( "there is only one offset" ) {
+            CHECK( err == Err::ok() );
+            CHECK( offsets == 1 );
+        }
+
+        WHEN( "swapping inline and crossline position" ) {
+            int offsets = -1;
+            const Err err = segy_offsets( fp,
+                                          xl, il, traces,
+                                          &offsets,
+                                          trace0, trace_bsize );
+            THEN( "there is only one offset" ) {
+                CHECK( err == Err::ok() );
+                CHECK( offsets == 1 );
+            }
+        }
+    }
+
+    const int offsets = 1;
+
+    WHEN( "determining offset labels" ) {
+        int offset_index = -1;
+        const Err err = segy_offset_indices( fp,
+                                             of, offsets,
+                                             &offset_index,
+                                             trace0, trace_bsize );
+        CHECK( err == Err::ok() );
+        CHECK( offset_index == expected_offset );
+    }
+
+    WHEN( "counting lines" ) {
+        int ilsz = -1;
+        int xlsz = -1;
+
+        WHEN( "using segy_count_lines" ) {
+            const Err err = segy_count_lines( fp,
+                                              xl, offsets,
+                                              &ilsz, &xlsz,
+                                              trace0, trace_bsize );
+            CHECK( err == Err::ok() );
+            CHECK( ilsz == expected_ilines );
+            CHECK( xlsz == expected_xlines );
+        }
+
+        WHEN( "using segy_lines_count" ) {
+            const Err err = segy_lines_count( fp,
+                                              il, xl, sorting, offsets,
+                                              &ilsz, &xlsz,
+                                              trace0, trace_bsize );
+            CHECK( err == Err::ok() );
+            CHECK( ilsz == expected_ilines );
+            CHECK( xlsz == expected_xlines );
+        }
+    }
+}
+
+}
+
 SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
     const char* file = "test-data/small.sgy";
 
@@ -150,99 +257,22 @@ SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
     }
 
     const int traces = 25;
+    const int inlines_sizes = 5;
+    const int crosslines_sizes = 5;
+    const int offset_label = 1;
+
+    regular_geometry( fp, traces,
+                          trace0,
+                          trace_bsize,
+                          inlines_sizes,
+                          crosslines_sizes,
+                          offset_label );
 
     const int il = SEGY_TR_INLINE;
     const int xl = SEGY_TR_CROSSLINE;
     const int of = SEGY_TR_OFFSET;
-    GIVEN( "an inline sorted file" ) {
-        THEN( "inline sorting is inferred" ) {
-            int sorting = -1;
-            const Err err = segy_sorting( fp,
-                                          il, xl, of,
-                                          &sorting,
-                                          trace0, trace_bsize );
-            CHECK( err == Err::ok() );
-            CHECK( sorting == SEGY_INLINE_SORTING );
-        }
-
-        WHEN( "swapping inline and crossline position" ) {
-            THEN( "crossline sorting is inferred" ) {
-                int sorting = -1;
-                const Err err = segy_sorting( fp,
-                                              xl, il, of,
-                                              &sorting,
-                                              trace0, trace_bsize );
-                CHECK( err == Err::ok() );
-                CHECK( sorting == SEGY_CROSSLINE_SORTING );
-            }
-        }
-    }
-
     const int sorting = SEGY_INLINE_SORTING;
-
-    GIVEN( "a post stack file" ) {
-        int offsets = -1;
-        const Err err = segy_offsets( fp,
-                                      il, xl, traces,
-                                      &offsets,
-                                      trace0, trace_bsize );
-        THEN( "there is only one offset" ) {
-            CHECK( err == Err::ok() );
-            CHECK( offsets == 1 );
-        }
-
-        WHEN( "swapping inline and crossline position" ) {
-            int offsets = -1;
-            const Err err = segy_offsets( fp,
-                                          xl, il, traces,
-                                          &offsets,
-                                          trace0, trace_bsize );
-            THEN( "there is only one offset" ) {
-                CHECK( err == Err::ok() );
-                CHECK( offsets == 1 );
-            }
-        }
-    }
-
     const int offsets = 1;
-
-    WHEN( "determining offset labels" ) {
-        int offset_index = -1;
-        const Err err = segy_offset_indices( fp,
-                                             of, offsets,
-                                             &offset_index,
-                                             trace0, trace_bsize );
-        CHECK( err == Err::ok() );
-        CHECK( offset_index == 1 );
-    }
-
-    WHEN( "counting lines" ) {
-        int ilsz = -1;
-        int xlsz = -1;
-
-        WHEN( "using segy_count_lines" ) {
-            const Err err = segy_count_lines( fp,
-                                              xl, offsets,
-                                              &ilsz, &xlsz,
-                                              trace0, trace_bsize );
-            CHECK( err == Err::ok() );
-            CHECK( ilsz == 5 );
-            CHECK( xlsz == 5 );
-        }
-
-        WHEN( "using segy_lines_count" ) {
-            const Err err = segy_lines_count( fp,
-                                              il, xl, sorting, offsets,
-                                              &ilsz, &xlsz,
-                                              trace0, trace_bsize );
-            CHECK( err == Err::ok() );
-            CHECK( ilsz == 5 );
-            CHECK( xlsz == 5 );
-        }
-    }
-
-    const int inlines_sizes = 5;
-    const int crosslines_sizes = 5;
     const int format = SEGY_IBM_FLOAT_4_BYTE;
 
     WHEN( "inferring inline structure" ) {
