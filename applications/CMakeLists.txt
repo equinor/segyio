@@ -69,6 +69,7 @@ add_test(NAME catr.arg.r2       COMMAND segyio-catr -r 1 2 ${small})
 add_test(NAME catr.arg.r3       COMMAND segyio-catr -r 1 2 3 ${small} -r 5 6)
 add_test(NAME catr.arg.multiple COMMAND segyio-catr "-r 1" 5 2 ${small} -r 1 6)
 add_test(NAME catr.arg.rt       COMMAND segyio-catr -r 1 2 ${small} -t 5)
+add_test(NAME catr.arg.fmt      COMMAND segyio-catr -f ieee ${small})
 
 add_test(NAME catb.arg.help     COMMAND segyio-catb --help)
 add_test(NAME catb.fail.nosegy  COMMAND segyio-catb ${test}/catb.output)
