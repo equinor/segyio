@@ -295,23 +295,24 @@ static const char* segynames[91] = {
 };
 
 static int help() {
-    puts( "Usage: segyio-catr [OPTION]... FILE\n"
-          "Print specific trace headers from FILE\n"
-          "\n"
-          "-t,  --trace=NUMBER          trace to print\n"
-          "-r,  --range START STOP STEP range of traces to print\n"
-          "-s,  --strict                fail on unreadable tracefields\n"
-          "-S,  --non-strict            don't fail on unreadable tracefields\n"
-          "                             this is the default behaviour\n"
-          "-k,  --segyio                print with segyio tracefield names\n"
-          "-v,  --verbose               increase verbosity\n"
-          "     --version               output version information and exit\n"
-          "     --help                  display this help and exit\n"
-          "\n"
+    puts(
+"Usage: segyio-catr [OPTION]... FILE\n"
+"Print specific trace headers from FILE\n"
+"\n"
+"-t,  --trace=NUMBER          trace to print\n"
+"-r,  --range START STOP STEP range of traces to print\n"
+"-s,  --strict                fail on unreadable tracefields\n"
+"-S,  --non-strict            don't fail on unreadable tracefields\n"
+"                             this is the default behaviour\n"
+"-k,  --segyio                print with segyio tracefield names\n"
+"-v,  --verbose               increase verbosity\n"
+"     --version               output version information and exit\n"
+"     --help                  display this help and exit\n"
+"\n"
 
-          "the -r flag can takes up to three values: start, stop, step\n"
-          "where all values are defaulted to zero\n"
-          "flags -r and -t can be called multiple times\n"
+"the -r flag takes up to three values: start, stop, step\n"
+"where all values are defaulted to zero\n"
+"flags -r and -t can be used multiple times\n"
         );
     return 0;
 }
