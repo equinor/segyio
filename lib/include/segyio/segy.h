@@ -59,7 +59,8 @@ int segy_samples( const char* binheader );
  * `fallback` argument.
  */
 int segy_sample_interval( segy_file*, float fallback , float* dt );
-/* exception: the int returned is an enum, SEGY_SORTING, not an error code */
+
+/* exception: the int returned is an enum, SEGY_FORMAT, not an error code */
 int segy_format( const char* binheader );
 int segy_get_field( const char* traceheader, int field, int32_t* f );
 int segy_get_bfield( const char* binheader, int field, int32_t* f );
