@@ -53,6 +53,11 @@ int segy_write_binheader( segy_file*, const char* buf );
  * allocates 2 octets for this, so it comfortably sits inside an int
  */
 int segy_samples( const char* binheader );
+/*
+ * infer the interval between traces. this function tries to read the interval
+ * from the binary header and the first trace header, and will fall back to the
+ * `fallback` argument.
+ */
 int segy_sample_interval( segy_file*, float fallback , float* dt );
 /* exception: the int returned is an enum, SEGY_SORTING, not an error code */
 int segy_format( const char* binheader );
