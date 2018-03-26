@@ -1080,10 +1080,9 @@ def test_no_16bit_overflow_tracecount(tmpdir):
     with segyio.create(tmpdir / 'foo.sgy', spec) as f:
         assert f.tracecount > 0
         assert f.tracecount > 2**16 - 1
-        for i in range(f.tracecount):
-            f.trace[i] = ones
-            f.header[i] = {
-                    segyio.TraceField.INLINE_3D: i,
-                    segyio.TraceField.CROSSLINE_3D: i,
+        f.trace[-1] = ones
+        f.header[-1] = {
+                    segyio.TraceField.INLINE_3D: 10,
+                    segyio.TraceField.CROSSLINE_3D: 10,
                     segyio.TraceField.offset: 1,
-            }
+        }
