@@ -1274,12 +1274,14 @@ static inline int subtr_seek( segy_file* fp,
     return segy_seek( fp, traceno, trace0, trace_bsize );
 }
 
-static int reverse( float* arr, int elems ) {
+static int reverse( void* buf, int elems, int elemsize ) {
+    char* arr = (char*) buf;
     const int last = elems - 1;
+    char tmp[ 8 ];
     for( int i = 0; i < elems / 2; ++i ) {
-        const float tmp = arr[ i ];
-        arr[ i ] = arr[ last - i ];
-        arr[ last - i ] = tmp;
+        memcpy( tmp, arr + i * elemsize, elemsize );
+        memcpy( arr + i * elemsize, arr + (last - i) * elemsize, elemsize );
+        memcpy( arr + (last - 1) * elemsize, tmp, elemsize );
     }
 
     return SEGY_OK;
@@ -1287,10 +1289,11 @@ static int reverse( float* arr, int elems ) {
 
 int segy_readtrace( segy_file* fp,
                     int traceno,
-                    float* buf,
+                    void* buf,
                     long trace0,
                     int trace_bsize ) {
-    const int stop = trace_bsize / sizeof( float );
+    const int elemsize = sizeof( float );
+    const int stop = trace_bsize / elemsize;
     return segy_readsubtr( fp, traceno, 0, stop, 1, buf, NULL, trace0, trace_bsize );
 }
 
@@ -1299,28 +1302,29 @@ int segy_readsubtr( segy_file* fp,
                     int start,
                     int stop,
                     int step,
-                    float* buf,
-                    float* rangebuf,
+                    void* buf,
+                    void* rangebuf,
                     long trace0,
                     int trace_bsize ) {
 
     int err = subtr_seek( fp, traceno, start, stop, trace0, trace_bsize );
     if( err != SEGY_OK ) return err;
 
-    const size_t elems = abs( stop - start );
+    const int elems = abs( stop - start );
+    const int elemsize = sizeof( float );
 
     // most common case: step == abs(1), reading contiguously
     if( step == 1 || step == -1 ) {
 
         if( fp->addr ) {
-            err = memread( buf, fp, fp->cur, sizeof( float ) * elems );
+            err = memread( buf, fp, fp->cur, elemsize * elems );
             if( err != SEGY_OK ) return err;
         } else {
-            const size_t readc = fread( buf, sizeof( float ), elems, fp->fp );
+            const int readc = fread( buf, elemsize, elems, fp->fp );
             if( readc != elems ) return SEGY_FREAD_ERROR;
         }
 
-        if( step == -1 ) reverse( buf, elems );
+        if( step == -1 ) reverse( buf, elems, elemsize );
 
         return SEGY_OK;
     }
@@ -1329,10 +1333,15 @@ int segy_readsubtr( segy_file* fp,
     int defstart = start < stop ? 0 : elems - 1;
     int slicelen = slicelength( start, stop, step );
 
+    // step is the distance between elems to read, but now we're counting bytes
+    step *= elemsize;
+    char* dst = (char*)buf;
+
+
     if( fp->addr ) {
-        float* cur = (float*)fp->cur + defstart;
-        for( ; slicelen > 0; cur += step, ++buf, --slicelen )
-            *buf = *cur;
+        const char* cur = (char*)fp->cur + elemsize * defstart;
+        for( ; slicelen > 0; cur += step, dst += elemsize, --slicelen )
+            memcpy( dst, cur, elemsize );
 
         return SEGY_OK;
     }
@@ -1346,17 +1355,17 @@ int segy_readsubtr( segy_file* fp,
      * use, but with a significant performance penalty when no buffer is
      * supplied.
      */
-    float* tracebuf = rangebuf ? rangebuf : malloc( elems * sizeof( float ) );
+    void* tracebuf = rangebuf ? rangebuf : malloc( elems * elemsize );
 
-    const size_t readc = fread( tracebuf, sizeof( float ), elems, fp->fp );
+    const int readc = fread( tracebuf, elemsize, elems, fp->fp );
     if( readc != elems ) {
         if( !rangebuf ) free( tracebuf );
         return SEGY_FREAD_ERROR;
     }
 
-    float* cur = tracebuf + defstart;
-    for( ; slicelen > 0; cur += step, --slicelen, ++buf )
-        *buf = *cur;
+    const char* cur = (char*)tracebuf + elemsize * defstart;
+    for( ; slicelen > 0; cur += step, --slicelen, dst += elemsize )
+        memcpy( dst, cur, elemsize );
 
     if( !rangebuf ) free( tracebuf );
     return SEGY_OK;
@@ -1364,7 +1373,7 @@ int segy_readsubtr( segy_file* fp,
 
 int segy_writetrace( segy_file* fp,
                      int traceno,
-                     const float* buf,
+                     const void* buf,
                      long trace0,
                      int trace_bsize ) {
 
@@ -1377,8 +1386,8 @@ int segy_writesubtr( segy_file* fp,
                      int start,
                      int stop,
                      int step,
-                     const float* buf,
-                     float* rangebuf,
+                     const void* buf,
+                     void* rangebuf,
                      long trace0,
                      int trace_bsize ) {
 
@@ -1387,7 +1396,9 @@ int segy_writesubtr( segy_file* fp,
     int err = subtr_seek( fp, traceno, start, stop, trace0, trace_bsize );
     if( err != SEGY_OK ) return err;
 
-    const size_t elems = abs( stop - start );
+    const int elems = abs( stop - start );
+    const int elemsize = sizeof( float );
+
 
     if( step == 1 ) {
         /*
@@ -1397,10 +1408,10 @@ int segy_writesubtr( segy_file* fp,
          * be handled by the stride-aware code path
          */
         if( fp->addr ) {
-            err = memread( fp, fp->cur, buf, sizeof( float ) * elems );
+            err = memread( fp, fp->cur, buf, elemsize * elems );
             if( err != SEGY_OK ) return err;
         } else {
-            const size_t writec = fwrite( buf, sizeof( float ), elems, fp->fp );
+            const int writec = fwrite( buf, elemsize, elems, fp->fp );
             if( writec != elems ) return SEGY_FWRITE_ERROR;
         }
 
@@ -1411,33 +1422,36 @@ int segy_writesubtr( segy_file* fp,
     int defstart = start < stop ? 0 : elems - 1;
     int slicelen = slicelength( start, stop, step );
 
+    // step is the distance between elems, but we're counting bytes
+    step *= elemsize;
+    const char* src = (const char*)buf;
+
     if( fp->addr ) {
         /* if mmap is on, strided write is trivial and fast */
-        float* cur = (float*)fp->cur + defstart;
-        for( ; slicelen > 0; cur += step, ++buf, --slicelen )
-            *cur = *buf;
+        char* cur = (char*)fp->cur + elemsize * defstart;
+        for( ; slicelen > 0; cur += step, src += elemsize, --slicelen )
+            memcpy( cur, src, elemsize );
 
         return SEGY_OK;
     }
 
-    const int elemsize = elems * sizeof( float );
-    float* tracebuf = rangebuf ? rangebuf : malloc( elemsize );
+    void* tracebuf = rangebuf ? rangebuf : malloc( elems * elemsize );
 
     // like in readsubtr, read a larger chunk and then step through that
-    const size_t readc = fread( tracebuf, sizeof( float ), elems, fp->fp );
+    const int readc = fread( tracebuf, elemsize, elems, fp->fp );
     if( readc != elems ) { free( tracebuf ); return SEGY_FREAD_ERROR; }
     /* rewind, because fread advances the file pointer */
-    err = fseek( fp->fp, -elemsize, SEEK_CUR );
+    err = fseek( fp->fp, -(elems * elemsize), SEEK_CUR );
     if( err != 0 ) {
         if( !rangebuf ) free( tracebuf );
         return SEGY_FSEEK_ERROR;
     }
 
-    float* cur = tracebuf + defstart;
-    for( ; slicelen > 0; cur += step, --slicelen, ++buf )
-        *cur = *buf;
+    char* cur = (char*)tracebuf + elemsize * defstart;
+    for( ; slicelen > 0; cur += step, --slicelen, src += elemsize )
+        memcpy( cur, src, elemsize );
 
-    const size_t writec = fwrite( tracebuf, sizeof( float ), elems, fp->fp );
+    const int writec = fwrite( tracebuf, elemsize, elems, fp->fp );
     if( !rangebuf ) free( tracebuf );
 
     if( writec != elems ) return SEGY_FWRITE_ERROR;
@@ -1447,20 +1461,23 @@ int segy_writesubtr( segy_file* fp,
 
 int segy_to_native( int format,
                     long long size,
-                    float* buf ) {
+                    void* buf ) {
 
     assert( sizeof( float ) == sizeof( uint32_t ) );
+    const int elemsize = sizeof( float );
+    char* dst = (char*)buf;
 
     uint32_t u;
     for( long long i = 0; i < size; ++i ) {
-        memcpy( &u, buf + i, sizeof( uint32_t ) );
+        const long long pos = i * elemsize;
+        memcpy( &u, dst + pos, sizeof( uint32_t ) );
         u = ntohl( u );
-        memcpy( buf + i, &u, sizeof( uint32_t ) );
+        memcpy( dst + pos, &u, sizeof( uint32_t ) );
     }
 
     if( format == SEGY_IBM_FLOAT_4_BYTE ) {
         for( long long i = 0; i < size; ++i )
-            ibm_native( buf + i );
+            ibm_native( dst + i * elemsize );
     }
 
     return SEGY_OK;
@@ -1468,21 +1485,24 @@ int segy_to_native( int format,
 
 int segy_from_native( int format,
                       long long size,
-                      float* buf ) {
+                      void* buf ) {
 
     assert( sizeof( float ) == sizeof( uint32_t ) );
+    const int elemsize = sizeof( float );
+    char* dst = (char*)buf;
 
     uint32_t u;
 
     if( format == SEGY_IBM_FLOAT_4_BYTE ) {
         for( long long i = 0; i < size; ++i )
-            native_ibm( buf + i );
+            native_ibm( dst + i * elemsize );
     }
 
     for( long long i = 0; i < size; ++i ) {
-        memcpy( &u, buf + i, sizeof( uint32_t ) );
+        const long long pos = i * elemsize;
+        memcpy( &u, dst + pos, sizeof( uint32_t ) );
         u = htonl( u );
-        memcpy( buf + i, &u, sizeof( uint32_t ) );
+        memcpy( dst + pos, &u, sizeof( uint32_t ) );
     }
 
     return SEGY_OK;
@@ -1520,18 +1540,17 @@ int segy_read_line( segy_file* fp,
                     int line_length,
                     int stride,
                     int offsets,
-                    float* buf,
+                    void* buf,
                     long trace0,
                     int trace_bsize ) {
 
     assert( sizeof( float ) == sizeof( int32_t ) );
-    assert( trace_bsize % 4 == 0 );
-    const int trace_data_size = trace_bsize / 4;
 
+    char* dst = (char*) buf;
     stride *= offsets;
 
-    for( ; line_length--; line_trace0 += stride, buf += trace_data_size ) {
-        int err = segy_readtrace( fp, line_trace0, buf, trace0, trace_bsize );
+    for( ; line_length--; line_trace0 += stride, dst += trace_bsize ) {
+        int err = segy_readtrace( fp, line_trace0, dst, trace0, trace_bsize );
         if( err != 0 ) return err;
     }
 
@@ -1554,20 +1573,19 @@ int segy_write_line( segy_file* fp,
                      int line_length,
                      int stride,
                      int offsets,
-                     const float* buf,
+                     const void* buf,
                      long trace0,
                      int trace_bsize ) {
     if( !fp->writable ) return SEGY_READONLY;
 
     assert( sizeof( float ) == sizeof( int32_t ) );
-    assert( trace_bsize % 4 == 0 );
-    const int trace_data_size = trace_bsize / 4;
 
+    const char* src = (const char*) buf;
     line_trace0 *= offsets;
     stride *= offsets;
 
-    for( ; line_length--; line_trace0 += stride, buf += trace_data_size ) {
-        int err = segy_writetrace( fp, line_trace0, buf, trace0, trace_bsize );
+    for( ; line_length--; line_trace0 += stride, src += trace_bsize ) {
+        int err = segy_writetrace( fp, line_trace0, src, trace0, trace_bsize );
         if( err != 0 ) return err;
     }
 
