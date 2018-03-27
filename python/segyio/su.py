@@ -3,18 +3,23 @@ from segyio import TraceField as tf
 from segyio import BinField as bf
 
 class su(Enum):
-    """ Since v1.1
-        Seismic Unix style aliases for binary and trace header fields.
+    """Seismic Unix aliases
 
-    About names:
-        Seismic Unix does not have names for all possible fields, as it came
-        around during an early revision of SEG-Y, and names for these fields
-        are created by segyio in their absence. If Seismic Unix starts
-        providing names for these fields, they will be added to these alies,
-        and in conflicts take presedence after some time. If there are no
-        conflicts, segyio names are considered for deprecation on a
-        case-by-case basis, but will most likely be supported along with the
-        Seismic Unix name.
+    Seismic Unix style aliases for binary and trace header fields.
+
+    Notes
+    -----
+
+    .. versionadded: 1.1
+
+    Seismic Unix does not have names for all possible fields, as it came
+    around during an early revision of SEG-Y, and names for these fields
+    are created by segyio in their absence. If Seismic Unix starts
+    providing names for these fields, they will be added to these alies,
+    and in conflicts take presedence after some time. If there are no
+    conflicts, segyio names are considered for deprecation on a
+    case-by-case basis, but will most likely be supported along with the
+    Seismic Unix name.
     """
 # trace
     tracl  = tf.TRACE_SEQUENCE_LINE

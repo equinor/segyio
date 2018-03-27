@@ -2,6 +2,13 @@ from segyio import Enum
 
 
 class TraceField(Enum):
+    """Trace header field enumerator
+
+    See also
+    -------
+    segyio.su : Seismic unix aliases for header fields
+    """
+
     TRACE_SEQUENCE_LINE = 1
     TRACE_SEQUENCE_FILE = 5
     FieldRecord = 9
