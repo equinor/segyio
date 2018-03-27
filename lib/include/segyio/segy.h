@@ -3,7 +3,6 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
 
 #define SEGY_BINARY_HEADER_SIZE 400
 #define SEGY_TEXT_HEADER_SIZE 3200
