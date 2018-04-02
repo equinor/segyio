@@ -18,6 +18,10 @@ function pre_build {
 
     mkdir build-centos5
     pushd build-centos5
+
+    # the cmake binary is compiled for 686, and the centos5 docker image does
+    # not provide libc.i686 by default
+    yum install -y glibc.i686
     export cmake=cmake-2.8.12.2-Linux-i386
     wget --no-check-certificate https://cmake.org/files/v2.8/cmake-2.8.12.2-Linux-i386.tar.gz
     tar xzvf $cmake.tar.gz
