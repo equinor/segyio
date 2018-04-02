@@ -874,6 +874,30 @@ def test_create_unstructured_hasattrs(tmpdir):
         assert not dst.xlines
         assert dst.unstructured
 
+def test_create_from_naught_unstructured(tmpdir):
+    spec = segyio.spec()
+    spec.format = 5
+    spec.samples = range(150)
+    spec.tracecount = 50
+
+    with segyio.create(tmpdir / "unstructured.sgy", spec) as dst:
+        tr = np.array(range(150), dtype = np.single)
+
+        for i in range(len(dst.trace)):
+            dst.trace[i] = tr
+            tr += 1
+
+        # Set header field 'offset' to 1 in all headers
+        dst.header = {TraceField.offset: 1}
+
+    with segyio.open(tmpdir / "unstructured.sgy") as f:
+        assert 1 == approx(f.trace[1][0], abs=1e-4)
+        assert 2 == approx(f.trace[1][1], abs=1e-4)
+        assert 150 == approx(f.trace[1][-1], abs=1e-4)
+        assert 149 == approx(f.trace[-1][100], abs=1e-4)
+        assert f.header[10][TraceField.offset] == f.header[25][TraceField.offset]
+        assert 1 == f.header[1][TraceField.offset]
+
 
 def test_create_write_lines(tmpdir):
     mklines(tmpdir / "mklines.sgy")
