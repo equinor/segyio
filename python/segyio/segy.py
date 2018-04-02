@@ -51,6 +51,7 @@ class SegyFile(object):
         self._xlines = None
         self._offsets = None
         self._samples = None
+        self._sorting = None
 
         # private values
         self._iline_length = None

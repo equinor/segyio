@@ -786,7 +786,6 @@ def test_create_sgy_shorter_traces(tmpdir):
             assert 20 == len(dst.samples)
             assert [x + 100 for x in src.ilines] == list(dst.ilines)
 
-
 def test_create_from_naught(tmpdir):
     spec = segyio.spec()
     spec.format = 5
@@ -860,6 +859,20 @@ def test_create_from_naught_prestack(tmpdir):
 
         for x, y in zip(f.iline[:, :], cube):
             assert list(x.flatten()) == list(y.flatten())
+
+def test_create_unstructured_hasattrs(tmpdir):
+    spec = segyio.spec()
+    spec.format = 5
+    spec.samples = range(150)
+    spec.tracecount = 50
+
+    with segyio.create(tmpdir / "mk.sgy", spec) as dst:
+        # accessing the sorting, inline and crossline attributes should work,
+        # but not raise errors
+        assert not dst.sorting
+        assert not dst.ilines
+        assert not dst.xlines
+        assert dst.unstructured
 
 
 def test_create_write_lines(tmpdir):
