@@ -26,6 +26,7 @@ matrix:
           env:
             - SCAN="scan-build --status-bugs"
             - SOURCEDEPLOY=1
+            - MKDOC="-DBUILD_DOC=ON -DSPHINX_ARGS=-WT"
         - os: osx
           language: generic
           env: MB_PYTHON_VERSION=2.7
@@ -66,7 +67,7 @@ install:
         brew update && brew install cppcheck;
     fi
   - pip install -r requirements.txt
-  - pip install bandit setuptools setuptools-scm pytest pytest-runner
+  - pip install bandit setuptools setuptools-scm pytest pytest-runner sphinx
 
 before_script:
   - enabled="-DBUILD_PYTHON=OFF -DBUILD_MEX=OFF"
@@ -81,6 +82,7 @@ before_script:
           -DBUILD_SHARED_LIBS=ON
           -DCMAKE_BUILD_TYPE=Release
           -DCMAKE_INSTALL_NAME_DIR=/usr/local/lib
+          $MKDOC
           $enabled ..
   - cppcheck --enable=style,portability,performance,warning
              --library=posix
