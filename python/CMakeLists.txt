@@ -136,17 +136,25 @@ if(BUILD_PYDOC)
 endif()
 
 if(BUILD_PYDOC AND sphinx)
+    # use the -d argument to avoid putting cache dir in docs/, because that
+    # directory will be install'd
     add_custom_target(pydoc
         COMMAND ${sphinx}
+            -d ${CMAKE_CURRENT_BINARY_DIR}/.doctrees
             ${SPHINX_ARGS}
             ${CMAKE_CURRENT_SOURCE_DIR}/docs
             ${CMAKE_CURRENT_BINARY_DIR}/docs
         DEPENDS docs/conf.py
                 docs/index.rst
                 docs/segyio.rst
-        COMMENT Building python documentation with sphinx
+        COMMENT "Building python documentation with sphinx"
     )
     add_dependencies(doc pydoc)
+
+    install(
+        DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/docs/
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/doc/segyio
+    )
 endif()
 
 if(NOT BUILD_TESTING)
