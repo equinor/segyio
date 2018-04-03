@@ -499,6 +499,7 @@ int main( int argc, char** argv ) {
         exit( errmsg( errno, "Unable to determine number of traces in file" ) );
 
     for( range* r = opts.r; r < opts.r + opts.rsize; ++r ) {
+        if( r->start == 0 ) r->start = 1;
         if( r->stop == 0 ) r->stop = r->start;
         if( r->step == 0 ) r->step = 1;
     }
