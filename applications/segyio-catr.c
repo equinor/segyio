@@ -303,7 +303,7 @@ static int help() {
           "-s,  --strict                fail on unreadable tracefields\n"
           "-S,  --non-strict            don't fail on unreadable tracefields\n"
           "                             this is the default behaviour\n"
-          "-n,  --segyio-names          print with segyio tracefield names\n"
+          "-k,  --segyio                print with segyio tracefield names\n"
           "-v,  --verbose               increase verbosity\n"
           "     --version               output version information and exit\n"
           "     --help                  display this help and exit\n"
@@ -474,6 +474,7 @@ int main( int argc, char** argv ) {
         default: labels = su; break;
     }
 
+    /* verify all ranges are sane */
     for( range* r = opts.r; r < opts.r + opts.rsize; ++r ) {
         if( r->start > r->stop && strict )
             exit( errmsg( -3, "Range is empty" ) );
@@ -498,7 +499,12 @@ int main( int argc, char** argv ) {
     if( err )
         exit( errmsg( errno, "Unable to determine number of traces in file" ) );
 
+    /*
+     * If any range field is defaulted (= 0), expand the defaults into sane
+     * ranges
+     */
     for( range* r = opts.r; r < opts.r + opts.rsize; ++r ) {
+        if( r->start == 0 ) r->start = 1;
         if( r->stop == 0 ) r->stop = r->start;
         if( r->step == 0 ) r->step = 1;
     }
