@@ -303,7 +303,7 @@ static int help() {
           "-s,  --strict                fail on unreadable tracefields\n"
           "-S,  --non-strict            don't fail on unreadable tracefields\n"
           "                             this is the default behaviour\n"
-          "-n,  --segyio-names          print with segyio tracefield names\n"
+          "-k,  --segyio                print with segyio tracefield names\n"
           "-v,  --verbose               increase verbosity\n"
           "     --version               output version information and exit\n"
           "     --help                  display this help and exit\n"
