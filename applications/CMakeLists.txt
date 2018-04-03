@@ -88,7 +88,14 @@ set_tests_properties(catb.fail.nosegy
                      cath.fail.noarg
     PROPERTIES WILL_FAIL ON)
 
-add_custom_target(test-app-output ALL DEPENDS catb.out cath.out catr.out)
+add_custom_target(test-app-output
+    ALL
+    DEPENDS catb.out
+            cath.out
+            catr.out
+            crop-ns.out
+            crop-ns.sgy
+)
 add_custom_command(
     OUTPUT catb.out cath.out catr.out
     COMMENT "running applications for output comparison"
@@ -100,6 +107,14 @@ add_custom_command(
     COMMAND segyio-cath ${small} > cath.out
     COMMAND segyio-catr -r 4 9 -t 12 ${small} > catr.out
 )
+add_custom_command(
+    OUTPUT crop-ns.out crop-ns.sgy
+    COMMENT "running applications for crop testing"
+    DEPENDS segyio-crop segyio-catr
+            test/crop-ns.output
+    COMMAND segyio-crop -S 25 ${small} crop-ns.sgy
+    COMMAND segyio-catr crop-ns.sgy > crop-ns.out
+)
 
 add_test(NAME catb.output
          COMMAND ${CMAKE_COMMAND} -E compare_files ${test}/catb.output catb.out
@@ -109,4 +124,9 @@ add_test(NAME cath.output
 )
 add_test(NAME catr.output
          COMMAND ${CMAKE_COMMAND} -E compare_files ${test}/catr.output catr.out
+)
+
+add_test(NAME crop.samplecount
+         COMMAND ${CMAKE_COMMAND} -E compare_files ${test}/crop-ns.output
+                                                   crop-ns.out
 )
