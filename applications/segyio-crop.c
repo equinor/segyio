@@ -453,6 +453,12 @@ int main( int argc, char** argv ) {
     if( sz != 1 ) exit( errmsg2( errno, "Unable to write binary header",
                                          strerror( errno ) ) );
 
+    if( verbosity > 0 )
+        printf( "Copied %lld traces\n", traces );
+
+    if( !traces )
+        fprintf( stderr, "segyio-crop: no traces copied\n" );
+
     free( trace );
     fclose( dst );
     fclose( src );
