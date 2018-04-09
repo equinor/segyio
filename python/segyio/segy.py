@@ -67,7 +67,13 @@ class SegyFile(object):
         self._tracecount = metrics['tracecount']
         self._ext_headers = metrics['ext_headers']
 
-        self._dtype = np.dtype(np.single)
+        self._dtype = np.dtype({
+            1: np.float32,
+            2: np.int32,
+            3: np.int16,
+            5: np.float32,
+            8: np.int8,
+        }[self._fmt])
 
         super(SegyFile, self).__init__()
 

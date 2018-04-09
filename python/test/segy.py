@@ -1163,3 +1163,55 @@ def test_no_16bit_overflow_tracecount(tmpdir):
                     segyio.TraceField.CROSSLINE_3D: 10,
                     segyio.TraceField.offset: 1,
         }
+
+def test_open_2byte_int_format():
+    with segyio.open('test-data/f3.sgy') as f:
+        assert int(f.format)  == 3
+        assert len(f.samples) == 75
+        assert f.tracecount   == 414
+        assert list(f.ilines) == list(range(111, 111 + 23))
+        assert list(f.xlines) == list(range(875, 875 + 18))
+        assert f.dtype        == np.dtype(np.int16)
+
+def test_readtrace_int16():
+    with segyio.open('test-data/f3.sgy') as f:
+        tr = f.trace[10]
+        assert list(tr[20:45: 5]) == [0, -1170, 5198, -2213, -888]
+        assert list(tr[40:19:-5]) == [-888, -2213, 5198, -1170, 0]
+        assert list(tr[53:50:-1]) == [-2609, -2625, 681]
+
+
+@tmpfiles('test-data/f3.sgy')
+def test_writetrace_int16(tmpdir):
+    with segyio.open(tmpdir / 'f3.sgy', mode = 'r+') as f:
+        tr = np.asarray(range(len(f.samples)), dtype = np.int16)
+        f.trace[0] = tr
+        f.trace[1] = tr + 1
+
+    with segyio.open(tmpdir / 'f3.sgy') as f:
+        # read both with trace and raw-with-slice, since sliced raw allocates
+        # and internal buffer that must match the type
+        assert np.array_equal(f.trace[0], tr)
+        assert np.array_equal(f.trace[1], tr + 1)
+        assert np.array_equal(f.trace.raw[:2], [tr, tr+1])
+
+@tmpfiles('test-data/f3.sgy')
+def test_write_iline_int16(tmpdir):
+    with segyio.open(tmpdir / 'f3.sgy', mode = 'r+') as f:
+        shape = f.iline[f.ilines[0]].shape
+        il = np.arange(np.prod(shape), dtype = np.int16).reshape(shape)
+        f.iline[f.ilines[0]] = il
+
+    with segyio.open(tmpdir / 'f3.sgy') as f:
+        assert np.array_equal(f.iline[f.ilines[0]], il)
+
+
+@tmpfiles('test-data/small.sgy')
+def test_missing_format_ibmfloat_fallback(tmpdir):
+    with segyio.open(tmpdir / 'small.sgy', mode = 'r+') as f:
+        f.bin[segyio.su.format] = 0
+
+    with pytest.warns(UserWarning):
+        with segyio.open(tmpdir / 'small.sgy') as f:
+            assert int(f.format) == 1
+            assert f.dtype       == np.dtype(np.float32)
