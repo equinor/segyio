@@ -1065,10 +1065,11 @@ def test_segyio_types():
 
 
 def test_depth_slice_reading():
+    from itertools import islice
     with segyio.open("test-data/small.sgy") as f:
         assert len(f.depth_slice) == len(f.samples)
 
-        for depth_sample in range(len(f.samples)):
+        for depth_sample in range(len(f.samples))[::5]:
             depth_slice = f.depth_slice[depth_sample]
             assert isinstance(depth_slice, np.ndarray)
             assert depth_slice.shape == (5, 5)
@@ -1077,7 +1078,8 @@ def test_depth_slice_reading():
                 i, j = x - f.ilines[0], y - f.xlines[0]
                 assert depth_slice[i][j] == approx(f.iline[x][j][depth_sample], abs=1e-6)
 
-        for index, depth_slice in enumerate(f.depth_slice):
+        itr = iter(enumerate(f.depth_slice))
+        for index, depth_slice in itr:
             assert isinstance(depth_slice, np.ndarray)
             assert depth_slice.shape == (5, 5)
 
@@ -1085,12 +1087,15 @@ def test_depth_slice_reading():
                 i, j = x - f.ilines[0], y - f.xlines[0]
                 assert depth_slice[i][j] == approx(f.iline[x][j][index], abs=1e-6)
 
+            next(islice(itr, 5, 5), None)
+
     with pytest.raises(KeyError):
         _ = f.depth_slice[len(f.samples)]
 
 
 @tmpfiles("test-data/small.sgy")
 def test_depth_slice_writing(tmpdir):
+    from itertools import islice
 
     buf = np.empty(shape=(5, 5), dtype=np.single)
 
@@ -1105,8 +1110,10 @@ def test_depth_slice_writing(tmpdir):
         assert np.allclose(f.depth_slice[7], buf * 3.14)
 
         f.depth_slice = [buf * i for i in range(len(f.depth_slice))]  # assign to all depths
-        for index, depth_slice in enumerate(f.depth_slice):
+        itr = iter(enumerate(f.depth_slice))
+        for index, depth_slice in itr:
             assert np.allclose(depth_slice, buf * index)
+            next(islice(itr, 3, 3), None)
 
 def test_no_16bit_overflow_tracecount(tmpdir):
     spec = segyio.spec()
