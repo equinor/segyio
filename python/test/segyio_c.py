@@ -115,7 +115,7 @@ def get_instance_segyiofd(tmpdir,
     path = str(tmpdir)
     f = os.path.join(path, file_name)
     if binary is not None:
-        return _segyio.segyiofd(f, mode, binary)
+        return _segyio.segyiofd(f, mode, tracecount, binary)
     else:
         return _segyio.segyiofd(f, mode)
 
