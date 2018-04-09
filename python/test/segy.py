@@ -678,15 +678,17 @@ def test_open_fails_unstructured():
 
 @tmpfiles("test-data/small.sgy")
 def test_assign_all_traces(tmpdir):
-    shutil.copy(tmpdir / 'small.sgy', tmpdir / 'copy_small.sgy')
+    orig = str(tmpdir / 'small.sgy')
+    copy = str(tmpdir / 'copy.sgy')
+    shutil.copy(orig, copy)
 
-    with segyio.open(tmpdir / 'small.sgy') as f:
+    with segyio.open(orig) as f:
         traces = f.trace.raw[:] * 2.0
 
-    with segyio.open(tmpdir / 'copy_small.sgy', 'r+') as f:
+    with segyio.open(copy, 'r+') as f:
         f.trace[:] = traces[:]
 
-    with segyio.open(tmpdir / 'copy_small.sgy') as f:
+    with segyio.open(copy) as f:
         assert np.array_equal(f.trace.raw[:], traces)
 
 
@@ -704,7 +706,9 @@ def test_traceaccess_from_array():
 
 @tmpfiles("test-data/small.sgy")
 def test_create_sgy(tmpdir):
-    with segyio.open(tmpdir / "small.sgy") as src:
+    small = str(tmpdir / 'small.sgy')
+    fresh = str(tmpdir / 'fresh.sgy')
+    with segyio.open(small) as src:
         spec = segyio.spec()
         spec.format = int(src.format)
         spec.sorting = int(src.sorting)
@@ -712,7 +716,7 @@ def test_create_sgy(tmpdir):
         spec.ilines = src.ilines
         spec.xlines = src.xlines
 
-        with segyio.create(tmpdir / "small_created.sgy", spec) as dst:
+        with segyio.create(fresh, spec) as dst:
             dst.text[0] = src.text[0]
             dst.bin = src.bin
 
@@ -732,19 +736,21 @@ def test_create_sgy(tmpdir):
             # for dsttr, srctr in zip(dst.trace, src.trace):
             #    dsttr = srctr
 
-    assert filecmp.cmp(tmpdir / "small.sgy", tmpdir / "small_created.sgy")
+    assert filecmp.cmp(small, fresh)
 
 
 @tmpfiles("test-data/small.sgy")
 def test_create_sgy_truncate(tmpdir):
-    with segyio.open(tmpdir / "small.sgy") as src:
+    small = str(tmpdir / 'small.sgy')
+    trunc = str(tmpdir / 'text-truncated.sgy')
+    with segyio.open(small) as src:
         spec = segyio.tools.metadata(src)
 
         # repeat the text header 3 times
         text = src.text[0]
         text = text + text + text
 
-        with segyio.create(tmpdir / "text-truncated.sgy", spec) as dst:
+        with segyio.create(trunc, spec) as dst:
             dst.bin = src.bin
             dst.text[0] = text
 
@@ -754,7 +760,7 @@ def test_create_sgy_truncate(tmpdir):
 
             dst.trace = src.trace
 
-    assert filecmp.cmp(tmpdir / "small.sgy", tmpdir / "text-truncated.sgy")
+    assert filecmp.cmp(small, trunc)
 
 
 @tmpfiles("test-data/small.sgy")
