@@ -5,6 +5,8 @@
 [![PyPI Updates](https://pyup.io/repos/github/Statoil/segyio/shield.svg)](https://pyup.io/repos/github/Statoil/segyio/)
 [![Python 3](https://pyup.io/repos/github/Statoil/segyio/python-3-shield.svg)](https://pyup.io/repos/github/Statoil/segyio/)
 
+[readthedocs](https://segyio.readthedocs.io/)
+
 ## Index ##
 
 * [Introduction](#introduction)
@@ -51,9 +53,10 @@ To catch up on the latest development and features, see the
 When segyio is built and installed, you're ready to start programming! Check
 out the [tutorial](#tutorial), [examples](#examples), and the [example
 programs](python/examples). For a technical reference with examples and small
-recipes, start your favourite Python interpreter and type `help(segyio)` to get
-started - it is written with pydoc and should integrate well with IDLE, pycharm
-and other Python tools.
+recipes, [read the docs](https://segyio.readthedocs.io/) or start your
+favourite Python interpreter and type `help(segyio)` to get started - it is
+written with pydoc and should integrate well with IDLE, pycharm and other
+Python tools.
 
 ### Quick start ###
 ```python

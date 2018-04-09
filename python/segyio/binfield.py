@@ -2,6 +2,13 @@ from segyio import Enum
 
 
 class BinField(Enum):
+    """Trace header field enumerator
+
+    See also
+    -------
+    segyio.su : Seismic unix aliases for header fields
+    """
+
     JobID = 3201
     LineNumber = 3205
     ReelNumber = 3209

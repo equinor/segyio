@@ -61,6 +61,7 @@ option(BUILD_SHARED_LIBS "Build language bindings shared"           OFF)
 option(BUILD_PYTHON      "Build Python library"                     ON)
 option(REQUIRE_PYTHON    "Fail cmake if python cannot be built"     OFF)
 option(BUILD_MEX         "Build Matlab mex files"                   OFF)
+option(BUILD_DOC         "Build documentation"                      OFF)
 
 check_include_file(netinet/in.h     HAVE_NETINET_IN_H)
 check_include_file(arpa/inet.h      HAVE_ARPA_INET_H)
@@ -123,6 +124,10 @@ if (NOT MSVC)
 else()
     list(APPEND warnings-c /W3 /wd4996)
 endif ()
+
+# add documentation master target for other documentation sub targets to hook
+# into
+add_custom_target(doc ALL)
 
 set(testdata ${CMAKE_CURRENT_SOURCE_DIR}/test-data)
 

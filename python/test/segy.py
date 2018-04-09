@@ -31,29 +31,29 @@ def test_inline_4():
 
         data = f.iline[4]
 
-        assert 4.2, approx(data[0, 0], abs=1e-6)
+        assert 4.2 == approx(data[0, 0], abs=1e-6)
         # middle sample
-        assert 4.20024, approx(data[0, sample_count // 2 - 1], abs=1e-6)
+        assert 4.20024 == approx(data[0, sample_count // 2 - 1], abs=1e-6)
         # last sample
-        assert 4.20049, approx(data[0, -1], abs=1e-6)
+        assert 4.20049 == approx(data[0, -1], abs=1e-6)
 
         # middle xline
         middle_line = 2
         # first sample
-        assert 4.22, approx(data[middle_line, 0], abs=1e-5)
+        assert 4.22 == approx(data[middle_line, 0], abs=1e-5)
         # middle sample
-        assert 4.22024, approx(data[middle_line, sample_count // 2 - 1], abs=1e-6)
+        assert 4.22024 == approx(data[middle_line, sample_count // 2 - 1], abs=1e-6)
         # last sample
-        assert 4.22049, approx(data[middle_line, -1], abs=1e-6)
+        assert 4.22049 == approx(data[middle_line, -1], abs=1e-6)
 
         # last xline
         last_line = (len(f.xlines) - 1)
         # first sample
-        assert 4.24, approx(data[last_line, 0], abs=1e-5)
+        assert 4.24 == approx(data[last_line, 0], abs=1e-5)
         # middle sample
-        assert 4.24024, approx(data[last_line, sample_count // 2 - 1], abs=1e-6)
+        assert 4.24024 == approx(data[last_line, sample_count // 2 - 1], abs=1e-6)
         # last sample
-        assert 4.24049, approx(data[last_line, sample_count - 1], abs=1e-6)
+        assert 4.24049 == approx(data[last_line, sample_count - 1], abs=1e-6)
 
 
 def test_xline_22():
@@ -64,29 +64,29 @@ def test_xline_22():
 
         # first iline
         # first sample
-        assert 1.22, approx(data[0, 0], abs=1e-5)
+        assert 1.22 == approx(data[0, 0], abs=1e-5)
         # middle sample
-        assert 1.22024, approx(data[0, size // 2 - 1], abs=1e-6)
+        assert 1.22024 == approx(data[0, size // 2 - 1], abs=1e-6)
         # last sample
-        assert 1.22049, approx(data[0, size - 1], abs=1e-6)
+        assert 1.22049 == approx(data[0, size - 1], abs=1e-6)
 
         # middle iline
         middle_line = 2
         # first sample
-        assert 3.22, approx(data[middle_line, 0], abs=1e-5)
+        assert 3.22 == approx(data[middle_line, 0], abs=1e-5)
         # middle sample
-        assert 3.22024, approx(data[middle_line, size // 2 - 1], abs=1e-6)
+        assert 3.22024 == approx(data[middle_line, size // 2 - 1], abs=1e-6)
         # last sample
-        assert 3.22049, approx(data[middle_line, size - 1], abs=1e-6)
+        assert 3.22049 == approx(data[middle_line, size - 1], abs=1e-6)
 
         # last iline
         last_line = len(f.ilines) - 1
         # first sample
-        assert 5.22, approx(data[last_line, 0], abs=1e-5)
+        assert 5.22 == approx(data[last_line, 0], abs=1e-5)
         # middle sample
-        assert 5.22024, approx(data[last_line, size // 2 - 1], abs=1e-6)
+        assert 5.22024 == approx(data[last_line, size // 2 - 1], abs=1e-6)
         # last sample
-        assert 5.22049, approx(data[last_line, size - 1], abs=1e-6)
+        assert 5.22049 == approx(data[last_line, size - 1], abs=1e-6)
 
 
 def test_iline_slicing():
@@ -792,7 +792,6 @@ def test_create_sgy_shorter_traces(tmpdir):
             assert 20 == len(dst.samples)
             assert [x + 100 for x in src.ilines] == list(dst.ilines)
 
-
 def test_create_from_naught(tmpdir):
     spec = segyio.spec()
     spec.format = 5
@@ -818,10 +817,10 @@ def test_create_from_naught(tmpdir):
         dst.header = {TraceField.offset: 1}
 
     with segyio.open(tmpdir / "mk.sgy") as f:
-        assert 1, approx(f.trace[0][0], abs=1e-4)
-        assert 1.001, approx(f.trace[0][1], abs=1e-4)
-        assert 1.149, approx(f.trace[0][-1], abs=1e-4)
-        assert 50.100, approx(f.trace[-1][100], abs=1e-4)
+        assert 1 == approx(f.trace[0][0], abs=1e-4)
+        assert 1.001 == approx(f.trace[0][1], abs=1e-4)
+        assert 1.149 == approx(f.trace[0][-1], abs=1e-4)
+        assert 50.100 == approx(f.trace[-1][100], abs=1e-4)
         assert f.header[0][TraceField.offset] == f.header[1][TraceField.offset]
         assert 1 == f.header[1][TraceField.offset]
 
@@ -856,10 +855,10 @@ def test_create_from_naught_prestack(tmpdir):
                 dst.header.xline[xl, of] = {TraceField.CROSSLINE_3D: xl}
 
     with segyio.open(tmpdir / "mk-ps.sgy") as f:
-        assert 101.010, approx(f.trace[0][0], abs=1e-4)
-        assert 101.011, approx(f.trace[0][1], abs=1e-4)
-        assert 101.016, approx(f.trace[0][-1], abs=1e-4)
-        assert 503.025, approx(f.trace[-1][5], abs=1e-4)
+        assert 101.010 == approx(f.trace[0][0], abs=1e-4)
+        assert 101.011 == approx(f.trace[0][1], abs=1e-4)
+        assert 101.016 == approx(f.trace[0][-1], abs=1e-4)
+        assert 503.025 == approx(f.trace[-1][5], abs=1e-4)
         assert f.header[0][TraceField.offset] != f.header[1][TraceField.offset]
         assert 1 == f.header[0][TraceField.offset]
         assert 2 == f.header[1][TraceField.offset]
@@ -867,15 +866,53 @@ def test_create_from_naught_prestack(tmpdir):
         for x, y in zip(f.iline[:, :], cube):
             assert list(x.flatten()) == list(y.flatten())
 
+def test_create_unstructured_hasattrs(tmpdir):
+    spec = segyio.spec()
+    spec.format = 5
+    spec.samples = range(150)
+    spec.tracecount = 50
+
+    with segyio.create(tmpdir / "mk.sgy", spec) as dst:
+        # accessing the sorting, inline and crossline attributes should work,
+        # but not raise errors
+        assert not dst.sorting
+        assert not dst.ilines
+        assert not dst.xlines
+        assert dst.unstructured
+
+def test_create_from_naught_unstructured(tmpdir):
+    spec = segyio.spec()
+    spec.format = 5
+    spec.samples = range(150)
+    spec.tracecount = 50
+
+    with segyio.create(tmpdir / "unstructured.sgy", spec) as dst:
+        tr = np.array(range(150), dtype = np.single)
+
+        for i in range(len(dst.trace)):
+            dst.trace[i] = tr
+            tr += 1
+
+        # Set header field 'offset' to 1 in all headers
+        dst.header = {TraceField.offset: 1}
+
+    with segyio.open(tmpdir / "unstructured.sgy") as f:
+        assert 1 == approx(f.trace[1][0], abs=1e-4)
+        assert 2 == approx(f.trace[1][1], abs=1e-4)
+        assert 150 == approx(f.trace[1][-1], abs=1e-4)
+        assert 149 == approx(f.trace[-1][100], abs=1e-4)
+        assert f.header[10][TraceField.offset] == f.header[25][TraceField.offset]
+        assert 1 == f.header[1][TraceField.offset]
+
 
 def test_create_write_lines(tmpdir):
     mklines(tmpdir / "mklines.sgy")
 
     with segyio.open(tmpdir / "mklines.sgy") as f:
-        assert 1, approx(f.iline[1][0][0], abs=1e-4)
-        assert 2.004, approx(f.iline[2][0][4], abs=1e-4)
-        assert 2.014, approx(f.iline[2][1][4], abs=1e-4)
-        assert 8.043, approx(f.iline[8][4][3], abs=1e-4)
+        assert 1 == approx(f.iline[1][0][0], abs=1e-4)
+        assert 2.004 == approx(f.iline[2][0][4], abs=1e-4)
+        assert 2.014 == approx(f.iline[2][1][4], abs=1e-4)
+        assert 8.043 == approx(f.iline[8][4][3], abs=1e-4)
 
 
 def test_create_sgy_skip_lines(tmpdir):

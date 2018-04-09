@@ -41,44 +41,20 @@ def structured(spec):
 def create(filename, spec):
     """Create a new segy file.
 
-    Since v1.1
-
-    Unstructured file creation since v1.4
-
     Create a new segy file with the geometry and properties given by `spec`.
     This enables creating SEGY files from your data. The created file supports
     all segyio modes, but has an emphasis on writing. The spec must be
     complete, otherwise an exception will be raised. A default, empty spec can
-    be created with `segyio.spec()`.
+    be created with ``segyio.spec()``.
 
     Very little data is written to the file, so just calling create is not
     sufficient to re-read the file with segyio. Rather, every trace header and
     trace must be written to the file to be considered complete.
 
-    Create should be used together with python's `with` statement. This ensure
+    Create should be used together with python's ``with`` statement. This ensure
     the data is written. Please refer to the examples.
 
-    The `spec` is any object that has the following attributes:
-        Mandatory:
-            iline   (int/segyio.BinField)
-            xline   (int/segyio.BinField)
-            samples (array-like of int)
-            format  (int), 1 = IBM float, 5 = IEEE float
-
-        Exclusive:
-            ilines  (array-like of int)
-            xlines  (array-like of int)
-            offsets (array-like of int)
-            sorting (int/segyio.TraceSortingFormat)
-
-            OR
-
-            tracecount (int)
-
-        Optional:
-            ext_headers (int)
-
-    The `segyio.spec()` function will default offsets and everything in the
+    The ``segyio.spec()`` function will default offsets and everything in the
     mandatory group, except format and samples, and requires the caller to fill
     in *all* the fields in either of the exclusive groups.
 
@@ -86,49 +62,101 @@ def create(filename, spec):
     is set, the resulting file will be considered unstructured. If the
     tracecount is set, and all fields of the first exclusive group are
     specified, the file is considered structured and the tracecount is inferred
-    from the xlines/ilines/offsets. The offsets are defaulted to [1] by
-    `segyio.spec()`.
+    from the xlines/ilines/offsets. The offsets are defaulted to ``[1]`` by
+    ``segyio.spec()``.
 
-    Args:
-        filename (str-like): Path to file to open.
-        spec (:obj: `spec`): Structure of the segy file.
+    Parameters
+    ----------
+    filename : str
+        Path to file to create
+    spec : segyio.spec
+        Structure of the segy file
 
-    Examples:
-        Create a file::
-            >>> spec = segyio.spec()
-            >>> spec.ilines  = [1, 2, 3, 4]
-            >>> spec.xlines  = [11, 12, 13]
-            >>> spec.samples = list(range(50))
-            >>> spec.sorting = 2
-            >>> spec.format  = 1
-            >>> with segyio.create(path, spec) as f:
-            ...     ## fill the file with data
-            ...
+    Returns
+    -------
+    file : segyio.SegyFile
+        An open segyio file handle, similar to that returned by `segyio.open`
 
-        Copy a file, but shorten all traces by 50 samples::
-            >>> with segyio.open(srcpath) as src:
-            ...     spec = segyio.spec()
-            ...     spec.sorting = src.sorting
-            ...     spec.format = src.format
-            ...     spec.samples = src.samples[:len(src.samples) - 50]
-            ...     spec.ilines = src.ilines
-            ...     spec.xline = src.xlines
-            ...     with segyio.create(dstpath, spec) as dst:
-            ...         dst.text[0] = src.text[0]
-            ...         dst.bin = src.bin
-            ...         dst.header = src.header
-            ...         dst.trace = src.trace
+    See also
+    --------
+    segyio.spec : template for the `spec` argument
 
-        Copy a file, but shorten all traces by 50 samples (since v1.4)::
-            >>> with segyio.open(srcpath) as src:
-            ...     spec = segyio.tools.metadata(src)
-            ...     spec.samples = spec.samples[:len(spec.samples) - 50]
-            ...     with segyio.create(dstpath, spec) as dst:
-            ...         dst.text[0] = src.text[0]
-            ...         dst.bin = src.bin
-            ...         dst.header = src.header
-            ...         dst.trace = src.trace
-    :rtype: segyio.SegyFile
+
+    Notes
+    -----
+
+    .. versionadded:: 1.1
+
+    .. versionchanged:: 1.4
+       Support for creating unstructured files
+
+    The ``spec`` is any object that has the following attributes
+
+    Mandatory::
+
+        iline   : int or segyio.BinField
+        xline   : int or segyio.BinField
+        samples : array of int
+        format  : { 1, 5 }
+            1 = IBM float, 5 = IEEE float
+
+    Exclusive::
+
+        ilines  : array_like of int
+        xlines  : array_like of int
+        offsets : array_like of int
+        sorting : int or segyio.TraceSortingFormat
+
+        OR
+
+        tracecount : int
+
+    Optional::
+
+        ext_headers : int
+
+
+    Examples
+    --------
+
+    Create a file:
+
+    >>> spec = segyio.spec()
+    >>> spec.ilines  = [1, 2, 3, 4]
+    >>> spec.xlines  = [11, 12, 13]
+    >>> spec.samples = list(range(50))
+    >>> spec.sorting = 2
+    >>> spec.format  = 1
+    >>> with segyio.create(path, spec) as f:
+    ...     ## fill the file with data
+    ...     pass
+    ...
+
+    Copy a file, but shorten all traces by 50 samples:
+
+    >>> with segyio.open(srcpath) as src:
+    ...     spec = segyio.spec()
+    ...     spec.sorting = src.sorting
+    ...     spec.format = src.format
+    ...     spec.samples = src.samples[:len(src.samples) - 50]
+    ...     spec.ilines = src.ilines
+    ...     spec.xline = src.xlines
+    ...     with segyio.create(dstpath, spec) as dst:
+    ...         dst.text[0] = src.text[0]
+    ...         dst.bin = src.bin
+    ...         dst.header = src.header
+    ...         dst.trace = src.trace
+
+    Copy a file, but shorten all traces by 50 samples (since v1.4):
+
+    >>> with segyio.open(srcpath) as src:
+    ...     spec = segyio.tools.metadata(src)
+    ...     spec.samples = spec.samples[:len(spec.samples) - 50]
+    ...     with segyio.create(dstpath, spec) as dst:
+    ...         dst.text[0] = src.text[0]
+    ...         dst.bin = src.bin
+    ...         dst.header = src.header
+    ...         dst.trace = src.trace
     """
 
 

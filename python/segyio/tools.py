@@ -4,27 +4,54 @@ import textwrap
 
 
 def dt(f, fallback_dt=4000.0):
-    """Since v1.1
-    Find a *dt* value in the SegyFile. If none is found use the provided *fallback_dt* value.
+    """Delta-time
 
-    :type f: segyio.SegyFile
-    :type fallback_dt: float
-    :rtype: float
+    Infer a ``dt``, the sample rate, from the file. If none is found, use the
+    fallback.
+
+    Parameters
+    ----------
+
+    f : segyio.SegyFile
+    fallback_dt : float
+        delta-time to fall back to, in microseconds
+
+    Returns
+    -------
+    dt : float
+
+    Notes
+    -----
+
+    .. versionadded:: 1.1
+
     """
     return f.xfd.getdt(fallback_dt)
 
 
 def sample_indexes(segyfile, t0=0.0, dt_override=None):
-    """Since v1.1
-
+    """
     Creates a list of values representing the samples in a trace at depth or time.
     The list starts at *t0* and is incremented with am*dt* for the number of samples.
     If a *dt_override* is not provided it will try to find a *dt* in the file.
 
-    :type segyfile: segyio.SegyFile
-    :type t0: float
-    :type dt_override: float or None
-    :rtype: list[float]
+
+    Parameters
+    ----------
+    segyfile :  segyio.SegyFile
+    t0 : float
+        initial sample, or delay-recording-time
+    dt_override : float or None
+
+    Returns
+    -------
+    samples : array_like of float
+
+    Notes
+    -----
+
+    .. versionadded:: 1.1
+
     """
     if dt_override is None:
         dt_override = dt(segyfile)
@@ -33,15 +60,29 @@ def sample_indexes(segyfile, t0=0.0, dt_override=None):
 
 
 def create_text_header(lines):
-    """
-    Will create a "correct" SEG-Y textual header.
-    Every line will be prefixed with C## and there are 40 lines.
-    The input must be a dictionary with the line number[1-40] as a key.
-    The value for each key should be up to 76 character long string.
+    """Format textual header
 
-    :type lines: dict[int, str]
-    :rtype: str
+    Create a "correct" SEG-Y textual header.  Every line will be prefixed with
+    C## and there are 40 lines. The input must be a dictionary with the line
+    number[1-40] as a key. The value for each key should be up to 76 character
+    long string.
+
+    Parameters
+    ----------
+
+    lines : dict
+        `lines` dictionary with fields:
+
+        - ``no`` : line number (`int`)
+        - ``line`` : line (`str`)
+
+    Returns
+    -------
+
+    text : str
+
     """
+
     rows = []
     for line_no in range(1, 41):
         line = ""
@@ -54,12 +95,26 @@ def create_text_header(lines):
     return rows
 
 def wrap(s, width=80):
-    """Since v1.1
-    Formats the text input with newlines given the user specified width for each line
+    """
+    Formats the text input with newlines given the user specified width for
+    each line.
 
-    :type s: str
-    :type width: int
-    :rtype: str
+    Parameters
+    ----------
+
+    s : str
+    width : int
+
+    Returns
+    -------
+
+    text : str
+
+    Notes
+    -----
+
+    .. versionadded:: 1.1
+
     """
     return '\n'.join(textwrap.wrap(str(s), width=width))
 
@@ -67,22 +122,37 @@ def wrap(s, width=80):
 def native(data,
            format = segyio.SegySampleFormat.IBM_FLOAT_4_BYTE,
            copy = True):
-    """ Convert numpy array to native float
-
-    Since v1.1
-
-    :type data: numpy.ndarray
-    :type format: int|segyio.SegySampleFormat
-    :type copy: bool
-    :rtype: numpy.ndarray
+    """Convert numpy array to native float
 
     Converts a numpy array from raw segy trace data to native floats. Works for numpy ndarrays.
 
-    Examples:
-        Convert mmap'd trace to native float:
-        >>> d = np.memmap('file.sgy', offset = 3600, dtype = np.uintc)
-        >>> samples = 1500
-        >>> trace = segyio.tools.native(d[240:240+samples])
+    Parameters
+    ----------
+
+    data : numpy.ndarray
+    format : int or segyio.SegySampleFormat
+    copy : bool
+        If True, convert on a copy, and leave the input array unmodified
+
+    Returns
+    -------
+
+    data : numpy.ndarray
+
+    Notes
+    -----
+
+    .. versionadded:: 1.1
+
+    Examples
+    --------
+
+    Convert mmap'd trace to native float:
+
+    >>> d = np.memmap('file.sgy', offset = 3600, dtype = np.uintc)
+    >>> samples = 1500
+    >>> trace = segyio.tools.native(d[240:240+samples])
+
     """
 
     data = data.view( dtype = np.single )
@@ -93,40 +163,64 @@ def native(data,
     return segyio._segyio.native(data, format)
 
 def collect(itr):
-    """ Collect traces or lines into one ndarray
-
-    Since v1.1
+    """Collect traces or lines into one ndarray
 
     Eagerly copy a series of traces, lines or depths into one numpy ndarray. If
     collecting traces or fast-direction over a post-stacked file, reshaping the
-    resulting array is equivalent to calling `tools.cube`.
+    resulting array is equivalent to calling ``segyio.tools.cube``.
 
-    Examples:
+    Parameters
+    ----------
 
-    collect-cube identity::
-        >>> f = segyio.open('post-stack.sgy')
-        >>> x = segyio.tools.collect(f.traces[:])
-        >>> x = x.reshape((len(f.ilines), len(f.xlines), f.samples))
-        >>> numpy.all(x == segyio.tools.cube(f))
+    itr : iterable of numpy.ndarray
 
-    :type itr: iterable[numpy.ndarray]
-    :rtype: numpy.ndarray
+    Returns
+    -------
+
+    data : numpy.ndarray
+
+    Notes
+    -----
+
+    .. versionadded:: 1.1
+
+    Examples
+    --------
+
+    collect-cube identity:
+
+    >>> f = segyio.open('post-stack.sgy')
+    >>> x = segyio.tools.collect(f.traces[:])
+    >>> x = x.reshape((len(f.ilines), len(f.xlines), f.samples))
+    >>> numpy.all(x == segyio.tools.cube(f))
+
     """
     return np.stack([np.copy(x) for x in itr])
 
 def cube(f):
-    """ Read a full cube from a file
-
-    Since v1.1
+    """Read a full cube from a file
 
     Takes an open segy file (created with segyio.open) or a file name.
 
     If the file is a prestack file, the cube returned has the dimensions
-    (fast,slow,offset,sample). If it is post-stack (i.e. only the one offset),
-    the dimensions are normalised to (fast,slow,sample)
+    ``(fast, slow, offset, sample)``. If it is post-stack (only the one
+    offset), the dimensions are normalised to ``(fast, slow, sample)``
 
-    :type f: SegyFile|str
-    :rtype numpy.ndarray
+    Parameters
+    ----------
+
+    f : str or segyio.SegyFile
+
+    Returns
+    -------
+
+    cube : numpy.ndarray
+
+    Notes
+    -----
+
+    .. versionadded:: 1.1
+
     """
 
     if not isinstance(f, segyio.SegyFile):
@@ -144,21 +238,35 @@ def cube(f):
 def rotation(f, line = 'fast'):
     """ Find rotation of the survey
 
-    Since v1.2
-
-    Find the clock-wise rotation and origin of `line` as (rot,cdp-x,cdp-y)
+    Find the clock-wise rotation and origin of `line` as ``(rot, cdpx, cdpy)``
 
     The clock-wise rotation is defined as the angle in radians between line
     given by the first and last trace of the first line and the axis that gives
     increasing CDP-Y, in the direction that gives increasing CDP-X.
 
     By default, the first line is the 'fast' direction, which is inlines if the
-    file is inline sorted, and crossline if it's crossline sorted. `line`
-    should be any of 'fast', 'slow', 'iline', and 'xline'.
+    file is inline sorted, and crossline if it's crossline sorted.
 
-    :type f: SegyFile
-    :type line: str
-    :rtype (float, int, int)
+
+    Parameters
+    ----------
+
+    f : SegyFile
+    line : { 'fast', 'slow', 'iline', 'xline' }
+
+    Returns
+    -------
+
+    rotation : float
+    cdpx : int
+    cdpy : int
+
+
+    Notes
+    -----
+
+    .. versionadded:: 1.2
+
     """
 
     if f.unstructured:
@@ -186,17 +294,28 @@ def rotation(f, line = 'fast'):
     return rot, cdpx, cdpy
 
 def metadata(f):
-    """ Get survey structural properties and metadata
+    """Get survey structural properties and metadata
 
-    Since v1.4
-
-    Create a descriptor object that, when passed to `segyio.create()`, would
-    create a new file with the same structure, dimensions and metadata as `f`.
+    Create a description object that, when passed to ``segyio.create()``, would
+    create a new file with the same structure, dimensions, and metadata as
+    ``f``.
 
     Takes an open segy file (created with segyio.open) or a file name.
 
-    :type f: SegyFile|str
-    :rtype segyio.spec
+    Parameters
+    ----------
+
+    f : str or segyio.SegyFile
+
+    Returns
+    -------
+    spec : segyio.spec
+
+    Notes
+    -----
+
+    .. versionadded:: 1.4
+
     """
 
     if not isinstance(f, segyio.SegyFile):
@@ -224,9 +343,7 @@ def metadata(f):
 def resample(f, rate = None, delay = None, micro = False,
                                            trace = True,
                                            binary = True):
-    """ Resample a file
-
-    Since v1.4
+    """Resample a file
 
     Resample all data traces, and update the file handle to reflect the new
     sample rate. No actual samples (data traces) are modified, only the header
@@ -243,18 +360,31 @@ def resample(f, rate = None, delay = None, micro = False,
     to sample rates - the recording delay is only found in trace headers and
     will be written unconditionally, if delay is not None.
 
-    This function requires an open file handle and is DESTRUCTIVE. It will
-    modify the file, and if an exception is raised then partial writes might
-    have happened and the file might be corrupted.
+    .. warning::
+        This function requires an open file handle and is **DESTRUCTIVE**. It
+        will modify the file, and if an exception is raised then partial writes
+        might have happened and the file might be corrupted.
 
     This function assumes all traces have uniform delays and frequencies.
 
-    :type f: SegyFile
-    :type rate: int
-    :type delay: int
-    :type micro: bool
-    :type trace: bool
-    :type binary: bool
+    Parameters
+    ----------
+
+    f : SegyFile
+    rate : int
+    delay : int
+    micro : bool
+        if True, interpret rate as microseconds
+    trace : bool
+        Update the trace header if True
+    binary : bool
+        Update the binary header if True
+
+    Notes
+    -----
+
+    .. versionadded:: 1.4
+
     """
 
     if rate is not None:
