@@ -349,6 +349,10 @@ int main( int argc, char** argv ) {
     char binheader[ BINSIZE ]   = { 0 };
     char trheader[ TEXTSIZE ]   = { 0 };
 
+    if( !strcmp( opts.src, opts.dst ) )
+        exit( errmsg( 1, "segyio-crop: "
+                         "output file must be different from input file" ) );
+
     FILE* src = fopen( opts.src, "rb" );
     if( !src )
         exit( errmsg2( errno, "Unable to open src", strerror( errno ) ) );
