@@ -975,8 +975,7 @@ def mklines(fname):
         for xl in spec.xlines:
             dst.header.xline[xl] = {TraceField.CROSSLINE_3D: xl}
 
-
-def test_create_bad_specs():
+def test_create_bad_specs(tmpdir):
     class C:
         pass
 
@@ -991,34 +990,33 @@ def test_create_bad_specs():
     for attr, val in mandatory:
         setattr(c, attr, val)
         with pytest.raises(AttributeError):
-            with segyio.create("foo", c):
+            with segyio.create(tmpdir / 'foo' + attr, c):
                 pass
 
     c.tracecount = 10
-    with segyio.create("foo", c):
+    with segyio.create(tmpdir / 'tracecount', c):
         pass
 
     del c.tracecount
 
     c.ilines = [1, 2, 3]
     with pytest.raises(AttributeError):
-        with segyio.create("foo", c):
+        with segyio.create(tmpdir / 'ilines', c):
             pass
 
     c.xlines = [4, 6, 8]
     with pytest.raises(AttributeError):
-        with segyio.create("foo", c):
+        with segyio.create(tmpdir / 'xlines', c):
             pass
 
     c.offsets = [1]
     with pytest.raises(AttributeError):
-        with segyio.create("foo", c):
+        with segyio.create(tmpdir / 'offsets', c):
             pass
 
     c.sorting = 2
-    with segyio.create("foo", c):
+    with segyio.create(tmpdir / 'ok.sgy', c):
         pass
-
 
 def test_segyio_types():
     with segyio.open("test-data/small.sgy") as f:
