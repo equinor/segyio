@@ -86,12 +86,16 @@ A copy of segyio is available both as pre-built binaries and source code:
 
 To build segyio you need:
  * A C99 compatible C compiler (tested mostly on gcc and clang)
- * A C++ compiler for the Python extension
+ * A C++ compiler for the Python extension, and C++11 for the tests
  * [CMake](https://cmake.org/) version 2.8.12 or greater
  * [Python](https://www.python.org/) 2.7 or 3.x.
  * [numpy](http://www.numpy.org/) version 1.10 or greater
  * [setuptools](https://pypi.python.org/pypi/setuptools) version 28 or greater
  * [setuptools-scm](https://pypi.python.org/pypi/setuptools_scm)
+ * [pytest](https://pypi.org/project/pytest)
+
+ To build the documentation, you also need
+ [sphinx](https://pypi.org/project/Sphinx)
 
 To build and install segyio, perform the following actions in your console:
 
