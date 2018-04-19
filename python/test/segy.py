@@ -676,6 +676,34 @@ def test_open_fails_unstructured():
         assert (list(f.attributes(189)[:]) ==
                 [(i // 5) + 1 for i in range(len(f.trace))])
 
+@tmpfiles('test-data/small.sgy')
+def test_write_with_narrowing(tmpdir):
+    with segyio.open(tmpdir / 'small.sgy', mode = 'r+') as f:
+
+        with pytest.warns(RuntimeWarning):
+            ones = np.ones(len(f.samples), dtype=np.float64)
+            f.trace[0] = ones
+            assert np.array_equal(f.trace[0], ones)
+
+        with pytest.warns(RuntimeWarning):
+            twos = [np.single(2.0) for _ in range(len(f.samples))]
+            f.trace[1] = twos
+            assert np.array_equal(f.trace[1], twos)
+
+        with pytest.warns(RuntimeWarning):
+            first = f.ilines[0]
+            shape = f.iline[first].shape
+            ones = np.ones(shape, dtype=np.float64)
+            f.iline[first] = ones
+            assert np.array_equal(f.iline[first], ones)
+
+        with pytest.warns(RuntimeWarning):
+            last = f.xlines[-1]
+            shape = f.xline[last].shape
+            threes = np.ones(shape, dtype=np.float64) * 3
+            f.xline[last] = threes
+            assert np.array_equal(f.xline[last], threes)
+
 
 @tmpfiles("test-data/small.sgy")
 def test_assign_all_traces(tmpdir):

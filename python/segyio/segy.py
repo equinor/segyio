@@ -696,11 +696,9 @@ class SegyFile(object):
 
     def _shape_buffer(self, shape, buf):
         if buf is None:
-            return np.empty(shape=shape, dtype=np.single)
+            return np.empty(shape=shape, dtype=self.dtype)
         if not isinstance(buf, np.ndarray):
             return buf
-        if buf.dtype != np.single:
-            return np.empty(shape=shape, dtype=np.single)
         if buf.shape[0] == shape[0]:
             return buf
         if buf.shape != shape and buf.size == np.prod(shape):

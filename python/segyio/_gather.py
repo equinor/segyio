@@ -50,7 +50,7 @@ class Gather:
         xs = list(filter(self.offsets.__contains__,
                     range(*offs.indices(self.offsets[-1]+1))))
 
-        empty = np.empty(0, dtype = np.single)
+        empty = np.empty(0, dtype = self.trace._file.dtype)
         # gather[int,int,:]
         if not any(map(isslice, [il, xl])):
             if len(xs) == 0: return empty
