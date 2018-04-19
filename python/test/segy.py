@@ -130,6 +130,7 @@ def test_file_info():
         assert 2 == f.sorting
         assert 1 == f.offsets
         assert 1 == int(f.format)
+        assert np.single == f.dtype
 
         xlines = list(range(20, 25))
         ilines = list(range(1, 6))

@@ -67,6 +67,8 @@ class SegyFile(object):
         self._tracecount = metrics['tracecount']
         self._ext_headers = metrics['ext_headers']
 
+        self._dtype = np.dtype(np.single)
+
         super(SegyFile, self).__init__()
 
     def __str__(self):
@@ -200,6 +202,27 @@ class SegyFile(object):
 
         """
         return self.xfd.mmap()
+
+    @property
+    def dtype(self):
+        """
+
+        The data type object of the traces. This is the format most accurate
+        and efficient to exchange with the underlying file, and the data type
+        you will find the data traces.
+
+        Returns
+        -------
+
+        dtype : numpy.dtype
+
+        Notes
+        -----
+
+        .. versionadded:: 1.6
+
+        """
+        return self._dtype
 
     @property
     def sorting(self):
