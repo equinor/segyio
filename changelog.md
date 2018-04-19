@@ -1,3 +1,15 @@
+# 1.5.3
+* segyio-catr has learned to handle no arguments, and as a results read the
+  first trace header as intended
+* segyio-catr has its help text and man page corrected
+* segyio-crop has learned to say how many traces it copies
+* segyio-crop has learned to warn when no traces are copied
+* segyio-crop has learned not to overwrite its input file when source and dest
+  is the same
+* The makefiles understand the BUILD_DOC option, to build the python docs with
+  sphinx
+* Test suite has some speed and robustness improvements
+
 # 1.5.2
 * `open` and `create` handle anything string-convertible as filename argument
 * pytest replaces unittest, both as library and test driver
