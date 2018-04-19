@@ -166,7 +166,7 @@ def create(filename, spec):
         tracecount = len(spec.ilines) * len(spec.xlines) * len(spec.offsets)
 
     ext_headers = spec.ext_headers if hasattr(spec, 'ext_headers') else 0
-    samples = numpy.asarray(spec.samples, dtype = numpy.single)
+    samples = numpy.asarray(spec.samples)
 
     binary = bytearray(_segyio.binsize())
     _segyio.putfield(binary, 3217, 4000)
