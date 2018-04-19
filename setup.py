@@ -9,6 +9,8 @@ long_description = """
 SEGY IO
 =======
 
+https://segyio.readthedocs.io
+
 Introduction
 ------------
 
