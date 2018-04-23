@@ -1,7 +1,6 @@
 import datetime
 import numpy
 import segyio
-import segyio._segyio as _segyio
 
 
 def default_text_header(iline, xline, offset):
@@ -159,6 +158,7 @@ def create(filename, spec):
     ...         dst.trace = src.trace
     """
 
+    from . import _segyio
 
     if not structured(spec):
         tracecount = spec.tracecount

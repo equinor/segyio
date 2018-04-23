@@ -26,7 +26,6 @@ from segyio._gather import Gather
 from segyio._line import Line
 from segyio._trace import Trace
 from segyio._field import Field
-import segyio._segyio as _segyio
 
 from segyio.tracesortingformat import TraceSortingFormat
 
@@ -59,6 +58,8 @@ class SegyFile(object):
         self._iline = None
         self._xline = None
         self._gather = None
+
+        from . import _segyio
 
         self.xfd = _segyio.segyiofd(filename, mode, tracecount, binary)
         metrics = self.xfd.metrics()
