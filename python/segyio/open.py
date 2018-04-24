@@ -116,7 +116,7 @@ def open(filename, mode="r", iline = 189,
         dt = segyio.tools.dt(f, fallback_dt = 4000.0) / 1000.0
         t0 = f.header[0][segyio.TraceField.DelayRecordingTime]
         samples = metrics['samplecount']
-        f._samples = (numpy.arange(samples, dtype = numpy.single) * dt) + t0
+        f._samples = (numpy.arange(samples) * dt) + t0
 
     except:
         f.close()

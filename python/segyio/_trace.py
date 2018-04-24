@@ -2,6 +2,7 @@ try: from future_builtins import zip
 except ImportError: pass
 
 import numpy as np
+import warnings
 
 from segyio._raw_trace import RawTrace
 
@@ -60,13 +61,14 @@ class Trace:
 
     def _trace_buffer(self, buf=None):
         shape = self._file.samples.shape
+        dtype = self._file.dtype
 
         if buf is None:
-            buf = np.empty(shape=shape, dtype=np.single)
+            buf = np.empty(shape=shape, dtype=dtype)
         elif not isinstance(buf, np.ndarray):
             raise TypeError("Buffer must be None or numpy.ndarray")
-        elif buf.dtype != np.single:
-            buf = np.empty(shape=shape, dtype=np.single)
+        elif buf.dtype != dtype:
+            buf = np.empty(shape=shape, dtype=dtype)
 
         return buf
 
@@ -85,10 +87,25 @@ class Trace:
         :type buf: ?
         :type segy: segyio.SegyFile
         """
-        if isinstance(buf, np.ndarray) and buf.dtype != np.single:
-            raise TypeError("Numpy array must be of type single")
 
-        segy.xfd.puttr(traceno, buf)
+        dtype = segy.dtype
+
+        try:
+            buf.dtype
+        except AttributeError:
+            msg = 'Implicit conversion from {} to {} (performance)'
+            warnings.warn(msg.format(type(buf), np.ndarray), RuntimeWarning)
+            buf = np.asarray(buf)
+
+        if buf.dtype != dtype:
+            # TODO: message depending on narrowing/float-conversion
+            msg = 'Implicit conversion from {} to {} (narrowing)'
+            warnings.warn(msg.format(buf.dtype, dtype), RuntimeWarning)
+
+        # asarray only copies if it has to (differing dtypes). non-numpy arrays
+        # have already been converted
+        xs = np.asarray(buf, order = 'C', dtype = dtype)
+        segy.xfd.puttr(traceno, xs)
 
     @property
     def raw(self):

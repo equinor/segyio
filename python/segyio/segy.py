@@ -26,7 +26,6 @@ from segyio._gather import Gather
 from segyio._line import Line
 from segyio._trace import Trace
 from segyio._field import Field
-import segyio._segyio as _segyio
 
 from segyio.tracesortingformat import TraceSortingFormat
 
@@ -60,11 +59,15 @@ class SegyFile(object):
         self._xline = None
         self._gather = None
 
+        from . import _segyio
+
         self.xfd = _segyio.segyiofd(filename, mode, tracecount, binary)
         metrics = self.xfd.metrics()
         self._fmt = metrics['format']
         self._tracecount = metrics['tracecount']
         self._ext_headers = metrics['ext_headers']
+
+        self._dtype = np.dtype(np.single)
 
         super(SegyFile, self).__init__()
 
@@ -199,6 +202,27 @@ class SegyFile(object):
 
         """
         return self.xfd.mmap()
+
+    @property
+    def dtype(self):
+        """
+
+        The data type object of the traces. This is the format most accurate
+        and efficient to exchange with the underlying file, and the data type
+        you will find the data traces.
+
+        Returns
+        -------
+
+        dtype : numpy.dtype
+
+        Notes
+        -----
+
+        .. versionadded:: 1.6
+
+        """
+        return self._dtype
 
     @property
     def sorting(self):
@@ -672,11 +696,9 @@ class SegyFile(object):
 
     def _shape_buffer(self, shape, buf):
         if buf is None:
-            return np.empty(shape=shape, dtype=np.single)
+            return np.empty(shape=shape, dtype=self.dtype)
         if not isinstance(buf, np.ndarray):
             return buf
-        if buf.dtype != np.single:
-            return np.empty(shape=shape, dtype=np.single)
         if buf.shape[0] == shape[0]:
             return buf
         if buf.shape != shape and buf.size == np.prod(shape):

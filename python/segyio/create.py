@@ -1,7 +1,6 @@
 import datetime
 import numpy
 import segyio
-import segyio._segyio as _segyio
 
 
 def default_text_header(iline, xline, offset):
@@ -159,6 +158,7 @@ def create(filename, spec):
     ...         dst.trace = src.trace
     """
 
+    from . import _segyio
 
     if not structured(spec):
         tracecount = spec.tracecount
@@ -166,7 +166,7 @@ def create(filename, spec):
         tracecount = len(spec.ilines) * len(spec.xlines) * len(spec.offsets)
 
     ext_headers = spec.ext_headers if hasattr(spec, 'ext_headers') else 0
-    samples = numpy.asarray(spec.samples, dtype = numpy.single)
+    samples = numpy.asarray(spec.samples)
 
     binary = bytearray(_segyio.binsize())
     _segyio.putfield(binary, 3217, 4000)

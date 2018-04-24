@@ -2,8 +2,6 @@ import itertools
 try: from future_builtins import zip
 except ImportError: pass
 
-import segyio._segyio as _segyio
-
 # in order to support [:end] syntax, we must make sure
 # start has a non-None value. lineno.indices() would set it
 # to 0, but we don't know if that's a reasonable value or
@@ -49,6 +47,9 @@ class Line:
         self.readfn = readfn
         self.writefn = writefn
 
+        from ._segyio import fread_trace0
+        self.fread_trace0 = fread_trace0
+
     def __repr__(self):
         return "Line(direction = {}, length = {})".format(self.name, self.len)
 
@@ -74,7 +75,7 @@ class Line:
         except TypeError:
             raise TypeError("Must be int or slice")
 
-        trace0 = _segyio.fread_trace0(lineno, len(self.other_lines), self.stride, len(offs), self.lines, self.name)
+        trace0 = self.fread_trace0(lineno, len(self.other_lines), self.stride, len(offs), self.lines, self.name)
         return offset + trace0
 
     def _indices(self, lineno, offset):
