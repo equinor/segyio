@@ -457,13 +457,13 @@ def test_read_header():
         with pytest.raises(IndexError):
             _ = f.header[-30]
 
-        with pytest.raises(IndexError):
+        with pytest.raises(KeyError):
             _ = f.header[0][188]  # between byte offsets
 
-        with pytest.raises(IndexError):
+        with pytest.raises(KeyError):
             _ = f.header[0][-1]
 
-        with pytest.raises(IndexError):
+        with pytest.raises(KeyError):
             _ = f.header[0][700]
 
 
@@ -478,13 +478,13 @@ def test_write_header(tmpdir):
         assert 1 == f.header[1][189]
 
         # accessing non-existing offsets raises exceptions
-        with pytest.raises(IndexError):
+        with pytest.raises(KeyError):
             f.header[0][188] = 1  # between byte offsets
 
-        with pytest.raises(IndexError):
+        with pytest.raises(KeyError):
             f.header[0][-1] = 1
 
-        with pytest.raises(IndexError):
+        with pytest.raises(KeyError):
             f.header[0][700] = 1
 
         d = {TraceField.INLINE_3D: 43,
@@ -562,13 +562,13 @@ def test_write_binary(tmpdir):
         assert 5 == f.bin[3213]
 
         # accessing non-existing offsets raises exceptions
-        with pytest.raises(IndexError):
+        with pytest.raises(KeyError):
             _ = f.bin[0]
 
-        with pytest.raises(IndexError):
+        with pytest.raises(KeyError):
             _ = f.bin[50000]
 
-        with pytest.raises(IndexError):
+        with pytest.raises(KeyError):
             _ = f.bin[3214]
 
         d = {BinField.Traces: 43,

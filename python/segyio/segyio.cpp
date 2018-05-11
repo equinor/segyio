@@ -63,11 +63,6 @@ PyObject* ValueError( const char* msg, T1 t1, T2 t2 ) {
     return PyErr_Format( PyExc_ValueError, msg, t1, t2 );
 }
 
-PyObject* IndexError( const char* msg ) {
-    PyErr_SetString( PyExc_IndexError, msg );
-    return NULL;
-}
-
 template< typename T1, typename T2 >
 PyObject* IndexError( const char* msg, T1 t1, T2 t2 ) {
     return PyErr_Format( PyExc_IndexError, msg, t1, t2 );
@@ -110,6 +105,11 @@ PyObject* IOError( const char* msg, T1 t1, T2 t2 ) {
 template< typename T1 >
 PyObject* IOError( const char* msg, T1 t1 ) {
     return PyErr_Format( PyExc_IOError, msg, t1 );
+}
+
+template< typename T1 >
+PyObject* KeyError( const char* msg, T1 t1 ) {
+    return PyErr_Format( PyExc_KeyError, msg, t1 );
 }
 
 template< typename T1, typename T2 >
@@ -1154,7 +1154,7 @@ PyObject* getfield( PyObject*, PyObject *args ) {
 
     switch( err ) {
         case SEGY_OK:            return PyLong_FromLong( value );
-        case SEGY_INVALID_FIELD: return IndexError( "invalid field value" );
+        case SEGY_INVALID_FIELD: return KeyError( "No such field %d", field );
         default:                 return Error( err );
     }
 }
@@ -1178,7 +1178,7 @@ PyObject* putfield( PyObject*, PyObject *args ) {
 
     switch( err ) {
         case SEGY_OK:            return PyLong_FromLong( value );
-        case SEGY_INVALID_FIELD: return IndexError( "invalid field value" );
+        case SEGY_INVALID_FIELD: return KeyError( "No such field %d", field );
         default:                 return Error( err );
     }
 }
