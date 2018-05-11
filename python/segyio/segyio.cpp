@@ -170,6 +170,7 @@ struct segyiofd {
     int tracecount;
     int samplecount;
     int format;
+    int elemsize;
 };
 
 struct buffer_guard {
@@ -281,7 +282,31 @@ int init( segyiofd* self, PyObject* args, PyObject* ) {
     const long trace0 = segy_trace0( binary );
     const int samplecount = segy_samples( binary );
     const int format = segy_format( binary );
-    const int trace_bsize = segy_trace_bsize( samplecount );
+    int trace_bsize = segy_trsize( format, samplecount );
+
+    /* fall back to assuming 4-byte ibm float if the format field is rubbish */
+    if( trace_bsize < 0 ) trace_bsize = segy_trace_bsize( samplecount );
+
+    /*
+     * if set_format errors, it's because the format-field in the binary header
+     * is 0 or some other garbage. if so, assume the file is 4-byte ibm float
+     */
+   segy_set_format( fd, format );
+   int elemsize = 4;
+
+    switch( format ) {
+        case SEGY_IBM_FLOAT_4_BYTE:             elemsize = 4; break;
+        case SEGY_SIGNED_INTEGER_4_BYTE:        elemsize = 4; break;
+        case SEGY_SIGNED_SHORT_2_BYTE:          elemsize = 2; break;
+        case SEGY_FIXED_POINT_WITH_GAIN_4_BYTE: elemsize = 4; break;
+        case SEGY_IEEE_FLOAT_4_BYTE:            elemsize = 4; break;
+        case SEGY_SIGNED_CHAR_1_BYTE:           elemsize = 1; break;
+
+        case SEGY_NOT_IN_USE_1:
+        case SEGY_NOT_IN_USE_2:
+        default:
+            break;
+    }
 
     if( tracecount == 0 ) {
         const int err = segy_traces( fd, &tracecount, trace0, trace_bsize );
@@ -318,6 +343,7 @@ int init( segyiofd* self, PyObject* args, PyObject* ) {
     self->trace0 = trace0;
     self->trace_bsize = trace_bsize;
     self->format = format;
+    self->elemsize = elemsize;
     self->samplecount = samplecount;
     self->tracecount = tracecount;
 
@@ -786,6 +812,7 @@ PyObject* gettr( segyiofd* self, PyObject* args ) {
     if( !buffer) return NULL;
 
     const int samples = self->samplecount;
+    const int skip = samples * self->elemsize;
     const long long bufsize = (long long) length * samples;
     const long trace0 = self->trace0;
     const int trace_bsize = self->trace_bsize;
@@ -797,8 +824,8 @@ PyObject* gettr( segyiofd* self, PyObject* args ) {
 
     int err = 0;
     int i = 0;
-    float* buf = buffer.buf< float >();
-    for( ; err == 0 && i < length; ++i, buf += samples ) {
+    char* buf = buffer.buf();
+    for( ; err == 0 && i < length; ++i, buf += skip ) {
         err = segy_readtrace( fp, start + (i * step),
                                   buf,
                                   trace0,
@@ -810,7 +837,7 @@ PyObject* gettr( segyiofd* self, PyObject* args ) {
 
     if( err ) return Error( err );
 
-    segy_to_native( self->format, bufsize, buffer.buf< float >() );
+    segy_to_native( self->format, bufsize, buffer.buf() );
 
     Py_INCREF( bufferobj );
     return bufferobj;
@@ -821,7 +848,7 @@ PyObject* puttr( segyiofd* self, PyObject* args ) {
     if( !fp ) return NULL;
 
     int traceno;
-    float* buffer;
+    char* buffer;
     Py_ssize_t buflen;
 
     if( !PyArg_ParseTuple( args, "is#", &traceno, &buffer, &buflen ) )
@@ -872,14 +899,14 @@ PyObject* getline( segyiofd* self, PyObject* args) {
                                   line_length,
                                   stride,
                                   offsets,
-                                  buffer.buf< float >(),
+                                  buffer.buf(),
                                   self->trace0,
                                   self->trace_bsize);
     if( err ) return Error( err );
 
     segy_to_native( self->format,
                     self->samplecount * line_length,
-                    buffer.buf< float >() );
+                    buffer.buf() );
 
     Py_INCREF( bufferobj );
     return bufferobj;
@@ -905,18 +932,19 @@ PyObject* getdepth( segyiofd* self, PyObject* args ) {
 
     int traceno = 0;
     int err = 0;
-    float* buf = buffer.buf< float >();
+    char* buf = buffer.buf();
+    const int skip = self->elemsize;
 
     const long trace0 = self->trace0;
     const int trace_bsize = self->trace_bsize;
 
-    for( ; err == 0 && traceno < count; ++traceno) {
+    for( ; err == 0 && traceno < count; ++traceno, buf += skip ) {
         err = segy_readsubtr( fp,
                               traceno * offsets,
                               depth,
                               depth + 1,
                               1,
-                              buf++,
+                              buf,
                               NULL,
                               trace0, trace_bsize);
     }
@@ -927,7 +955,7 @@ PyObject* getdepth( segyiofd* self, PyObject* args ) {
 
     if( err ) return Error( err );
 
-    segy_to_native( self->format, count, buffer.buf< float >() );
+    segy_to_native( self->format, count, buffer.buf() );
 
     Py_INCREF( bufferobj );
     return bufferobj;
@@ -1217,10 +1245,10 @@ PyObject* format( PyObject* , PyObject* args ) {
 
     if( !PyArg_ParseTuple( args, "Oi", &out, &format ) ) return NULL;
 
-    buffer_guard buffer( out, PyBUF_CONTIG );;
+    buffer_guard buffer( out, PyBUF_CONTIG );
 
     const int len = buffer.len() / sizeof( float );
-    segy_to_native( format, len, buffer.buf< float >() );
+    segy_to_native( format, len, buffer.buf() );
 
     Py_INCREF( out );
     return out;

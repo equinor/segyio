@@ -14,6 +14,7 @@ segyio which you can find in the examples directory or where your distribution
 installs example programs.
 """
 import itertools
+import warnings
 try:
     from future_builtins import zip
     range = xrange
@@ -67,7 +68,20 @@ class SegyFile(object):
         self._tracecount = metrics['tracecount']
         self._ext_headers = metrics['ext_headers']
 
-        self._dtype = np.dtype(np.single)
+        try:
+            self._dtype = np.dtype({
+                1: np.float32,
+                2: np.int32,
+                3: np.int16,
+                5: np.float32,
+                8: np.int8,
+            }[self._fmt])
+        except KeyError:
+            problem = 'Unknown trace value format {}'.format(self._fmt)
+            solution = 'falling back to ibm float'
+            warnings.warn(', '.join((problem, solution)))
+            self._fmt = 1
+            self._dtype = np.dtype(np.float32)
 
         super(SegyFile, self).__init__()
 

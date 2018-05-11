@@ -61,6 +61,22 @@ int segy_sample_interval( segy_file*, float fallback , float* dt );
 
 /* exception: the int returned is an enum, SEGY_FORMAT, not an error code */
 int segy_format( const char* binheader );
+/* override the assumed format of the samples.
+ *
+ * by default, segyio assumes a 4-byte float format (usually IBM float). The
+ * to/from native functions take this parameter explicitly, but functions like
+ * read_subtrace requires the size of each element.
+ *
+ * `format` is the SEGY_FORMAT enum. if this function is not called, for
+ * backwards compatibility reasons, the format is always assumed to be IBM
+ * float.
+ *
+ * The binary header is not implicitly queried, because it's often broken and
+ * unreliable with this information - however, if the header IS considered to
+ * be reliable, the result of `segy_format` can be passed to this function.
+ */
+int segy_set_format( segy_file*, int format );
+
 int segy_get_field( const char* traceheader, int field, int32_t* f );
 int segy_get_bfield( const char* binheader, int field, int32_t* f );
 int segy_set_field( char* traceheader, int field, int32_t val );
@@ -77,9 +93,15 @@ int segy_field_forall( segy_file*,
 
 /*
  * exception: segy_trace_bsize computes the size of the traces in bytes. Cannot
- * fail.
+ * fail. Equivalent to segy_trsize(SEGY_IBM_FLOAT_4_BYTE, samples);
  */
 int segy_trace_bsize( int samples );
+/*
+ * segy_trsize computes the size of a trace in bytes, determined by the trace
+ * format. If format is unknown, invalid, or unsupported, this function returns
+ * a negative value. If `samples` is zero or negative, the result is undefined.
+ */
+int segy_trsize( int format, int samples );
 /* byte-offset of the first trace header. */
 long segy_trace0( const char* binheader );
 /*
@@ -157,19 +179,19 @@ int segy_offset_indices( segy_file*,
                          int trace_bsize );
 
 /*
- * read/write traces. Does not manipulate the buffers at all, i.e. in order to
- * make sense of the read trace it must be converted to native floats, and the
- * buffer sent to write must be converted to target float.
+ * read/write traces. does not convert data from on-disk representation to
+ * native formats, so this data can not be used directly on most systems (intel
+ * in particular). use to/from native to convert to native representations.
  */
 int segy_readtrace( segy_file*,
                     int traceno,
-                    float* buf,
+                    void* buf,
                     long trace0,
                     int trace_bsize );
 
 int segy_writetrace( segy_file*,
                      int traceno,
-                     const float* buf,
+                     const void* buf,
                      long trace0,
                      int trace_bsize );
 
@@ -201,8 +223,8 @@ int segy_readsubtr( segy_file*,
                     int start,
                     int stop,
                     int step,
-                    float* buf,
-                    float* rangebuf,
+                    void* buf,
+                    void* rangebuf,
                     long trace0,
                     int trace_bsize );
 
@@ -211,8 +233,8 @@ int segy_writesubtr( segy_file*,
                      int start,
                      int stop,
                      int step,
-                     const float* buf,
-                     float* rangebuf,
+                     const void* buf,
+                     void* rangebuf,
                      long trace0,
                      int trace_bsize );
 
@@ -223,18 +245,18 @@ int segy_writesubtr( segy_file*,
  */
 int segy_to_native( int format,
                     long long size,
-                    float* buf );
+                    void* buf );
 
 int segy_from_native( int format,
                       long long size,
-                      float* buf );
+                      void* buf );
 
 int segy_read_line( segy_file* fp,
                     int line_trace0,
                     int line_length,
                     int stride,
                     int offsets,
-                    float* buf,
+                    void* buf,
                     long trace0,
                     int trace_bsize );
 
@@ -243,7 +265,7 @@ int segy_write_line( segy_file* fp,
                     int line_length,
                     int stride,
                     int offsets,
-                    const float* buf,
+                    const void* buf,
                     long trace0,
                     int trace_bsize );
 

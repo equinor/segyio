@@ -167,7 +167,7 @@ foreach (sgy ${sgys})
     configure_file(${sgy} test-data/${fl} COPYONLY)
 endforeach ()
 
-set(pytest ${python} -m pytest -v)
+set(pytest ${python} -m pytest)
 add_test(NAME python.unit COMMAND ${pytest} test/)
 
 configure_file(${testdata}/small.sgy

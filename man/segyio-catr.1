@@ -30,6 +30,12 @@ range of trace(s) to print. \fISTOP\fR and \fISTEP\fR are optional, and
 defaults to \fISTART\fR and 1 respectively.
 
 .TP
+.BR \-f ", " \-\-format=\fIFORMAT\fR
+override sample format. defaults to inferring from the binary header.
+
+available formats: \fIibm ieee short long char\fR
+
+.TP
 .BR \-s ", " \-\-strict
 fail on unreadable tracefields
 

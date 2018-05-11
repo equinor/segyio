@@ -74,6 +74,7 @@ if (NOT BUILD_TESTING)
 endif ()
 
 configure_file(${testdata}/small.sgy test-data/small.sgy             COPYONLY)
+configure_file(${testdata}/f3.sgy    test-data/f3.sgy                COPYONLY)
 configure_file(${testdata}/text.sgy  test-data/text.sgy              COPYONLY)
 
 add_executable(c.segy test/testsuite.cpp

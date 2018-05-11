@@ -1,3 +1,4 @@
+#include <numeric>
 #include <cmath>
 #include <memory>
 #include <limits>
@@ -86,60 +87,19 @@ struct StringMaker< Err > {
 };
 }
 
-SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
-    const char* file = "test-data/small.sgy";
+namespace {
 
-    std::unique_ptr< segy_file, decltype( &segy_close ) >
-        ufp{ segy_open( file, "rb" ), &segy_close };
-
-    REQUIRE( ufp );
-
-    auto fp = ufp.get();
-    if( MMAP_TAG != std::string("") )
-        REQUIRE( Err( segy_mmap( fp ) ) == Err::ok() );
-
-    WHEN( "finding traces initial byte offset and sizes" ) {
-        char header[ SEGY_BINARY_HEADER_SIZE ];
-        REQUIRE( Err( segy_binheader( fp, header ) ) == Err::ok() );
-        int samples = segy_samples( header );
-        long trace0 = segy_trace0( header );
-        int trace_bsize = segy_trace_bsize( samples );
-
-        CHECK( trace0      == 3600 );
-        CHECK( samples     == 50 );
-        CHECK( trace_bsize == 50 * 4 );
-    }
-
-    const long trace0 = 3600;
-    const int trace_bsize = 50 * 4;
-    const int samples = 50;
-
-    WHEN( "determining number of traces" ) {
-        int traces = 0;
-        Err err = segy_traces( fp, &traces, trace0, trace_bsize );
-        REQUIRE( err == Err::ok() );
-        CHECK( traces == 25 );
-
-        GIVEN( "trace0 outside its domain" ) {
-            WHEN( "trace0 is after end-of-file" ) {
-                err = segy_traces( fp, &traces, 50000, trace_bsize );
-                THEN( "segy_traces fail" )
-                    CHECK( err == Err::args() );
-                THEN( "the input does not change" )
-                    CHECK( traces == 25 );
-            }
-
-            WHEN( "trace0 is negative" ) {
-                err = segy_traces( fp, &traces, -1, trace_bsize );
-                THEN( "segy_traces fail" )
-                    CHECK( err == Err::args() );
-                THEN( "the input does not change" )
-                    CHECK( traces == 25 );
-            }
-        }
-    }
-
-    const int traces = 25;
+void regular_geometry( segy_file* fp,
+                       int traces,
+                       long trace0,
+                       int trace_bsize,
+                       int expected_ilines,
+                       int expected_xlines,
+                       int expected_offset) {
+    /* A simple "no-surprises" type of file, that's inline sorted, post-stack
+     * (1 offset only), no weird header field positions, meaning the test would
+     * be pure repetition for common files
+     */
 
     const int il = SEGY_TR_INLINE;
     const int xl = SEGY_TR_CROSSLINE;
@@ -203,7 +163,7 @@ SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
                                              &offset_index,
                                              trace0, trace_bsize );
         CHECK( err == Err::ok() );
-        CHECK( offset_index == 1 );
+        CHECK( offset_index == expected_offset );
     }
 
     WHEN( "counting lines" ) {
@@ -216,8 +176,8 @@ SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
                                               &ilsz, &xlsz,
                                               trace0, trace_bsize );
             CHECK( err == Err::ok() );
-            CHECK( ilsz == 5 );
-            CHECK( xlsz == 5 );
+            CHECK( ilsz == expected_ilines );
+            CHECK( xlsz == expected_xlines );
         }
 
         WHEN( "using segy_lines_count" ) {
@@ -226,13 +186,94 @@ SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
                                               &ilsz, &xlsz,
                                               trace0, trace_bsize );
             CHECK( err == Err::ok() );
-            CHECK( ilsz == 5 );
-            CHECK( xlsz == 5 );
+            CHECK( ilsz == expected_ilines );
+            CHECK( xlsz == expected_xlines );
+        }
+    }
+}
+
+}
+
+SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
+    const char* file = "test-data/small.sgy";
+
+    std::unique_ptr< segy_file, decltype( &segy_close ) >
+        ufp{ segy_open( file, "rb" ), &segy_close };
+
+    REQUIRE( ufp );
+
+    auto fp = ufp.get();
+    if( MMAP_TAG != std::string("") )
+        REQUIRE( Err( segy_mmap( fp ) ) == Err::ok() );
+
+    WHEN( "finding traces initial byte offset and sizes" ) {
+        char header[ SEGY_BINARY_HEADER_SIZE ];
+        REQUIRE( Err( segy_binheader( fp, header ) ) == Err::ok() );
+        int samples = segy_samples( header );
+        long trace0 = segy_trace0( header );
+        int trace_bsize = segy_trsize( SEGY_IBM_FLOAT_4_BYTE, samples );
+
+        CHECK( trace0      == 3600 );
+        CHECK( samples     == 50 );
+        CHECK( trace_bsize == 50 * 4 );
+    }
+
+    WHEN( "overriding sample format" ) {
+        Err err = segy_set_format( fp, SEGY_IEEE_FLOAT_4_BYTE );
+        CHECK( err == Err::ok() );
+
+        THEN( "it fails on invalid formats" ) {
+            err = segy_set_format( fp, 10 );
+            CHECK( err == Err::args() );
         }
     }
 
+    const long trace0 = 3600;
+    const int trace_bsize = 50 * 4;
+    const int samples = 50;
+
+    WHEN( "determining number of traces" ) {
+        int traces = 0;
+        Err err = segy_traces( fp, &traces, trace0, trace_bsize );
+        REQUIRE( err == Err::ok() );
+        CHECK( traces == 25 );
+
+        GIVEN( "trace0 outside its domain" ) {
+            WHEN( "trace0 is after end-of-file" ) {
+                err = segy_traces( fp, &traces, 50000, trace_bsize );
+                THEN( "segy_traces fail" )
+                    CHECK( err == Err::args() );
+                THEN( "the input does not change" )
+                    CHECK( traces == 25 );
+            }
+
+            WHEN( "trace0 is negative" ) {
+                err = segy_traces( fp, &traces, -1, trace_bsize );
+                THEN( "segy_traces fail" )
+                    CHECK( err == Err::args() );
+                THEN( "the input does not change" )
+                    CHECK( traces == 25 );
+            }
+        }
+    }
+
+    const int traces = 25;
     const int inlines_sizes = 5;
     const int crosslines_sizes = 5;
+    const int offset_label = 1;
+
+    regular_geometry( fp, traces,
+                          trace0,
+                          trace_bsize,
+                          inlines_sizes,
+                          crosslines_sizes,
+                          offset_label );
+
+    const int il = SEGY_TR_INLINE;
+    const int xl = SEGY_TR_CROSSLINE;
+    const int of = SEGY_TR_OFFSET;
+    const int sorting = SEGY_INLINE_SORTING;
+    const int offsets = 1;
     const int format = SEGY_IBM_FLOAT_4_BYTE;
 
     WHEN( "inferring inline structure" ) {
@@ -621,7 +662,7 @@ SCENARIO( MMAP_TAG "extracting header fields", "[c.segy]" MMAP_TAG ) {
 SCENARIO( MMAP_TAG "modifying trace header", "[c.segy]" MMAP_TAG ) {
 
     const int samples = 10;
-    const int trace_bsize = segy_trace_bsize( samples );
+    int trace_bsize = segy_trsize( SEGY_IBM_FLOAT_4_BYTE, samples );
     const int trace0 = 0;
     const float emptytr[ samples ] = {};
     const char emptyhdr[ SEGY_TRACE_HEADER_SIZE ] = {};
@@ -772,6 +813,198 @@ SCENARIO( MMAP_TAG "reading a large file", "[c.segy]" MMAP_TAG ) {
                 CHECK( pos > std::numeric_limits< int >::max() );
                 CHECK( pos != -1 );
                 CHECK( pos == trace * tracesize );
+            }
+        }
+    }
+}
+
+SCENARIO( MMAP_TAG "reading a 2-byte int file", "[c.segy][2-byte]" MMAP_TAG ) {
+    const char* file = "test-data/f3.sgy";
+
+    std::unique_ptr< segy_file, decltype( &segy_close ) >
+        ufp{ segy_open( file, "rb" ), &segy_close };
+
+    REQUIRE( ufp );
+
+    auto fp = ufp.get();
+    if( MMAP_TAG != std::string("") )
+        REQUIRE( Err( segy_mmap( fp ) ) == Err::ok() );
+
+    WHEN( "finding traces initial byte offset and sizes" ) {
+        char header[ SEGY_BINARY_HEADER_SIZE ];
+        REQUIRE( Err( segy_binheader( fp, header ) ) == Err::ok() );
+        int samples = segy_samples( header );
+        long trace0 = segy_trace0( header );
+        int format = segy_format( header );
+        int trace_bsize = segy_trsize( format, samples );
+
+        THEN( "the correct values are inferred from the binary header" ) {
+            CHECK( format      == SEGY_SIGNED_SHORT_2_BYTE );
+            CHECK( trace0      == 3600 );
+            CHECK( samples     == 75 );
+            CHECK( trace_bsize == 75 * 2 );
+        }
+
+        WHEN( "the format is valid" ) THEN( "setting format succeeds" ) {
+                Err err = segy_set_format( fp, format );
+                CHECK( err == Err::ok() );
+        }
+
+        WHEN( "the format is invalid" ) THEN( "setting format fails" ) {
+                Err err = segy_set_format( fp, 50 );
+                CHECK( err == Err::args() );
+        }
+    }
+
+    const int format      = SEGY_SIGNED_SHORT_2_BYTE;
+    const long trace0     = 3600;
+    const int samples     = 75;
+    const int trace_bsize = 75 * 2;
+
+    WHEN( "reading data without setting format" ) {
+        std::int16_t val;
+        Err err = segy_readsubtr( fp, 10,
+                                      25, 26, 1,
+                                      &val,
+                                      nullptr,
+                                      trace0, trace_bsize );
+
+        CHECK( err == Err::ok() );
+
+        err = segy_to_native( format, sizeof( val ), &val );
+        CHECK( err == Err::ok() );
+
+        THEN( "the value is incorrect" ) {
+            CHECK( val != -1170 );
+        }
+    }
+
+    Err err = segy_set_format( fp, format );
+    REQUIRE( err == Err::ok() );
+
+    WHEN( "determining number of traces" ) {
+        int traces = 0;
+        Err err = segy_traces( fp, &traces, trace0, trace_bsize );
+        REQUIRE( err == Err::ok() );
+        CHECK( traces == 414 );
+
+        GIVEN( "trace0 outside its domain" ) {
+            WHEN( "trace0 is after end-of-file" ) {
+                err = segy_traces( fp, &traces, 500000, trace_bsize );
+
+                THEN( "segy_traces fail" )
+                    CHECK( err == Err::args() );
+
+                THEN( "the input does not change" )
+                    CHECK( traces == 414 );
+            }
+
+            WHEN( "trace0 is negative" ) {
+                err = segy_traces( fp, &traces, -1, trace_bsize );
+
+                THEN( "segy_traces fail" )
+                    CHECK( err == Err::args() );
+
+                THEN( "the input does not change" )
+                    CHECK( traces == 414 );
+            }
+        }
+    }
+
+    const int traces = 414;
+    const int ilines = 23;
+    const int xlines = 18;
+    const int offset_label = 0;
+    regular_geometry( fp, traces,
+                          trace0,
+                          trace_bsize,
+                          ilines,
+                          xlines,
+                          offset_label );
+
+
+    const int offsets = 1;
+    const int il = SEGY_TR_INLINE;
+    const int sorting = SEGY_INLINE_SORTING;
+    WHEN( "inferring inline structure" ) {
+        std::vector< int > indices( 23, 0 );
+        std::iota( indices.begin(), indices.end(), 111 );
+
+        WHEN( "finding inline numbers" ) {
+            std::vector< int > result( ilines );
+            const Err err = segy_inline_indices( fp,
+                                                 il,
+                                                 sorting,
+                                                 ilines,
+                                                 xlines,
+                                                 offsets,
+                                                 result.data(),
+                                                 trace0, trace_bsize );
+            CHECK( err == Err::ok() );
+            CHECK_THAT( result, Catch::Equals( indices ) );
+        }
+    }
+
+    WHEN( "reading a trace header" ) {
+        char buf[ SEGY_TRACE_HEADER_SIZE ] = {};
+
+        GIVEN( "a valid field" ) {
+            Err err = segy_traceheader( fp, 0, buf, trace0, trace_bsize );
+            CHECK( err == Err::ok() );
+
+            int ilno = 0;
+            err = segy_get_field( buf, SEGY_TR_INLINE, &ilno );
+            CHECK( err == Err::ok() );
+            CHECK( ilno == 111 );
+        }
+
+        GIVEN( "an invalid field" ) {
+            int x = -1;
+            Err err = segy_get_field( buf, SEGY_TRACE_HEADER_SIZE + 10, &x );
+            CHECK( err == Err::field() );
+            CHECK( x == -1 );
+
+            err = segy_get_field( buf, SEGY_TR_INLINE + 1, &x );
+            CHECK( err == Err::field() );
+            CHECK( x == -1 );
+        }
+    }
+
+    WHEN( "reading a subtrace" ) {
+
+        const std::vector< slice > inputs = {
+            {  20, 45,   5 },
+            {  40, 20,  -5 },
+            {  53, 50,  -1 },
+        };
+
+        /*
+         * these values have been manually checked with numpy, with this:
+         * https://github.com/Statoil/segyio/issues/238#issuecomment-373735526
+         */
+        const std::vector< std::vector< std::int16_t > > expect = {
+            {    0, -1170,  5198, -2213,  -888 },
+            { -888, -2213,  5198, -1170,  0    },
+            {-2609, -2625,   681               },
+        };
+
+        for( size_t i = 0; i < inputs.size(); ++i ) {
+            WHEN( "slice is " + str( inputs[ i ] ) ) {
+                std::vector< std::int16_t > buf( expect[ i ].size() );
+
+                auto start = inputs[ i ].start;
+                auto stop  = inputs[ i ].stop;
+                auto step  = inputs[ i ].step;
+
+                Err err = segy_readsubtr( fp,
+                                          10,
+                                          start, stop, step,
+                                          buf.data(),
+                                          nullptr,
+                                          trace0, trace_bsize );
+                segy_to_native( format, buf.size(), buf.data() );
+                CHECK( err == Err::ok() );
+                CHECK_THAT( buf, Catch::Equals( expect[ i ] ) );
             }
         }
     }

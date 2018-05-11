@@ -22,6 +22,9 @@ static int help() {
           "    --crossline-begin      alias to --xline-begin\n"
           "-s, --sample-begin=TIME    measurement to copy from\n"
           "-S, --sample-end=TIME      measurement to copy to (inclusive)\n"
+          "-f  --format=FORMAT        override sample format. defaults to "
+          "                           inferring from the binary header.\n"
+          "                           formats: ibm ieee short long char\n"
           "-b, --il                   inline header word byte offset\n"
           "-B, --xl                   crossline header word byte offset\n"
           "-v, --verbose              increase verbosity\n"
@@ -184,6 +187,7 @@ struct options {
     int ibeg, iend;
     int xbeg, xend;
     int sbeg, send;
+    int format;
     int il, xl;
     char* src;
     char* dst;
@@ -197,6 +201,7 @@ static struct options parse_options( int argc, char** argv ) {
     opts.ibeg = -1, opts.iend = INT_MAX;
     opts.xbeg = -1, opts.xend = INT_MAX;
     opts.sbeg = -1, opts.send = INT_MAX;
+    opts.format = 0;
     opts.il = SEGY_TR_INLINE, opts.xl = SEGY_TR_CROSSLINE;
     opts.verbosity = 0;
     opts.version = 0, opts.help = 0;
@@ -220,6 +225,7 @@ static struct options parse_options( int argc, char** argv ) {
         { "sample-begin",       required_argument, 0, 's' },
         { "sample-end",         required_argument, 0, 'S' },
 
+        { "format",             required_argument, 0, 'f' },
         { "il",                 required_argument, 0, 'b' },
         { "xl",                 required_argument, 0, 'B' },
 
@@ -236,7 +242,7 @@ static struct options parse_options( int argc, char** argv ) {
 
     while( true ) {
         int option_index = 0;
-        int c = getopt_long( argc, argv, "vi:I:x:X:s:S:b:B:",
+        int c = getopt_long( argc, argv, "vi:I:x:X:f:s:S:b:B:",
                              long_options, &option_index );
 
         if( c == -1 ) break;
@@ -271,6 +277,24 @@ static struct options parse_options( int argc, char** argv ) {
                 if( ret == 0 ) break;
                 opts.errmsg = parsenum_errmsg[ ret ];
                 return opts;
+
+           case 'f':
+                if( strcmp( optarg, "ibm" ) == 0 )
+                    opts.format = SEGY_IBM_FLOAT_4_BYTE;
+                if( strcmp( optarg, "ieee" ) == 0 )
+                    opts.format = SEGY_IEEE_FLOAT_4_BYTE;
+                if( strcmp( optarg, "short" ) == 0 )
+                    opts.format = SEGY_SIGNED_SHORT_2_BYTE;
+                if( strcmp( optarg, "long" ) == 0 )
+                    opts.format = SEGY_SIGNED_INTEGER_4_BYTE;
+                if( strcmp( optarg, "char" ) == 0 )
+                    opts.format = SEGY_SIGNED_CHAR_1_BYTE;
+                if( opts.format == 0 ) {
+                    opts.errmsg = "invalid format argument. valid formats: "
+                                  "ibm ieee short long char";
+                    return opts;
+                }
+                break;
 
             case 's':
                 ret = parseint( optarg, &opts.sbeg );
@@ -403,7 +427,54 @@ int main( int argc, char** argv ) {
 
     if( verbosity > 2 ) printf( "Found %d samples per trace\n", src_samples );
 
-    float* trace = malloc( src_samples * sizeof( float ) );
+    int format = opts.format ? opts.format : segy_format( binheader );
+    /* check that the format we get from the binary header isn't garbage */
+    switch( format ) {
+        /* all good */
+        case SEGY_IBM_FLOAT_4_BYTE:
+        case SEGY_SIGNED_INTEGER_4_BYTE:
+        case SEGY_SIGNED_SHORT_2_BYTE:
+        case SEGY_FIXED_POINT_WITH_GAIN_4_BYTE:
+        case SEGY_IEEE_FLOAT_4_BYTE:
+        case SEGY_SIGNED_CHAR_1_BYTE:
+            break;
+
+        /*
+         * assume this header field is just not set, silently fall back
+         * to 4-byte floats
+         */
+        case 0:
+            format = SEGY_IBM_FLOAT_4_BYTE;
+            break;
+
+        case SEGY_NOT_IN_USE_1:
+        case SEGY_NOT_IN_USE_2:
+        default:
+            errmsg( 1, "sample format field is garbage. "
+                        "falling back to 4-byte float. "
+                        "override with --format" );
+            format = SEGY_IBM_FLOAT_4_BYTE;
+    }
+
+    if( verbosity > 1 && !opts.format ) {
+        static const char* samplefmts[] = {
+            "",
+            "ibm",
+            "long",
+            "short",
+            "fixed-point 4-byte float",
+            "ieee",
+            "invalid",
+            "invalid",
+            "char",
+        };
+        printf( "Inferred sample format %s\n", samplefmts[ format ] );
+    }
+
+    const int trace_bsize = segy_trsize( format, src_samples );
+    const int elemsize = trace_bsize / src_samples;
+    if( verbosity > 2 ) printf( "Found %d bytes per trace\n", trace_bsize );
+    void* trace = malloc( trace_bsize );
 
     if( verbosity > 0 ) puts( "Copying traces" );
     long long traces = 0;
@@ -419,11 +490,11 @@ int main( int argc, char** argv ) {
 
         /* outside copy interval - skip this trace */
         if( ilno < ibeg || ilno > iend || xlno < xbeg || xlno > xend ) {
-            fseek( src, sizeof( float ) * src_samples, SEEK_CUR );
+            fseek( src, elemsize * src_samples, SEEK_CUR );
             continue;
         }
 
-        sz = fread( trace, sizeof( float ), src_samples, src );
+        sz = fread( trace, elemsize, src_samples, src );
         if( sz != src_samples )
             exit( errmsg2( errno, "Unable to read trace",
                                    strerror( errno ) ) );
@@ -445,7 +516,7 @@ int main( int argc, char** argv ) {
             exit( errmsg2( errno, "Unable to write trace header",
                                    strerror( errno ) ) );
 
-        sz = fwrite( trace + d.skip, sizeof( float ), d.len, dst );
+        sz = fwrite( (char*)trace + elemsize * d.skip, elemsize, d.len, dst );
         if( sz != d.len )
             exit( errmsg2( errno, "Unable to write trace",
                                    strerror( errno ) ) );

@@ -399,6 +399,6 @@ def resample(f, rate = None, delay = None, micro = False,
     t0 = delay if delay is not None else f.samples[0]
     rate = rate / 1000 if rate is not None else f.samples[1] - f.samples[0]
 
-    f._samples = (np.arange(len(f.samples), dtype = np.single) * rate) + t0
+    f._samples = (np.arange(len(f.samples)) * rate) + t0
 
     return f
