@@ -62,7 +62,10 @@ class SegyFile(object):
 
         from . import _segyio
 
-        self.xfd = _segyio.segyiofd(filename, mode, tracecount, binary)
+        self.xfd = _segyio.segyiofd(filename, mode,
+                                    tracecount=tracecount,
+                                    binary=binary,
+                                   )
         metrics = self.xfd.metrics()
         self._fmt = metrics['format']
         self._tracecount = metrics['tracecount']

@@ -219,16 +219,33 @@ struct buffer_guard {
 
 namespace fd {
 
-int init( segyiofd* self, PyObject* args, PyObject* ) {
+int init( segyiofd* self, PyObject* args, PyObject* kwargs ) {
     char* filename = NULL;
     char* mode = NULL;
     int tracecount = 0;
     buffer_guard buffer;
 
-    if( !PyArg_ParseTuple( args, "ss|iz*", &filename,
-                                           &mode,
-                                           &tracecount,
-                                           &buffer ) )
+    static const char* kwlist[] = {
+        "filename",
+        "mode",
+        "tracecount",
+        "binary",
+        NULL,
+    };
+
+    // https://mail.python.org/pipermail/python-dev/2006-February/060689.html
+    // python3 fixes the non-constness of the kwlist arg in
+    // ParseTupleAndKeywords, since C++ really prefers writing string literals
+    // as const
+    //
+    // Remove the const_cast when python2 support is dropped
+    if( !PyArg_ParseTupleAndKeywords( args, kwargs,
+                "ss|iz*",
+                const_cast< char** >(kwlist),
+                &filename,
+                &mode,
+                &tracecount,
+                &buffer ) )
         return -1;
 
     const char* binary = buffer.buf< const char >();
