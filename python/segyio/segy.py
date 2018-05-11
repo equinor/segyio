@@ -25,7 +25,7 @@ import numpy as np
 from segyio._header import Header
 from segyio._gather import Gather
 from segyio._line import Line
-from segyio._trace import Trace
+from segyio.trace import Trace
 from segyio._field import Field
 
 from segyio.tracesortingformat import TraceSortingFormat

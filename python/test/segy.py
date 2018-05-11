@@ -21,7 +21,7 @@ from segyio import TraceField, BinField
 from segyio._field import Field
 from segyio._line import Line
 from segyio._header import Header
-from segyio._trace import Trace
+from segyio.trace import Trace
 
 
 def test_inline_4():
