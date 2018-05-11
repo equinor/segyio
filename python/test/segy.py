@@ -20,7 +20,7 @@ import segyio
 from segyio import TraceField, BinField
 from segyio._field import Field
 from segyio._line import Line
-from segyio._header import Header
+from segyio.header import Header
 from segyio.trace import Trace
 
 

@@ -22,7 +22,7 @@ except (NameError, ImportError): pass
 
 import numpy as np
 
-from segyio._header import Header
+from segyio.header import Header
 from segyio._gather import Gather
 from segyio._line import Line
 from segyio.trace import Trace
