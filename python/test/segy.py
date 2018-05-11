@@ -606,6 +606,43 @@ def test_write_binary(tmpdir):
         # copy a header
         f.bin = f.bin
 
+@tmpfiles("test-data/small.sgy")
+def test_write_header_update_atomic(tmpdir):
+    with segyio.open(tmpdir / "small.sgy", "r+") as f:
+        orig = dict(f.header[10])
+
+        d = { 1:  10,
+              37: 4,
+              73: 15,
+              2:  10, # this key raises error
+            }
+
+        # use the same instance all the time, to also catch the case where
+        # update dirties the backing storage
+        header = f.header[10]
+        with pytest.raises(KeyError):
+            header.update(d)
+
+        assert orig == header
+
+        # flushing the header should just write a clean buffer
+        header.flush()
+        assert orig == header
+
+        del d[2]
+        header.update(d)
+
+        assert header[1] == 10
+        assert header[73] == 15
+        assert f.header[10][37] == 4
+
+        fresh = orig.copy()
+        fresh.update(d)
+
+        assert orig != header
+        assert orig != f.header[10]
+        assert fresh == f.header[10]
+        assert header == f.header[10]
 
 def test_fopen_error():
     # non-existent file

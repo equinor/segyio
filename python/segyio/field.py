@@ -1,8 +1,10 @@
+import collections
+
 import segyio
 from segyio import BinField
 from segyio import TraceField
 
-class Field(object):
+class Field(collections.MutableMapping):
     _bin_keys = [x for x in BinField.enums()
                  if  x != BinField.Unassigned1
                  and x != BinField.Unassigned2]
@@ -11,46 +13,151 @@ class Field(object):
                 if  x != TraceField.UnassignedInt1
                 and x != TraceField.UnassignedInt2]
 
-
-    def __init__(self, buf, write, field_type, traceno=None, keys = _tr_keys):
+    def __init__(self, buf, kind, traceno = None, filehandle = None):
         self.buf = buf
         self.traceno = traceno
-        self._field_type = field_type
-        self._keys = keys
-        self._write = write
+        self.filehandle = filehandle
+        self.getfield = segyio._segyio.getfield
+        self.putfield = segyio._segyio.putfield
 
-    def _get_field(self, *args):
-        return segyio._segyio.getfield(self.buf, *args)
+        if kind == 'binary':
+            self._keys = self._bin_keys
+            self.kind = BinField
+        elif kind == 'trace':
+            self._keys = self._tr_keys
+            self.kind = TraceField
+        else:
+            raise ValueError('Unknown header type {}'.format(kind))
 
-    def _set_field(self, *args):
-        return segyio._segyio.putfield(self.buf, *args)
+    def flush(self):
+        """Commit backing storage to disk
 
-    def __getitem__(self, field):
-        # add some structure so we can always iterate over fields
-        if isinstance(field, int) or isinstance(field, self._field_type):
-            field = [field]
+        This method is largely internal, and it is not necessary to call this
+        from user code. It should not be explicitly invoked and may be removed
+        in future versions.
+        """
 
-        d = {self._field_type(f): self._get_field(f) for f in field}
+        if self.kind == TraceField:
+            self.filehandle.putth(self.traceno, self.buf)
 
-        # unpack the dictionary. if header[field] is requested, a
-        # plain, unstructed output is expected, but header[f1,f2,f3]
-        # yields a dict
-        if len(d) == 1:
-            return d.popitem()[1]
+        elif self.kind == BinField:
+            self.filehandle.putbin(self.buf)
 
-        return d
+        else:
+            msg = 'Object corrupted: kind {} not valid'
+            raise RuntimeError(msg.format(self.kind))
+
+    def __getitem__(self, key):
+        """d[key]
+
+        Read the associated value of `key`. Raises ``KeyError`` if `key` is not
+        in the header.
+
+        `key` can be any iterable, to retrieve multiple keys at once. In this
+        case, a mapping of key -> value is returned.
+
+        Parameters
+        ----------
+        key : int, or iterable of int
+
+        Returns
+        -------
+
+        value : int
+
+        Notes
+        -----
+
+        .. versionadded:: 1.1
+
+        .. note::
+            Since version 1.6, KeyError is approperiately raised on key misses,
+            whereas ``IndexError`` was raised before. This is an old bug, since
+            header types were documented to be dict-like. If you rely on
+            catching key-miss errors in your code, you might want to handle
+            both ``IndexError`` and ``KeyError`` for multi-version robustness.
+
+        .. warning::
+            segyio considers reads/writes full headers, not individual fields,
+            and does the read from disk when this class is constructed. If the
+            file is updated through some other handle, including a secondary
+            access via `f.header`, this cache might be out-of-date.
+
+        Examples
+        --------
+
+        >>> d[3213]
+        15000
+
+        >>> d[37, 189]
+        { 37: 5, 189: 2484 }
+
+        """
+        try: return self.getfield(self.buf, int(key))
+        except TypeError: pass
+
+        return {self.kind(k): self.getfield(self.buf, int(k)) for k in key}
+
+    def __setitem__(self, key, val):
+        """d[key] = value
+
+        Set ``d[key]`` to `value`. Raises ``KeyError`` if `key` is not in the
+        header. Setting keys commits changes to disk, although the changes may
+        not be visible until the kernel schedules the write.
+
+        Unlike ``d[key]``, this method does not support assigning multiple values
+        at once. To set multiple values at once, use the `update` method.
+
+        Parameters
+        ----------
+
+        key : int
+        val : int
+
+        Returns
+        -------
+
+        val : int
+            The value set
+
+        Notes
+        -----
+
+        .. versionadded:: 1.1
+
+        .. note::
+            Since version 1.6, KeyError is approperiately raised on key misses,
+            whereas ``IndexError`` was raised before. This is an old bug, since
+            header types were documented to be dict-like. If you rely on
+            catching key-miss errors in your code, you might want to handle
+            both ``IndexError`` and ``KeyError`` for multi-version robustness.
+
+        .. warning::
+            segyio considers reads/writes full headers, not individual fields,
+            and does the read from disk when this class is constructed. If the
+            file is updated through some other handle, including a secondary
+            access via `f.header`, this cache might be out-of-date. That means
+            writing an individual field will write the full header to disk,
+            possibly overwriting previously set values.
+
+        """
+
+        self.putfield(self.buf, key, val)
+        self.flush()
+
+        return val
+
+    def __delitem__(self, key):
+        """del d[key]
+
+        'Delete' the `key` by setting value to zero. Equivalent
+        to ``d[key] = 0``.
+        """
+
+        self[key] = 0
 
     def keys(self):
         return list(self._keys)
-
-    def values(self):
-        return map(self._get_field, self.keys())
-
-    def items(self):
-        return zip(self.keys(), self.values())
-
-    def __contains__(self, key):
-        return key in self._keys
 
     def __len__(self):
         return len(self._keys)
@@ -58,24 +165,47 @@ class Field(object):
     def __iter__(self):
         return iter(self._keys)
 
-    def __setitem__(self, field, val):
-        self._set_field(field, val)
-        self._write(self.buf, self.traceno)
-
     def update(self, value):
-        if type(self) is type(value):
-            buf = value.buf
-        else:
-            buf = self.buf
+        """d.update([value])
 
-            # iter() on a dict only gives values, need key-value pairs
-            try: value = value.items()
-            except AttributeError: pass
+        Overwrite the values in `d` with the keys from `value`. If any key in
+        `value` is invalid in `d`, ``KeyError`` is raised.
 
-            for k, v in value:
-                self._set_field(int(k), v)
+        This method is atomic - either all values in `value` are set in `d`, or
+        none are. ``update`` does not commit a partially-updated version to
+        disk.
 
-        self._write(buf, self.traceno)
+        Notes
+        -----
+
+        .. versionchanged:: 1.3
+            Support for common dict operations (update, keys, values)
+
+        .. versionchanged:: 1.6
+            Atomicity guarantee
+
+        Examples
+        --------
+
+        >>> e = { 1: 10, 9: 5 }
+        >>> d.update(e)
+        >>> l = [ (105, 11), (169, 4) ]
+        >>> d.update(l)
+
+        """
+
+        buf = bytearray(self.buf)
+
+        # iter() on a dict only gives values, need key-value pairs
+        try: value = value.items()
+        except AttributeError: pass
+
+        for k, v in value:
+            self.putfield(buf, int(k), v)
+
+        self.buf = buf
+
+        self.flush()
 
     @classmethod
     def binary(cls, segy):
@@ -88,10 +218,7 @@ class Field(object):
             # will fail too
             buf = bytearray(segyio._segyio.binsize())
 
-        def wr(buf, *_):
-            segy.xfd.putbin(buf)
-
-        return Field(buf, write=wr, field_type=BinField, keys = Field._bin_keys)
+        return Field(buf, kind='binary', filehandle=segy.xfd)
 
     @classmethod
     def trace(cls, buf, traceno, segy):
@@ -113,13 +240,10 @@ class Field(object):
             # will fail too
             pass
 
-        def wr(buf, traceno):
-            segy.xfd.putth(traceno, buf)
-
-        return Field(buf, traceno=traceno,
-                          write=wr,
-                          field_type=TraceField,
-                          keys=Field._tr_keys)
+        return Field(buf, kind='trace',
+                          traceno=traceno,
+                          filehandle=segy.xfd,
+                    )
 
     def __repr__(self):
-        return self[self.keys()].__repr__()
+        return repr(self[self.keys()])
