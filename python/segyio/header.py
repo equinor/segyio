@@ -108,7 +108,7 @@ class Header(collections.Sequence):
                 h.update(v)
 
     def __repr__(self):
-        return "Header(traces = {})".format(self.segy.samples)
+        return 'Header(traces = {})'.format(len(self))
 
     def __len__(self):
         return self.length
