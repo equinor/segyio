@@ -1,3 +1,4 @@
+import collections
 import itertools
 try: from future_builtins import zip
 except ImportError: pass
@@ -6,9 +7,10 @@ import segyio
 from .line import Line
 from .field import Field
 
-class Header(object):
+class Header(collections.Sequence):
     def __init__(self, segy):
         self.segy = segy
+        self.length = segy.tracecount
 
     @staticmethod
     def _header_buffer(buf=None):
@@ -16,19 +18,18 @@ class Header(object):
             buf = bytearray(segyio._segyio.thsize())
         return buf
 
-    def __getitem__(self, traceno, buf=None):
-
+    def __getitem__(self, traceno):
         if isinstance(traceno, slice):
             def gen():
-                for i in range(*traceno.indices(self.segy.tracecount)):
+                for i in range(*traceno.indices(len(self))):
                     yield self[i]
 
             return gen()
 
         if traceno < 0:
-            traceno = self.segy.tracecount + traceno
+            traceno += len(self)
 
-        if traceno >= self.segy.tracecount or traceno < 0:
+        if traceno >= len(self) or traceno < 0:
             msg = 'Header out of range: 0 <= {} < {}'
             raise IndexError(msg.format(traceno, self.segy.tracecount))
 
@@ -43,11 +44,11 @@ class Header(object):
 
         self.__getitem__(traceno).update(val)
 
-    def __iter__(self):
-        return self[:]
-
     def __repr__(self):
         return "Header(traces = {})".format(self.segy.samples)
+
+    def __len__(self):
+        return self.length
 
     def readfn(self, t0, length, stride, *_):
         def gen():
