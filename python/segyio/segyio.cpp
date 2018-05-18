@@ -866,10 +866,15 @@ PyObject* puttr( segyiofd* self, PyObject* args ) {
 
     int traceno;
     char* buffer;
-    Py_ssize_t buflen;
+    int buflen;
 
     if( !PyArg_ParseTuple( args, "is#", &traceno, &buffer, &buflen ) )
         return NULL;
+
+    if( self->trace_bsize > buflen )
+        return ValueError("trace too short: expected %d bytes, got %d",
+                          self->trace_bsize,
+                          buflen );
 
     segy_from_native( self->format, self->samplecount, buffer );
 
