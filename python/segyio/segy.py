@@ -894,8 +894,9 @@ class SegyFile(object):
         def writefn(t0, length, step, val):
             val = buffn(val)
             step *= len(self.offsets)
+            trace = self.trace
             for i, v in zip(range(t0, t0 + (step * length), step), val):
-                Trace.write_trace(i, v, self)
+                trace[i] = v
 
         self._iline = Line(self, il_len, il_stride, lines, other_lines, buffn, readfn, writefn, "inline")
         return self._iline
@@ -1080,8 +1081,9 @@ class SegyFile(object):
         def writefn(t0, length, step, val):
             val = buffn(val)
             step *= len(self.offsets)
+            trace = self.trace
             for i, v in zip(range(t0, t0 + step * length, step), val):
-                Trace.write_trace(i, v, self)
+                trace[i] = v
 
         self._xline = Line(self, xl_len, xl_stride, lines, other_lines, buffn, readfn, writefn, "crossline")
         return self._xline
