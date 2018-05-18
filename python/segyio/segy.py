@@ -54,12 +54,6 @@ class SegyFile(object):
         self._xline_length = None
         self._xline_stride = None
 
-        self._trace = Trace(self)
-        self._header = Header(self)
-        self._iline = None
-        self._xline = None
-        self._gather = None
-
         from . import _segyio
 
         self.xfd = _segyio.segyiofd(filename, mode,
@@ -70,6 +64,12 @@ class SegyFile(object):
         self._fmt = metrics['format']
         self._tracecount = metrics['tracecount']
         self._ext_headers = metrics['ext_headers']
+
+        self._trace = Trace(self)
+        self._header = Header(self)
+        self._iline = None
+        self._xline = None
+        self._gather = None
 
         try:
             self._dtype = np.dtype({
