@@ -83,6 +83,7 @@ class Field(collections.MutableMapping):
 
         try:
             if self.kind == TraceField:
+                if traceno is None: return buf
                 return self.filehandle.getth(traceno, buf)
             else:
                 return self.filehandle.getbin()

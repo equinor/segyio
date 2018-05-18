@@ -21,8 +21,21 @@ class Header(collections.Sequence):
     def __getitem__(self, traceno):
         if isinstance(traceno, slice):
             def gen():
+                # double-buffer the header. when iterating over a range, we
+                # want to make sure the visible change happens as late as
+                # possible, and that in the case of exception the last valid
+                # header was untouched. this allows for some fancy control
+                # flow, and more importantly helps debugging because you can
+                # fully inspect and interact with the last good value.
+                x = Field.trace(None, self.segy)
+                buf = bytearray(x.buf)
                 for i in range(*traceno.indices(len(self))):
-                    yield self[i]
+                    # skip re-invoking __getitem__, just update the buffer
+                    # directly with fetch, and save some initialisation work
+                    buf = x.fetch(buf, i)
+                    x.buf[:] = buf
+                    x.traceno = i
+                    yield x
 
             return gen()
 
