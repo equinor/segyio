@@ -215,6 +215,40 @@ def test_header_dict_methods():
         iter(f.bin)
 
 
+@tmpfiles('test-data/small.sgy')
+def test_header_dropped_writes(tmpdir):
+    with segyio.open('test-data/small.sgy', mode='r+') as f:
+        f.header[10] = { 1: 5, 5: 10 }
+
+    with segyio.open('test-data/small.sgy', mode='r+') as f:
+        x, y = f.header[10], f.header[10]
+
+        def intkeys(d):
+            return { int(k): v for k, v in d.items() }
+
+        assert intkeys(x[1, 5]) == { 1: 5, 5: 10 }
+        assert intkeys(y[1, 5]) == { 1: 5, 5: 10 }
+
+        # write to x[1] is invisible to y
+        x[1] = 6
+        assert x[1] == 6
+        assert y[1] == 5
+
+        y.reload()
+        assert x[1] == 6
+        assert y[1] == 6
+
+        x[1] = 5
+        assert x[1] == 5
+        assert y[1] == 6
+
+        # the write to x[1] is lost
+        y[5] = 1
+        assert x[1] == 5
+        assert x.reload()
+        assert x[1] == 6
+        assert intkeys(y[1, 5]) == { 1: 6, 5: 1 }
+
 @tmpfiles("test-data/small-ps.sgy")
 def test_headers_line_offset(tmpdir):
     il, xl = TraceField.INLINE_3D, TraceField.CROSSLINE_3D

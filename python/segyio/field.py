@@ -34,15 +34,60 @@ class Field(collections.MutableMapping):
 
         self.readonly = readonly
 
-        self.reload(self.traceno)
+        self.buf = self.fetch(self.buf, self.traceno)
 
-    def reload(self, traceno = None):
+    def fetch(self, buf = None, traceno = None):
+        """Fetch the header from disk
+
+        This object will read header when it is constructed, which means it
+        might be out-of-date if the file is updated through some other handle.
+        This method is largely meant for internal use - if you need to reload
+        disk contents, use ``reload``.
+
+        Fetch does not update any internal state (unless `buf` is ``None`` on a
+        trace header, and the read succeeds), but returns the fetched header
+        contents.
+
+        This method can be used to reposition the trace header, which is useful
+        for constructing generators.
+
+        If this is called on a writable, new file, and this header has not yet
+        been written to, it will successfully return an empty buffer that, when
+        written to, will be reflected on disk.
+
+        Parameters
+        ----------
+
+        buf : bytearray
+            buffer to read into instead of ``self.buf``
+        traceno : int
+
+        Returns
+        -------
+
+        buf : bytearray
+
+        Notes
+        -----
+
+        .. versionadded:: 1.6
+
+        This method is not intended as user-oriented functionality, but might
+        be useful in high-performance code.
+
+        """
+
+        if buf is None:
+            buf = self.buf
+
+        if traceno is None:
+            traceno = self.traceno
+
         try:
             if self.kind == TraceField:
-                if traceno is not None:
-                    self.buf = self.filehandle.getth(traceno, self.buf)
+                return self.filehandle.getth(traceno, buf)
             else:
-                self.buf = self.filehandle.getbin()
+                return self.filehandle.getbin()
         except IOError:
             if not self.readonly:
                 # the file was probably newly created and the trace header
@@ -53,12 +98,55 @@ class Field(collections.MutableMapping):
                 #
                 # if the file is opened read-only and this happens, there's no
                 # way to actually write and the error is an actual error
-                self.buf = bytearray(len(self.buf))
+                return bytearray(len(self.buf))
             else: raise
 
-        if self.traceno is not None:
-            self.traceno = traceno
+    def reload(self):
+        """Reload the header from disk
 
+        This object will read header when it is constructed, which means it
+        might be out-of-date if the file is updated through some other handle.
+
+        It's rarely required to call this method, and it's a symptom of fragile
+        code. However, if you have multiple handles to the same header, it
+        might be necessary. Consider the following example::
+
+            >>> x = f.header[10]
+            >>> y = f.header[10]
+            >>> x[1, 5]
+            { 1: 5, 5: 10 }
+            >>> y[1, 5]
+            { 1: 5, 5: 10 }
+            >>> x[1] = 6
+            >>> x[1], y[1] # write to x[1] is invisible to y
+            6, 5
+            >>> y.reload()
+            >>> x[1], y[1]
+            6, 6
+            >>> x[1] = 5
+            >>> x[1], y[1]
+            5, 6
+            >>> y[5] = 1
+            >>> x.reload()
+            >>> x[1], y[1, 5] # the write to x[1] is lost
+            6, { 1: 6; 5: 1 }
+
+        In segyio, headers writes are atomic, and the write to disk writes the
+        full cache. If this cache is out of date, some writes might get lost,
+        even though the updates are compatible.
+
+        The fix to this issue is either to use ``reload`` and maintain buffer
+        consistency, or simply don't let header handles alias and overlap in
+        lifetime.
+
+        Notes
+        -----
+
+        .. versionadded:: 1.6
+
+        """
+
+        self.buf = self.fetch(buf = self.buf)
         return self
 
     def flush(self):
