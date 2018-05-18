@@ -19,7 +19,18 @@ class Header(collections.Sequence):
         return buf
 
     def __getitem__(self, traceno):
-        if isinstance(traceno, slice):
+        try:
+            if traceno < 0:
+                traceno += len(self)
+
+            if not 0 <= traceno < len(self):
+                _ = traceno + 0
+                msg = 'Header out of range: 0 <= {} < {}'
+                raise IndexError(msg.format(traceno, len(self)))
+
+            return Field.trace(traceno = traceno, segy = self.segy)
+
+        except TypeError:
             def gen():
                 # double-buffer the header. when iterating over a range, we
                 # want to make sure the visible change happens as late as
@@ -38,15 +49,6 @@ class Header(collections.Sequence):
                     yield x
 
             return gen()
-
-        if traceno < 0:
-            traceno += len(self)
-
-        if traceno >= len(self) or traceno < 0:
-            msg = 'Header out of range: 0 <= {} < {}'
-            raise IndexError(msg.format(traceno, self.segy.tracecount))
-
-        return Field.trace(traceno = traceno, segy = self.segy)
 
     def __setitem__(self, traceno, val):
         # library-provided loops can re-use a buffer for the lookup, even in
