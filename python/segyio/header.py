@@ -18,17 +18,43 @@ class Header(collections.Sequence):
             buf = bytearray(segyio._segyio.thsize())
         return buf
 
-    def __getitem__(self, traceno):
+    def __getitem__(self, i):
+        """header[i]
+
+        *i*th header of the file, starting at 0
+
+        Parameters
+        ----------
+
+        i : int or slice
+
+        Returns
+        -------
+
+        field : Field
+            dict_like header
+
+        Notes
+        -----
+
+        .. versionadded:: 1.1
+
+        Behaves like [] for lists
+
+        """
         try:
-            if traceno < 0:
-                traceno += len(self)
+            if i < 0:
+                i += len(self)
 
-            if not 0 <= traceno < len(self):
-                _ = traceno + 0
+            if not 0 <= i < len(self):
+                # in python2, int-slice comparison does not raise a type error,
+                # (but returns False), so force a type-error if this still
+                # isn't an int-like.
+                _ = i + 0
                 msg = 'Header out of range: 0 <= {} < {}'
-                raise IndexError(msg.format(traceno, len(self)))
+                raise IndexError(msg.format(i, len(self)))
 
-            return Field.trace(traceno = traceno, segy = self.segy)
+            return Field.trace(traceno = i, segy = self.segy)
 
         except TypeError:
             def gen():
@@ -40,12 +66,12 @@ class Header(collections.Sequence):
                 # fully inspect and interact with the last good value.
                 x = Field.trace(None, self.segy)
                 buf = bytearray(x.buf)
-                for i in range(*traceno.indices(len(self))):
+                for j in range(*i.indices(len(self))):
                     # skip re-invoking __getitem__, just update the buffer
                     # directly with fetch, and save some initialisation work
-                    buf = x.fetch(buf, i)
+                    buf = x.fetch(buf, j)
                     x.buf[:] = buf
-                    x.traceno = i
+                    x.traceno = j
                     yield x
 
             return gen()
