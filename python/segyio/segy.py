@@ -494,12 +494,7 @@ class SegyFile(object):
 
     @header.setter
     def header(self, val):
-        if isinstance(val, Field) or isinstance(val, dict):
-            val = itertools.repeat(val)
-
-        h, buf = self.header, None
-        for i, v in zip(range(self.tracecount), val):
-            h[i, buf] = v
+        self.header[:] = val
 
     def attributes(self, field):
         """File-wide attribute (header word) reading

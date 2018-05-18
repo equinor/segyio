@@ -76,14 +76,36 @@ class Header(collections.Sequence):
 
             return gen()
 
-    def __setitem__(self, traceno, val):
-        # library-provided loops can re-use a buffer for the lookup, even in
-        # __setitem__, so we might need to unpack the tuple to reuse the buffer
-        if isinstance(traceno, tuple):
-            buf = traceno[1]
-            traceno = traceno[0]
+    def __setitem__(self, i, val):
+        """header[i] = val
 
-        self.__getitem__(traceno).update(val)
+        Write *i*th header of the file, starting at 0
+
+        Parameters
+        ----------
+
+        i : int or slice
+        val : Field or array_like of dict_like
+
+        Notes
+        -----
+
+        .. versionadded:: 1.1
+
+        Behaves like [] for lists
+
+        """
+
+        x = self[i]
+
+        try:
+            x.update(val)
+        except AttributeError:
+            if isinstance(val, Field) or isinstance(val, dict):
+                val = itertools.repeat(val)
+
+            for h, v in zip(x, val):
+                h.update(v)
 
     def __repr__(self):
         return "Header(traces = {})".format(self.segy.samples)

@@ -579,6 +579,19 @@ def test_write_header(tmpdir):
         f.header[2] = f.header[1]
         f.flush()
 
+        d = {TraceField.INLINE_3D: 12,
+             TraceField.CROSSLINE_3D: 13,
+             TraceField.offset: 14}
+
+        # assign multiple values with a slice
+        f.header[:5] = d
+        f.flush()
+
+        for i in range(5):
+            assert 12 == f.header[i][TraceField.INLINE_3D]
+            assert 13 == f.header[i][segyio.su.xline]
+            assert 14 == f.header[i][segyio.su.offset]
+
         # don't use this interface in production code, it's only for testing
         # i.e. don't access buf of treat it as a list
         # assertEqual(list(f.header[2].buf), list(f.header[1].buf))
