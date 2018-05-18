@@ -229,7 +229,7 @@ class Field(collections.MutableMapping):
             raise IndexError("Header out of range: 0 <= {} < {}".format(traceno, segy.tracecount))
 
         if buf is None:
-            buf = bytes(segyio._segyio.thsize())
+            buf = bytearray(segyio._segyio.thsize())
 
         try:
             segy.xfd.getth(traceno, buf)
