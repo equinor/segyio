@@ -8,8 +8,6 @@ import warnings
 from segyio._raw_trace import RawTrace
 
 class Trace(collections.Sequence):
-    index_errmsg = "Trace {0} not in range [-{1},{1}]"
-
     def __init__(self, file, samples):
         self._file = file
         self.length = file.tracecount
@@ -154,19 +152,6 @@ class Trace(collections.Sequence):
 
     def __repr__(self):
         return "Trace(traces = {}, samples = {})".format(len(self), self.shape)
-
-    def _trace_buffer(self, buf=None):
-        shape = self._file.samples.shape
-        dtype = self._file.dtype
-
-        if buf is None:
-            buf = np.empty(shape=shape, dtype=dtype)
-        elif not isinstance(buf, np.ndarray):
-            raise TypeError("Buffer must be None or numpy.ndarray")
-        elif buf.dtype != dtype:
-            buf = np.empty(shape=shape, dtype=dtype)
-
-        return buf
 
     @property
     def raw(self):
