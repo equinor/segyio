@@ -14,12 +14,9 @@ class Field(collections.MutableMapping):
                 and x != TraceField.UnassignedInt2]
 
     def __init__(self, buf, kind, traceno = None, filehandle = None):
-        self.buf = buf
-        self.traceno = traceno
-        self.filehandle = filehandle
-        self.getfield = segyio._segyio.getfield
-        self.putfield = segyio._segyio.putfield
-
+        # do setup of kind/keys first, so that keys() work. if this method
+        # throws, we want repr() to be well-defined for backtrace, and that
+        # requires _keys
         if kind == 'binary':
             self._keys = self._bin_keys
             self.kind = BinField
@@ -28,6 +25,12 @@ class Field(collections.MutableMapping):
             self.kind = TraceField
         else:
             raise ValueError('Unknown header type {}'.format(kind))
+
+        self.buf = buf
+        self.traceno = traceno
+        self.filehandle = filehandle
+        self.getfield = segyio._segyio.getfield
+        self.putfield = segyio._segyio.putfield
 
     def flush(self):
         """Commit backing storage to disk
