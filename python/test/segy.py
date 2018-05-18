@@ -166,8 +166,7 @@ def test_traces_slicing():
         assert rev_traces[2][49] == f.trace[0][49]
 
         # make sure buffers can be reused
-        buf = None
-        for i, trace in enumerate(f.trace[0:6:2, buf]):
+        for i, trace in enumerate(f.trace[0:6:2]):
             assert np.array_equal(trace, traces[i])
 
 

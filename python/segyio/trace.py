@@ -1,3 +1,4 @@
+import collections
 try: from future_builtins import zip
 except ImportError: pass
 
@@ -6,38 +7,84 @@ import warnings
 
 from segyio._raw_trace import RawTrace
 
-class Trace:
+class Trace(collections.Sequence):
     index_errmsg = "Trace {0} not in range [-{1},{1}]"
-    def __init__(self, file):
+
+    def __init__(self, file, samples):
         self._file = file
-        """:type: segyio.file"""
+        self.length = file.tracecount
+        self.filehandle = file.xfd
+        self.dtype = file.dtype
+        self.shape = samples
 
-    def __getitem__(self, index, buf=None):
-        if isinstance(index, tuple):
-            return self.__getitem__(index[0], index[1])
+    def __getitem__(self, i):
+        """trace[i]
 
-        buf = self._trace_buffer(buf)
+        *i*th trace of the file, starting at 0. ``trace[i]`` returns a numpy
+        array, and changes to this array will *not* be reflected on disk.
 
-        if isinstance(index, slice):
-            # always read the trace into a second buffer. This is to provide
-            # exception safety: if an exception is raised and at least one
-            # array has already been yielded to the caller, failing to read the
-            # next trace won't make the already-returned array garbage
+        When i is a slice, a generator of numpy arrays is returned.
+
+        Parameters
+        ----------
+
+        i : int or slice
+
+        Returns
+        -------
+
+        trace : numpy.ndarray of dtype or generator of numpy.ndarray of dtype
+
+        Notes
+        -----
+
+        .. versionadded:: 1.1
+
+        Behaves like [] for lists.
+
+        .. note::
+
+            This operator reads lazily from the file, meaning the file is read
+            on ``next()``, and only one trace is fixed in memory. This means
+            segyio can run through arbitrarily large files without consuming
+            much memory, but it is potentially slow if the goal is to read the
+            entire file into memory. If that is the case, consider using
+            `trace.raw`, which reads eagerly.
+
+        """
+
+        try:
+            if i < 0:
+                i += len(self)
+
+            if not 0 <= i < len(self):
+                # in python2, int-slice comparison does not raise a type error,
+                # (but returns False), so force a type-error if this still
+                # isn't an int-like.
+                i += 0
+                msg = 'Trace out of range: 0 <= {} < {}'
+                raise IndexError(msg.format(i, len(self)))
+
+            buf = np.zeros(self.shape, dtype = self.dtype)
+            return self.filehandle.gettr(buf, i, 1, 1)
+
+        except TypeError:
             def gen():
-                buf1 = buf
-                buf2 = self._trace_buffer(None)
-                for i in range(*index.indices(len(self))):
-                    buf1, buf2 = self._readtr(i, 1, 1, buf1, buf2)
-                    yield buf1
+                # double-buffer the trace. when iterating over a range, we want
+                # to make sure the visible change happens as late as possible,
+                # and that in the case of exception the last valid trace was
+                # untouched. this allows for some fancy control flow, and more
+                # importantly helps debugging because you can fully inspect and
+                # interact with the last good value.
+                x = np.zeros(self.shape, dtype=self.dtype)
+                y = np.zeros(self.shape, dtype=self.dtype)
+
+                for j in range(*i.indices(len(self))):
+                    self.filehandle.gettr(x, j, 1, 1)
+                    x, y = y, x
+                    yield y
 
             return gen()
-
-        if not 0 <= abs(index) < len(self):
-            raise IndexError(self.index_errmsg.format(index, len(self)-1))
-
-        # map negative a negative to the corresponding positive value
-        start = (index + len(self)) % len(self)
-        return self._readtr(start, 1, 1, buf)[0]
 
     def __setitem__(self, index, val):
         if isinstance(index, slice):
@@ -51,13 +98,10 @@ class Trace:
         self.write_trace(index, val, self._file)
 
     def __len__(self):
-        return self._file.tracecount
-
-    def __iter__(self):
-        return self[:]
+        return self.length
 
     def __repr__(self):
-        return "Trace(traces = {}, samples = {})".format(len(self), self._file.samples)
+        return "Trace(traces = {}, samples = {})".format(len(self), self.shape)
 
     def _trace_buffer(self, buf=None):
         shape = self._file.samples.shape
@@ -71,14 +115,6 @@ class Trace:
             buf = np.empty(shape=shape, dtype=dtype)
 
         return buf
-
-    def _readtr(self, start, step, length, buf, buf1 = None):
-        if buf1 is None:
-            buf1 = buf
-
-        buf1 = self._file.xfd.gettr(buf1, start, step, length)
-
-        return buf1, buf
 
     @classmethod
     def write_trace(cls, traceno, buf, segy):

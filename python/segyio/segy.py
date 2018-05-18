@@ -65,12 +65,6 @@ class SegyFile(object):
         self._tracecount = metrics['tracecount']
         self._ext_headers = metrics['ext_headers']
 
-        self._trace = Trace(self)
-        self._header = Header(self)
-        self._iline = None
-        self._xline = None
-        self._gather = None
-
         try:
             self._dtype = np.dtype({
                 1: np.float32,
@@ -85,6 +79,12 @@ class SegyFile(object):
             warnings.warn(', '.join((problem, solution)))
             self._fmt = 1
             self._dtype = np.dtype(np.float32)
+
+        self._trace = Trace(self, metrics['samplecount'])
+        self._header = Header(self)
+        self._iline = None
+        self._xline = None
+        self._gather = None
 
         super(SegyFile, self).__init__()
 

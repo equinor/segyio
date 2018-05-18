@@ -18,14 +18,9 @@ class RawTrace(object):
             length = max(0, (mstop - mstart + (step - (1 if step > 0 else -1))))
             buf = np.zeros(shape = (length, len(f.samples)), dtype = f.dtype)
             l = len(range(start, stop, step))
-            buf, _ = self.trace._readtr(start, step, l, buf)
-            return buf
+            return self.trace.filehandle.gettr(buf, start, step, l)
 
-        if int(index) != index:
-            raise TypeError("Trace index must be integer or slice.")
-
-        buf = self.trace._trace_buffer(None)
-        return self.trace._readtr(int(index), 1, 1, buf)[0]
+        return self.trace[index]
 
     def __repr__(self):
         return self.trace.__repr__() + ".raw"

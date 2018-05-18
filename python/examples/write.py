@@ -21,7 +21,7 @@ def main():
         src.trace[0] = trace
 
         # read trace 1, but re-use the memory for speed
-        trace = src.trace[1, trace]
+        trace = src.trace[1]
         # square all values. the trace is a plain numpy array
         trace = np.square(trace, trace)
         # write the trace back to disk, but at trace 2
