@@ -34,8 +34,6 @@ class Field(collections.MutableMapping):
 
         self.readonly = readonly
 
-        self.buf = self.fetch(self.buf, self.traceno)
-
     def fetch(self, buf = None, traceno = None):
         """Fetch the header from disk
 
@@ -333,22 +331,16 @@ class Field(collections.MutableMapping):
         return Field(buf, kind='binary',
                           filehandle=segy.xfd,
                           readonly=segy.readonly,
-                    )
+                    ).reload()
 
     @classmethod
     def trace(cls, traceno, segy):
-        if traceno is not None and traceno < 0:
-            traceno = segy.tracecount + traceno
-
-        if traceno is not None and (traceno >= segy.tracecount or traceno < 0):
-            raise IndexError("Header out of range: 0 <= {} < {}".format(traceno, segy.tracecount))
-
         buf = bytearray(segyio._segyio.thsize())
         return Field(buf, kind='trace',
                           traceno=traceno,
                           filehandle=segy.xfd,
                           readonly=segy.readonly,
-                    )
+                    ).reload()
 
     def __repr__(self):
         return repr(self[self.keys()])

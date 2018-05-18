@@ -17,26 +17,24 @@ class Header(object):
         return buf
 
     def __getitem__(self, traceno, buf=None):
-        if isinstance(traceno, tuple):
-            return self.__getitem__(traceno[0], traceno[1])
-
-        buf = self._header_buffer(buf)
 
         if isinstance(traceno, slice):
             def gen():
-                buf1, buf2 = self._header_buffer(), self._header_buffer()
                 for i in range(*traceno.indices(self.segy.tracecount)):
-                    x = self.__getitem__(i)
-                    buf2, buf1 = buf1, buf2
-                    yield x
+                    yield self[i]
 
             return gen()
 
-        return Field.trace(traceno=traceno, segy=self.segy)
+        if traceno < 0:
+            traceno = self.segy.tracecount + traceno
+
+        if traceno >= self.segy.tracecount or traceno < 0:
+            msg = 'Header out of range: 0 <= {} < {}'
+            raise IndexError(msg.format(traceno, self.segy.tracecount))
+
+        return Field.trace(traceno = traceno, segy = self.segy)
 
     def __setitem__(self, traceno, val):
-        buf = None
-
         # library-provided loops can re-use a buffer for the lookup, even in
         # __setitem__, so we might need to unpack the tuple to reuse the buffer
         if isinstance(traceno, tuple):
@@ -53,14 +51,11 @@ class Header(object):
 
     def readfn(self, t0, length, stride, *_):
         def gen():
-            buf1, buf2 = self._header_buffer(), self._header_buffer()
             start = t0
             step = stride * len(self.segy.offsets)
             stop = t0 + (length * step)
             for i in range(start, stop, step):
-                x = Field.trace(traceno=i, segy=self.segy)
-                buf2, buf1 = buf1, buf2
-                yield x
+                yield self[i]
 
         return gen()
 
