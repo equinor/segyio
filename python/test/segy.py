@@ -223,11 +223,8 @@ def test_header_dropped_writes(tmpdir):
     with segyio.open('test-data/small.sgy', mode='r+') as f:
         x, y = f.header[10], f.header[10]
 
-        def intkeys(d):
-            return { int(k): v for k, v in d.items() }
-
-        assert intkeys(x[1, 5]) == { 1: 5, 5: 10 }
-        assert intkeys(y[1, 5]) == { 1: 5, 5: 10 }
+        assert x[1, 5] == { 1: 5, 5: 10 }
+        assert y[1, 5] == { 1: 5, 5: 10 }
 
         # write to x[1] is invisible to y
         x[1] = 6
@@ -247,7 +244,7 @@ def test_header_dropped_writes(tmpdir):
         assert x[1] == 5
         assert x.reload()
         assert x[1] == 6
-        assert intkeys(y[1, 5]) == { 1: 6, 5: 1 }
+        assert y[1, 5] == { 1: 6, 5: 1 }
 
 @tmpfiles("test-data/small-ps.sgy")
 def test_headers_line_offset(tmpdir):

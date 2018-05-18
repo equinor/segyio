@@ -283,6 +283,19 @@ class Field(collections.MutableMapping):
     def __iter__(self):
         return iter(self._keys)
 
+    def __eq__(self, other):
+        if not isinstance(other, collections.Mapping):
+            return NotImplemented
+
+        if len(self) != len(other):
+            return False
+
+        def intkeys(d):
+            return { int(k): v for k, v in d.items() }
+
+        return intkeys(self) == intkeys(other)
+
+
     def update(self, value):
         """d.update([value])
 
