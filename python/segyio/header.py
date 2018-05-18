@@ -26,13 +26,13 @@ class Header(object):
             def gen():
                 buf1, buf2 = self._header_buffer(), self._header_buffer()
                 for i in range(*traceno.indices(self.segy.tracecount)):
-                    x = self.__getitem__(i, buf1)
+                    x = self.__getitem__(i)
                     buf2, buf1 = buf1, buf2
                     yield x
 
             return gen()
 
-        return Field.trace(buf, traceno=traceno, segy=self.segy)
+        return Field.trace(traceno=traceno, segy=self.segy)
 
     def __setitem__(self, traceno, val):
         buf = None
@@ -43,7 +43,7 @@ class Header(object):
             buf = traceno[1]
             traceno = traceno[0]
 
-        self.__getitem__(traceno, buf).update(val)
+        self.__getitem__(traceno).update(val)
 
     def __iter__(self):
         return self[:]
@@ -58,7 +58,7 @@ class Header(object):
             step = stride * len(self.segy.offsets)
             stop = t0 + (length * step)
             for i in range(start, stop, step):
-                x = Field.trace(buf1, traceno=i, segy=self.segy)
+                x = Field.trace(traceno=i, segy=self.segy)
                 buf2, buf1 = buf1, buf2
                 yield x
 

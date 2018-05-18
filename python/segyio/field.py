@@ -13,7 +13,7 @@ class Field(collections.MutableMapping):
                 if  x != TraceField.UnassignedInt1
                 and x != TraceField.UnassignedInt2]
 
-    def __init__(self, buf, kind, traceno = None, filehandle = None):
+    def __init__(self, buf, kind, traceno = None, filehandle = None, readonly = True):
         # do setup of kind/keys first, so that keys() work. if this method
         # throws, we want repr() to be well-defined for backtrace, and that
         # requires _keys
@@ -31,6 +31,35 @@ class Field(collections.MutableMapping):
         self.filehandle = filehandle
         self.getfield = segyio._segyio.getfield
         self.putfield = segyio._segyio.putfield
+
+        self.readonly = readonly
+
+        self.reload(self.traceno)
+
+    def reload(self, traceno = None):
+        try:
+            if self.kind == TraceField:
+                if traceno is not None:
+                    self.buf = self.filehandle.getth(traceno, self.buf)
+            else:
+                self.buf = self.filehandle.getbin()
+        except IOError:
+            if not self.readonly:
+                # the file was probably newly created and the trace header
+                # hasn't been written yet, and we set the buffer to zero. if
+                # this is the case we want to try and write it later, and if
+                # the file was broken, permissions were wrong etc writing will
+                # fail too
+                #
+                # if the file is opened read-only and this happens, there's no
+                # way to actually write and the error is an actual error
+                self.buf = bytearray(len(self.buf))
+            else: raise
+
+        if self.traceno is not None:
+            self.traceno = traceno
+
+        return self
 
     def flush(self):
         """Commit backing storage to disk
@@ -212,40 +241,25 @@ class Field(collections.MutableMapping):
 
     @classmethod
     def binary(cls, segy):
-        try:
-            buf = segy.xfd.getbin()
-        except IOError:
-            # the file was probably newly created and the binary header hasn't
-            # been written yet.  if this is the case we want to try and write
-            # it. if the file was broken, permissions were wrong etc writing
-            # will fail too
-            buf = bytearray(segyio._segyio.binsize())
-
-        return Field(buf, kind='binary', filehandle=segy.xfd)
+        buf = bytearray(segyio._segyio.binsize())
+        return Field(buf, kind='binary',
+                          filehandle=segy.xfd,
+                          readonly=segy.readonly,
+                    )
 
     @classmethod
-    def trace(cls, buf, traceno, segy):
-        if traceno < 0:
+    def trace(cls, traceno, segy):
+        if traceno is not None and traceno < 0:
             traceno = segy.tracecount + traceno
 
-        if traceno >= segy.tracecount or traceno < 0:
+        if traceno is not None and (traceno >= segy.tracecount or traceno < 0):
             raise IndexError("Header out of range: 0 <= {} < {}".format(traceno, segy.tracecount))
 
-        if buf is None:
-            buf = bytearray(segyio._segyio.thsize())
-
-        try:
-            segy.xfd.getth(traceno, buf)
-        except IOError:
-            # the file was probably newly created and the trace header hasn't
-            # been written yet.  if this is the case we want to try and write
-            # it. if the file was broken, permissions were wrong etc writing
-            # will fail too
-            pass
-
+        buf = bytearray(segyio._segyio.thsize())
         return Field(buf, kind='trace',
                           traceno=traceno,
                           filehandle=segy.xfd,
+                          readonly=segy.readonly,
                     )
 
     def __repr__(self):
