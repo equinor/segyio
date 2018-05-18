@@ -896,8 +896,8 @@ int segy_sample_interval( segy_file* fp, float fallback, float* dt ) {
         return err;
     }
 
-    int bindt = 0;
-    int trdt = 0;
+    int32_t bindt = 0;
+    int32_t trdt = 0;
 
     segy_get_bfield( bin_header, SEGY_BIN_INTERVAL, &bindt );
     segy_get_field( trace_header, SEGY_TR_SAMPLE_INTER, &trdt );
