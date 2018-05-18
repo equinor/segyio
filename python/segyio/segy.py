@@ -1535,6 +1535,25 @@ class SegyFile(object):
 
         return fmt()
 
+    @property
+    def readonly(self):
+        """File is read-only
+
+        Returns
+        -------
+
+        readonly : bool
+            True if this file is read-only
+
+        Notes
+        -----
+
+        ..versionadded:: 1.6
+
+        """
+
+        return '+' not in self._mode
+
 class spec:
     def __init__(self):
         self.iline = 189
