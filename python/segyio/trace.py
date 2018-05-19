@@ -150,6 +150,16 @@ class Trace(collections.Sequence):
     def __len__(self):
         return self.length
 
+    def __iter__(self):
+        # __iter__ has a reasonable default implementation from
+        # collections.Sequence. It's essentially this loop:
+        # for i in range(len(self)): yield self[i]
+        # However, in segyio that means the double-buffering, buffer reuse does
+        # not happen, which is *much* slower (the allocation of otherwised
+        # reused numpy objects takes about half the execution time), so
+        # explicitly implement it as [:]
+        return self[:]
+
     def __repr__(self):
         return "Trace(traces = {}, samples = {})".format(len(self), self.shape)
 
