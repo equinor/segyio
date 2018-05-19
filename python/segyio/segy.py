@@ -13,7 +13,6 @@ You can also have a look at the example programs that are distributed with
 segyio which you can find in the examples directory or where your distribution
 installs example programs.
 """
-import itertools
 import warnings
 try:
     from future_builtins import zip
