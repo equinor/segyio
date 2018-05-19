@@ -554,6 +554,7 @@ def test_write_header(tmpdir):
         # accept anything with a key-value structure
         f.header[5].update([(segyio.su.ns, 12), (segyio.su.dt, 4)])
         f.header[5].update(((segyio.su.muts, 3), (segyio.su.mute, 7)))
+        f.header[5].update([(segyio.su.muts, 3)], mute=7)
 
         with pytest.raises(TypeError):
             f.header[0].update(10)

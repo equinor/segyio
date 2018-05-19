@@ -1,8 +1,9 @@
 import collections
 
 import segyio
-from segyio import BinField
-from segyio import TraceField
+from .binfield import BinField
+from .tracefield import TraceField
+from .su import keys as sukeys
 
 class Field(collections.MutableMapping):
     _bin_keys = [x for x in BinField.enums()
@@ -12,6 +13,8 @@ class Field(collections.MutableMapping):
     _tr_keys = [x for x in TraceField.enums()
                 if  x != TraceField.UnassignedInt1
                 and x != TraceField.UnassignedInt2]
+
+    _kwargs = dict(sukeys)
 
     def __init__(self, buf, kind, traceno = None, filehandle = None, readonly = True):
         # do setup of kind/keys first, so that keys() work. if this method
@@ -297,15 +300,19 @@ class Field(collections.MutableMapping):
         return intkeys(self) == intkeys(other)
 
 
-    def update(self, value):
-        """d.update([value])
+    def update(self, *args, **kwargs):
+        """d.update([E, ]**F) -> None.  Update D from mapping/iterable E and F.
 
-        Overwrite the values in `d` with the keys from `value`. If any key in
-        `value` is invalid in `d`, ``KeyError`` is raised.
+        Overwrite the values in `d` with the keys from `E` and `F`. If any key
+        in `value` is invalid in `d`, ``KeyError`` is raised.
 
         This method is atomic - either all values in `value` are set in `d`, or
         none are. ``update`` does not commit a partially-updated version to
         disk.
+
+        For kwargs, Seismic Unix-style names are supported. `BinField` and
+        `TraceField` are not, because there are name collisions between them,
+        although this restriction may be lifted in the future.
 
         Notes
         -----
@@ -316,6 +323,9 @@ class Field(collections.MutableMapping):
         .. versionchanged:: 1.6
             Atomicity guarantee
 
+        .. versionchanged:: 1.6
+            **kwargs support
+
         Examples
         --------
 
@@ -323,20 +333,36 @@ class Field(collections.MutableMapping):
         >>> d.update(e)
         >>> l = [ (105, 11), (169, 4) ]
         >>> d.update(l)
+        >>> d.update(e, iline=189, xline=193, hour=5)
 
         """
 
+        if len(args) > 1:
+            msg = 'update expected at most 1 non-keyword argument, got {}'
+            raise TypeError(msg.format(len(args)))
+
         buf = bytearray(self.buf)
 
-        # iter() on a dict only gives values, need key-value pairs
-        try: value = value.items()
-        except AttributeError: pass
+        # Implementation largely borrowed from collections.mapping
+        # If E present and has a .keys() method: for k in E: D[k] = E[k]
+        # If E present and lacks .keys() method: for (k, v) in E: D[k] = v
+        # In either case, this is followed by: for k, v in F.items(): D[k] = v
+        if len(args) == 1:
+            other = args[0]
+            if isinstance(other, collections.Mapping):
+                for key in other:
+                    self.putfield(buf, int(key), other[key])
+            elif hasattr(other, "keys"):
+                for key in other.keys():
+                    self.putfield(buf, int(key), other[key])
+            else:
+                for key, value in other:
+                    self.putfield(buf, int(key), value)
 
-        for k, v in value:
-            self.putfield(buf, int(k), v)
+        for key, value in kwargs.items():
+            self.putfield(buf, int(self._kwargs[key]), value)
 
         self.buf = buf
-
         self.flush()
 
     @classmethod
