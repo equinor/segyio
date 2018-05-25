@@ -14,10 +14,10 @@ def sanitize_slice(s, source):
     increasing = step is None or step > 0
 
     if start is None:
-        start = source[0] if increasing else source[-1]
+        start = min(source) if increasing else max(source)
 
     if stop is None:
-        stop = source[-1] + 1 if increasing else source[0] - 1
+        stop = max(source) + 1 if increasing else min(source) - 1
 
     return slice(start, stop, step)
 
