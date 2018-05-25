@@ -1633,7 +1633,6 @@ int segy_write_line( segy_file* fp,
     if( !fp->writable ) return SEGY_READONLY;
 
     const char* src = (const char*) buf;
-    line_trace0 *= offsets;
     stride *= offsets;
 
     for( ; line_length--; line_trace0 += stride, src += trace_bsize ) {
