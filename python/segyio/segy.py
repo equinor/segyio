@@ -24,7 +24,7 @@ import numpy as np
 
 from segyio.header import Header
 from .gather import Gather
-from segyio._line import Line
+from .line import Line
 from segyio.trace import Trace
 from .field import Field
 

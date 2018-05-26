@@ -3,7 +3,7 @@ try: from future_builtins import zip
 except ImportError: pass
 
 import segyio
-from segyio._line import Line
+from .line import Line
 from .field import Field
 
 class Header(object):

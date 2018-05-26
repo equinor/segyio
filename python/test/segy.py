@@ -19,7 +19,7 @@ from test import tmpfiles
 import segyio
 from segyio import TraceField, BinField
 from segyio.field import Field
-from segyio._line import Line
+from segyio.line import Line
 from segyio.header import Header
 from segyio.trace import Trace
 
