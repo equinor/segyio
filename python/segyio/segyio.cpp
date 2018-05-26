@@ -983,6 +983,61 @@ PyObject* getdepth( segyiofd* self, PyObject* args ) {
     return bufferobj;
 }
 
+PyObject* putdepth( segyiofd* self, PyObject* args ) {
+    segy_file* fp = self->fd;
+    if( !fp ) return NULL;
+
+    int depth;
+    int count;
+    int offsets;
+    PyObject* val;
+
+    if( !PyArg_ParseTuple( args, "iiiO", &depth,
+                                         &count,
+                                         &offsets,
+                                         &val ) )
+        return NULL;
+
+    buffer_guard buffer( val, PyBUF_CONTIG );
+    if( !buffer ) return NULL;
+
+    if( count * self->elemsize > buffer.len() )
+        return ValueError("slice too short: expected %d elements, got %zd",
+                          count, buffer.len() / self->elemsize );
+
+    int traceno = 0;
+    int err = 0;
+    const char* buf = buffer.buf();
+    const int skip = self->elemsize;
+
+    const long trace0 = self->trace0;
+    const int trace_bsize = self->trace_bsize;
+
+    segy_from_native( self->format, count, buffer.buf() );
+
+    for( ; err == 0 && traceno < count; ++traceno, buf += skip ) {
+        err = segy_writesubtr( fp,
+                               traceno * offsets,
+                               depth,
+                               depth + 1,
+                               1,
+                               buf,
+                               NULL,
+                               trace0,
+                               trace_bsize );
+    }
+
+    segy_to_native( self->format, count, buffer.buf() );
+
+    if( err == SEGY_FREAD_ERROR )
+        return IOError( "I/O operation failed on data trace %d at depth %d",
+                        traceno, depth );
+
+    if( err ) return Error( err );
+
+    return Py_BuildValue( "" );
+}
+
 PyObject* getdt( segyiofd* self, PyObject* args ) {
     segy_file* fp = self->fd;
     if( !fp ) return NULL;
@@ -1071,6 +1126,7 @@ PyMethodDef methods [] = {
 
     { "getline",  (PyCFunction) fd::getline,  METH_VARARGS, "Get line." },
     { "getdepth", (PyCFunction) fd::getdepth, METH_VARARGS, "Get depth." },
+    { "putdepth", (PyCFunction) fd::putdepth, METH_VARARGS, "Put depth." },
 
     { "getdt",    (PyCFunction) fd::getdt, METH_VARARGS,    "Get sample interval (dt)." },
     { "rotation", (PyCFunction) fd::rotation, METH_VARARGS, "Get clockwise rotation."   },

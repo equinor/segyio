@@ -84,6 +84,7 @@ class SegyFile(object):
         self._iline = None
         self._xline = None
         self._gather = None
+        self.depth = None
 
         super(SegyFile, self).__init__()
 
@@ -1098,19 +1099,6 @@ class SegyFile(object):
         """
         self.xline[:] = value
 
-    def _depth_buffer(self, buf=None):
-        il_len = self._iline_length
-        xl_len = self._xline_length
-
-        if self.sorting == TraceSortingFormat.CROSSLINE_SORTING:
-            shape = (il_len, xl_len)
-        elif self.sorting == TraceSortingFormat.INLINE_SORTING:
-            shape = (xl_len, il_len)
-        else:
-            raise RuntimeError("Unexpected sorting type")
-
-        return self._shape_buffer(shape, buf)
-
     @property
     def fast(self):
         """Access the 'fast' dimension
@@ -1259,26 +1247,12 @@ class SegyFile(object):
         if self.unstructured:
             raise ValueError(self._unstructured_errmsg)
 
-        indices = np.asarray(list(range(len(self.samples))), dtype=np.intc)
-        other_indices = np.asarray([0], dtype=np.intc)
-        buffn = self._depth_buffer
+        if self.depth is not None:
+            return self.depth
 
-        slice_trace_count = self._iline_length * self._xline_length
-        offsets = len(self.offsets)
-
-        def readfn(depth, length, stride, buf):
-            return self.xfd.getdepth(depth, slice_trace_count, offsets, buf)
-
-        def writefn(depth, length, stride, val):
-            val = buffn(val)
-
-            buf_view = val.reshape(self._iline_length * self._xline_length)
-
-            for i, trace_buf in enumerate(self.trace):
-                trace_buf[depth] = buf_view[i]
-                self.trace[i] = trace_buf
-
-        return Line(self, len(self.samples), 1, indices, other_indices, buffn, readfn, writefn, "depth")
+        from .depth import Depth
+        self.depth = Depth(self)
+        return self.depth
 
     @depth_slice.setter
     def depth_slice(self, value):

@@ -1135,7 +1135,8 @@ def test_segyio_types():
         assert isinstance(f.tracecount, int)
         assert isinstance(f.samples, np.ndarray)
 
-        assert isinstance(f.depth_slice, Line)
+        from segyio.depth import Depth
+        assert isinstance(f.depth_slice, Depth)
         assert isinstance(f.depth_slice[1], np.ndarray)
         assert isinstance(f.depth_slice[1:23], GeneratorType)
 
@@ -1197,7 +1198,7 @@ def test_depth_slice_reading():
 
             next(islice(itr, 5, 5), None)
 
-    with pytest.raises(KeyError):
+    with pytest.raises(IndexError):
         _ = f.depth_slice[len(f.samples)]
 
 
