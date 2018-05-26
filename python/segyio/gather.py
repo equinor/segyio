@@ -2,75 +2,97 @@ import itertools
 import numpy as np
 
 import segyio.tools as tools
-from segyio.tracesortingformat import TraceSortingFormat
 
-class Gather:
-    """ Gather mode. Internal.
+class Gather(object):
 
-    Provides the implementation for f.gather, reading n offsets from the
-    intersection of two lines in a cube.
-    """
-
-    def __init__(self, trace, iline, xline, offsets, sort):
+    def __init__(self, trace, iline, xline, offsets):
         # cache constructed modes for performance
         self.trace     = trace
         self.iline     = iline
         self.xline     = xline
         self.offsets   = offsets
-        self.sort      = sort
-
-    def _getindex(self, il, xl, offset, sorting):
-        """ Get the trace index for an (il, xl, offset) tuple
-
-        :rtype: int
-        """
-        if offset not in self.offsets:
-            raise KeyError()
-
-        offset = self.offsets.tolist().index(offset)
-        return self.iline.heads[il] + self.xline.heads[xl] + offset
 
     def __getitem__(self, index):
-        """ :rtype: iterator[numpy.ndarray]|numpy.ndarray """
+        """gather[i, x, o], gather[:,:,:]
+
+        Get the gather or range of gathers, defined as offsets intersection
+        between an in- and a crossline. Also works on post-stack files (with
+        only 1 offset), although it is less useful in those cases.
+
+        If offsets are omitted, the default is all offsets.
+
+        A group of offsets is always returned as an offset-by-samples
+        numpy.ndarray. If either inline, crossline, or both, are slices, a
+        generator of such ndarrays are returned.
+
+        If the slice of offsets misses all offsets, a special, empty ndarray is
+        returned.
+
+        Parameters
+        ----------
+
+        i : int or slice
+            inline
+        x : int or slice
+            crossline
+        o : int or slice
+            offsets (default is :)
+
+        Returns
+        -------
+
+        gather : numpy.ndarray or generator of numpy.ndarray
+
+        Notes
+        -----
+
+        .. versionadded:: 1.1
+
+
+        """
         if len(index) < 3:
-            index = (index[0], index[1], slice(None))
+            index = (index[0], index[1], None)
 
         il, xl, off = index
-        sort = self.sort
+
+        if off is None and len(self.offsets) == 1:
+            off = self.offsets[0]
+
+        # if offset isn't specified, default to all, [:]
+        off = off or slice(None)
 
         def isslice(x): return isinstance(x, slice)
 
         # gather[int,int,int]
         if not any(map(isslice, [il, xl, off])):
-            return self.trace[self._getindex(il, xl, off, sort)]
+            o = self.iline.offsets[off]
+            i = o + self.iline.heads[il] + self.xline.heads[xl]
+            return self.trace[i]
 
         offs = off if isslice(off) else slice(off, off+1, 1)
 
         xs = list(filter(self.offsets.__contains__,
                     range(*offs.indices(self.offsets[-1]+1))))
 
-        empty = np.empty(0, dtype = self.trace._file.dtype)
+        empty = np.empty(0, dtype = self.trace.dtype)
         # gather[int,int,:]
         if not any(map(isslice, [il, xl])):
             if len(xs) == 0: return empty
-            return tools.collect(
-                    self.trace[self._getindex(il, xl, x, sort)]
-                    for x in xs)
+            i = self.iline.heads[il] + self.xline.heads[xl]
+            return tools.collect(self.trace[i + self.iline.offsets[x]] for x in xs)
 
         # gather[:,:,:], gather[int,:,:], gather[:,int,:]
         # gather[:,:,int] etc
         def gen():
-            # precompute the xline number -> xline offset
-            xlinds = { xlno: i for i, xlno in enumerate(self.xline.lines) }
+            # precomputed xline number -> xline offset into the iline
+            xlinds = { xlno: i for i, xlno in enumerate(self.xline.keys()) }
 
-            # doing range over gathers is VERY expensive, because every lookup
-            # with a naive implementations would call _getindex to map lineno
-            # -> trace index. However, ranges over gathers are done on a
-            # by-line basis so lines can be buffered, and traces can be read
-            # from the iline. This is the least efficient when there are very
-            # few traces read per inline, but huge savings with larger subcubes
-            last_il = self.iline.lines[-1] + 1
-            last_xl = self.xline.lines[-1] + 1
+            # ranges over gathers are done on a by-line basis so lines can be
+            # buffered, and traces can be read from the iline. This is the
+            # least efficient when there are very few traces read per inline,
+            # but huge savings with larger subcubes
+            last_il = self.iline.keys()[-1] + 1
+            last_xl = self.xline.keys()[-1] + 1
 
             il_slice = il if isslice(il) else slice(il, il+1)
             xl_slice = xl if isslice(xl) else slice(xl, xl+1)

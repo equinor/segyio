@@ -1304,7 +1304,7 @@ class SegyFile(object):
         if self._gather is not None:
             return self._gather
 
-        self._gather = Gather(self.trace, self.iline, self.xline, self.offsets, self.sorting)
+        self._gather = Gather(self.trace, self.iline, self.xline, self.offsets)
         return self._gather
 
     @property
