@@ -24,12 +24,11 @@ class Gather:
 
         :rtype: int
         """
-        if sorting == TraceSortingFormat.INLINE_SORTING:
-            xlind = self.xline._index(xl, None)
-            return self.iline._index(il, offset) + xlind
-        else:
-            ilind = self.iline._index(il, None)
-            return self.xline._index(xl, offset) + ilind
+        if offset not in self.offsets:
+            raise KeyError()
+
+        offset = self.offsets.tolist().index(offset)
+        return self.iline.heads[il] + self.xline.heads[xl] + offset
 
     def __getitem__(self, index):
         """ :rtype: iterator[numpy.ndarray]|numpy.ndarray """

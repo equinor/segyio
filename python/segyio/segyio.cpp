@@ -934,6 +934,60 @@ PyObject* getline( segyiofd* self, PyObject* args) {
     return bufferobj;
 }
 
+PyObject* putline( segyiofd* self, PyObject* args) {
+    segy_file* fp = self->fd;
+    if( !fp ) return NULL;
+
+    int line_trace0;
+    int line_length;
+    int stride;
+    int offsets;
+    int index;
+    int offset;
+    PyObject* val;
+
+    if( !PyArg_ParseTuple( args, "iiiiiiO", &line_trace0,
+                                            &line_length,
+                                            &stride,
+                                            &offsets,
+                                            &index,
+                                            &offset,
+                                            &val ) )
+        return NULL;
+
+    buffer_guard buffer( val, PyBUF_CONTIG );
+
+    if( self->trace_bsize * line_length > buffer.len() )
+        return ValueError("line too short: expected %d elements, got %zd",
+                          self->samplecount * line_length,
+                          buffer.len() / self->elemsize );
+
+    const int elems = line_length * self->samplecount;
+    segy_from_native( self->format, elems, buffer.buf() );
+
+    int err = segy_write_line( fp, line_trace0,
+                                   line_length,
+                                   stride,
+                                   offsets,
+                                   buffer.buf(),
+                                   self->trace0,
+                                   self->trace_bsize );
+
+    segy_to_native( self->format, elems, buffer.buf() );
+
+    switch( err ) {
+        case SEGY_OK:
+            return Py_BuildValue("");
+
+        case SEGY_FWRITE_ERROR:
+            return IOError( "I/O operation failed on line %d, offset %d",
+                            index, offset );
+
+        default:
+            return Error( err );
+    }
+}
+
 PyObject* getdepth( segyiofd* self, PyObject* args ) {
     segy_file* fp = self->fd;
     if( !fp ) return NULL;
@@ -1125,6 +1179,7 @@ PyMethodDef methods [] = {
     { "puttr", (PyCFunction) fd::puttr, METH_VARARGS, "Put trace." },
 
     { "getline",  (PyCFunction) fd::getline,  METH_VARARGS, "Get line." },
+    { "putline",  (PyCFunction) fd::putline,  METH_VARARGS, "Put line." },
     { "getdepth", (PyCFunction) fd::getdepth, METH_VARARGS, "Get depth." },
     { "putdepth", (PyCFunction) fd::putdepth, METH_VARARGS, "Put depth." },
 

@@ -1,6 +1,8 @@
+import collections
 import itertools
 try: from future_builtins import zip
 except ImportError: pass
+import numpy as np
 
 # in order to support [:end] syntax, we must make sure
 # start has a non-None value. lineno.indices() would set it
@@ -21,130 +23,245 @@ def sanitize_slice(s, source):
 
     return slice(start, stop, step)
 
-class Line:
-    """ Line mode for traces and trace headers. Internal.
+class Line(collections.Mapping):
 
-    The _line class provides an interface for line-oriented operations. The
-    line reading operations themselves are not streaming - it's assumed that
-    when a line is queried it's somewhat limited in size and will comfortably
-    fit in memory, and that the full line is interesting. This also applies to
-    line headers; however, all returned values support the iterable protocol so
-    they work fine together with the streaming bits of this library.
-
-    _line should not be instantiated directly by users, but rather returned
-    from the iline/xline properties of file or from the header mode. Any
-    direct construction of this should be considered an error.
-    """
-
-    def __init__(self, segy, length, stride, lines, other_lines, buffn, readfn, writefn, name):
-        self.segy = segy
-        self.len = length
+    def __init__(self, filehandle, labels, length, stride, offsets, name):
+        self.filehandle = filehandle.xfd
+        self.lines = labels
+        self.length = length
         self.stride = stride
-        self.lines = lines
-        self.other_lines = other_lines
-        self.name = name
-        self.buffn = buffn
-        self.readfn = readfn
-        self.writefn = writefn
+        self.shape = (length, len(filehandle.samples))
+        self.dtype = filehandle.dtype
 
+        # pre-compute all line beginnings
         from ._segyio import fread_trace0
-        self.fread_trace0 = fread_trace0
+        self.heads = {
+            label: fread_trace0(label,
+                                length,
+                                stride,
+                                len(offsets),
+                                labels,
+                                name)
+            for label in labels
+        }
 
-    def __repr__(self):
-        return "Line(direction = {}, length = {})".format(self.name, self.len)
+        self.offsets = { x: i for i, x in enumerate(offsets) }
+        self.default_offset = offsets[0]
 
-    def _index(self, lineno, offset):
-        """ :rtype: int"""
-        offs = self.segy.offsets
-
-        if offset is None:
-            offset = 0
-        else:
-            try:
-                offset = next(i for i, x in enumerate(offs) if x == offset)
-            except StopIteration:
-                try:
-                    int(offset)
-                except TypeError:
-                    raise TypeError("Offset must be int or slice")
-
-                raise KeyError("Unknkown offset {}".format(offset))
-
-        try:
-            lineno = int(lineno)
-        except TypeError:
-            raise TypeError("Must be int or slice")
-
-        trace0 = self.fread_trace0(lineno, len(self.other_lines), self.stride, len(offs), self.lines, self.name)
-        return offset + trace0
-
-    def _indices(self, lineno, offset):
-        """ :rtype: tuple[collections.Iterable, collections.Iterable]"""
-        offsets = self.segy.offsets
-        if offset is None:
-            offset = offsets[0]
-
-        if not isinstance(lineno, slice):
-            lineno = slice(lineno, lineno + 1, 1)
+    def ranges(self, index, offset):
+        if not isinstance(index, slice):
+            index = slice(index, index + 1)
 
         if not isinstance(offset, slice):
-            offset = slice(offset, offset + 1, 1)
+            offset = slice(offset, offset + 1)
 
-        lineno = sanitize_slice(lineno, self.lines)
-        offset = sanitize_slice(offset, offsets)
+        index  = sanitize_slice(index, self.heads.keys())
+        offset = sanitize_slice(offset, self.offsets.keys())
+        irange = range(*index.indices(max(self.heads.keys()) + 1))
+        orange = range(*offset.indices(max(self.offsets.keys()) + 1))
+        irange = filter(self.heads.__contains__, irange)
+        orange = filter(self.offsets.__contains__, orange)
+        # offset-range is used in inner loops, so make it a list for
+        # reusability. offsets are usually few, so no real punishment by using
+        # non-generators here
+        return irange, list(orange)
 
-        offs, lns = set(self.segy.offsets), set(self.lines)
+    def __getitem__(self, index):
+        """line[i] or line[i, o]
 
-        orng = range(*offset.indices(offsets[-1] + 1))
-        lrng = range(*lineno.indices(self.lines[-1] + 1))
+        The line `i`, or the line `i` at a specific offset `o`. ``line[i]``
+        returns a numpy array, and changes to this array will *not* be
+        reflected on disk.
 
-        return filter(lns.__contains__, lrng), filter(offs.__contains__, orng)
+        The `i` and `o` are *keys*, and should correspond to the line- and
+        offset labels in your file, and in the `ilines`, `xlines`, and
+        `offsets` attributes.
 
-    def _get(self, lineno, offset, buf):
-        """ :rtype: numpy.ndarray"""
-        t0 = self._index(lineno, offset)
-        return self.readfn(t0, self.len, self.stride, buf)
+        Slices can contain lines and offsets not in the file, and like with
+        list slicing, these are handled gracefully and ignored.
 
-    def _get_iter(self, lineno, off, buf):
-        """ :rtype: collections.Iterable[numpy.ndarray]"""
-        buf1, buf2 = buf, self.buffn()
+        When `i` or `o` is a slice, a generator of numpy arrays is returned.
 
-        for line, offset in itertools.product(*self._indices(lineno, off)):
-            buf1 = self._get(line, offset, buf1)
-            buf2, buf1 = buf1, buf2
-            yield buf2
+        When both `i` and `o` are slices, only one generator is returned, and
+        the lines are yielded offsets-first, roughly equivalent to the double
+        for loop::
 
-    def __getitem__(self, lineno, offset=None):
-        """ :rtype: numpy.ndarray|collections.Iterable[numpy.ndarray]"""
-        buf = self.buffn()
+            >>> for line in lines:
+            ...     for off in offsets:
+            ...         yield line[line, off]
+            ...
 
-        if isinstance(lineno, tuple):
-            lineno, offset = lineno
+        Parameters
+        ----------
 
-        if isinstance(lineno, slice) or isinstance(offset, slice):
-            return self._get_iter(lineno, offset, buf)
+        i : int or slice
+        o : int or slice
 
-        return self._get(lineno, offset, buf)
+        Returns
+        -------
 
-    def __setitem__(self, lineno, val):
-        offset = None
-        if isinstance(lineno, tuple):
-            lineno, offset = lineno
+        line : numpy.ndarray of dtype or generator of numpy.ndarray of dtype
 
-        if isinstance(lineno, slice) or isinstance(offset, slice):
-            indices = itertools.product(*self._indices(lineno, offset))
-            for (line, offset), x in zip(indices, val):
-                t0 = self._index(line, offset)
-                self.writefn(t0, self.len, self.stride, x)
+        Raises
+        ------
 
+        KeyError
+            If `i` or `o` don't exist
+
+        Notes
+        -----
+
+        .. versionadded:: 1.1
+
+        """
+
+        offset = self.default_offset
+        try: index, offset = index
+        except TypeError: pass
+
+        # prioritise the code path that's potentially in loops externally
+        try:
+            head = self.heads[index] + self.offsets[offset]
+        except TypeError:
+            # index is either unhashable (because it's a slice), or offset is a
+            # slice.
+            pass
         else:
-            t0 = self._index(lineno, offset)
-            self.writefn(t0, self.len, self.stride, val)
+            return self.filehandle.getline(head,
+                                           self.length,
+                                           self.stride,
+                                           len(self.offsets),
+                                           np.empty(self.shape, dtype=self.dtype),
+                                          )
 
+        # at this point, either offset or index is a slice (or proper
+        # type-error), so we're definitely making a generator. make them both
+        # slices to unify all code paths
+        irange, orange = self.ranges(index, offset)
+
+        def gen():
+            x = np.empty(self.shape, dtype=self.dtype)
+            y = np.copy(x)
+
+            # only fetch lines that exist. the slice can generate both offsets
+            # and line numbers that don't exist, so filter out misses before
+            # they happen
+            for line in irange:
+                for off in orange:
+                    head = self.heads[line] + self.offsets[off]
+                    self.filehandle.getline(head,
+                                            self.length,
+                                            self.stride,
+                                            len(self.offsets),
+                                            y,
+                                           )
+                    y, x = x, y
+                    yield x
+
+        return gen()
+
+    def __setitem__(self, index, val):
+        """line[i] = val or line[i, o] = val
+
+        Follows the same rules for indexing and slicing as ``line[i]``.
+
+        In either case, if the `val` iterable is exhausted before the line(s),
+        assignment stops with whatever is written so far. If `val` is longer
+        than an individual line, it's essentially truncated.
+
+        Parameters
+        ----------
+
+        i : int or slice
+        offset : int or slice
+        val : array_like
+
+        Raises
+        ------
+
+        KeyError
+            If `i` or `o` don't exist
+
+        Notes
+        -----
+
+        .. versionadded:: 1.1
+
+        Behaves like [] for lists.
+
+        """
+
+        offset = self.default_offset
+        try: index, offset = index
+        except TypeError: pass
+
+        try: head = self.heads[index] + self.offsets[offset]
+        except TypeError: pass
+        else:
+            dtype = self.dtype
+
+            import warnings
+            try:
+                val.dtype
+            except AttributeError:
+                msg = 'Implicit conversion from {} to {} (performance)'
+                warnings.warn(msg.format(type(val), np.ndarray), RuntimeWarning)
+                val = np.asarray(val)
+
+            if val.dtype != dtype:
+                # TODO: message depending on narrowing/float-conversion
+                msg = 'Implicit conversion from {} to {} (narrowing)'
+                warnings.warn(msg.format(val.dtype, dtype), RuntimeWarning)
+
+            # asarray only copies if it has to (differing dtypes). non-numpy arrays
+            # have already been converted
+            val = np.asarray(val, order = 'C', dtype = dtype)
+            return self.filehandle.putline(head,
+                                           self.length,
+                                           self.stride,
+                                           len(self.offsets),
+                                           index,
+                                           offset,
+                                           val,
+                                          )
+
+        irange, orange = self.ranges(index, offset)
+
+        val = iter(val)
+        for line in irange:
+            for off in orange:
+                head = self.heads[line] + self.offsets[off]
+                try: self.filehandle.putline(head,
+                                            self.length,
+                                            self.stride,
+                                            len(self.offsets),
+                                            line,
+                                            off,
+                                            next(val),
+                                           )
+                except StopIteration: return
+
+    # can't rely on most collections.Mapping default implementations of
+    # dict-like, because iter() does not yield keys for this class, it gives
+    # the lines themselves. that violates some assumptions (but segyio's always
+    # worked that way), and it's the more natural behaviour for segyio, so it's
+    # acceptible. additionally, the default implementations would be very slow
+    # and ineffective because they assume __getitem__ is sufficiently cheap,
+    # but it isn't here since it involves a disk operation
     def __len__(self):
-        return len(self.lines)
+        return len(self.heads)
 
     def __iter__(self):
-        buf = self.buffn()
-        for i in self.lines:
-            yield self._get(i, None, buf)
+        return self[:]
+
+    def __contains__(self, key):
+        return key in self.heads
+
+    def keys(self):
+        return sorted(self.heads.keys())
+
+    def values(self):
+        return self[:]
+
+    def items(self):
+        return zip(self.keys(), self[:])

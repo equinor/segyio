@@ -885,20 +885,13 @@ class SegyFile(object):
         if self._iline is not None:
             return self._iline
 
-        il_len, il_stride = self._iline_length, self._iline_stride
-        lines = self.ilines
-        other_lines = self.xlines
-        buffn = lambda x=None: self._line_buffer(il_len, x)
-        readfn = self._fread_line
-
-        def writefn(t0, length, step, val):
-            val = buffn(val)
-            step *= len(self.offsets)
-            trace = self.trace
-            for i, v in zip(range(t0, t0 + (step * length), step), val):
-                trace[i] = v
-
-        self._iline = Line(self, il_len, il_stride, lines, other_lines, buffn, readfn, writefn, "inline")
+        self._iline = Line(self,
+                           self.ilines,
+                           self._iline_length,
+                           self._iline_stride,
+                           self.offsets,
+                           'inline',
+                          )
         return self._iline
 
     @iline.setter
@@ -1072,20 +1065,13 @@ class SegyFile(object):
         if self._xline is not None:
             return self._xline
 
-        xl_len, xl_stride = self._xline_length, self._xline_stride
-        lines = self.xlines
-        other_lines = self.ilines
-        buffn = lambda x=None: self._line_buffer(xl_len, x)
-        readfn = self._fread_line
-
-        def writefn(t0, length, step, val):
-            val = buffn(val)
-            step *= len(self.offsets)
-            trace = self.trace
-            for i, v in zip(range(t0, t0 + step * length, step), val):
-                trace[i] = v
-
-        self._xline = Line(self, xl_len, xl_stride, lines, other_lines, buffn, readfn, writefn, "crossline")
+        self._xline = Line(self,
+                           self.xlines,
+                           self._xline_length,
+                           self._xline_stride,
+                           self.offsets,
+                           'crossline',
+                          )
         return self._xline
 
     @xline.setter
