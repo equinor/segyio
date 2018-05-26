@@ -26,7 +26,7 @@ from segyio.header import Header
 from .gather import Gather
 from segyio._line import Line
 from segyio.trace import Trace
-from segyio._field import Field
+from .field import Field
 
 from segyio.tracesortingformat import TraceSortingFormat
 

@@ -4,7 +4,7 @@ except ImportError: pass
 
 import segyio
 from segyio._line import Line
-from segyio._field import Field
+from .field import Field
 
 class Header(object):
     def __init__(self, segy):
