@@ -789,6 +789,12 @@ def test_write_with_array_likes(tmpdir):
     with segyio.open(tmpdir / 'small.sgy', mode = 'r+') as f:
 
         with pytest.warns(RuntimeWarning):
+            ones = np.ones(3 * len(f.samples), dtype='single')
+            # ::3 makes the array non-contiguous
+            f.trace[0] = ones[::3]
+            assert np.array_equal(f.trace[0], ones[::3])
+
+        with pytest.warns(RuntimeWarning):
             ones = np.ones(len(f.samples), dtype='single')
             f.trace[0] = (1 for _ in range(len(f.samples)))
             assert np.array_equal(f.trace[0], ones)

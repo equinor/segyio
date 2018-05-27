@@ -13,6 +13,10 @@ def castarray(x, dtype):
             except TypeError:
                 x = np.fromiter(x, dtype = dtype)
 
+        if not x.flags['C_CONTIGUOUS']:
+            msg = 'Implicit conversion to contiguous array'
+            warnings.warn(msg, RuntimeWarning)
+
         if x.dtype != dtype:
             # TODO: message depending on narrowing/float-conversion
             msg = 'Implicit conversion from {} to {} (narrowing)'
