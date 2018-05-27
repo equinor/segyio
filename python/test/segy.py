@@ -784,6 +784,14 @@ def test_write_with_narrowing(tmpdir):
             f.xline[last] = threes
             assert np.array_equal(f.xline[last], threes)
 
+@tmpfiles('test-data/small.sgy')
+def test_write_with_array_likes(tmpdir):
+    with segyio.open(tmpdir / 'small.sgy', mode = 'r+') as f:
+
+        with pytest.warns(RuntimeWarning):
+            ones = np.ones(len(f.samples), dtype='single')
+            f.trace[0] = (1 for _ in range(len(f.samples)))
+            assert np.array_equal(f.trace[0], ones)
 
 @tmpfiles("test-data/small.sgy")
 def test_assign_all_traces(tmpdir):

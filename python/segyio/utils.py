@@ -7,7 +7,11 @@ def castarray(x, dtype):
         except AttributeError:
             msg = 'Implicit conversion from {} to {} (performance)'
             warnings.warn(msg.format(type(x), np.ndarray), RuntimeWarning)
-            x = np.asarray(x)
+
+            try:
+                x = np.require(x, dtype = dtype, requirements = 'CAW')
+            except TypeError:
+                x = np.fromiter(x, dtype = dtype)
 
         if x.dtype != dtype:
             # TODO: message depending on narrowing/float-conversion
