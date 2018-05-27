@@ -21,10 +21,9 @@ except (NameError, ImportError): pass
 
 import numpy as np
 
-from segyio.header import Header
 from .gather import Gather
 from .line import Line
-from segyio.trace import Trace
+from .trace import Trace, Header
 from .field import Field
 
 from segyio.tracesortingformat import TraceSortingFormat

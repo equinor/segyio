@@ -20,8 +20,7 @@ import segyio
 from segyio import TraceField, BinField
 from segyio.field import Field
 from segyio.line import Line
-from segyio.header import Header
-from segyio.trace import Trace
+from segyio.trace import Trace, Header
 
 
 def test_inline_4():
