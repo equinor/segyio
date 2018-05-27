@@ -6,6 +6,25 @@ from .tracefield import TraceField
 from .su import keys as sukeys
 
 class Field(collections.MutableMapping):
+    """
+    The Field implements the dict interface, with a fixed set of keys. It's
+    used for both binary- and trace headers. Any modifications to this
+    dict_like object will be reflected on disk.
+
+    The keys can be integers, int_likes, or enumerations such as BinField,
+    TraceField, and su. If raw, numerical offsets are used they must align with
+    the defined byte offsets by the SEGY specification.
+
+    Notes
+    -----
+    .. versionadded:: 1.1
+
+    .. versionchanged:: 1.3
+        common dict operations (update, keys, values)
+
+    .. versionchanged:: 1.6
+        more common dict operations (collections.MutableMapping)
+    """
     _bin_keys = [x for x in BinField.enums()
                  if  x != BinField.Unassigned1
                  and x != BinField.Unassigned2]
@@ -58,24 +77,20 @@ class Field(collections.MutableMapping):
 
         Parameters
         ----------
-
-        buf : bytearray
+        buf     : bytearray
             buffer to read into instead of ``self.buf``
         traceno : int
 
         Returns
         -------
-
         buf : bytearray
 
         Notes
         -----
-
         .. versionadded:: 1.6
 
         This method is not intended as user-oriented functionality, but might
         be useful in high-performance code.
-
         """
 
         if buf is None:
@@ -104,8 +119,7 @@ class Field(collections.MutableMapping):
             else: raise
 
     def reload(self):
-        """Reload the header from disk
-
+        """
         This object will read header when it is constructed, which means it
         might be out-of-date if the file is updated through some other handle.
 
@@ -143,9 +157,7 @@ class Field(collections.MutableMapping):
 
         Notes
         -----
-
         .. versionadded:: 1.6
-
         """
 
         self.buf = self.fetch(buf = self.buf)
@@ -172,8 +184,7 @@ class Field(collections.MutableMapping):
     def __getitem__(self, key):
         """d[key]
 
-        Read the associated value of `key`. Raises ``KeyError`` if `key` is not
-        in the header.
+        Read the associated value of `key`.
 
         `key` can be any iterable, to retrieve multiple keys at once. In this
         case, a mapping of key -> value is returned.
@@ -184,12 +195,10 @@ class Field(collections.MutableMapping):
 
         Returns
         -------
-
-        value : int
+        value : int or dict_like
 
         Notes
         -----
-
         .. versionadded:: 1.1
 
         .. note::
@@ -207,44 +216,45 @@ class Field(collections.MutableMapping):
 
         Examples
         --------
+        Read a single value:
 
         >>> d[3213]
         15000
 
+        Read multiple values at once:
+
         >>> d[37, 189]
         { 37: 5, 189: 2484 }
-
+        >>> d[37, TraceField.INLINE_3D]
+        { 37: 5, 189: 2484 }
         """
+
         try: return self.getfield(self.buf, int(key))
         except TypeError: pass
 
         return {self.kind(k): self.getfield(self.buf, int(k)) for k in key}
 
     def __setitem__(self, key, val):
-        """d[key] = value
+        """d[key] = val
 
-        Set ``d[key]`` to `value`. Raises ``KeyError`` if `key` is not in the
-        header. Setting keys commits changes to disk, although the changes may
-        not be visible until the kernel schedules the write.
+        Set d[key] to val. Setting keys commits changes to disk, although the
+        changes may not be visible until the kernel schedules the write.
 
-        Unlike ``d[key]``, this method does not support assigning multiple values
+        Unlike d[key], this method does not support assigning multiple values
         at once. To set multiple values at once, use the `update` method.
 
         Parameters
         ----------
-
-        key : int
-        val : int
+        key : int_like
+        val : int_like
 
         Returns
         -------
-
         val : int
             The value set
 
         Notes
         -----
-
         .. versionadded:: 1.1
 
         .. note::
@@ -262,6 +272,13 @@ class Field(collections.MutableMapping):
             writing an individual field will write the full header to disk,
             possibly overwriting previously set values.
 
+        Examples
+        --------
+        Set a value and keep in a variable:
+
+        >>> x = header[189] = 5
+        >>> x
+        5
         """
 
         self.putfield(self.buf, key, val)
@@ -272,22 +289,31 @@ class Field(collections.MutableMapping):
     def __delitem__(self, key):
         """del d[key]
 
-        'Delete' the `key` by setting value to zero. Equivalent
-        to ``d[key] = 0``.
+        'Delete' the key by setting value to zero. Equivalent to ``d[key] =
+        0``.
+
+        Notes
+        -----
+        .. versionadded:: 1.6
         """
 
         self[key] = 0
 
     def keys(self):
+        """D.keys() -> a set-like object providing a view on D's keys"""
         return list(self._keys)
 
     def __len__(self):
+        """x.__len__() <==> len(x)"""
         return len(self._keys)
 
     def __iter__(self):
+        """x.__iter__() <==> iter(x)"""
         return iter(self._keys)
 
     def __eq__(self, other):
+        """x.__eq__(y) <==> x == y"""
+
         if not isinstance(other, collections.Mapping):
             return NotImplemented
 
@@ -316,7 +342,6 @@ class Field(collections.MutableMapping):
 
         Notes
         -----
-
         .. versionchanged:: 1.3
             Support for common dict operations (update, keys, values)
 
@@ -324,16 +349,16 @@ class Field(collections.MutableMapping):
             Atomicity guarantee
 
         .. versionchanged:: 1.6
-            **kwargs support
+            `**kwargs` support
 
         Examples
         --------
-
         >>> e = { 1: 10, 9: 5 }
         >>> d.update(e)
         >>> l = [ (105, 11), (169, 4) ]
         >>> d.update(l)
         >>> d.update(e, iline=189, xline=193, hour=5)
+        >>> d.update(sx=7)
 
         """
 
