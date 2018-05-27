@@ -456,27 +456,6 @@ class SegyFile(object):
         The header mode can also be accessed with line addressing, which
         supports all of iline and xline's indexing features.
 
-        Rename the iline 3 to 4:
-
-        >>> f.header.iline[3][TraceField.INLINE_3D] = 4
-        >>> # please note that rewriting the header won't update the
-        >>> # file's interpretation of the file until you reload it, so
-        >>> # the new iline 4 will be considered iline 3 until the file
-        >>> # is reloaded
-
-        Set offset line 3 offset 3 to 5:
-
-        >>> f.header.iline[3, 3] = { TraceField.offset: 5 }
-
-        Get a list of keys and values:
-
-        >>> f.header[10].keys()
-        >>> f.header[10].values()
-
-        Get a list of key-value pairs:
-
-        >>> f.header[10].items()
-
         Get the number of keys-value pairs in a header:
 
         >>> len(f.header[10])
@@ -487,7 +466,6 @@ class SegyFile(object):
         >>> f.header[10].update(d)
         >>> l = [ (segyio.su.sy, 11), (segyio.su.sx, 4) ]
         >>> f.header[11].update(l)
-
         """
         return self._header
 
@@ -651,142 +629,21 @@ class SegyFile(object):
 
     @property
     def iline(self):
-        """Interact with segy in inline mode
-
-        This mode gives access to reading and writing functionality for
-        inlines. The primary data type is ``numpy.ndarray``. Inlines can be
-        accessed individually or with slices, and writing is done via
-        assignment. Note that accessing inlines uses the line numbers, not
-        their position, so if a files has inlines [2400..2500], accessing line
-        [0..100] will be an error. Note that each line is returned as a
-        ``numpy.ndarray``, meaning accessing the intersections of the inline and
-        crossline is 0-indexed.
-
-        Additionally, the iline mode has a concept of offsets, which is useful
-        when dealing with prestack files. Offsets are accessed via so-called
-        sub indexing, meaning ``iline[10, 4]`` will give you line 10 at offset
-        4. Please note that offset, like lines, are accessed via their numbers,
-        not their indices. If your file has the offsets ``[150, 250, 350,
-        450]`` and the lines [2400..2500], you can access the third offset with
-        ``[2403, 350]``. Please refer to the examples for more details. If no
-        offset is specified, segyio will give you the first.
+        """
+        Interact with segy in inline mode
 
         Returns
         -------
+        iline : Line or None
 
-        iline
-            inline addressing mode
+        Raises
+        ------
+        ValueError
+            If the file is unstructured
 
         Notes
         -----
-
         .. versionadded:: 1.1
-
-        Examples
-        --------
-
-        Read an inline:
-
-        >>> il = f.iline[2400]
-
-        Copy every inline into a list:
-
-        >>> l = [np.copy(x) for x in f.iline]
-
-        The number of inlines in a file:
-
-        >>> len(f.iline)
-
-        Numpy operations on every other inline:
-
-        >>> for line in f.iline[::2]:
-        ...     line = line * 2
-        ...     avg = np.average(line)
-        ...     print(avg)
-        ...
-
-        Read inlines up to 2430:
-
-        >>> for line in f.iline[:2430]:
-        ...     print(np.average(line))
-        ...
-
-        Copy a line from file g to f:
-
-        >>> f.iline[2400] = g.iline[2834]
-
-        Copy lines from the first line in g to f, starting at 2400,
-        ending at 2410 in f:
-
-        >>> f.iline[2400:2411] = g.iline
-
-        Convenient way for setting inlines, from left-to-right as the inline
-        numbers are specified in the file.ilines property, from an iterable
-        set on the right-hand-side.
-
-        If the right-hand-side inlines are exhausted before all the destination
-        file inlines the writing will stop, i.e. not all all inlines in the
-        destination file will be written.
-
-        Copy inlines from file f to file g:
-
-        >>> f.iline = g.iline
-
-        Copy first half of the inlines from g to f:
-
-        >>> f.iline = g.iline[:g.ilines[len(g.ilines)/2]]
-
-        Copy every other inline from a different file:
-
-        >>> f.iline = g.iline[::2]
-
-        Accessing offsets work the same way as accessing lines, and slicing
-        is supported as well. When doing range-based offset access, the
-        lines will be generated offsets-first, i.e equivalent to
-        ``[(line1 off1), (line1 off2), (line1 off3), (line2 off1), ...]``
-        or the double for loop:
-
-        >>> for line in lines:
-        ...     for off in offsets:
-        ...         yield (line, off)
-        ...
-
-        Copy all lines at all offsets:
-
-        >>> [np.copy(x) for x in f.iline[:,:]]
-
-        Print all line 10's offsets:
-
-        >>> print(f.iline[10,:])
-
-        ``numpy`` operations at every line at offset 120:
-
-        >>> for line in f.iline[:, 120]:
-        ...     line = line * 2
-        ...     print(np.average(line))
-
-        Copy every other line and offset:
-
-        >>> map(np.copy, f.iline[::2, ::2])
-
-        Print offsets in reverse:
-
-        >>> for line in f.iline[:, ::-1]:
-        ...     print(line)
-
-        Copy all offsets [200, 250, 300, 350, ...] in the range [200, 800)
-        for all ilines [2420,2460):
-
-        >>> [np.copy(x) for x in f.iline[2420:2460, 200:800:50]]
-
-        Copy every third offset from f to g:
-
-        >>> g.iline[:,:] = f.iline[:,::3]
-
-        Copy an iline from f to g at g's offset 200:
-
-        >>> g.iline[12, 200] = f.iline[21]
-
         """
 
         if self.unstructured:
@@ -806,12 +663,25 @@ class SegyFile(object):
 
     @iline.setter
     def iline(self, value):
-        """Write inlines first-to-last
+        """inlines macro assignment
 
-        Write inlines to file, beginning at the first inline until either the
-        inlines or the range on the right-hand-side are exhausted. You do not
-        have to provide labels for this to work, segyio will write inlines
-        according to the labels in ``f.ilines``
+        Convenient way for setting inlines, from left-to-right as the inline
+        numbers are specified in the file.ilines property, from an iterable
+        set on the right-hand-side.
+
+        If the right-hand-side inlines are exhausted before all the destination
+        file inlines the writing will stop, i.e. not all all inlines in the
+        destination file will be written.
+
+        Notes
+        -----
+        .. versionadded:: 1.1
+
+        Examples
+        --------
+        Copy inlines from file f to file g:
+
+        >>> f.iline = g.iline
         """
         self.iline[:] = value
 
@@ -831,143 +701,21 @@ class SegyFile(object):
 
     @property
     def xline(self):
-        """Interact with segy in crossline mode
-
-        This mode gives access to reading and writing functionality for
-        crosslines. The primary data type is ``numpy.ndarray``. Crosslines can
-        be accessed individually or with slices, and writing is done via
-        assignment. Note that accessing crosslines uses the line numbers, not
-        their position, so if a files has crosslines [1400..1450], accessing
-        line [0..100] will be an error. Note that each line is returned as a
-        ``numpy.ndarray``, meaning accessing the intersections of the inline
-        and crossline is 0-indexed.
-
-        Additionally, the xline mode has a concept of offsets, which is useful
-        when dealing with prestack files. Offsets are accessed via so-called
-        sub indexing, meaning xline[10, 4] will give you line 10 at offset 4.
-        Please note that offset, like lines, are accessed via their numbers,
-        not their indices. If your file has the offsets ``[100, 200, 300,
-        400]`` and the lines [1400..1450], you can access the second offset
-        with ``[1421, 300]``. Please refer to the examples for more details. If
-        no offset is specified, segyio will give you the first.
+        """
+        Interact with segy in crossline mode
 
         Returns
         -------
+        xline : Line or None
 
-        xline
-            crossline addressing mode
+        Raises
+        ------
+        ValueError
+            If the file is unstructured
 
         Notes
         -----
-
         .. versionadded:: 1.1
-
-        Examples
-        --------
-
-        Read a crossline:
-
-        >>> il = f.xline[1400]
-
-        Copy every crossline into a list:
-
-        >>> l = [np.copy(x) for x in f.xline]
-
-        The number of crosslines in a file:
-
-        >>> len(f.xline)
-
-        Numpy operations on every third crossline:
-
-        >>> for line in f.xline[::3]:
-        ...     line = line * 6
-        ...     avg = np.average(line)
-        ...     print(avg)
-        ...
-
-        Read crosslines up to 1430:
-
-        >>> for line in f.xline[:1430]:
-        ...     print(np.average(line))
-        ...
-
-        Copy a line from file g to f:
-
-        >>> f.xline[1400] = g.xline[1603]
-
-        Copy lines from the first line in g to f, starting at 1400,
-        ending at 1415 in f:
-
-        >>> f.xline[1400:1416] = g.xline
-
-
-        Convenient way for setting crosslines, from left-to-right as the crossline
-        numbers are specified in the file.xlines property, from an iterable
-        set on the right-hand-side.
-
-        If the right-hand-side crosslines are exhausted before all the destination
-        file crosslines the writing will stop, i.e. not all all crosslines in the
-        destination file will be written.
-
-        Copy crosslines from file f to file g:
-
-        >>> f.xline = g.xline
-
-        Copy first half of the crosslines from g to f:
-
-        >>> f.xline = g.xline[:g.xlines[len(g.xlines)/2]]
-
-        Copy every other crossline from a different file:
-
-        >>> f.xline = g.xline[::2]
-
-        Accessing offsets work the same way as accessing lines, and slicing
-        is supported as well. When doing range-based offset access, the
-        lines will be generated offsets-first, i.e equivalent to:
-        [(line1 off1), (line1 off2), (line1 off3), (line2 off1), ...]
-        or the double for loop:
-
-        >>> for line in lines:
-        ...     for off in offsets:
-        ...         yield (line, off)
-        ...
-
-        Copy all lines at all offsets:
-
-        >>> [np.copy(x) for x in f.xline[:,:]]
-
-        Print all line 10's offsets:
-
-        >>> print(f.xline[10,:])
-
-        Numpy operations at every line at offset 120:
-
-        >>> for line in f.xline[:, 120]:
-        ...     line = line * 2
-        ...     print(np.average(line))
-
-        Copy every other line and offset:
-
-        >>> map(np.copy, f.xline[::2, ::2])
-
-        Print offsets in reverse:
-
-        >>> for line in f.xline[:, ::-1]:
-        ...     print(line)
-
-        Copy all offsets [200, 250, 300, 350, ...] in the range [200, 800)
-        for all xlines [2420,2460):
-
-        >>> [np.copy(x) for x in f.xline[2420:2460, 200:800:50]]
-
-        Copy every third offset from f to g:
-
-        >>> g.xline[:,:] = f.xline[:,::3]
-
-        Copy an xline from f to g at g's offset 200:
-
-        >>> g.xline[12, 200] = f.xline[21]
-
         """
         if self.unstructured:
             raise ValueError(self._unstructured_errmsg)
@@ -986,12 +734,25 @@ class SegyFile(object):
 
     @xline.setter
     def xline(self, value):
-        """Write crosslines first-to-last
+        """crosslines macro assignment
 
-        Write crosslines to file, beginning at the first crossline until either
-        the crosslines or the range on the right-hand-side are exhausted. You
-        do not have to provide labels for this to work, segyio will write
-        crosslines according to the labels in ``f.xlines``
+        Convenient way for setting crosslines, from left-to-right as the inline
+        numbers are specified in the file.ilines property, from an iterable set
+        on the right-hand-side.
+
+        If the right-hand-side inlines are exhausted before all the destination
+        file inlines the writing will stop, i.e. not all all inlines in the
+        destination file will be written.
+
+        Notes
+        -----
+        .. versionadded:: 1.1
+
+        Examples
+        --------
+        Copy crosslines from file f to file g:
+
+        >>> f.xline = g.xline
         """
         self.xline[:] = value
 
@@ -1007,15 +768,12 @@ class SegyFile(object):
 
         Returns
         -------
-
-        fast
+        fast : Line
             line addressing mode
 
         Notes
         -----
-
         .. versionadded:: 1.1
-
         """
         if self.sorting == TraceSortingFormat.INLINE_SORTING:
             return self.iline
@@ -1035,14 +793,12 @@ class SegyFile(object):
 
         Returns
         -------
-
-        slow : line addressing mode
+        slow : Line
+            line addressing mode
 
         Notes
         -----
-
         .. versionadded:: 1.1
-
         """
         if self.sorting == TraceSortingFormat.INLINE_SORTING:
             return self.xline
