@@ -23,9 +23,11 @@ class Sequence(collections.Sequence):
         self.length = length
 
     def __len__(self):
+        """x.__len__() <==> len(x)"""
         return self.length
 
     def __iter__(self):
+        """x.__iter__() <==> iter(x)"""
         # __iter__ has a reasonable default implementation from
         # collections.Sequence. It's essentially this loop:
         # for i in range(len(self)): yield self[i]
