@@ -950,7 +950,8 @@ class SegyFile(object):
 
     @property
     def bin(self):
-        """Interact with segy in binary mode
+        """
+        Interact with segy in binary mode
 
         This mode gives access to reading and writing functionality for the
         binary header. Please note that using numeric binary offsets uses the
@@ -960,75 +961,11 @@ class SegyFile(object):
 
         Returns
         -------
-
-        binary : dict_like binary header
+        binary : Field
 
         Notes
         -----
-
         .. versionadded:: 1.1
-
-        .. versionchanged:: 1.3
-            Support for common dict operations (update, keys, values)
-
-        Examples
-        --------
-
-        Copy a header from file g to file f:
-
-        >>> f.bin = g.bin
-
-        Reading a field in a trace:
-
-        >>> traces_per_ensemble = f.bin[3213]
-
-        Writing a field in a trace:
-
-        >>> f.bin[BinField.Traces] = 5
-
-        Reading multiple fields:
-
-        >>> d = f.bin[BinField.Traces, 3233]
-
-        Copy a field from file g to file f:
-
-        >>> f.bin[BinField.Format] = g.bin[BinField.Format]
-
-        Copy full binary from file f to file g:
-
-        >>> f.bin = g.bin
-
-        Copy multiple fields from file f to file g:
-
-        >>> f.bin = g.bin[BinField.Traces, 3233]
-
-        Write field in binary header via dict:
-
-        >>> f.bin = { BinField.Traces: 350 }
-
-        Write multiple fields in a trace:
-
-        >>> f.bin = { 3213: 5, BinField.SweepFrequencyStart: 17 }
-
-        Get a list of keys and values:
-
-        >>> f.bin.keys()
-        >>> f.bin.values()
-
-        Get a list of key-value pairs:
-
-        >>> f.bin.items()
-
-        Get the number of keys-value pairs in a header:
-
-        >>> len(f.bin)
-
-        Update a set of values:
-
-        >>> d = { segyio.su.jobid: 10, segyio.su.lino: 5 }
-        >>> f.bin.update(d)
-        >>> l = [ (segyio.su.hdt, 11), (segyio.su.hsfs, 4) ]
-        >>> f.bin.update(l)
         """
 
         return Field.binary(self)
