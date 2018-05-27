@@ -19,7 +19,7 @@ from test import tmpfiles
 import segyio
 from segyio import TraceField, BinField
 from segyio.field import Field
-from segyio.line import Line
+from segyio.line import Line, HeaderLine
 from segyio.trace import Trace, Header
 
 
@@ -1175,10 +1175,10 @@ def test_segyio_types():
         assert isinstance(f.xline[21][0][0:3], np.ndarray)
 
         assert isinstance(f.header, Header)
-        assert isinstance(f.header.iline, Line)
+        assert isinstance(f.header.iline, HeaderLine)
         assert isinstance(f.header.iline[1], GeneratorType)
         assert isinstance(next(f.header.iline[1]), Field)
-        assert isinstance(f.header.xline, Line)
+        assert isinstance(f.header.xline, HeaderLine)
         assert isinstance(f.header.xline[21], GeneratorType)
         assert isinstance(next(f.header.xline[21]), Field)
 

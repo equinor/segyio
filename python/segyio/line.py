@@ -1,4 +1,5 @@
 import collections
+import itertools
 try: from future_builtins import zip
 except ImportError: pass
 import numpy as np
@@ -248,3 +249,167 @@ class Line(collections.Mapping):
 
     def items(self):
         return zip(self.keys(), self[:])
+
+class HeaderLine(Line):
+    """
+    The Line implements the dict interface, with a fixed set of int_like keys,
+    the line numbers/labels. The values are iterables of Field objects.
+
+    Notes
+    -----
+    .. versionadded:: 1.1
+
+    """
+    # a lot of implementation details are shared between reading data traces
+    # line-by-line and trace headers line-by-line, so (ab)use inheritance for
+    # __len__, keys() etc., however, the __getitem__ is  way different and is re-implemented
+
+    def __init__(self, header, base, direction):
+        super(HeaderLine, self).__init__(header.segy,
+                                          base.lines,
+                                          base.length,
+                                          base.stride,
+                                          sorted(base.offsets.keys()),
+                                          'header.' + direction,
+                                         )
+        self.header = header
+
+    def __getitem__(self, index):
+        """line[i] or line[i, o]
+
+        The line `i`, or the line `i` at a specific offset `o`. ``line[i]``
+        returns an iterable of `Field` objects, and changes to these *will* be
+        reflected on disk.
+
+        The `i` and `o` are *keys*, and should correspond to the line- and
+        offset labels in your file, and in the `ilines`, `xlines`, and
+        `offsets` attributes.
+
+        Slices can contain lines and offsets not in the file, and like with
+        list slicing, these are handled gracefully and ignored.
+
+        When `i` or `o` is a slice, a generator of iterables of headers are
+        returned.
+
+        When both `i` and `o` are slices, one generator is returned for the
+        product `i` and `o`, and the lines are yielded offsets-first, roughly
+        equivalent to the double for loop::
+
+            >>> for line in lines:
+            ...     for off in offsets:
+            ...         yield line[line, off]
+            ...
+
+        Parameters
+        ----------
+
+        i : int or slice
+        o : int or slice
+
+        Returns
+        -------
+        line : iterable of Field or generator of iterator of Field
+
+        Raises
+        ------
+        KeyError
+            If `i` or `o` don't exist
+
+        Notes
+        -----
+        .. versionadded:: 1.1
+
+        """
+        offset = self.default_offset
+        try: index, offset = index
+        except TypeError: pass
+
+        try:
+            start = self.heads[index] + self.offsets[offset]
+        except TypeError:
+            # index is either unhashable (because it's a slice), or offset is a
+            # slice.
+            pass
+
+        else:
+            step = self.stride * len(self.offsets)
+            return self.header[start::step]
+
+        def gen():
+            irange, orange = self.ranges(index, offset)
+            for line in irange:
+                for off in orange:
+                    yield self[line, off]
+
+        return gen()
+
+    def __setitem__(self, index, val):
+        """line[i] = val or line[i, o] = val
+
+        Follows the same rules for indexing and slicing as ``line[i]``. If `i`
+        is an int, and `val` is a dict or Field, that value is replicated and
+        assigned to every trace header in the line, otherwise it's treated as
+        an iterable, and each trace in the line is assigned the ``next()``
+        yielded value.
+
+        If `i` or `o` is a slice, `val` must be an iterable.
+
+        In either case, if the `val` iterable is exhausted before the line(s),
+        assignment stops with whatever is written so far.
+
+        Parameters
+        ----------
+        i       : int or slice
+        offset  : int or slice
+        val     : dict_like or iterable of dict_like
+
+        Raises
+        ------
+        KeyError
+            If `i` or `o` don't exist
+
+        Notes
+        -----
+        .. versionadded:: 1.1
+
+        Examples
+        --------
+        Rename the iline 3 to 4:
+
+        >>> line[3] = { TraceField.INLINE_3D: 4 }
+        >>> # please note that rewriting the header won't update the
+        >>> # file's interpretation of the file until you reload it, so
+        >>> # the new iline 4 will be considered iline 3 until the file
+        >>> # is reloaded
+
+        Set offset line 3 offset 3 to 5:
+
+        >>> line[3, 3] = { TraceField.offset: 5 }
+        """
+        offset = self.default_offset
+        try: index, offset = index
+        except TypeError: pass
+
+        try: start = self.heads[index] + self.offsets[offset]
+        except TypeError: pass
+
+        else:
+            try:
+                if hasattr(val, 'keys'):
+                    val = itertools.repeat(val)
+            except TypeError:
+                # already an iterable
+                pass
+
+            step = self.stride * len(self.offsets)
+            self.header[start::step] = val
+            return
+
+        irange, orange = self.ranges(index, offset)
+        val = iter(val)
+        for line in irange:
+            for off in orange:
+                try:
+                    self[line, off] = next(val)
+                except StopIteration:
+                    return
