@@ -570,87 +570,24 @@ class SegyFile(object):
 
     @property
     def trace(self):
-        """Interact with segy in trace mode
-
-        This mode gives access to reading and writing functionality for traces.
-        The primary data type is ``numpy.ndarray``. Traces can be accessed
-        individually or with python slices, and writing is done via assignment.
-
-        All examples use ``np`` for ``numpy``.
+        """
+        Interact with segy in trace mode.
 
         Returns
         -------
-
-        trace
-            trace addressing mode
+        trace : Trace
 
         Notes
         -----
-
         .. versionadded:: 1.1
 
-        Examples
-        --------
+        """
 
-        Read all traces in file f and store in a list:
+        return self._trace
 
-        >>> l = [np.copy(tr) for tr in f.trace]
-
-        Do numpy operations on a trace:
-
-        >>> tr = f.trace[10]
-        >>> tr = np.transpose(tr)
-        >>> tr = tr * 2
-        >>> tr = tr - 100
-        >>> avg = np.average(tr)
-
-        Do numpy operations on every other trace:
-
-        >>> for tr in f.trace[::2]:
-        ...     print( np.average(tr) )
-        ...
-
-        Traverse traces in reverse:
-
-        >>> for tr in f.trace[::-1]:
-        ...     print( np.average(tr) )
-        ...
-
-        Double every trace value and write to disk. Since accessing a trace
-        gives a numpy value, to write to the respective trace we need its index:
-
-        >>> for i, tr in enumerate(f.trace):
-        ...     tr = tr * 2
-        ...     f.trace[i] = tr
-        ...
-
-        Reuse an array for memory efficiency when working with indices.
-        When using slices or full ranges this is done for you:
-
-        >>> tr = None
-        >>> for i in range(100):
-        ...     tr = f.trace[i, tr]
-        ...     tr = tr * 2
-        ...     print(np.average(tr))
-        ...
-
-        Read a value directly from a file. The second [] is numpy access
-        and supports all numpy operations, including negative indexing and
-        slicing:
-
-        >>> f.trace[0][0]
-        1490.2
-        >>> f.trace[0][1]
-        1490.8
-        >>> f.trace[0][-1]
-        1871.3
-        >>> f.trace[-1][100]
-        1562.0
-
-        Trace mode supports ``len``, returning the number of traces in a file:
-
-        >>> len(f.trace)
-        300
+    @trace.setter
+    def trace(self, val):
+        """traces macro assignment
 
         Convenient way for setting traces from 0, 1, ... n, based on the
         iterable set of traces on the right-hand-side.
@@ -659,9 +596,15 @@ class SegyFile(object):
         file traces the writing will stop, i.e. not all all traces in the
         destination file will be written.
 
+        Notes
+        -----
+        .. versionadded:: 1.1
+
+        Examples
+        --------
         Copy traces from file f to file g:
 
-        >>> f.trace = g.trace.
+        >>> f.trace = g.trace
 
         Copy first half of the traces from g to f:
 
@@ -689,21 +632,8 @@ class SegyFile(object):
         Read every other trace to memory:
 
         >>> f.trace.raw[::2]
-
         """
-
-        return self._trace
-
-    @trace.setter
-    def trace(self, val):
-        """Write traces first-to-last
-
-        Write traces to file, beginning at the first trace until either the
-        traces or the range on the right-hand-side are exhausted.
-        """
-        tr = self.trace
-        for i, v in zip(range(len(tr)), val):
-            tr[i] = v
+        self.trace[:] = val
 
     @property
     def ilines(self):

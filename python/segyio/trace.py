@@ -51,6 +51,47 @@ class Sequence(collections.Sequence):
         return i
 
 class Trace(Sequence):
+    """
+    The Trace implements the array interface, where every array element, the
+    data trace, is a numpy.ndarray. As all arrays, it can be random accessed,
+    iterated over, and read strided. Data is read lazily from disk, so
+    iteration does not consume much memory. If you want eager reading, use
+    Trace.raw.
+
+    This mode gives access to reading and writing functionality for traces.
+    The primary data type is ``numpy.ndarray``. Traces can be accessed
+    individually or with python slices, and writing is done via assignment.
+
+    Notes
+    -----
+    .. versionadded:: 1.1
+
+    .. versionchanged:: 1.6
+        common list operations (collections.Sequence)
+
+    Examples
+    --------
+    Read all traces in file f and store in a list:
+
+    >>> l = [np.copy(tr) for tr in f.trace]
+
+    Do numpy operations on a trace:
+
+    >>> tr = f.trace[10]
+    >>> tr = np.transpose(tr)
+    >>> tr = tr * 2
+    >>> tr = tr - 100
+    >>> avg = np.average(tr)
+
+    Double every trace value and write to disk. Since accessing a trace
+    gives a numpy value, to write to the respective trace we need its index:
+
+    >>> for i, tr in enumerate(trace):
+    ...     tr = tr * 2
+    ...     trace[i] = tr
+
+    """
+
     def __init__(self, file, samples):
         super(Trace, self).__init__(file.tracecount)
         self.filehandle = file.xfd
@@ -60,24 +101,21 @@ class Trace(Sequence):
     def __getitem__(self, i):
         """trace[i]
 
-        *i*th trace of the file, starting at 0. ``trace[i]`` returns a numpy
-        array, and changes to this array will *not* be reflected on disk.
+        ith trace of the file, starting at 0. trace[i] returns a numpy array,
+        and changes to this array will *not* be reflected on disk.
 
         When i is a slice, a generator of numpy arrays is returned.
 
         Parameters
         ----------
-
         i : int or slice
 
         Returns
         -------
-
         trace : numpy.ndarray of dtype or generator of numpy.ndarray of dtype
 
         Notes
         -----
-
         .. versionadded:: 1.1
 
         Behaves like [] for lists.
@@ -91,6 +129,29 @@ class Trace(Sequence):
             entire file into memory. If that is the case, consider using
             `trace.raw`, which reads eagerly.
 
+        Examples
+        --------
+        Read every other trace:
+
+        >>> for tr in f.trace[::2]:
+        ...     print(tr)
+
+        Read all traces, last-to-first:
+
+        >>> for tr in f.trace[::-1]:
+        ...     tr.mean()
+
+        Read a single value. The second [] is regular numpy array indexing, and
+        supports all numpy operations, including negative indexing and slicing:
+
+        >>> trace[0][0]
+        1490.2
+        >>> trace[0][1]
+        1490.8
+        >>> trace[0][-1]
+        1871.3
+        >>> trace[-1][100]
+        1562.0
         """
 
         try:
@@ -119,24 +180,45 @@ class Trace(Sequence):
     def __setitem__(self, i, val):
         """trace[i] = val
 
-        Write the *i*th trace of the file, starting at 0. It accepts any
-        array_like, but `val` must be at least as big as the underlying data
+        Write the ith trace of the file, starting at 0. It accepts any
+        array_like, but val must be at least as big as the underlying data
         trace.
 
-        If `val` is longer than the underlying trace, `val` is essentially truncated.
+        If val is longer than the underlying trace, it is essentially
+        truncated.
+
+        For the best performance, val should be a numpy.ndarray of sufficient
+        size and same dtype as the file. segyio will warn on mismatched types,
+        and attempt a conversion for you.
+
+        Data is written immediately to disk. If writing multiple traces at
+        once, and a write fails partway through, the resulting file is left in
+        an unspecified state.
 
         Parameters
         ----------
-
-        i : int or slice
+        i   : int or slice
         val : array_like
 
         Notes
         -----
-
         .. versionadded:: 1.1
 
         Behaves like [] for lists.
+
+        Examples
+        --------
+        Write a single trace:
+
+        >>> trace[10] = list(range(1000))
+
+        Write multiple traces:
+
+        >>> trace[10:15] = np.array([cube[i] for i in range(5)])
+
+        Write multiple traces with stride:
+
+        >>> trace[10:20:2] = np.array([cube[i] for i in range(5)])
 
         """
         if isinstance(i, slice):
