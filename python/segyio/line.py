@@ -1,8 +1,9 @@
 import collections
-import itertools
 try: from future_builtins import zip
 except ImportError: pass
 import numpy as np
+
+from .utils import castarray
 
 # in order to support [:end] syntax, we must make sure
 # start has a non-None value. lineno.indices() would set it
@@ -198,31 +199,13 @@ class Line(collections.Mapping):
         try: head = self.heads[index] + self.offsets[offset]
         except TypeError: pass
         else:
-            dtype = self.dtype
-
-            import warnings
-            try:
-                val.dtype
-            except AttributeError:
-                msg = 'Implicit conversion from {} to {} (performance)'
-                warnings.warn(msg.format(type(val), np.ndarray), RuntimeWarning)
-                val = np.asarray(val)
-
-            if val.dtype != dtype:
-                # TODO: message depending on narrowing/float-conversion
-                msg = 'Implicit conversion from {} to {} (narrowing)'
-                warnings.warn(msg.format(val.dtype, dtype), RuntimeWarning)
-
-            # asarray only copies if it has to (differing dtypes). non-numpy arrays
-            # have already been converted
-            val = np.asarray(val, order = 'C', dtype = dtype)
             return self.filehandle.putline(head,
                                            self.length,
                                            self.stride,
                                            len(self.offsets),
                                            index,
                                            offset,
-                                           val,
+                                           castarray(val, dtype = self.dtype),
                                           )
 
         irange, orange = self.ranges(index, offset)

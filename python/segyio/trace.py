@@ -1,6 +1,5 @@
 import collections
 import itertools
-import warnings
 try: from future_builtins import zip
 except ImportError: pass
 
@@ -9,6 +8,7 @@ import numpy as np
 from ._raw_trace import RawTrace
 from .line import Line as LineBase
 from .field import Field
+from .utils import castarray
 
 class Sequence(collections.Sequence):
 
@@ -137,29 +137,13 @@ class Trace(Sequence):
         Behaves like [] for lists.
 
         """
-        dtype = self.dtype
-
-        try:
-            val.dtype
-        except AttributeError:
-            msg = 'Implicit conversion from {} to {} (performance)'
-            warnings.warn(msg.format(type(val), np.ndarray), RuntimeWarning)
-            val = np.asarray(val)
-
-        if val.dtype != dtype:
-            # TODO: message depending on narrowing/float-conversion
-            msg = 'Implicit conversion from {} to {} (narrowing)'
-            warnings.warn(msg.format(val.dtype, dtype), RuntimeWarning)
-
-        # asarray only copies if it has to (differing dtypes). non-numpy arrays
-        # have already been converted
-        xs = np.asarray(val, order = 'C', dtype = dtype)
-
         if isinstance(i, slice):
             for j, x in zip(range(*i.indices(len(self))), val):
                 self[j] = x
 
             return
+
+        xs = castarray(val, self.dtype)
 
         # TODO:  check if len(xs) > shape, and optionally warn on truncating
         # writes
