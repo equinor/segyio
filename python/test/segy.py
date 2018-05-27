@@ -553,7 +553,8 @@ def test_write_header(tmpdir):
         # accept anything with a key-value structure
         f.header[5].update([(segyio.su.ns, 12), (segyio.su.dt, 4)])
         f.header[5].update(((segyio.su.muts, 3), (segyio.su.mute, 7)))
-        f.header[5].update([(segyio.su.muts, 3)], mute=7)
+        f.header[5].update([(segyio.su.muts, 3)], sx=7)
+        f.header[5].update(sy=8)
 
         with pytest.raises(TypeError):
             f.header[0].update(10)
@@ -569,6 +570,8 @@ def test_write_header(tmpdir):
         assert 4 == f.header[5][segyio.su.dt]
         assert 3 == f.header[5][segyio.su.muts]
         assert 7 == f.header[5][segyio.su.mute]
+        assert 7 == f.header[5][segyio.su.sx]
+        assert 8 == f.header[5][segyio.su.sy]
 
         # for-each support
         for _ in f.header:
