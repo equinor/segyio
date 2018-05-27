@@ -337,90 +337,22 @@ class SegyFile(object):
 
     @property
     def header(self):
-        """Interact with segy in header mode
-
-        This mode gives access to reading and writing functionality of headers,
-        both in individual (trace) mode and line mode. Individual headers are
-        accessed via generators and are not read from or written to disk until
-        the generator is realised and the header in question is used. Supports
-        python slicing (which yields a generator), as well as direct lookup and
-        common dict operations.
-
-        The header can be considered a dictionary with a fixed set of keys.
+        """
+        Interact with segy in header mode
 
         Returns
         -------
-
-        header
-            header addressing mode
+        header : Header
 
         Notes
         -----
-
         .. versionadded:: 1.1
+        """
+        return self._header
 
-        .. versionchanged:: 1.3
-            Support for common dict operations (update, keys, values)
-
-        Examples
-        --------
-
-        Reading a field in a trace:
-
-        >>> import segyio
-        >>> f = segyio.open("filename")
-        >>> f.header[10][TraceField.offset]
-
-        Writing a field in a trace:
-
-        >>> f.header[10][TraceField.offset] = 5
-
-        Copy a header from another header:
-
-        >>> f.header[28] = f.header[29]
-
-        Reading multiple fields in a trace. If raw, numerical offsets are
-        used they must align with the defined byte offsets by the SEGY
-        specification:
-
-        >>> f.header[10][TraceField.offset, TraceField.INLINE_3D]
-        >>> f.header[10][37, 189]
-
-        Write multiple fields in a trace:
-
-        >>> f.header[10] = { 37: 5, TraceField.INLINE_3D: 2484 }
-
-        Iterate over headers and gather line numbers:
-
-        >>> [h[TraceField.INLINE_3D] for h in f.header]
-        >>> [h[25, 189] for h in f.header]
-
-        Write field in all headers:
-
-        >>> for h in f.header:
-        ...     h[37] = 1
-        ...     h = { TraceField.offset: 1, 2484: 10 }
-        ...
-
-        Read a field in 10 first headers:
-
-        >>> [h[25] for h in f.header[0:10]]
-
-        Read a field in every other header:
-
-        >>> [h[37] for h in f.header[::2]]
-
-        Write a field in every other header:
-
-        >>> for h in f.header[::2]:
-        ...     h = { TraceField.offset : 2 }
-        ...
-
-        Cache a header
-
-        >>> h = f.header[12]
-        >>> x = foo()
-        >>> h[37] = x
+    @header.setter
+    def header(self, val):
+        """headers macro assignment
 
         A convenient way for operating on all headers of a file is to use the
         default full-file range.  It will write headers 0, 1, ..., n, but uses
@@ -431,10 +363,10 @@ class SegyFile(object):
         file headers the writing will stop, i.e. not all all headers in the
         destination file will be written to.
 
+        Examples
+        --------
         Copy headers from file g to file f:
 
-        >>> f = segyio.open("path to file")
-        >>> g = segyio.open("path to another file")
         >>> f.header = g.header
 
         Set offset field:
@@ -452,25 +384,7 @@ class SegyFile(object):
         False
         >>> f.header[2] == g.header[24]
         True
-
-        The header mode can also be accessed with line addressing, which
-        supports all of iline and xline's indexing features.
-
-        Get the number of keys-value pairs in a header:
-
-        >>> len(f.header[10])
-
-        Update a set of values:
-
-        >>> d = { segyio.su.tracl: 10, segyio.su.nhs: 5 }
-        >>> f.header[10].update(d)
-        >>> l = [ (segyio.su.sy, 11), (segyio.su.sx, 4) ]
-        >>> f.header[11].update(l)
         """
-        return self._header
-
-    @header.setter
-    def header(self, val):
         self.header[:] = val
 
     def attributes(self, field):

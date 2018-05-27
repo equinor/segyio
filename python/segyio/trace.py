@@ -242,6 +242,26 @@ class Trace(Sequence):
         return RawTrace(self)
 
 class Header(Sequence):
+    """Interact with segy in header mode
+
+    This mode gives access to reading and writing functionality of headers,
+    both in individual (trace) mode and line mode. The returned header
+    implements a dict_like object with a fixed set of keys, given by the SEG-Y
+    standard.
+
+    The Header implements the array interface, where every array element, the
+    data trace, is a numpy.ndarray. As all arrays, it can be random accessed,
+    iterated over, and read strided. Data is read lazily from disk, so
+    iteration does not consume much memory.
+
+    Notes
+    -----
+    .. versionadded:: 1.1
+
+    .. versionchanged:: 1.6
+        common list operations (collections.Sequence)
+
+    """
     def __init__(self, segy):
         self.segy = segy
         super(Header, self).__init__(segy.tracecount)
@@ -249,26 +269,38 @@ class Header(Sequence):
     def __getitem__(self, i):
         """header[i]
 
-        *i*th header of the file, starting at 0
+        ith header of the file, starting at 0.
 
         Parameters
         ----------
-
         i : int or slice
 
         Returns
         -------
-
         field : Field
             dict_like header
 
         Notes
         -----
-
         .. versionadded:: 1.1
 
-        Behaves like [] for lists
+        Behaves like [] for lists.
 
+        Examples
+        --------
+        Reading a header:
+
+        >>> header[10]
+
+        Read a field in the first 5 headers:
+
+        >>> [x[25] for x in header[:5]]
+        [1, 2, 3, 4]
+
+        Read a field in every other header:
+
+        >>> [x[37] for x in header[::2]]
+        [1, 3, 1, 3, 1, 3]
         """
         try:
             i = self.wrapindex(i)
@@ -297,21 +329,46 @@ class Header(Sequence):
     def __setitem__(self, i, val):
         """header[i] = val
 
-        Write *i*th header of the file, starting at 0
+        Write the ith header of the file, starting at 0. Unlike data traces
+        (which return numpy.ndarrays), changes to returned headers being
+        iterated over *will* be reflected on disk.
 
         Parameters
         ----------
-
-        i : int or slice
+        i   : int or slice
         val : Field or array_like of dict_like
 
         Notes
         -----
-
         .. versionadded:: 1.1
 
         Behaves like [] for lists
 
+        Examples
+        --------
+        Copy a header to a different trace:
+
+        >>> header[28] = header[29]
+
+        Write multiple fields in a trace:
+
+        >>> header[10] = { 37: 5, TraceField.INLINE_3D: 2484 }
+
+        Set a fixed set of values in all headers:
+
+        >>> for x in header[:]:
+        ...     x[37] = 1
+        ...     x.update({ TraceField.offset: 1, 2484: 10 })
+
+        Write a field in multiple headers
+
+        >>> for x in header[:10]:
+        ...     x.update({ TraceField.offset : 2 })
+
+        Write a field in every other header:
+
+        >>> for x in header[::2]:
+        ...     x.update({ TraceField.offset : 2 })
         """
 
         x = self[i]
