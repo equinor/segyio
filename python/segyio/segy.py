@@ -706,25 +706,6 @@ class SegyFile(object):
         for i, v in zip(range(len(tr)), val):
             tr[i] = v
 
-    def _shape_buffer(self, shape, buf):
-        if buf is None:
-            return np.empty(shape=shape, dtype=self.dtype)
-        if not isinstance(buf, np.ndarray):
-            return buf
-        if buf.shape[0] == shape[0]:
-            return buf
-        if buf.shape != shape and buf.size == np.prod(shape):
-            return buf.reshape(shape)
-        return buf
-
-    def _line_buffer(self, length, buf=None):
-        shape = (length, len(self.samples))
-        return self._shape_buffer(shape, buf)
-
-    def _fread_line(self, trace0, length, stride, buf):
-        offsets = len(self.offsets)
-        return self.xfd.getline(trace0, length, stride, offsets, buf)
-
     @property
     def ilines(self):
         """Inline labels

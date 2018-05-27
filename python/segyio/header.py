@@ -162,12 +162,6 @@ class Header(collections.Sequence):
         self.segy = segy
         self.length = segy.tracecount
 
-    @staticmethod
-    def _header_buffer(buf=None):
-        if buf is None:
-            buf = bytearray(segyio._segyio.thsize())
-        return buf
-
     def __getitem__(self, i):
         """header[i]
 
