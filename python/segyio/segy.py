@@ -1,18 +1,3 @@
-"""segyio modes
-
-Welcome to segyio modes. Here you will find references and examples for the
-various segy modes and how to interact with segy files. To start interacting
-with files, please refer to the ``segyio.open`` and ``segyio.create``
-documentation, by typing ``help(segyio.open)`` or ``help(segyio.create)``.
-
-The primary way of obtaining a file instance is calling segyio.open. When you
-have a file instance you can interact with it as described in this module.
-
-The explanations and examples here are meant as a quick guide and reference.
-You can also have a look at the example programs that are distributed with
-segyio which you can find in the examples directory or where your distribution
-installs example programs.
-"""
 import warnings
 try:
     from future_builtins import zip
@@ -29,7 +14,12 @@ from .field import Field
 from segyio.tracesortingformat import TraceSortingFormat
 
 
+
 class SegyFile(object):
+    """
+    This class is not meant to be instantiated directly, but rather obtained
+    from ``segyio.open`` or ``segyio.create``.
+    """
 
     _unstructured_errmsg = "File opened in unstructured mode."
 
