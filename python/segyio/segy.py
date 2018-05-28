@@ -767,52 +767,12 @@ class SegyFile(object):
 
     @property
     def gather(self):
-        """Interact with segy in gather mode
-
-        A gather is in this context the intersection of lines in a cube, i.e.
-        all the offsets at some iline/xline intersection. The primary data type
-        is ``numpy.ndarray``, with dimensions depending on the range of offsets
-        specified. Offsets uses the line and offset numbers (names), not
-        0-based indices.
-
-        When using ranges over lines, a generator is returned.
+        """
+        Interact with segy in gather mode
 
         Returns
         -------
-
-        gather
-            gather addressing mode
-
-        Notes
-        -----
-
-        .. versionadded:: 1.1
-
-        Examples
-        --------
-
-        Read one offset at an intersection:
-
-        >>> f.gather[200, 241, 25] # returns a samples-long 1d-array
-
-        Read all offsets at an intersection:
-
-        >>> f.gather[200, 241, :] # returns offsets x samples ndarray
-        >>> # If no offset is specified, this is implicitly (:)
-        >>> f.gather[200, 241, :] == f.gather[200, 241]
-
-        All offsets for a set of ilines, intersecting one crossline:
-
-        >>> f.gather[200:300, 241, :]
-
-        Some offsets for a set of ilines, interescting one crossline:
-
-        >>> f.gather[200:300, 241, 10:25:5]
-
-        Some offsets for a set of ilines and xlines. This effectively yields a subcube:
-
-        >>> f.gather[200:300, 241:248, 1:10]
-
+        gather : Gather
         """
         if self.unstructured:
             raise ValueError(self._unstructured_errmsg)

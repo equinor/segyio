@@ -4,6 +4,18 @@ import numpy as np
 import segyio.tools as tools
 
 class Gather(object):
+    """
+    A gather is in this context the intersection of lines in a cube, i.e. all
+    the offsets at some inline/crossline intersection. The primary data type is
+    numpy.ndarray, with dimensions depending on the range of offsets specified.
+
+    Implements a dict_like lookup with the line and offset numbers (labels),
+    not 0-based indices.
+
+    Notes
+    -----
+    .. versionadded:: 1.1
+    """
 
     def __init__(self, trace, iline, xline, offsets):
         # cache constructed modes for performance
@@ -30,7 +42,6 @@ class Gather(object):
 
         Parameters
         ----------
-
         i : int or slice
             inline
         x : int or slice
@@ -40,15 +51,36 @@ class Gather(object):
 
         Returns
         -------
-
         gather : numpy.ndarray or generator of numpy.ndarray
 
         Notes
         -----
-
         .. versionadded:: 1.1
 
+        Examples
+        --------
+        Read one offset at an intersection:
 
+        >>> gather[200, 241, 25] # returns same shape as trace
+
+        Read all offsets at an intersection:
+
+        >>> gather[200, 241, :] # returns offsets x samples ndarray
+        >>> # If no offset is specified, this is implicitly (:)
+        >>> gather[200, 241, :] == gather[200, 241]
+
+        All offsets for a set of ilines, intersecting one crossline:
+
+        >>> gather[200:300, 241, :] == gather[200:300, 241]
+
+        Some offsets for a set of ilines, interescting one crossline:
+
+        >>> gather[200:300, 241, 10:25:5]
+
+        Some offsets for a set of ilines and xlines. This effectively yields a
+        subcube:
+
+        >>> f.gather[200:300, 241:248, 1:10]
         """
         if len(index) < 3:
             index = (index[0], index[1], None)
