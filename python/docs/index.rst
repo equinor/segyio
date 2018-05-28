@@ -3,15 +3,17 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to segyio's documentation!
-==================================
+********************
+segyio documentation
+********************
 
+
+API reference
+=============
 .. toctree::
    :maxdepth: 3
 
-   API reference <segyio>
-
-.. automodule:: segyio
+   segyio
 
 
 Indices and tables

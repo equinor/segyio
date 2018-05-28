@@ -1,81 +1,89 @@
-segyio
-======
-
-.. currentmodule:: segyio
-
 Open and create
----------------
+===============
+
 .. autofunction:: segyio.open
 .. autofunction:: segyio.create
 
-Addressing modes
-----------------
+File handle
+===========
 
-.. automodule:: segyio.segy
+.. autoclass:: segyio.SegyFile()
+    :member-order: groupwise
 
-Trace modes
-~~~~~~~~~~~
-.. autoattribute:: segyio.SegyFile.trace
-.. autoattribute:: segyio.SegyFile.header
+Addressing
+==========
 
-Line modes
-~~~~~~~~~~
-.. autoattribute:: segyio.SegyFile.iline
-.. autoattribute:: segyio.SegyFile.xline
-.. autoattribute:: segyio.SegyFile.fast
-.. autoattribute:: segyio.SegyFile.slow
+.. currentmodule:: segyio
 
-Composite modes
-~~~~~~~~~~~~~~~
-.. autoattribute:: segyio.SegyFile.depth_slice
-.. autoattribute:: segyio.SegyFile.gather
-
-Text and binary modes
-~~~~~~~~~~~~~~~~~~~~~
-.. autoattribute:: segyio.SegyFile.text
-.. autoattribute:: segyio.SegyFile.bin
-
-Methods
--------
-.. automethod:: segyio.SegyFile.attributes
-.. automethod:: segyio.SegyFile.mmap
-.. automethod:: segyio.SegyFile.flush
-.. automethod:: segyio.SegyFile.close
-
-Attributes
+Data trace
 ----------
-.. autoattribute:: segyio.SegyFile.ilines
-.. autoattribute:: segyio.SegyFile.xlines
-.. autoattribute:: segyio.SegyFile.samples
-.. autoattribute:: segyio.SegyFile.offsets
+.. autoclass:: segyio.trace.Trace()
+    :special-members: __getitem__, __setitem__, __len__, __contains__, __iter__
 
-.. autoattribute:: segyio.SegyFile.tracecount
-.. autoattribute:: segyio.SegyFile.ext_headers
-.. autoattribute:: segyio.SegyFile.unstructured
-.. autoattribute:: segyio.SegyFile.sorting
-.. autoattribute:: segyio.SegyFile.format
+Trace header
+------------
+.. autoclass:: segyio.trace.Header()
+    :special-members: __getitem__, __setitem__, __len__, __contains__, __iter__
+
+Data line
+---------
+.. autoclass:: segyio.line.Line()
+    :special-members: __getitem__, __setitem__, __len__, __contains__, __iter__
+
+Line header
+-----------
+.. autoclass:: segyio.line.HeaderLine()
+    :special-members: __getitem__, __setitem__, __len__, __contains__, __iter__
+
+Gather
+------
+.. autoclass:: segyio.gather.Gather()
+    :special-members: __getitem__
+
+Depth
+-----
+.. autoclass:: segyio.depth.Depth()
+    :special-members: __getitem__, __setitem__, __len__, __contains__, __iter__
+
+Trace and binary header
+=======================
+.. autoclass:: segyio.field.Field()
+    :special-members: __getitem__, __setitem__, __delitem__, __len__, __contains__, __iter__
 
 Tools
------
+=====
+
 .. automodule:: segyio.tools
     :members:
     :undoc-members:
     :show-inheritance:
 
 Constants
----------
+=========
+
+Trace header keys
+-----------------
 .. autoclass:: segyio.TraceField
     :members:
     :undoc-members:
     :member-order: bysource
+
+Binary header keys
+------------------
 .. autoclass:: segyio.BinField
     :members:
     :undoc-members:
     :member-order: bysource
+
+Seismic Unix keys
+-----------------
 .. autoclass:: segyio.su
     :members:
     :undoc-members:
     :member-order: bysource
+
+Sorting and formats
+-------------------
 .. autoclass:: segyio.TraceSortingFormat
     :members:
     :undoc-members:
