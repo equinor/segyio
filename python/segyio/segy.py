@@ -723,91 +723,12 @@ class SegyFile(object):
 
     @property
     def depth_slice(self):
-        """Interact with segy in depth slice mode
-
-        This mode gives access to reading and writing functionality for depth
-        slices, a horizontal cut of the survey.
-
-        The primary data type is ``numpy.ndarray``. Depth slices can be
-        accessed individually or with slices, and writing is done via
-        assignment. Note that each slice is returned as a ``numpy.ndarray``, meaning
-        accessing the values of the slice is 0-indexed.
+        """
+        Interact with segy in depth slice mode
 
         Returns
         -------
-
-        depth
-            depth addressing mode
-
-        Notes
-        -----
-
-        .. versionadded:: 1.1
-
-        .. warning::
-            Accessing the file by depth (fixed z-coordinate) is inefficient
-            because of poor locality and many reads. If you read more than a
-            handful depths, consider using a faster mode.
-
-        Examples
-        --------
-
-        Read a depth slice:
-
-        >>> il = f.depth_slice[199]
-
-        Copy every depth slice into a list:
-
-        >>> l = [np.copy(x) for x in f.depth_slice]
-
-        The number of depth slices in a file:
-
-        >>> len(f.depth_slice)
-
-        Numpy operations on every third depth slice:
-
-        >>> for depth_slice in f.depth_slice[::3]:
-        ...     depth_slice = depth_slice * 6
-        ...     avg = np.average(depth_slice)
-        ...     print(avg)
-        ...
-
-        Read depth_slices up to 250:
-
-        >>> for depth_slice in f.depth_slice[:250]:
-        ...     print(np.average(depth_slice))
-        ...
-
-        Copy a slice from file g to f:
-
-        >>> f.depth_slice[4] = g.depth_slice[19]
-
-        Copy slice from the first line in g to f, starting at 10,
-        ending at 49 in f:
-
-        >>> f.depth_slice[10:50] = g.depth_slice
-
-
-        Convenient way for setting depth slices, from left-to-right as the depth slices
-        numbers are specified in the file.depth_slice property, from an iterable
-        set on the right-hand-side.
-
-        If the right-hand-side depth slices are exhausted before all the destination
-        file depth slices the writing will stop, i.e. not all all depth slices in the
-        destination file will be written.
-
-        Copy depth slices from file f to file g:
-
-        >>> f.depth_slice = g.depth_slice
-
-        Copy first half of the depth slices from g to f:
-
-        >>> f.depth_slice = g.depth_slice[:g.samples/2]]
-
-        Copy every other depth slices from a different file:
-
-        >>> f.depth_slice = g.depth_slice[::2]
-
+        depth : Depth
         """
 
         if self.unstructured:
@@ -822,10 +743,25 @@ class SegyFile(object):
 
     @depth_slice.setter
     def depth_slice(self, value):
-        """Write depths first-to-last
+        """depth macro assignment
 
-        Write depths to file, beginning at the first depth (sample 0) until
-        either the depths or the range on the right-hand-side are exhausted.
+        Convenient way for setting depth slices, from left-to-right as the depth slices
+        numbers are specified in the file.depth_slice property, from an iterable
+        set on the right-hand-side.
+
+        If the right-hand-side depth slices are exhausted before all the destination
+        file depth slices the writing will stop, i.e. not all all depth slices in the
+        destination file will be written.
+
+        Examples
+        --------
+        Copy depth slices from file f to file g:
+
+        >>> f.depth_slice = g.depth_slice
+
+        Copy first half of the depth slices from g to f:
+
+        >>> f.depth_slice = g.depth_slice[:g.samples/2]]
         """
         self.depth_slice[:] = value
 
