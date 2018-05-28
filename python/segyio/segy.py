@@ -68,7 +68,11 @@ class SegyFile(object):
             self._fmt = 1
             self._dtype = np.dtype(np.float32)
 
-        self._trace = Trace(self, metrics['samplecount'])
+        self._trace = Trace(self.xfd,
+                            self.dtype,
+                            self.tracecount,
+                            metrics['samplecount'],
+                           )
         self._header = Header(self)
         self._iline = None
         self._xline = None

@@ -5,7 +5,6 @@ except ImportError: pass
 
 import numpy as np
 
-from ._raw_trace import RawTrace
 from .line import HeaderLine
 from .field import Field
 from .utils import castarray
@@ -92,10 +91,10 @@ class Trace(Sequence):
 
     """
 
-    def __init__(self, file, samples):
-        super(Trace, self).__init__(file.tracecount)
-        self.filehandle = file.xfd
-        self.dtype = file.dtype
+    def __init__(self, filehandle, dtype, tracecount, samples):
+        super(Trace, self).__init__(tracecount)
+        self.filehandle = filehandle
+        self.dtype = dtype
         self.shape = samples
 
     def __getitem__(self, i):
@@ -238,8 +237,63 @@ class Trace(Sequence):
 
     @property
     def raw(self):
-        """ :rtype: segyio.RawTrace """
-        return RawTrace(self)
+        """
+        An eager version of Trace
+
+        Returns
+        -------
+        raw : RawTrace
+        """
+        return RawTrace(self.filehandle, self.dtype, len(self), self.shape)
+
+class RawTrace(Trace):
+    """
+    Behaves exactly like trace, except reads are done eagerly and returned as
+    numpy.ndarray, instead of generators of numpy.ndarray.
+    """
+    def __init__(self, *args):
+        super(RawTrace, self).__init__(*args)
+
+    def __getitem__(self, i):
+        """trace[i]
+
+        Eagerly read the ith trace of the file, starting at 0. trace[i] returns
+        a numpy array, and changes to this array will *not* be reflected on
+        disk.
+
+        When i is a slice, this returns a 2-dimensional numpy.ndarray .
+
+        Parameters
+        ----------
+        i : int or slice
+
+        Returns
+        -------
+        trace : numpy.ndarray of dtype
+
+        Notes
+        -----
+        .. versionadded:: 1.1
+
+        Behaves like [] for lists.
+
+        .. note::
+
+            Reading this way is more efficient if you know you can afford the
+            extra memory usage. It reads the requested traces immediately to
+            memory.
+
+        """
+        try:
+            i = self.wrapindex(i)
+            buf = np.zeros(self.shape, dtype = self.dtype)
+            return self.filehandle.gettr(buf, i, 1, 1)
+        except TypeError:
+            indices = i.indices(len(self))
+            start, _, step = indices
+            length = len(range(*indices))
+            buf = np.empty((length, self.shape), dtype = self.dtype)
+            return self.filehandle.gettr(buf, start, step, length)
 
 class Header(Sequence):
     """Interact with segy in header mode
