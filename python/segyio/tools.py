@@ -287,10 +287,10 @@ def rotation(f, line = 'fast'):
     origin = f.header[0][segyio.su.cdpx, segyio.su.cdpy]
     cdpx, cdpy = origin[segyio.su.cdpx], origin[segyio.su.cdpy]
 
-    rot = f.xfd.rotation( l.len,
+    rot = f.xfd.rotation( len(l),
                           l.stride,
                           len(f.offsets),
-                          np.asarray(l.lines, order = 'C', dtype = np.intc) )
+                          np.fromiter(l.keys(), dtype = np.intc) )
     return rot, cdpx, cdpy
 
 def metadata(f):

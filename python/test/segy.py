@@ -18,10 +18,9 @@ from test import tmpfiles
 
 import segyio
 from segyio import TraceField, BinField
-from segyio._field import Field
-from segyio._line import Line
-from segyio._header import Header
-from segyio._trace import Trace
+from segyio.field import Field
+from segyio.line import Line, HeaderLine
+from segyio.trace import Trace, Header
 
 
 def test_inline_4():
@@ -166,8 +165,7 @@ def test_traces_slicing():
         assert rev_traces[2][49] == f.trace[0][49]
 
         # make sure buffers can be reused
-        buf = None
-        for i, trace in enumerate(f.trace[0:6:2, buf]):
+        for i, trace in enumerate(f.trace[0:6:2]):
             assert np.array_equal(trace, traces[i])
 
 
@@ -214,6 +212,37 @@ def test_header_dict_methods():
         assert 30 == len(f.bin)
         iter(f.bin)
 
+
+@tmpfiles('test-data/small.sgy')
+def test_header_dropped_writes(tmpdir):
+    with segyio.open('test-data/small.sgy', mode='r+') as f:
+        f.header[10] = { 1: 5, 5: 10 }
+
+    with segyio.open('test-data/small.sgy', mode='r+') as f:
+        x, y = f.header[10], f.header[10]
+
+        assert x[1, 5] == { 1: 5, 5: 10 }
+        assert y[1, 5] == { 1: 5, 5: 10 }
+
+        # write to x[1] is invisible to y
+        x[1] = 6
+        assert x[1] == 6
+        assert y[1] == 5
+
+        y.reload()
+        assert x[1] == 6
+        assert y[1] == 6
+
+        x[1] = 5
+        assert x[1] == 5
+        assert y[1] == 6
+
+        # the write to x[1] is lost
+        y[5] = 1
+        assert x[1] == 5
+        assert x.reload()
+        assert x[1] == 6
+        assert y[1, 5] == { 1: 6, 5: 1 }
 
 @tmpfiles("test-data/small-ps.sgy")
 def test_headers_line_offset(tmpdir):
@@ -457,13 +486,13 @@ def test_read_header():
         with pytest.raises(IndexError):
             _ = f.header[-30]
 
-        with pytest.raises(IndexError):
+        with pytest.raises(KeyError):
             _ = f.header[0][188]  # between byte offsets
 
-        with pytest.raises(IndexError):
+        with pytest.raises(KeyError):
             _ = f.header[0][-1]
 
-        with pytest.raises(IndexError):
+        with pytest.raises(KeyError):
             _ = f.header[0][700]
 
 
@@ -478,13 +507,13 @@ def test_write_header(tmpdir):
         assert 1 == f.header[1][189]
 
         # accessing non-existing offsets raises exceptions
-        with pytest.raises(IndexError):
+        with pytest.raises(KeyError):
             f.header[0][188] = 1  # between byte offsets
 
-        with pytest.raises(IndexError):
+        with pytest.raises(KeyError):
             f.header[0][-1] = 1
 
-        with pytest.raises(IndexError):
+        with pytest.raises(KeyError):
             f.header[0][700] = 1
 
         d = {TraceField.INLINE_3D: 43,
@@ -524,6 +553,8 @@ def test_write_header(tmpdir):
         # accept anything with a key-value structure
         f.header[5].update([(segyio.su.ns, 12), (segyio.su.dt, 4)])
         f.header[5].update(((segyio.su.muts, 3), (segyio.su.mute, 7)))
+        f.header[5].update([(segyio.su.muts, 3)], sx=7)
+        f.header[5].update(sy=8)
 
         with pytest.raises(TypeError):
             f.header[0].update(10)
@@ -539,6 +570,8 @@ def test_write_header(tmpdir):
         assert 4 == f.header[5][segyio.su.dt]
         assert 3 == f.header[5][segyio.su.muts]
         assert 7 == f.header[5][segyio.su.mute]
+        assert 7 == f.header[5][segyio.su.sx]
+        assert 8 == f.header[5][segyio.su.sy]
 
         # for-each support
         for _ in f.header:
@@ -547,6 +580,19 @@ def test_write_header(tmpdir):
         # copy a header
         f.header[2] = f.header[1]
         f.flush()
+
+        d = {TraceField.INLINE_3D: 12,
+             TraceField.CROSSLINE_3D: 13,
+             TraceField.offset: 14}
+
+        # assign multiple values with a slice
+        f.header[:5] = d
+        f.flush()
+
+        for i in range(5):
+            assert 12 == f.header[i][TraceField.INLINE_3D]
+            assert 13 == f.header[i][segyio.su.xline]
+            assert 14 == f.header[i][segyio.su.offset]
 
         # don't use this interface in production code, it's only for testing
         # i.e. don't access buf of treat it as a list
@@ -562,13 +608,13 @@ def test_write_binary(tmpdir):
         assert 5 == f.bin[3213]
 
         # accessing non-existing offsets raises exceptions
-        with pytest.raises(IndexError):
+        with pytest.raises(KeyError):
             _ = f.bin[0]
 
-        with pytest.raises(IndexError):
+        with pytest.raises(KeyError):
             _ = f.bin[50000]
 
-        with pytest.raises(IndexError):
+        with pytest.raises(KeyError):
             _ = f.bin[3214]
 
         d = {BinField.Traces: 43,
@@ -606,6 +652,43 @@ def test_write_binary(tmpdir):
         # copy a header
         f.bin = f.bin
 
+@tmpfiles("test-data/small.sgy")
+def test_write_header_update_atomic(tmpdir):
+    with segyio.open(tmpdir / "small.sgy", "r+") as f:
+        orig = dict(f.header[10])
+
+        d = { 1:  10,
+              37: 4,
+              73: 15,
+              2:  10, # this key raises error
+            }
+
+        # use the same instance all the time, to also catch the case where
+        # update dirties the backing storage
+        header = f.header[10]
+        with pytest.raises(KeyError):
+            header.update(d)
+
+        assert orig == header
+
+        # flushing the header should just write a clean buffer
+        header.flush()
+        assert orig == header
+
+        del d[2]
+        header.update(d)
+
+        assert header[1] == 10
+        assert header[73] == 15
+        assert f.header[10][37] == 4
+
+        fresh = orig.copy()
+        fresh.update(d)
+
+        assert orig != header
+        assert orig != f.header[10]
+        assert fresh == f.header[10]
+        assert header == f.header[10]
 
 def test_fopen_error():
     # non-existent file
@@ -704,6 +787,20 @@ def test_write_with_narrowing(tmpdir):
             f.xline[last] = threes
             assert np.array_equal(f.xline[last], threes)
 
+@tmpfiles('test-data/small.sgy')
+def test_write_with_array_likes(tmpdir):
+    with segyio.open(tmpdir / 'small.sgy', mode = 'r+') as f:
+
+        with pytest.warns(RuntimeWarning):
+            ones = np.ones(3 * len(f.samples), dtype='single')
+            # ::3 makes the array non-contiguous
+            f.trace[0] = ones[::3]
+            assert np.array_equal(f.trace[0], ones[::3])
+
+        with pytest.warns(RuntimeWarning):
+            ones = np.ones(len(f.samples), dtype='single')
+            f.trace[0] = (1 for _ in range(len(f.samples)))
+            assert np.array_equal(f.trace[0], ones)
 
 @tmpfiles("test-data/small.sgy")
 def test_assign_all_traces(tmpdir):
@@ -1054,7 +1151,8 @@ def test_segyio_types():
         assert isinstance(f.tracecount, int)
         assert isinstance(f.samples, np.ndarray)
 
-        assert isinstance(f.depth_slice, Line)
+        from segyio.depth import Depth
+        assert isinstance(f.depth_slice, Depth)
         assert isinstance(f.depth_slice[1], np.ndarray)
         assert isinstance(f.depth_slice[1:23], GeneratorType)
 
@@ -1077,10 +1175,10 @@ def test_segyio_types():
         assert isinstance(f.xline[21][0][0:3], np.ndarray)
 
         assert isinstance(f.header, Header)
-        assert isinstance(f.header.iline, Line)
+        assert isinstance(f.header.iline, HeaderLine)
         assert isinstance(f.header.iline[1], GeneratorType)
         assert isinstance(next(f.header.iline[1]), Field)
-        assert isinstance(f.header.xline, Line)
+        assert isinstance(f.header.xline, HeaderLine)
         assert isinstance(f.header.xline[21], GeneratorType)
         assert isinstance(next(f.header.xline[21]), Field)
 
@@ -1116,7 +1214,7 @@ def test_depth_slice_reading():
 
             next(islice(itr, 5, 5), None)
 
-    with pytest.raises(KeyError):
+    with pytest.raises(IndexError):
         _ = f.depth_slice[len(f.samples)]
 
 

@@ -896,8 +896,8 @@ int segy_sample_interval( segy_file* fp, float fallback, float* dt ) {
         return err;
     }
 
-    int bindt = 0;
-    int trdt = 0;
+    int32_t bindt = 0;
+    int32_t trdt = 0;
 
     segy_get_bfield( bin_header, SEGY_BIN_INTERVAL, &bindt );
     segy_get_field( trace_header, SEGY_TR_SAMPLE_INTER, &trdt );
@@ -1633,7 +1633,6 @@ int segy_write_line( segy_file* fp,
     if( !fp->writable ) return SEGY_READONLY;
 
     const char* src = (const char*) buf;
-    line_trace0 *= offsets;
     stride *= offsets;
 
     for( ; line_length--; line_trace0 += stride, src += trace_bsize ) {

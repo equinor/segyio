@@ -63,11 +63,6 @@ PyObject* ValueError( const char* msg, T1 t1, T2 t2 ) {
     return PyErr_Format( PyExc_ValueError, msg, t1, t2 );
 }
 
-PyObject* IndexError( const char* msg ) {
-    PyErr_SetString( PyExc_IndexError, msg );
-    return NULL;
-}
-
 template< typename T1, typename T2 >
 PyObject* IndexError( const char* msg, T1 t1, T2 t2 ) {
     return PyErr_Format( PyExc_IndexError, msg, t1, t2 );
@@ -110,6 +105,11 @@ PyObject* IOError( const char* msg, T1 t1, T2 t2 ) {
 template< typename T1 >
 PyObject* IOError( const char* msg, T1 t1 ) {
     return PyErr_Format( PyExc_IOError, msg, t1 );
+}
+
+template< typename T1 >
+PyObject* KeyError( const char* msg, T1 t1 ) {
+    return PyErr_Format( PyExc_KeyError, msg, t1 );
 }
 
 template< typename T1, typename T2 >
@@ -219,16 +219,33 @@ struct buffer_guard {
 
 namespace fd {
 
-int init( segyiofd* self, PyObject* args, PyObject* ) {
+int init( segyiofd* self, PyObject* args, PyObject* kwargs ) {
     char* filename = NULL;
     char* mode = NULL;
     int tracecount = 0;
     buffer_guard buffer;
 
-    if( !PyArg_ParseTuple( args, "ss|iz*", &filename,
-                                           &mode,
-                                           &tracecount,
-                                           &buffer ) )
+    static const char* kwlist[] = {
+        "filename",
+        "mode",
+        "tracecount",
+        "binary",
+        NULL,
+    };
+
+    // https://mail.python.org/pipermail/python-dev/2006-February/060689.html
+    // python3 fixes the non-constness of the kwlist arg in
+    // ParseTupleAndKeywords, since C++ really prefers writing string literals
+    // as const
+    //
+    // Remove the const_cast when python2 support is dropped
+    if( !PyArg_ParseTupleAndKeywords( args, kwargs,
+                "ss|iz*",
+                const_cast< char** >(kwlist),
+                &filename,
+                &mode,
+                &tracecount,
+                &buffer ) )
         return -1;
 
     const char* binary = buffer.buf< const char >();
@@ -849,10 +866,15 @@ PyObject* puttr( segyiofd* self, PyObject* args ) {
 
     int traceno;
     char* buffer;
-    Py_ssize_t buflen;
+    int buflen;
 
     if( !PyArg_ParseTuple( args, "is#", &traceno, &buffer, &buflen ) )
         return NULL;
+
+    if( self->trace_bsize > buflen )
+        return ValueError("trace too short: expected %d bytes, got %d",
+                          self->trace_bsize,
+                          buflen );
 
     segy_from_native( self->format, self->samplecount, buffer );
 
@@ -912,6 +934,60 @@ PyObject* getline( segyiofd* self, PyObject* args) {
     return bufferobj;
 }
 
+PyObject* putline( segyiofd* self, PyObject* args) {
+    segy_file* fp = self->fd;
+    if( !fp ) return NULL;
+
+    int line_trace0;
+    int line_length;
+    int stride;
+    int offsets;
+    int index;
+    int offset;
+    PyObject* val;
+
+    if( !PyArg_ParseTuple( args, "iiiiiiO", &line_trace0,
+                                            &line_length,
+                                            &stride,
+                                            &offsets,
+                                            &index,
+                                            &offset,
+                                            &val ) )
+        return NULL;
+
+    buffer_guard buffer( val, PyBUF_CONTIG );
+
+    if( self->trace_bsize * line_length > buffer.len() )
+        return ValueError("line too short: expected %d elements, got %zd",
+                          self->samplecount * line_length,
+                          buffer.len() / self->elemsize );
+
+    const int elems = line_length * self->samplecount;
+    segy_from_native( self->format, elems, buffer.buf() );
+
+    int err = segy_write_line( fp, line_trace0,
+                                   line_length,
+                                   stride,
+                                   offsets,
+                                   buffer.buf(),
+                                   self->trace0,
+                                   self->trace_bsize );
+
+    segy_to_native( self->format, elems, buffer.buf() );
+
+    switch( err ) {
+        case SEGY_OK:
+            return Py_BuildValue("");
+
+        case SEGY_FWRITE_ERROR:
+            return IOError( "I/O operation failed on line %d, offset %d",
+                            index, offset );
+
+        default:
+            return Error( err );
+    }
+}
+
 PyObject* getdepth( segyiofd* self, PyObject* args ) {
     segy_file* fp = self->fd;
     if( !fp ) return NULL;
@@ -959,6 +1035,61 @@ PyObject* getdepth( segyiofd* self, PyObject* args ) {
 
     Py_INCREF( bufferobj );
     return bufferobj;
+}
+
+PyObject* putdepth( segyiofd* self, PyObject* args ) {
+    segy_file* fp = self->fd;
+    if( !fp ) return NULL;
+
+    int depth;
+    int count;
+    int offsets;
+    PyObject* val;
+
+    if( !PyArg_ParseTuple( args, "iiiO", &depth,
+                                         &count,
+                                         &offsets,
+                                         &val ) )
+        return NULL;
+
+    buffer_guard buffer( val, PyBUF_CONTIG );
+    if( !buffer ) return NULL;
+
+    if( count * self->elemsize > buffer.len() )
+        return ValueError("slice too short: expected %d elements, got %zd",
+                          count, buffer.len() / self->elemsize );
+
+    int traceno = 0;
+    int err = 0;
+    const char* buf = buffer.buf();
+    const int skip = self->elemsize;
+
+    const long trace0 = self->trace0;
+    const int trace_bsize = self->trace_bsize;
+
+    segy_from_native( self->format, count, buffer.buf() );
+
+    for( ; err == 0 && traceno < count; ++traceno, buf += skip ) {
+        err = segy_writesubtr( fp,
+                               traceno * offsets,
+                               depth,
+                               depth + 1,
+                               1,
+                               buf,
+                               NULL,
+                               trace0,
+                               trace_bsize );
+    }
+
+    segy_to_native( self->format, count, buffer.buf() );
+
+    if( err == SEGY_FREAD_ERROR )
+        return IOError( "I/O operation failed on data trace %d at depth %d",
+                        traceno, depth );
+
+    if( err ) return Error( err );
+
+    return Py_BuildValue( "" );
 }
 
 PyObject* getdt( segyiofd* self, PyObject* args ) {
@@ -1048,7 +1179,9 @@ PyMethodDef methods [] = {
     { "puttr", (PyCFunction) fd::puttr, METH_VARARGS, "Put trace." },
 
     { "getline",  (PyCFunction) fd::getline,  METH_VARARGS, "Get line." },
+    { "putline",  (PyCFunction) fd::putline,  METH_VARARGS, "Put line." },
     { "getdepth", (PyCFunction) fd::getdepth, METH_VARARGS, "Get depth." },
+    { "putdepth", (PyCFunction) fd::putdepth, METH_VARARGS, "Put depth." },
 
     { "getdt",    (PyCFunction) fd::getdt, METH_VARARGS,    "Get sample interval (dt)." },
     { "rotation", (PyCFunction) fd::rotation, METH_VARARGS, "Get clockwise rotation."   },
@@ -1137,7 +1270,7 @@ PyObject* getfield( PyObject*, PyObject *args ) {
 
     switch( err ) {
         case SEGY_OK:            return PyLong_FromLong( value );
-        case SEGY_INVALID_FIELD: return IndexError( "invalid field value" );
+        case SEGY_INVALID_FIELD: return KeyError( "No such field %d", field );
         default:                 return Error( err );
     }
 }
@@ -1161,7 +1294,7 @@ PyObject* putfield( PyObject*, PyObject *args ) {
 
     switch( err ) {
         case SEGY_OK:            return PyLong_FromLong( value );
-        case SEGY_INVALID_FIELD: return IndexError( "invalid field value" );
+        case SEGY_INVALID_FIELD: return KeyError( "No such field %d", field );
         default:                 return Error( err );
     }
 }
