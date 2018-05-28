@@ -910,15 +910,12 @@ class SegyFile(object):
 
         Returns
         -------
-
         readonly : bool
             True if this file is read-only
 
         Notes
         -----
-
-        ..versionadded:: 1.6
-
+        .. versionadded:: 1.6
         """
 
         return '+' not in self._mode
