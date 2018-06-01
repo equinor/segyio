@@ -90,11 +90,12 @@ class Trace(Sequence):
 
     """
 
-    def __init__(self, filehandle, dtype, tracecount, samples):
+    def __init__(self, filehandle, dtype, tracecount, samples, readonly):
         super(Trace, self).__init__(tracecount)
         self.filehandle = filehandle
         self.dtype = dtype
         self.shape = samples
+        self.readonly = readonly
 
     def __getitem__(self, i):
         """trace[i]
@@ -243,7 +244,13 @@ class Trace(Sequence):
         -------
         raw : RawTrace
         """
-        return RawTrace(self.filehandle, self.dtype, len(self), self.shape)
+        return RawTrace(self.filehandle,
+                        self.dtype,
+                        len(self),
+                        self.shape,
+                        self.readonly,
+                       )
+
 
 class RawTrace(Trace):
     """

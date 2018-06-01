@@ -72,6 +72,7 @@ class SegyFile(object):
                             self.dtype,
                             self.tracecount,
                             metrics['samplecount'],
+                            self.readonly,
                            )
         self._header = Header(self)
         self._iline = None
