@@ -23,6 +23,9 @@ Data trace
 .. autoclass:: segyio.trace.RawTrace()
     :special-members: __getitem__, __setitem__, __len__, __contains__, __iter__
 
+.. autoclass:: segyio.trace.RefTrace()
+    :special-members: __getitem__, __setitem__, __len__, __contains__, __iter__
+
 Trace header
 ------------
 .. autoclass:: segyio.trace.Header()
