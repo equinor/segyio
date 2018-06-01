@@ -72,15 +72,14 @@ class Trace(Sequence):
     --------
     Read all traces in file f and store in a list:
 
-    >>> l = [np.copy(tr) for tr in f.trace]
+    >>> l = [numpy.copy(tr) for tr in trace[:]]
 
     Do numpy operations on a trace:
 
-    >>> tr = f.trace[10]
-    >>> tr = np.transpose(tr)
+    >>> tr = trace[10]
     >>> tr = tr * 2
     >>> tr = tr - 100
-    >>> avg = np.average(tr)
+    >>> avg = numpy.average(tr)
 
     Double every trace value and write to disk. Since accessing a trace
     gives a numpy value, to write to the respective trace we need its index:
@@ -132,12 +131,12 @@ class Trace(Sequence):
         --------
         Read every other trace:
 
-        >>> for tr in f.trace[::2]:
+        >>> for tr in trace[::2]:
         ...     print(tr)
 
         Read all traces, last-to-first:
 
-        >>> for tr in f.trace[::-1]:
+        >>> for tr in trace[::-1]:
         ...     tr.mean()
 
         Read a single value. The second [] is regular numpy array indexing, and
