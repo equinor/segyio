@@ -952,4 +952,6 @@ class TextHeader(object):
         return "Text(external_headers = {})".format(self.outer.ext_headers)
 
     def __str__(self):
+        msg = 'str(text) is deprecated, use explicit format instead'
+        warnings.warn(DeprecationWarning, msg)
         return '\n'.join(map(''.join, zip(*[iter(str(self[0]))] * 80)))
