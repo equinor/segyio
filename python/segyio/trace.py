@@ -1,5 +1,7 @@
 import collections
+import contextlib
 import itertools
+import sys
 try: from future_builtins import zip
 except ImportError: pass
 
@@ -72,15 +74,14 @@ class Trace(Sequence):
     --------
     Read all traces in file f and store in a list:
 
-    >>> l = [np.copy(tr) for tr in f.trace]
+    >>> l = [numpy.copy(tr) for tr in trace[:]]
 
     Do numpy operations on a trace:
 
-    >>> tr = f.trace[10]
-    >>> tr = np.transpose(tr)
+    >>> tr = trace[10]
     >>> tr = tr * 2
     >>> tr = tr - 100
-    >>> avg = np.average(tr)
+    >>> avg = numpy.average(tr)
 
     Double every trace value and write to disk. Since accessing a trace
     gives a numpy value, to write to the respective trace we need its index:
@@ -91,11 +92,12 @@ class Trace(Sequence):
 
     """
 
-    def __init__(self, filehandle, dtype, tracecount, samples):
+    def __init__(self, filehandle, dtype, tracecount, samples, readonly):
         super(Trace, self).__init__(tracecount)
         self.filehandle = filehandle
         self.dtype = dtype
         self.shape = samples
+        self.readonly = readonly
 
     def __getitem__(self, i):
         """trace[i]
@@ -132,12 +134,12 @@ class Trace(Sequence):
         --------
         Read every other trace:
 
-        >>> for tr in f.trace[::2]:
+        >>> for tr in trace[::2]:
         ...     print(tr)
 
         Read all traces, last-to-first:
 
-        >>> for tr in f.trace[::-1]:
+        >>> for tr in trace[::-1]:
         ...     tr.mean()
 
         Read a single value. The second [] is regular numpy array indexing, and
@@ -244,7 +246,43 @@ class Trace(Sequence):
         -------
         raw : RawTrace
         """
-        return RawTrace(self.filehandle, self.dtype, len(self), self.shape)
+        return RawTrace(self.filehandle,
+                        self.dtype,
+                        len(self),
+                        self.shape,
+                        self.readonly,
+                       )
+
+    @property
+    @contextlib.contextmanager
+    def ref(self):
+        """
+        A write-back version of Trace
+
+        Returns
+        -------
+        ref : RefTrace
+            `ref` is returned in a context manager, and must be in a ``with``
+            statement
+
+        Notes
+        -----
+        .. versionadded:: 1.6
+
+        Examples
+        --------
+        >>> with trace.ref as ref:
+        ...     ref[10] += 1.617
+        """
+
+        x = RefTrace(self.filehandle,
+                     self.dtype,
+                     len(self),
+                     self.shape,
+                     self.readonly,
+                    )
+        yield x
+        x.flush()
 
 class RawTrace(Trace):
     """
@@ -294,6 +332,178 @@ class RawTrace(Trace):
             length = len(range(*indices))
             buf = np.empty((length, self.shape), dtype = self.dtype)
             return self.filehandle.gettr(buf, start, step, length)
+
+
+def fingerprint(x):
+    return hash(bytes(x.data))
+
+class RefTrace(Trace):
+    """
+    Behaves like trace, except changes to the returned numpy arrays *are*
+    reflected on disk. Operations have to be in-place on the numpy array, so
+    assignment on a trace will not work.
+
+    This feature exists to support code like::
+
+        >>> with ref as r:
+        ...     for x, y in zip(r, src):
+        ...         numpy.copyto(x, y + 10)
+
+    This class is not meant to be instantiated directly, but returned by
+    :attr:`Trace.ref`. This feature requires a context manager, to guarantee
+    modifications are written back to disk.
+    """
+    def __init__(self, *args):
+        super(RefTrace, self).__init__(*args)
+        self.refs = {}
+
+    def flush(self):
+        """
+        Commit cached writes to the file handle. Does not flush libc buffers or
+        notifies the kernel, so these changes may not immediately be visible to
+        other processes.
+
+        Updates the fingerprints whena writes happen, so successive ``flush()``
+        invocations are no-ops.
+
+        It is not necessary to call this method in user code.
+
+        Notes
+        -----
+        .. versionadded:: 1.6
+
+        This method is not intended as user-oriented functionality, but might
+        be useful in certain contexts to provide stronger guarantees.
+        """
+        garbage = []
+        for i, (x, signature) in self.refs.items():
+            if sys.getrefcount(x) == 3:
+                garbage.append(i)
+
+            if fingerprint(x) == signature: continue
+
+            self.filehandle.puttr(i, x)
+            signature = fingerprint(x)
+
+
+        # to avoid too many resource leaks, when this dict is the only one
+        # holding references to already-produced traces, clear them
+        for i in garbage:
+            del self.refs[i]
+
+    def fetch(self, i, buf = None):
+        if buf is None:
+            buf = np.zeros(self.shape, dtype = self.dtype)
+
+        try:
+            self.filehandle.gettr(buf, i, 1, 1)
+        except IOError:
+            if not self.readonly:
+                # if the file is opened read-only and this happens, there's no
+                # way to actually write and the error is an actual error
+                buf.fill(0)
+            else: raise
+
+        return buf
+
+    def __getitem__(self, i):
+        """trace[i]
+
+        Read the ith trace of the file, starting at 0. trace[i] returns a numpy
+        array, but unlike Trace, changes to this array *will* be reflected on
+        disk. The modifications must happen to the actual array (views are ok),
+        so in-place operations work, but assignments will not::
+
+            >>> with ref as ref:
+            ...     x = ref[10]
+            ...     x += 1.617 # in-place, works
+            ...     numpy.copyto(x, x + 10) # works
+            ...     x = x + 10 # re-assignment, won't change the original x
+
+        Works on newly created files that has yet to have any traces written,
+        which opens up a natural way of filling newly created files with data.
+        When getting unwritten traces, a trace filled with zeros is returned.
+
+        Parameters
+        ----------
+        i : int or slice
+
+        Returns
+        -------
+        trace : numpy.ndarray of dtype
+
+        Notes
+        -----
+        .. versionadded:: 1.6
+
+        Behaves like [] for lists.
+
+        Examples
+        --------
+        Merge two files with a binary operation. Relies on python3 iterator
+        zip:
+
+        >>> with ref as ref:
+        ...     for x, lhs, rhs in zip(ref, L, R):
+        ...         numpy.copyto(x, lhs + rhs)
+
+        Create a file and fill with data (the repeated trace index):
+
+        >>> f = create()
+        >>> with f.trace.ref as ref:
+        ...     for i, x in enumerate(ref):
+        ...         x.fill(i)
+        """
+        try:
+            i = self.wrapindex(i)
+
+            # we know this class is only used in context managers, so we know
+            # refs don't escape (with expectation of being written), so
+            # preserve all refs yielded with getitem(int)
+            #
+            # using ref[int] is problematic and pointless, we need to handle
+            # this scenario gracefully:
+            # with f.trace.ref as ref:
+            #     x = ref[10]
+            #     x[5] = 0
+            #     # invalidate other refs
+            #     y = ref[11]
+            #     y[6] = 1.6721
+            #
+            #     # if we don't preserve returned individual getitems, this
+            #     # write is lost
+            #     x[5] = 52
+            #
+            # for slices, we know that references terminate with every
+            # iteration anyway, multiple live references cannot happen
+
+            if i in self.refs:
+                return self.refs[i][0]
+
+            x = self.fetch(i)
+            self.refs[i] = (x, fingerprint(x))
+            return x
+
+        except TypeError:
+            def gen():
+                x = np.zeros(self.shape, dtype = self.dtype)
+
+                try:
+                    for j in range(*i.indices(len(self))):
+                        x = self.fetch(j, x)
+                        y = fingerprint(x)
+
+                        yield x
+
+                        if not fingerprint(x) == y:
+                            self.filehandle.puttr(j, x)
+
+                finally:
+                    # the last yielded item is available after the loop, so
+                    # preserve it and check if it's been updated on exit
+                    self.refs[j] = (x, y)
+
+            return gen()
 
 class Header(Sequence):
     """Interact with segy in header mode

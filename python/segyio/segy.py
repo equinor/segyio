@@ -72,6 +72,7 @@ class SegyFile(object):
                             self.dtype,
                             self.tracecount,
                             metrics['samplecount'],
+                            self.readonly,
                            )
         self._header = Header(self)
         self._iline = None
@@ -951,4 +952,6 @@ class TextHeader(object):
         return "Text(external_headers = {})".format(self.outer.ext_headers)
 
     def __str__(self):
+        msg = 'str(text) is deprecated, use explicit format instead'
+        warnings.warn(DeprecationWarning, msg)
         return '\n'.join(map(''.join, zip(*[iter(str(self[0]))] * 80)))

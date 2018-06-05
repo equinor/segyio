@@ -11,6 +11,7 @@ import itertools
 import filecmp
 import shutil
 import numpy as np
+import numpy.testing as npt
 import pytest
 from pytest import approx
 
@@ -864,6 +865,155 @@ def test_create_sgy(tmpdir):
 
     assert filecmp.cmp(small, fresh)
 
+@tmpfiles("test-data/small.sgy")
+def test_ref_getitem(tmpdir):
+    small = str(tmpdir / 'small.sgy')
+    with segyio.open(small, mode = 'r+') as f:
+        with f.trace.ref as ref:
+            expected = ref[10].copy()
+            x = ref[10]
+            y = ref[10]
+            x[5] = 0
+            # getting a new trace within the same with block should not
+            # invalidate other refs
+            y = ref[11]
+            x[6] = 1.6721
+            x[5] = 52
+            y[0] = 0
+            assert ref[10][5] == 52
+            assert ref[10][6] == approx(1.6721)
+
+            assert len(ref.refs) == 2
+            z = ref[12]
+            z[0] = 0
+            assert len(ref.refs) == 3
+
+            x, y = None, None
+
+            ref.flush()
+            assert len(ref.refs) == 1
+
+    with segyio.open(small) as f:
+        expected[5] = 52
+        expected[6] = 1.6721
+        npt.assert_array_almost_equal(expected, f.trace[10])
+
+
+@tmpfiles("test-data/small.sgy")
+def test_ref_inplace_add_foreach(tmpdir):
+    small = str(tmpdir / 'small.sgy')
+    with segyio.open(small, mode = 'r+') as f:
+        expected = f.trace.raw[:] + 1.617
+
+        with f.trace.ref as ref:
+            for x in ref[:]:
+                x += 1.617
+
+    with segyio.open(small) as f:
+        npt.assert_array_almost_equal(expected, f.trace.raw[:])
+
+@tmpfiles("test-data/small.sgy")
+def test_ref_preserve_change_except_block(tmpdir):
+    small = str(tmpdir / 'small.sgy')
+    with segyio.open(small, mode = 'r+') as f:
+        expected = f.trace.raw[:]
+        expected[10][0] = 0
+
+        with f.trace.ref as ref:
+            try:
+                for i, x in enumerate(ref[:]):
+                    if i == 10: raise RuntimeError
+            except RuntimeError:
+                x[0] = 0
+
+    with segyio.open(small) as f:
+        result = f.trace.raw[:]
+        npt.assert_array_almost_equal(expected[10], result[10])
+        npt.assert_array_almost_equal(expected, result)
+
+
+@tmpfiles("test-data/small.sgy")
+def test_ref_post_loop_var(tmpdir):
+    small = str(tmpdir / 'small.sgy')
+    with segyio.open(small, mode = 'r+') as f:
+        expected = f.trace[-1]
+        expected[0] = 1.617
+
+        with f.trace.ref as ref:
+            for x in ref[:]: pass
+
+            x[0] = 1.617
+
+    with segyio.open(small) as f:
+        npt.assert_array_almost_equal(expected, f.trace[-1])
+
+@tmpfiles("test-data/small.sgy")
+def test_ref_sliced(tmpdir):
+    small = str(tmpdir / 'small.sgy')
+    with segyio.open(small, mode = 'r+') as f:
+        expected = f.trace.raw[:]
+        expected[10:15] += expected[:5]
+
+        with f.trace.ref as ref:
+            for x, y in zip(ref[10:15], f.trace[:]):
+                np.copyto(x, x + y)
+
+    with segyio.open(small) as f:
+        npt.assert_array_almost_equal(expected, f.trace.raw[:])
+
+@tmpfiles("test-data/small.sgy")
+def test_ref_mixed_for_else(tmpdir):
+    small = str(tmpdir / 'small.sgy')
+    with segyio.open(small, mode = 'r+') as f:
+        samples = len(f.samples)
+        zeros = np.zeros(samples, dtype = f.dtype)
+        ones = np.ones(samples, dtype = f.dtype)
+        expected = f.trace.raw[:]
+        expected[7] = zeros
+        expected[5:10] += 1.617
+        expected[9] = ones
+
+        with f.trace.ref as ref:
+            ref[7] = zeros
+            for x in ref[5:10]:
+                # break won't run, so enter else block
+                if len(x) == 0: break
+                x += 1.617
+            else: # else should preserve last x
+                np.copyto(x, ones)
+
+    with segyio.open(small) as f:
+        npt.assert_array_almost_equal(expected, f.trace.raw[:])
+
+
+@tmpfiles("test-data/small.sgy")
+def test_ref_new_file(tmpdir):
+    # this is the case the trace.ref feature was designed to support, namely
+    # creating a file trace-by-trace based on some transformation of another
+    # file, or an operation on multiple, where the trace index itself is
+    # uninteresting.
+
+    small = str(tmpdir / 'small.sgy')
+    fresh = str(tmpdir / 'fresh.sgy')
+    with segyio.open(small) as src:
+
+        spec = segyio.tools.metadata(src)
+        with segyio.create(fresh, spec) as dst:
+            dst.text[0] = src.text[0]
+            dst.bin = src.bin
+
+            # copy all headers
+            dst.header = src.header
+
+            with dst.trace.ref as ref:
+                for x, y in zip(ref[:], src.trace):
+                    # x default-inits to 0, so += is essentially copyto()
+                    # since traces hasn't been written yet, this has to handle
+                    # read miss errors
+                    x += y
+
+        with segyio.open(fresh) as dst:
+            npt.assert_array_almost_equal(src.trace.raw[:], dst.trace.raw[:])
 
 @tmpfiles("test-data/small.sgy")
 def test_create_sgy_truncate(tmpdir):
