@@ -1,3 +1,33 @@
+# 1.6.0
+* segyio has learned to handle int16 and int32 sample formats
+* segyio has learned to write any array_likes with any float-convertible
+  contents. `f.trace = np.linspace(0, 1, 0.01)` works as expected.
+* segyio types have been extended to be more container-like, and conform to
+  more protocols. Notably, headers and lines are properly dict_like, and traces
+  are properly array_like
+* `trace.ref` added, a write-back mode where changes to yielded trace data are
+  written back to disk
+* `trace.raw` has been improved, is faster and supports setitem and the
+  container protocol
+* Headers have learned to accept (seismic unix) keywords in `update`, so
+  `header.update(cdpx=10)` works as expected
+* `f.dtype` added, this is the dtype used in all segyio-provided numpy arrays,
+  and reflects the underlying data format
+* `f.readonly` added, to query if file handles are writable
+* segyio gracefully handle non-contiguous and more array_likes in setitem
+* The type requirements of `f.samples` has been relaxed, and it now is whatever
+  numpy uses as default
+* segyio now assumes IBM float if the format identifier is meaningless
+* Some exception types are cleaned up, notably header key misses raise
+  KeyError, not IndexError
+* General speed and clarity improvements, some more exception guarantees
+* segyio has learned to raise an error when provided with too short data traces
+* segyio has started raising deprecation warnings when using to-be-removed
+  features
+* The python library has overall been simplified
+* Lots of new documentation has been written, the sphinx docs structure has
+  been overhauled
+
 # 1.5.3
 * segyio-catr has learned to handle no arguments, and as a results read the
   first trace header as intended
