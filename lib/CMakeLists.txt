@@ -84,5 +84,5 @@ target_include_directories(c.segy PRIVATE src)
 target_link_libraries(c.segy catch2 segyio)
 target_compile_options(c.segy BEFORE PRIVATE
                        ${c++11} $<$<CONFIG:Debug>:${warnings-c}> ${mmap})
-add_test(NAME c.segy COMMAND c.segy ~[mmap] [c.segy])
+add_test(NAME c.segy      COMMAND c.segy ~[mmap] [c.segy])
 add_test(NAME c.segy.mmap COMMAND c.segy [mmap])
