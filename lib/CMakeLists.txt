@@ -57,6 +57,14 @@ else ()
     set_property(TARGET segyio-static PROPERTY POSITION_INDEPENDENT_CODE ON)
 endif ()
 
+add_library(segyio++ src/segyio.cpp)
+target_include_directories(
+    segyio++ PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+target_link_libraries(segyio++ segyio)
+
 #
 # install & export
 #
@@ -79,10 +87,14 @@ configure_file(${testdata}/text.sgy  test-data/text.sgy              COPYONLY)
 
 add_executable(c.segy test/testsuite.cpp
                       test/segy.cpp
-                      test/mmap.cpp)
+                      test/mmap.cpp
+                      test/segyio-cpp.cpp
+)
+
 target_include_directories(c.segy PRIVATE src)
 target_link_libraries(c.segy catch2 segyio)
 target_compile_options(c.segy BEFORE PRIVATE
                        ${c++11} $<$<CONFIG:Debug>:${warnings-c}> ${mmap})
 add_test(NAME c.segy      COMMAND c.segy ~[mmap] [c.segy])
 add_test(NAME c.segy.mmap COMMAND c.segy [mmap])
+add_test(NAME cpp.segy    COMMAND c.segy [c++])
