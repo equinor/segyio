@@ -321,5 +321,26 @@ SCENARIO( "reading a single inline", "[c++]" ) {
                 CHECK_THAT( x, ApproxRange( reference ) );
             }
         }
+
+        WHEN( "reading into a vector" ) {
+            std::vector< float > v;
+            f.get_iline( 1, v );
+
+            THEN( "the data should be correct" ) {
+                std::vector< float > ref( reference.begin(), reference.end() );
+                CHECK_THAT( v, ApproxRange( ref ) );
+            }
+        }
+
+        WHEN( "reading into an iterator" ) {
+            std::array< double, 5*50 > a;
+            f.get_iline( 1, a.begin() );
+
+
+            THEN( "the data should be correct" ) {
+                std::vector< double > v( a.begin(), a.end() );
+                CHECK_THAT( v, ApproxRange( reference ) );
+            }
+        }
     }
 }
