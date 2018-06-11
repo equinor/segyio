@@ -88,10 +88,17 @@ struct filehandle {
 
 struct config {
     openmode mode = io::in;
+    int iline  = SEGY_TR_INLINE;
+    int xline  = SEGY_TR_CROSSLINE;
+    int offset = SEGY_TR_OFFSET;
 
     config& readonly()  { this->mode = io::in;    return *this; }
     config& readwrite() { this->mode = io::out;   return *this; }
     config& truncate()  { this->mode = io::trunc; return *this; }
+
+    config& ilbyte( int x )     { this->iline  = x; return *this; }
+    config& xlbyte( int x )     { this->xline  = x; return *this; }
+    config& offsetbyte( int x ) { this->offset = x; return *this; }
 };
 
 class simple_file : protected filehandle {
@@ -105,6 +112,7 @@ class simple_file : protected filehandle {
         simple_file& open( Args&&... );
         void close();
 
+        /* GET */
         template< typename T = double >
         std::vector< T > read( int );
 
@@ -114,8 +122,19 @@ class simple_file : protected filehandle {
         template< typename OutputIt >
         OutputIt read( int, OutputIt );
 
+        template< typename T = double >
+        std::vector< T > get_iline( int );
+
+        /* PUT */
+        template< typename T >
+        const std::vector< T >& put( int, const std::vector< T >& );
+
+        template< typename InputIt >
+        InputIt put( int, InputIt );
+
         size_type size() const { return this->tracecount; };
         bool is_open() const { return bool(this->fp); }
+        bool is_structured() const { return !this->inline_labels.empty(); };
 
     private:
         long trace0;
@@ -125,6 +144,12 @@ class simple_file : protected filehandle {
         int samples;
         int tracecount = 0;
         int format;
+
+        int sorting = SEGY_UNKNOWN_SORTING;
+        int offsets = 1;
+
+        std::vector< int > inline_labels;
+        std::vector< int > crossline_labels;
 
         inline void range_check( int ) const;
         inline void open_check() const;
@@ -149,6 +174,70 @@ simple_file::simple_file( const std::string& path, const config& c ) :
     err = segy_traces( this->get(), &this->tracecount, this->trace0, this->trsize );
 
     if( err ) throw std::runtime_error( "unable to count traces" );
+
+    //if( c.nostructure ) return;
+
+    err = segy_sorting( this->get(),
+                        c.iline,
+                        c.xline,
+                        c.offset,
+                        &this->sorting,
+                        this->trace0,
+                        this->trsize );
+
+    if( err ) throw std::runtime_error( "unable to determine sorting" );
+
+    err = segy_offsets( this->get(),
+                        c.iline,
+                        c.xline,
+                        this->tracecount,
+                        &this->offsets,
+                        this->trace0,
+                        this->trsize );
+
+    if( err ) throw std::runtime_error( "unable to determine offsets" );
+
+    int ilcount, xlcount;
+    err = segy_lines_count( this->get(),
+                            c.iline,
+                            c.xline,
+                            this->sorting,
+                            this->offsets,
+                            &ilcount,
+                            &xlcount,
+                            this->trace0,
+                            this->trsize );
+
+    this->inline_labels.resize( ilcount );
+    this->crossline_labels.resize( xlcount );
+
+    this->buffer.resize( this->trsize * std::max( ilcount, xlcount ) );
+
+    err = segy_inline_indices( this->get(),
+                               c.iline,
+                               this->sorting,
+                               ilcount,
+                               xlcount,
+                               this->offsets,
+                               inline_labels.data(),
+                               this->trace0,
+                               this->trsize );
+
+    if( err )
+        throw std::runtime_error( "unable to determine inline labels" );
+
+    err = segy_crossline_indices( this->get(),
+                                  c.xline,
+                                  this->sorting,
+                                  ilcount,
+                                  xlcount,
+                                  this->offsets,
+                                  crossline_labels.data(),
+                                  this->trace0,
+                                  this->trsize );
+
+    if( err )
+        throw std::runtime_error( "unable to determine crossline labels" );
 }
 
 template< typename... Args >
@@ -246,6 +335,156 @@ OutputIt simple_file::read( int i, OutputIt out ) {
                 + ")"
             );
     }
+}
+
+template< typename T >
+std::vector< T > simple_file::get_iline( int i ) {
+    const int iline_len = this->crossline_labels.size();
+    std::vector< T > outv( this->samples * iline_len );
+
+    int stride = 0;
+    auto err = segy_inline_stride( this->sorting,
+                                   this->crossline_labels.size(),
+                                   &stride );
+
+    if( err ) throw std::runtime_error( "unable to determine stride" );
+
+    int line_trace0 = 0;
+    err = segy_line_trace0( i,
+                            iline_len,
+                            stride,
+                            this->offsets,
+                            this->inline_labels.data(),
+                            this->inline_labels.size(),
+                            &line_trace0 );
+
+    if( err == SEGY_MISSING_LINE_INDEX )
+        throw std::out_of_range( "No such key " + std::to_string( i ) );
+
+    err = segy_read_line( this->get(),
+                          line_trace0,
+                          iline_len,
+                          stride,
+                          this->offsets,
+                          this->buffer.data(),
+                          this->trace0,
+                          this->trsize );
+
+    if( err ) throw std::runtime_error( "unable to read line" );
+
+    const int linesize = iline_len * this->samples;
+    segy_to_native( this->format, linesize, this->buffer.data() );
+
+    const auto* raw = this->buffer.data();
+    auto out = outv.begin();
+    switch( this->format ) {
+        case SEGY_IBM_FLOAT_4_BYTE:
+        case SEGY_IEEE_FLOAT_4_BYTE:
+            std::copy(
+                    reinterpret_cast< const float* >( raw ),
+                    reinterpret_cast< const float* >( raw ) + linesize,
+                    out );
+            break;
+
+        case SEGY_SIGNED_INTEGER_4_BYTE:
+            std::copy(
+                    reinterpret_cast< const std::int32_t* >( raw ),
+                    reinterpret_cast< const std::int32_t* >( raw ) + linesize,
+                    out );
+            break;
+
+        case SEGY_SIGNED_SHORT_2_BYTE:
+            std::copy(
+                    reinterpret_cast< const std::int16_t* >( raw ),
+                    reinterpret_cast< const std::int16_t* >( raw ) + linesize,
+                    out );
+            break;
+
+        case SEGY_SIGNED_CHAR_1_BYTE:
+            std::copy(
+                    reinterpret_cast< const std::int8_t* >( raw ),
+                    reinterpret_cast< const std::int8_t* >( raw ) + linesize,
+                    out );
+
+            break;
+        default:
+            throw std::logic_error(
+                "this->format is broken (was "
+                + std::to_string( this->format ) 
+                + ")"
+            );
+    }
+
+    return outv;
+}
+
+template< typename T >
+const std::vector< T >& simple_file::put( int i, const std::vector< T >& in ) {
+    if( in.size() != std::size_t( this->samples ) ) {
+        throw std::length_error(
+            "simple_file::length_check: "
+            "in.size() (which is " + std::to_string( in.size() ) + ")"
+            " != samples "
+            "(which is " + std::to_string( this->samples ) + ")"
+        );
+    }
+
+    this->put( i, in.begin() );
+    return in;
+}
+
+template< typename InputIt >
+InputIt simple_file::put( int i, InputIt in ) {
+
+    this->open_check();
+    this->range_check( i );
+
+    auto* raw = this->buffer.data();
+    switch( this->format ) {
+        case SEGY_IBM_FLOAT_4_BYTE:
+        case SEGY_IEEE_FLOAT_4_BYTE:
+            std::copy( in,
+                       in + this->samples,
+                       reinterpret_cast< float* >( raw ) );
+            break;
+
+        case SEGY_SIGNED_INTEGER_4_BYTE:
+            std::copy( in,
+                       in + this->samples,
+                       reinterpret_cast< std::int32_t* >( raw ) );
+            break;
+
+        case SEGY_SIGNED_SHORT_2_BYTE:
+            std::copy( in,
+                       in + this->samples,
+                       reinterpret_cast< std::int16_t* >( raw ) );
+            break;
+
+        case SEGY_SIGNED_CHAR_1_BYTE:
+            std::copy( in,
+                       in + this->samples,
+                       reinterpret_cast< std::int8_t* >( raw ) );
+            break;
+
+        default:
+            throw std::logic_error(
+                "this->format is broken (was "
+                + std::to_string( this->format ) 
+                + ")"
+            );
+    }
+
+    segy_from_native( this->format, this->samples, this->buffer.data() );
+
+    auto err = segy_writetrace( this->get(),
+                                i,
+                                this->buffer.data(),
+                                this->trace0,
+                                this->trsize );
+
+    if( err ) throw std::runtime_error( "error writing trace" );
+
+    return in + this->samples;
 }
 
 }

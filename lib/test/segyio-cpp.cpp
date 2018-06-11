@@ -1,5 +1,7 @@
 #include <algorithm>
 #include <array>
+#include <cstdio>
+#include <fstream>
 #include <vector>
 
 #include <catch/catch.hpp>
@@ -216,6 +218,107 @@ SCENARIO( "reading a single trace", "[c++]" ) {
         WHEN( "reading a trace out of range" ) {
             THEN( "the read should fail on being closed" ) {
                 CHECK_THROWS_AS( f.read( 100 ), std::runtime_error );
+            }
+        }
+    }
+}
+
+namespace {
+
+std::string copyfile( const std::string& src, std::string dst ) {
+    std::ifstream source( src, std::ios::binary );
+    std::ofstream dest( dst, std::ios::binary | std::ios::trunc );
+    dest << source.rdbuf();
+
+    return dst;
+}
+
+}
+
+SCENARIO( "writing a single trace", "[c++]" ) {
+    GIVEN( "an open file" ) {
+        auto filename = copyfile( "test-data/small.sgy",
+                                  "c++-small-write-single.sgy" );
+
+        sio::config c;
+        sio::simple_file f( filename, c.readwrite() );
+
+        WHEN( "filling the the first trace with zero" ) {
+            std::vector< double > zeros( 50, 0 );
+            f.put( 0, zeros );
+
+            THEN( "getting it should produce zeros" ) {
+                CHECK_THAT( f.read( 0 ), ApproxRange( zeros ) );
+            }
+        }
+
+        WHEN( "writing a short trace" ) {
+            auto orig = f.read( 0 );
+            std::vector< double > zeros( 5, 0 );
+
+            THEN( "the put should fail" ) {
+                CHECK_THROWS_AS( f.put( 0, zeros ), std::length_error );
+
+                AND_THEN( "the file should be unchanged" ) {
+                    CHECK_THAT( f.read( 0 ), ApproxRange( orig ) );
+                }
+            }
+        }
+
+        WHEN( "writing a long trace" ) {
+            auto orig = f.read( 0 );
+            std::vector< double > zeros( 500, 0 );
+
+            THEN( "the put should fail" ) {
+                CHECK_THROWS_AS( f.put( 0, zeros ), std::length_error );
+
+                AND_THEN( "the file should be unchanged" ) {
+                    CHECK_THAT( f.read( 0 ), ApproxRange( orig ) );
+                }
+            }
+        }
+
+        WHEN( "reading a trace outside the file" ) {
+
+            std::vector< double > zeros( 50, 0 );
+
+            THEN( "the write fails" ) {
+                CHECK_THROWS_AS( f.put( f.size(), zeros ), std::out_of_range );
+
+                AND_THEN( "size should be unchanged" )
+                    CHECK( f.size() == 25 );
+
+                AND_THEN( "file should still be open" )
+                    CHECK( f.is_open() );
+
+                AND_THEN( "a following valid read should be correct" ) {
+                    const auto expected = genrange( 50, 1.2 );
+                    CHECK_THAT( f.read( 0 ), ApproxRange( expected ) );
+                }
+            }
+        }
+    }
+}
+
+SCENARIO( "reading a single inline", "[c++]" ) {
+    GIVEN( "an open file" ) {
+        sio::simple_file f( "test-data/small.sgy" );
+
+        auto reference = [&f] {
+            std::vector< double > reference( 50 * 5 );
+
+            auto itr = reference.begin();
+            for( int i = 0; i < 5; ++i )
+                itr = f.read( i, itr );
+
+            return reference;
+        }();
+
+        WHEN( "reading the first inline" ) {
+            auto x = f.get_iline( 1 );
+
+            THEN( "the data should be correct" ) {
+                CHECK_THAT( x, ApproxRange( reference ) );
             }
         }
     }
