@@ -202,7 +202,7 @@ class Field(collections.MutableMapping):
         .. versionadded:: 1.1
 
         .. note::
-            Since version 1.6, KeyError is approperiately raised on key misses,
+            Since version 1.6, KeyError is appropriately raised on key misses,
             whereas ``IndexError`` was raised before. This is an old bug, since
             header types were documented to be dict-like. If you rely on
             catching key-miss errors in your code, you might want to handle
@@ -258,7 +258,7 @@ class Field(collections.MutableMapping):
         .. versionadded:: 1.1
 
         .. note::
-            Since version 1.6, KeyError is approperiately raised on key misses,
+            Since version 1.6, KeyError is appropriately raised on key misses,
             whereas ``IndexError`` was raised before. This is an old bug, since
             header types were documented to be dict-like. If you rely on
             catching key-miss errors in your code, you might want to handle

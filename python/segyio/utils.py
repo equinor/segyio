@@ -23,6 +23,6 @@ def castarray(x, dtype):
             warnings.warn(msg.format(x.dtype, dtype), RuntimeWarning)
 
         # Ensure the data is C-order contiguous, writable, and aligned, with
-        # the approperiate dtype. it won't copy unless it has to, so it's
+        # the appropriate dtype. it won't copy unless it has to, so it's
         # reasonably fast.
         return np.require(x, dtype = dtype, requirements = 'CAW')

@@ -18,7 +18,7 @@ class Sequence(collections.Sequence):
     # length and wrap-around properties.
     #
     # It provides a useful negative-wrap index method which deals
-    # approperiately with IndexError and python2-3 differences.
+    # appropriately with IndexError and python2-3 differences.
 
     def __init__(self, length):
         self.length = length

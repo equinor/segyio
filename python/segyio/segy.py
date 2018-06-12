@@ -266,7 +266,7 @@ class SegyFile(object):
     @property
     def samples(self):
         """
-        Return the array of samples with approperiate intervals.
+        Return the array of samples with appropriate intervals.
 
         Returns
         -------
