@@ -4,6 +4,9 @@
 #include <ios>
 #include <stdexcept>
 #include <vector>
+#include <string>
+#include <memory>
+#include <algorithm>
 
 #include <segyio/segy.h>
 
