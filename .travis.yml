@@ -91,6 +91,7 @@ before_script:
              --inline-suppr
              --project=compile_commands.json
              --error-exitcode=1
+             --xml
   - popd
 
 # distutils/setuptools on macos ignores the --rpath argument, so set

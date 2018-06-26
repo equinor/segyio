@@ -579,6 +579,12 @@ static int slicelength( int start, int stop, int step ) {
 
     if( step < 0 ) return (stop - start + 1) / step + 1;
 
+    /*
+     * cppcheck 1.84 introduced a false-positive on this as a result of
+     * value-flow analysis not realising that step can *never* be zero here, as
+     * it would trigger the early return.
+     */
+    // cppcheck-suppress zerodivcond
     return (stop - start - 1) / step + 1;
 }
 
