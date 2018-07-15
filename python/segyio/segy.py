@@ -829,7 +829,7 @@ class SegyFile(object):
         Print a textual header line-by-line:
 
         >>> # using zip, from the zip documentation
-        >>> text = f.text[0]
+        >>> text = str(f.text[0])
         >>> lines = map(''.join, zip( *[iter(text)] * 80))
         >>> for line in lines:
         ...     print(line)
