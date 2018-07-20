@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from __future__ import absolute_import
 
 try:
@@ -1463,3 +1465,12 @@ def test_missing_format_ibmfloat_fallback(tmpdir):
         with segyio.open(tmpdir / 'small.sgy') as f:
             assert int(f.format) == 1
             assert f.dtype       == np.dtype(np.float32)
+
+def test_utf8_filename():
+    with segyio.open('test-data/小文件.sgy') as f:
+        assert list(f.ilines) == [1, 2, 3, 4, 5]
+
+@tmpfiles(u'test-data/小文件.sgy')
+def test_utf8_filename_pypath(tmpdir):
+    with segyio.open(tmpdir / '小文件.sgy') as f:
+        assert list(f.ilines) == [1, 2, 3, 4, 5]
