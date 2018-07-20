@@ -380,7 +380,31 @@ segy_file* segy_open( const char* path, const char* mode ) {
     if( !strstr( "rb" "wb" "ab" "r+b" "w+b" "a+b", binary_mode ) )
         return NULL;
 
+#ifdef _WIN32
+    /*
+     * fun with windows.
+     * Reported in https://github.com/Statoil/segyio/issues/266
+     *
+     * Windows uses UTF-16 internally, also for path names, and fopen does not
+     * handle UTF-16 strings on Windows. It's assumed input is UTF-8 or ascii ,
+     * and a simple conversion to the UTF-16 (wchar_t) version with _wfopen
+     * makes non-ascii paths work on Windows.
+     */
+    wchar_t wmode[ MODEBUF_SIZE ] = { 0 };
+    mbstowcs( wmode, binary_mode, strlen( binary_mode ) );
+
+    /*
+     * call MultiByteToWideChar twice, once to figure out the size of the
+     * resulting wchar string, and once to do the actual conversion
+     */
+    int wpathlen = MultiByteToWideChar( CP_UTF8, 0, path, -1, NULL, 0 );
+    wchar_t* wpath = calloc( wpathlen + 1, sizeof( wchar_t ) );
+    MultiByteToWideChar(CP_UTF8, 0, path, -1, wpath, wpathlen );
+    FILE* fp = _wfopen( wpath, wmode );
+    free( wpath );
+#else
     FILE* fp = fopen( path, binary_mode );
+#endif
 
     if( !fp ) return NULL;
 

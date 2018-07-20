@@ -44,7 +44,7 @@ class SegyFile(object):
 
         from . import _segyio
 
-        self.xfd = _segyio.segyiofd(filename, mode,
+        self.xfd = _segyio.segyiofd(str(filename), mode,
                                     tracecount=tracecount,
                                     binary=binary,
                                    )

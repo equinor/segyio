@@ -109,7 +109,7 @@ def open(filename, mode="r", iline = 189,
         solution = 'use r+ to open in read-write'
         raise ValueError(', '.join((problem, solution)))
 
-    f = segyio.SegyFile(str(filename), mode, iline, xline)
+    f = segyio.SegyFile(filename, mode, iline, xline)
     metrics = f.xfd.metrics()
 
     try:
