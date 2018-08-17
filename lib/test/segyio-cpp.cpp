@@ -344,3 +344,49 @@ SCENARIO( "reading a single inline", "[c++]" ) {
         }
     }
 }
+
+SCENARIO( "reading a single crossline", "[c++]" ) {
+    GIVEN( "an open file" ) {
+        sio::simple_file f( "test-data/small.sgy" );
+
+        auto reference = [&f] {
+            std::vector< double > reference( 50 * 5 );
+
+            auto itr = reference.begin();
+            for( int i = 0; i < 25; i += 5 )
+                itr = f.read( i, itr );
+
+            return reference;
+        }();
+
+        WHEN( "reading the first crossline" ) {
+            auto x = f.get_xline( 20 );
+
+            THEN( "the data should be correct" ) {
+                CHECK_THAT( x, ApproxRange( reference ) );
+            }
+        }
+
+        WHEN( "reading into a vector" ) {
+            std::vector< float > v;
+            f.get_xline( 20, v );
+
+            THEN( "the data should be correct" ) {
+                std::vector< float > ref( reference.begin(), reference.end() );
+                CHECK_THAT( v, ApproxRange( ref ) );
+            }
+        }
+
+        WHEN( "reading into an iterator" ) {
+            std::array< double, 5*50 > a;
+            f.get_xline( 20, a.begin() );
+
+
+            THEN( "the data should be correct" ) {
+                std::vector< double > v( a.begin(), a.end() );
+                CHECK_THAT( v, ApproxRange( reference ) );
+            }
+        }
+    }
+}
+

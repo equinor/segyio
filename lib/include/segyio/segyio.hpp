@@ -134,6 +134,15 @@ class simple_file : protected filehandle {
         template< typename OutputIt >
         OutputIt get_iline( int, OutputIt );
 
+        template< typename T = double >
+        std::vector< T > get_xline( int );
+
+        template< typename T >
+        std::vector< T >& get_xline( int, std::vector< T >& );
+
+        template< typename OutputIt >
+        OutputIt get_xline( int, OutputIt );
+
         /* PUT */
         template< typename T >
         const std::vector< T >& put( int, const std::vector< T >& );
@@ -404,6 +413,95 @@ OutputIt simple_file::get_iline( int i, OutputIt out ) {
     if( err ) throw std::runtime_error( "unable to read line" );
 
     const int linesize = iline_len * this->samples;
+    segy_to_native( this->format, linesize, this->buffer.data() );
+
+    const auto* raw = this->buffer.data();
+    switch( this->format ) {
+        case SEGY_IBM_FLOAT_4_BYTE:
+        case SEGY_IEEE_FLOAT_4_BYTE:
+            return std::copy(
+                    reinterpret_cast< const float* >( raw ),
+                    reinterpret_cast< const float* >( raw ) + linesize,
+                    out );
+
+        case SEGY_SIGNED_INTEGER_4_BYTE:
+            return std::copy(
+                    reinterpret_cast< const std::int32_t* >( raw ),
+                    reinterpret_cast< const std::int32_t* >( raw ) + linesize,
+                    out );
+
+        case SEGY_SIGNED_SHORT_2_BYTE:
+            return std::copy(
+                    reinterpret_cast< const std::int16_t* >( raw ),
+                    reinterpret_cast< const std::int16_t* >( raw ) + linesize,
+                    out );
+
+        case SEGY_SIGNED_CHAR_1_BYTE:
+            return std::copy(
+                    reinterpret_cast< const std::int8_t* >( raw ),
+                    reinterpret_cast< const std::int8_t* >( raw ) + linesize,
+                    out );
+
+        default:
+            throw std::logic_error(
+                "this->format is broken (was "
+                + std::to_string( this->format )
+                + ")"
+            );
+    }
+}
+
+template< typename T >
+std::vector< T > simple_file::get_xline( int i ) {
+    std::vector< T > out;
+    this->get_xline( i, out );
+    return out;
+}
+
+template< typename T >
+std::vector< T >& simple_file::get_xline( int i, std::vector< T >& out ) {
+    out.resize( this->inline_labels.size() * this->samples );
+    this->get_xline( i, out.begin() );
+    return out;
+}
+
+template< typename OutputIt >
+OutputIt simple_file::get_xline( int i, OutputIt out ) {
+
+    this->open_check();
+    const int xline_len = this->inline_labels.size();
+
+    int stride = 0;
+    auto err = segy_crossline_stride( this->sorting,
+                                      this->inline_labels.size(),
+                                      &stride );
+
+    if( err ) throw std::runtime_error( "unable to determine stride" );
+
+    int line_trace0 = 0;
+    err = segy_line_trace0( i,
+                            xline_len,
+                            stride,
+                            this->offsets,
+                            this->crossline_labels.data(),
+                            this->crossline_labels.size(),
+                            &line_trace0 );
+
+    if( err == SEGY_MISSING_LINE_INDEX )
+        throw std::out_of_range( "No such key " + std::to_string( i ) );
+
+    err = segy_read_line( this->get(),
+                          line_trace0,
+                          xline_len,
+                          stride,
+                          this->offsets,
+                          this->buffer.data(),
+                          this->trace0,
+                          this->trsize );
+
+    if( err ) throw std::runtime_error( "unable to read line" );
+
+    const int linesize = xline_len * this->samples;
     segy_to_native( this->format, linesize, this->buffer.data() );
 
     const auto* raw = this->buffer.data();
