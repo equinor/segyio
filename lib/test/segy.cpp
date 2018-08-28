@@ -220,8 +220,8 @@ struct smallbin : smallfix {
 };
 
 struct smallbasic : smallfix {
-    static const long trace0 = 3600;
-    static const int trace_bsize = 50 * 4;
+    long trace0 = 3600;
+    int trace_bsize = 50 * 4;
 };
 
 bool success( Err err ) {
@@ -292,6 +292,17 @@ TEST_CASE_METHOD( smallbasic,
     int traces = input_traces;
     Err err = segy_traces( fp, &traces, -1, trace_bsize );
     CHECK( err == Err::args() );
+    CHECK( traces == input_traces );
+}
+
+TEST_CASE_METHOD( smallbasic,
+                  MMAP_TAG "erroneous trace_bsize is detected",
+                  MMAP_TAG "[c.segy]" ) {
+    const int input_traces = arbitrary_int();
+    int traces = input_traces;
+    const int too_long_bsize = trace_bsize + sizeof( float );
+    Err err = segy_traces( fp, &traces, trace0, too_long_bsize );
+    CHECK( err == SEGY_TRACE_SIZE_MISMATCH );
     CHECK( traces == input_traces );
 }
 
