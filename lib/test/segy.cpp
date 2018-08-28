@@ -104,30 +104,6 @@ void regular_geometry( segy_file* fp,
     const int il = SEGY_TR_INLINE;
     const int xl = SEGY_TR_CROSSLINE;
     const int of = SEGY_TR_OFFSET;
-    GIVEN( "an inline sorted file" ) {
-        THEN( "inline sorting is inferred" ) {
-            int sorting = -1;
-            const Err err = segy_sorting( fp,
-                                          il, xl, of,
-                                          &sorting,
-                                          trace0, trace_bsize );
-            CHECK( err == Err::ok() );
-            CHECK( sorting == SEGY_INLINE_SORTING );
-        }
-
-        WHEN( "swapping inline and crossline position" ) {
-            THEN( "crossline sorting is inferred" ) {
-                int sorting = -1;
-                const Err err = segy_sorting( fp,
-                                              xl, il, of,
-                                              &sorting,
-                                              trace0, trace_bsize );
-                CHECK( err == Err::ok() );
-                CHECK( sorting == SEGY_CROSSLINE_SORTING );
-            }
-        }
-    }
-
     const int sorting = SEGY_INLINE_SORTING;
 
     GIVEN( "a post stack file" ) {
@@ -224,6 +200,12 @@ struct smallbasic : smallfix {
     int trace_bsize = 50 * 4;
 };
 
+struct smallfields : smallbasic {
+    int il = SEGY_TR_INLINE;
+    int xl = SEGY_TR_CROSSLINE;
+    int of = SEGY_TR_OFFSET;
+};
+
 bool success( Err err ) {
     return err == Err::ok();
 }
@@ -304,6 +286,24 @@ TEST_CASE_METHOD( smallbasic,
     Err err = segy_traces( fp, &traces, trace0, too_long_bsize );
     CHECK( err == SEGY_TRACE_SIZE_MISMATCH );
     CHECK( traces == input_traces );
+}
+
+TEST_CASE_METHOD( smallfields,
+                  MMAP_TAG "inline sorting is detected",
+                  MMAP_TAG "[c.segy]" ) {
+    int sorting;
+    Err err = segy_sorting( fp, il, xl, of, &sorting, trace0, trace_bsize );
+    CHECK( success( err ) );
+    CHECK( sorting == SEGY_INLINE_SORTING );
+}
+
+TEST_CASE_METHOD( smallfields,
+                  MMAP_TAG "crossline sorting is detected with swapped il/xl",
+                  MMAP_TAG "[c.segy]" ) {
+    int sorting;
+    Err err = segy_sorting( fp, xl, il, of, &sorting, trace0, trace_bsize );
+    CHECK( success( err ) );
+    CHECK( sorting == SEGY_CROSSLINE_SORTING );
 }
 
 SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
