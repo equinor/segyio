@@ -211,6 +211,26 @@ struct smallfix {
     }
 };
 
+struct smallbin : smallfix {
+    char bin[ SEGY_BINARY_HEADER_SIZE ];
+
+    smallbin() : smallfix() {
+        REQUIRE( Err( segy_binheader( fp, bin ) ) == Err::ok() );
+    }
+};
+
+}
+
+TEST_CASE_METHOD( smallbin,
+                  MMAP_TAG "samples+positions from binary header are correct",
+                  MMAP_TAG "[c.segy]" ) {
+    int samples = segy_samples( bin );
+    long trace0 = segy_trace0( bin );
+    int trace_bsize = segy_trsize( SEGY_IBM_FLOAT_4_BYTE, samples );
+
+    CHECK( trace0      == 3600 );
+    CHECK( samples     == 50 );
+    CHECK( trace_bsize == 50 * 4 );
 }
 
 TEST_CASE_METHOD( smallfix,
@@ -238,18 +258,6 @@ SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
     auto fp = ufp.get();
     if( MMAP_TAG != std::string("") )
         REQUIRE( Err( segy_mmap( fp ) ) == Err::ok() );
-
-    WHEN( "finding traces initial byte offset and sizes" ) {
-        char header[ SEGY_BINARY_HEADER_SIZE ];
-        REQUIRE( Err( segy_binheader( fp, header ) ) == Err::ok() );
-        int samples = segy_samples( header );
-        long trace0 = segy_trace0( header );
-        int trace_bsize = segy_trsize( SEGY_IBM_FLOAT_4_BYTE, samples );
-
-        CHECK( trace0      == 3600 );
-        CHECK( samples     == 50 );
-        CHECK( trace_bsize == 50 * 4 );
-    }
 
     const long trace0 = 3600;
     const int trace_bsize = 50 * 4;
