@@ -8,6 +8,7 @@ function run_tests {
 
 
 function pre_build {
+    set -e
     if [ -n "$IS_OSX" ]; then return; fi
     if [ -d build-centos5 ]; then return; fi
 
