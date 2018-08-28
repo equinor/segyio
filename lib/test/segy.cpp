@@ -219,6 +219,25 @@ struct smallbin : smallfix {
     }
 };
 
+struct smallbasic : smallfix {
+    static const long trace0 = 3600;
+    static const int trace_bsize = 50 * 4;
+};
+
+bool success( Err err ) {
+    return err == Err::ok();
+}
+
+int arbitrary_int() {
+    /*
+     * in order to verify that functions don't modify their output arguments if
+     * the function fail, it has to be compared to an arbitrary value that
+     * should be equal before and after. It has to be initialised, but the
+     * value itself is of no significance.
+     */
+    return -1;
+}
+
 }
 
 TEST_CASE_METHOD( smallbin,
@@ -247,6 +266,35 @@ TEST_CASE_METHOD( smallfix,
     CHECK( err == Err::args() );
 }
 
+TEST_CASE_METHOD( smallbasic,
+                  MMAP_TAG "trace count is 25",
+                  MMAP_TAG "[c.segy]" ) {
+    int traces;
+    Err err = segy_traces( fp, &traces, trace0, trace_bsize );
+    CHECK( success( err ) );
+    CHECK( traces == 25 );
+}
+
+TEST_CASE_METHOD( smallbasic,
+                  MMAP_TAG "trace0 beyond EOF is an argument error",
+                  MMAP_TAG "[c.segy]" ) {
+    const int input_traces = arbitrary_int();
+    int traces = input_traces;
+    Err err = segy_traces( fp, &traces, 50000, trace_bsize );
+    CHECK( err == Err::args() );
+    CHECK( traces == input_traces );
+}
+
+TEST_CASE_METHOD( smallbasic,
+                  MMAP_TAG "negative trace0 is an argument error",
+                  MMAP_TAG "[c.segy]" ) {
+    const int input_traces = arbitrary_int();
+    int traces = input_traces;
+    Err err = segy_traces( fp, &traces, -1, trace_bsize );
+    CHECK( err == Err::args() );
+    CHECK( traces == input_traces );
+}
+
 SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
     const char* file = "test-data/small.sgy";
 
@@ -262,31 +310,6 @@ SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
     const long trace0 = 3600;
     const int trace_bsize = 50 * 4;
     const int samples = 50;
-
-    WHEN( "determining number of traces" ) {
-        int traces = 0;
-        Err err = segy_traces( fp, &traces, trace0, trace_bsize );
-        REQUIRE( err == Err::ok() );
-        CHECK( traces == 25 );
-
-        GIVEN( "trace0 outside its domain" ) {
-            WHEN( "trace0 is after end-of-file" ) {
-                err = segy_traces( fp, &traces, 50000, trace_bsize );
-                THEN( "segy_traces fail" )
-                    CHECK( err == Err::args() );
-                THEN( "the input does not change" )
-                    CHECK( traces == 25 );
-            }
-
-            WHEN( "trace0 is negative" ) {
-                err = segy_traces( fp, &traces, -1, trace_bsize );
-                THEN( "segy_traces fail" )
-                    CHECK( err == Err::args() );
-                THEN( "the input does not change" )
-                    CHECK( traces == 25 );
-            }
-        }
-    }
 
     const int traces = 25;
     const int inlines_sizes = 5;
