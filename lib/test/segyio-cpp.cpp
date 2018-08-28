@@ -460,3 +460,25 @@ SCENARIO( "reading the first traceheader field for all traces", "[c++]" ) {
     }
 }
 
+SCENARIO( "reading the sample interval ", "[c++]" ) {
+    GIVEN( "an open file" ) {
+        sio::simple_file f( "test-data/small.sgy" );
+        float expected = 4000;
+
+        WHEN( "reading the sample interval with fallback" ) {
+            float x = f.get_dt( 0 );
+
+            THEN( "the data should be correct" ) {
+                CHECK( x == expected );
+            }
+        }
+
+        WHEN( "reading the sample interval without fallback" ) {
+            float x = f.get_dt();
+
+            THEN( "the data should be correct" ) {
+                CHECK( x == expected );
+            }
+        }
+    }
+}

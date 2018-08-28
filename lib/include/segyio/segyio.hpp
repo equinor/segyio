@@ -111,6 +111,9 @@ class simple_file : protected filehandle {
         simple_file() = default;
         simple_file( const std::string&, const config& = {} );
 
+        float get_dt();
+        float get_dt( float );
+
         template< typename... Args >
         simple_file& open( Args&&... );
         void close();
@@ -182,6 +185,8 @@ class simple_file : protected filehandle {
 
         int sorting = SEGY_UNKNOWN_SORTING;
         int offsets = 1;
+
+        float dt;
 
         std::vector< int > inline_labels;
         std::vector< int > crossline_labels;
@@ -372,6 +377,38 @@ OutputIt simple_file::read( int i, OutputIt out ) {
                 + ")"
             );
     }
+}
+
+float simple_file::get_dt() {
+    float fallback = -1;
+    return this->get_dt( fallback );
+}
+
+float simple_file::get_dt( float fallback ) {
+    auto err = segy_sample_interval( this->get(), fallback, &this->dt );
+
+    if( err == SEGY_OK )
+        return this->dt;
+
+    if( err != SEGY_FREAD_ERROR && err != SEGY_FSEEK_ERROR )
+        throw( "unable to read sample interval" );
+
+    /*
+     * Figure out of the problem is reading the binary header or
+     * the traceheader
+     */
+
+     char buffer[ SEGY_BINARY_HEADER_SIZE ];
+
+     err = segy_binheader( this->get(), buffer );
+     if( err ) throw std::runtime_error( "I/O operations failed on binary"
+                                         "header, likely corrupted file" );
+
+     err = segy_traceheader(this->get(), 0, buffer, this->trace0, 0 );
+     if( err == SEGY_FREAD_ERROR )
+        throw( "I/O operations failed on trace header, likely corrupted file" );
+
+     return -1; //WIP
 }
 
 template< typename T >
