@@ -390,3 +390,73 @@ SCENARIO( "reading a single crossline", "[c++]" ) {
     }
 }
 
+SCENARIO( "reading the first traceheader field for all traces", "[c++]" ) {
+    GIVEN( "an open file" ) {
+        sio::simple_file f( "test-data/small.sgy" );
+        const std::vector< int > inlines = {
+            1, 1, 1, 1, 1,
+            2, 2, 2, 2, 2,
+            3, 3, 3, 3, 3,
+            4, 4, 4, 4, 4,
+            5, 5, 5, 5, 5,
+        };
+
+        const std::vector< int > inlines_range = { 2, 3, 4, 5 };
+
+        WHEN( "reading the traceheader field 1" ) {
+
+            const int start = 0;
+            const int stop  = 25;
+            const int step  = 1;
+
+            auto x = f.get_attributes( SEGY_TR_INLINE, start, stop, step );
+
+            THEN( "the data should be correct" ){
+               CHECK_THAT( x, ApproxRange( inlines ) );
+            }
+        }
+
+        WHEN( "reading into a vector 1" ) {
+            std::vector< int > v;
+
+            const int start = 0;
+            const int stop  = 25;
+            const int step  = 1;
+
+            f.get_attributes( SEGY_TR_INLINE, start, stop, step, v );
+
+            THEN( "the data should be correct" ) {
+                CHECK_THAT( v, ApproxRange( inlines ) );
+            }
+        }
+
+        WHEN( "reading into an iterator" ) {
+            std::array< int32_t, 25 > a;
+
+            const int start = 0;
+            const int stop  = 25;
+            const int step  = 1;
+
+            f.get_attributes( SEGY_TR_INLINE, start, stop, step, a.begin() );
+
+            THEN( "the data should be correct" ) {
+                std::vector< int32_t > v( a.begin(), a.end() );
+                CHECK_THAT( v, ApproxRange( inlines ) );
+            }
+        }
+
+        WHEN( "reading field from every 5-ft trace in a range" ) {
+
+            const int start = 5;
+            const int stop  = 21;
+            const int step  = 5;
+
+            auto x = f.get_attributes( SEGY_TR_INLINE, start, stop, step );
+
+            THEN( "the data should be correct" ) {
+                CHECK_THAT( x, ApproxRange( inlines_range ) );
+            }
+        }
+    }
+}
+

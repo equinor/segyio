@@ -143,6 +143,16 @@ class simple_file : protected filehandle {
         template< typename OutputIt >
         OutputIt get_xline( int, OutputIt );
 
+        template< typename T = int >
+        std::vector< T > get_attributes( int, int, int, int );
+
+        template< typename T >
+        std::vector< T >& get_attributes(
+            int, int, int, int, std::vector< T >& );
+
+        template< typename OutputIt >
+        OutputIt get_attributes( int, int, int, int, OutputIt );
+
         /* PUT */
         template< typename T >
         const std::vector< T >& put( int, const std::vector< T >& );
@@ -178,6 +188,8 @@ class simple_file : protected filehandle {
 
         inline void range_check( int ) const;
         inline void open_check() const;
+
+        int slice_length( int, int, int );
 };
 
 simple_file::simple_file( const std::string& path, const config& c ) :
@@ -538,6 +550,75 @@ OutputIt simple_file::get_xline( int i, OutputIt out ) {
                 + ")"
             );
     }
+}
+
+template< typename T >
+std::vector< T > simple_file::get_attributes( int i,
+                                              int start,
+                                              int stop,
+                                              int step ) {
+
+    std::vector< T > out;
+    this->get_attributes( i, start, stop, step, out );
+    return out;
+}
+
+template< typename T >
+std::vector< T >& simple_file::get_attributes( int i,
+                                               int start,
+                                               int stop,
+                                               int step,
+                                               std::vector< T >& out ) {
+    const int length = slice_length( start, stop, step );
+    if( !length ) throw std::runtime_error( "invalid slice range" );
+
+    out.resize( length );
+    this->get_attributes(  i, start, stop, step, out.begin() );
+    return out;
+}
+
+template< typename OutputIt >
+OutputIt simple_file::get_attributes( int i,
+                                      int start,
+                                      int stop,
+                                      int step,
+                                      OutputIt out ) {
+
+    this->open_check();
+    int trace_bsize = segy_trace_bsize( this->samples );
+
+    const int length = slice_length( start, stop, step );
+    if( !length ) throw std::runtime_error( "invalid slice range" );
+
+    std::vector< int > buffer;
+    buffer.resize( length );
+
+    auto err = segy_field_forall( this->get(),
+                                  i,
+                                  start,
+                                  stop,
+                                  step,
+                                  buffer.data(),
+                                  this->trace0,
+                                  trace_bsize ); // [start stop>
+
+    if( err ) throw std::runtime_error( "unable to read header field" );
+
+    const auto* raw = buffer.data();
+    return std::copy( reinterpret_cast< const std::int32_t* >( raw ),
+                      reinterpret_cast< const std::int32_t* >( raw ) + length,
+                      out );
+}
+
+int simple_file::slice_length( int start, int stop, int step ) {
+    if( step == 0 ) return 0;
+
+    if ( (step < 0 && stop >= start ) ||
+         (step > 0 && start >= stop ) ) return 0;
+
+    if( step > 0 ) return ( stop - start - 1 ) / step + 1;
+
+    return ( stop - start + 1) / step + 1;
 }
 
 template< typename T >
