@@ -7,6 +7,7 @@
 #include <string>
 #include <memory>
 #include <algorithm>
+#include <map>
 
 #include <segyio/segy.h>
 
@@ -170,6 +171,37 @@ class simple_file : protected filehandle {
         const std::vector< int >& crosslines() const
         { return this->crossline_labels; }
 
+        const long& get_trace0() const
+        { return this->trace0; }
+
+        const int& get_trsize() const
+        { return this->trsize; }
+
+        const int& get_samples() const
+        { return this->samples; }
+
+        const char* get_format() const {
+            std::map< int, const char* > d;
+            d[1] = "4-byte IBM float";
+            d[2] = "4-byte signed integer";
+            d[3] = "2-byte signed integer";
+            d[4] = "4-byte fixed point with gain";
+            d[5] = "4-byte IEEE float";
+            d[8] = "1-byte signed char";
+
+            if ( d.count( this->format ) < 1 ) { return "Unknown format"; }
+            else { return d[ this->format ]; }
+        }
+
+        const int& get_sorting() const
+        { return this->sorting; }
+
+        const int& get_offsets() const
+        { return this->offsets; }
+
+        const int& get_ext_headers() const
+        { return this->ext_headers; }
+
         size_type size() const { return this->tracecount; };
         bool is_open() const { return bool(this->fp); }
         bool is_structured() const { return !this->inline_labels.empty(); };
@@ -182,6 +214,7 @@ class simple_file : protected filehandle {
         int samples;
         int tracecount = 0;
         int format;
+        int ext_headers; // possibly int32_t
 
         int sorting = SEGY_UNKNOWN_SORTING;
         int offsets = 1;
