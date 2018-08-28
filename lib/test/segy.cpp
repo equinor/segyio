@@ -192,6 +192,39 @@ void regular_geometry( segy_file* fp,
     }
 }
 
+struct smallfix {
+    segy_file* fp = nullptr;
+
+    smallfix() {
+        fp = segy_open( "test-data/small.sgy", "rb" );
+        REQUIRE( fp );
+
+        if( MMAP_TAG != std::string("") )
+            REQUIRE( Err( segy_mmap( fp ) ) == Err::ok() );
+    }
+
+    smallfix( const smallfix& ) = delete;
+    smallfix& operator=( const smallfix& ) = delete;
+
+    ~smallfix() {
+        if( fp ) segy_close( fp );
+    }
+};
+
+}
+
+TEST_CASE_METHOD( smallfix,
+                  MMAP_TAG "sample format can be overriden",
+                  MMAP_TAG "[c.segy]" ) {
+    Err err = segy_set_format( fp, SEGY_IEEE_FLOAT_4_BYTE );
+    CHECK( err == Err::ok() );
+}
+
+TEST_CASE_METHOD( smallfix,
+                  MMAP_TAG "sample format fails on invalid format",
+                  MMAP_TAG "[c.segy]" ) {
+    Err err = segy_set_format( fp, 10 );
+    CHECK( err == Err::args() );
 }
 
 SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
@@ -216,16 +249,6 @@ SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
         CHECK( trace0      == 3600 );
         CHECK( samples     == 50 );
         CHECK( trace_bsize == 50 * 4 );
-    }
-
-    WHEN( "overriding sample format" ) {
-        Err err = segy_set_format( fp, SEGY_IEEE_FLOAT_4_BYTE );
-        CHECK( err == Err::ok() );
-
-        THEN( "it fails on invalid formats" ) {
-            err = segy_set_format( fp, 10 );
-            CHECK( err == Err::args() );
-        }
     }
 
     const long trace0 = 3600;
