@@ -176,7 +176,7 @@ struct filehandle {
     }
 
     struct closer {
-        void operator()( segy_file* p ) { segy_close( p ); }
+        void operator()( segy_file* p ) noexcept { if( p ) segy_close( p ); }
     };
 
     std::unique_ptr< segy_file, closer > fp;
@@ -329,20 +329,29 @@ class simple_file : protected filehandle {
 simple_file::simple_file( const std::string& path, const config& c ) :
     filehandle( path.c_str(), c.mode ) {
 
-    char buffer[ SEGY_BINARY_HEADER_SIZE ] = {};
-    auto err = segy_binheader( this->get(), buffer );
+    char binheader[ SEGY_BINARY_HEADER_SIZE ] = {};
+    auto err = segy_binheader( this->get(), binheader );
 
-    if( err ) throw std::runtime_error( "unable to read header" );
+    if( err ) throw std::runtime_error( "unable to read binheader" );
+
+    err = segy_get_bfield( binheader,
+                           SEGY_BIN_EXT_HEADERS,
+                           &this->ext_headers );
+
+    if( err ) throw std::runtime_error( "unable ot read binheader field");
 
     // TODO: robustly fall back if format is unset or other errors
-    const auto samples = segy_samples( buffer );
-    this->trace0 = segy_trace0( buffer );
-    this->format = segy_format( buffer );
+    const auto samples = segy_samples( binheader );
+    this->trace0 = segy_trace0( binheader );
+    this->format = segy_format( binheader );
     this->trsize = segy_trsize( this->format, samples );
     this->buffer.resize( this->trsize );
 
-    this->samples = segy_samples( buffer );
-    err = segy_traces( this->get(), &this->tracecount, this->trace0, this->trsize );
+    this->samples = segy_samples( binheader );
+    err = segy_traces( this->get(),
+                       &this->tracecount,
+                       this->trace0,
+                       this->trsize );
 
     if( err ) throw std::runtime_error( "unable to count traces" );
 
