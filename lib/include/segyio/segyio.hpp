@@ -40,6 +40,100 @@ const char* modestring( openmode m ) {
 
 }
 
+struct header {
+    int SEQ_LINE;
+    int SEQ_FILE;
+    int FIELD_RECORD;
+    int NUMBER_ORIG_FIELD;
+    int ENERGY_SOURCE_POINT;
+    int ENSEMBLE;
+    int NUM_IN_ENSEMBLE;
+    int TRACE_ID;
+    int SUMMED_TRACES;
+    int STACKED_TRACES;
+    int DATA_USE;
+    int OFFSET;
+    int RECV_GROUP_ELEV;
+    int SOURCE_SURF_ELEV;
+    int SOURCE_DEPTH;
+    int RECV_DATUM_ELEV;
+    int SOURCE_DATUM_ELEV;
+    int SOURCE_WATER_DEPTH;
+    int GROUP_WATER_DEPTH;
+    int ELEV_SCALAR;
+    int SOURCE_GROUP_SCALAR;
+    int SOURCE_X;
+    int SOURCE_Y;
+    int GROUP_X;
+    int GROUP_Y;
+    int COORD_UNITS;
+    int WEATHERING_VELO;
+    int SUBWEATHERING_VELO;
+    int SOURCE_UPHOLE_TIME;
+    int GROUP_UPHOLE_TIME;
+    int SOURCE_STATIC_CORR;
+    int GROUP_STATIC_CORR;
+    int TOT_STATIC_APPLIED;
+    int LAG_A;
+    int LAG_B;
+    int DELAY_REC_TIME;
+    int MUTE_TIME_START;
+    int MUTE_TIME_END;
+    int SAMPLE_COUNT;
+    int SAMPLE_INTER;
+    int GAIN_TYPE;
+    int INSTR_GAIN_CONST;
+    int INSTR_INIT_GAIN;
+    int CORRELATED;
+    int SWEEP_FREQ_START;
+    int SWEEP_FREQ_END;
+    int SWEEP_LENGTH;
+    int SWEEP_TYPE;
+    int SWEEP_TAPERLEN_START;
+    int SWEEP_TAPERLEN_END;
+    int TAPER_TYPE;
+    int ALIAS_FILT_FREQ;
+    int ALIAS_FILT_SLOPE;
+    int NOTCH_FILT_FREQ;
+    int NOTCH_FILT_SLOPE;
+    int LOW_CUT_FREQ;
+    int HIGH_CUT_FREQ;
+    int LOW_CUT_SLOPE;
+    int HIGH_CUT_SLOPE;
+    int YEAR_DATA_REC;
+    int DAY_OF_YEAR;
+    int HOUR_OF_DAY;
+    int MIN_OF_HOUR;
+    int SEC_OF_MIN;
+    int TIME_BASE_CODE;
+    int WEIGHTING_FAC;
+    int GEOPHONE_GROUP_ROLL1;
+    int GEOPHONE_GROUP_FIRST;
+    int GEOPHONE_GROUP_LAST;
+    int GAP_SIZE;
+    int OVER_TRAVEL;
+    int CDP_X;
+    int CDP_Y;
+    int INLINE;
+    int CROSSLINE;
+    int SHOT_POINT;
+    int SHOT_POINT_SCALAR;
+    int MEASURE_UNIT;
+    int TRANSDUCTION_MANT;
+    int TRANSDUCTION_EXP;
+    int TRANSDUCTION_UNIT;
+    int DEVICE_ID;
+    int SCALAR_TRACE_HEADER;
+    int SOURCE_TYPE;
+    int SOURCE_ENERGY_DIR_MANT;
+    int SOURCE_ENERGY_DIR_EXP;
+    int SOURCE_MEASURE_MANT;
+    int SOURCE_MEASURE_EXP;
+    int SOURCE_MEASURE_UNIT;
+    int UNASSIGNED1;
+    int UNASSIGNED2;
+};
+
 struct filehandle {
 
     filehandle() = default;
@@ -114,6 +208,8 @@ class simple_file : protected filehandle {
 
         float get_dt();
         float get_dt( float );
+
+        header get_traceheader( int );
 
         template< typename... Args >
         simple_file& open( Args&&... );
@@ -689,6 +785,481 @@ int simple_file::slice_length( int start, int stop, int step ) {
     if( step > 0 ) return ( stop - start - 1 ) / step + 1;
 
     return ( stop - start + 1) / step + 1;
+}
+
+header simple_file::get_traceheader( int traceno ) {
+
+    this->open_check();
+    int trace_bsize = segy_trace_bsize( this->samples );
+
+    this->buffer.resize( SEGY_TRACE_HEADER_SIZE );
+
+    auto err = segy_traceheader( this->get(),
+                                 traceno,
+                                 this->buffer.data(),
+                                 this->trace0,
+                                 trace_bsize );
+
+    if( err ) throw std::runtime_error( "unable to read trace header" );
+
+    header t = header();
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_SEQ_LINE,
+                          &t.SEQ_LINE );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_SEQ_FILE,
+                          &t.SEQ_FILE );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_FIELD_RECORD,
+                          &t.FIELD_RECORD );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_NUMBER_ORIG_FIELD,
+                          &t.NUMBER_ORIG_FIELD );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_ENERGY_SOURCE_POINT,
+                          &t.ENERGY_SOURCE_POINT );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_ENSEMBLE,
+                          &t.ENSEMBLE );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_NUM_IN_ENSEMBLE,
+                          &t.NUM_IN_ENSEMBLE );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_TRACE_ID,
+                          &t.TRACE_ID );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_SUMMED_TRACES,
+                          &t.SUMMED_TRACES );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_STACKED_TRACES,
+                          &t.STACKED_TRACES );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_DATA_USE,
+                          &t.DATA_USE );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_OFFSET,
+                          &t.OFFSET );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_RECV_GROUP_ELEV,
+                          &t.RECV_GROUP_ELEV );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_SOURCE_SURF_ELEV,
+                          &t.SOURCE_SURF_ELEV );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_SOURCE_DEPTH,
+                          &t.SOURCE_DEPTH );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_RECV_DATUM_ELEV,
+                          &t.RECV_DATUM_ELEV );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_SOURCE_DATUM_ELEV,
+                          &t.SOURCE_DATUM_ELEV );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_SOURCE_WATER_DEPTH,
+                          &t.SOURCE_WATER_DEPTH );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_GROUP_WATER_DEPTH,
+                          &t.GROUP_WATER_DEPTH );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_ELEV_SCALAR,
+                          &t.ELEV_SCALAR );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_SOURCE_GROUP_SCALAR,
+                          &t.SOURCE_GROUP_SCALAR );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_SOURCE_X,
+                          &t.SOURCE_X );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_SOURCE_Y,
+                          &t.SOURCE_Y );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_GROUP_X,
+                          &t.GROUP_X );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_GROUP_Y,
+                          &t.GROUP_Y );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_COORD_UNITS,
+                          &t.COORD_UNITS );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_WEATHERING_VELO,
+                          &t.WEATHERING_VELO );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_SUBWEATHERING_VELO,
+                          &t.SUBWEATHERING_VELO );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_SOURCE_UPHOLE_TIME,
+                          &t.SOURCE_UPHOLE_TIME );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_GROUP_UPHOLE_TIME,
+                          &t.GROUP_UPHOLE_TIME );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_SOURCE_STATIC_CORR,
+                          &t.SOURCE_STATIC_CORR );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_GROUP_STATIC_CORR,
+                          &t.GROUP_STATIC_CORR );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_TOT_STATIC_APPLIED,
+                          &t.TOT_STATIC_APPLIED );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_LAG_A,
+                          &t.LAG_A );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_LAG_B,
+                          &t.LAG_B );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_DELAY_REC_TIME,
+                          &t.DELAY_REC_TIME );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_MUTE_TIME_START,
+                          &t.MUTE_TIME_START );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_MUTE_TIME_END,
+                          &t.MUTE_TIME_END );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_SAMPLE_COUNT,
+                          &t.SAMPLE_COUNT );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_SAMPLE_INTER,
+                          &t.SAMPLE_INTER );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_GAIN_TYPE,
+                          &t.GAIN_TYPE );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_INSTR_GAIN_CONST,
+                          &t.INSTR_GAIN_CONST );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_INSTR_INIT_GAIN,
+                          &t.INSTR_INIT_GAIN );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_CORRELATED,
+                          &t.CORRELATED );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_SWEEP_FREQ_START,
+                          &t.SWEEP_FREQ_START );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_SWEEP_FREQ_END,
+                          &t.SWEEP_FREQ_END );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_SWEEP_LENGTH,
+                          &t.SWEEP_LENGTH );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_SWEEP_TYPE,
+                          &t.SWEEP_TYPE );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_SWEEP_TAPERLEN_START,
+                          &t.SWEEP_TAPERLEN_START );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_SWEEP_TAPERLEN_END,
+                          &t.SWEEP_TAPERLEN_END );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_TAPER_TYPE,
+                          &t.TAPER_TYPE );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_ALIAS_FILT_FREQ,
+                          &t.ALIAS_FILT_FREQ );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_ALIAS_FILT_SLOPE,
+                          &t.ALIAS_FILT_SLOPE );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_NOTCH_FILT_FREQ,
+                          &t.NOTCH_FILT_FREQ );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_NOTCH_FILT_SLOPE,
+                          &t.NOTCH_FILT_SLOPE );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_LOW_CUT_FREQ,
+                          &t.LOW_CUT_FREQ );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_HIGH_CUT_FREQ,
+                          &t.HIGH_CUT_FREQ );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_LOW_CUT_SLOPE,
+                          &t.LOW_CUT_SLOPE );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_HIGH_CUT_SLOPE,
+                          &t.HIGH_CUT_SLOPE );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_YEAR_DATA_REC,
+                          &t.YEAR_DATA_REC );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_DAY_OF_YEAR,
+                          &t.DAY_OF_YEAR );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_HOUR_OF_DAY,
+                          &t.HOUR_OF_DAY );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_MIN_OF_HOUR,
+                          &t.MIN_OF_HOUR );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_SEC_OF_MIN,
+                          &t.SEC_OF_MIN );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_TIME_BASE_CODE,
+                          &t.TIME_BASE_CODE );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_WEIGHTING_FAC,
+                          &t.WEIGHTING_FAC );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_GEOPHONE_GROUP_ROLL1,
+                          &t.GEOPHONE_GROUP_ROLL1 );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_GEOPHONE_GROUP_FIRST,
+                          &t.GEOPHONE_GROUP_FIRST );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_GEOPHONE_GROUP_LAST,
+                          &t.GEOPHONE_GROUP_LAST );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_GAP_SIZE,
+                          &t.GAP_SIZE );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_OVER_TRAVEL,
+                          &t.OVER_TRAVEL );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_CDP_X,
+                          &t.CDP_X );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_CDP_Y,
+                          &t.CDP_Y );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_INLINE,
+                          &t.INLINE );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_CROSSLINE,
+                          &t.CROSSLINE );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_SHOT_POINT,
+                          &t.SHOT_POINT );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_SHOT_POINT_SCALAR,
+                          &t.SHOT_POINT_SCALAR );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_MEASURE_UNIT,
+                          &t.MEASURE_UNIT );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_TRANSDUCTION_MANT,
+                          &t.TRANSDUCTION_MANT );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_TRANSDUCTION_EXP,
+                          &t.TRANSDUCTION_EXP );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_TRANSDUCTION_UNIT,
+                          &t.TRANSDUCTION_UNIT );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_DEVICE_ID,
+                          &t.DEVICE_ID );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_SCALAR_TRACE_HEADER,
+                          &t.SCALAR_TRACE_HEADER );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_SOURCE_TYPE,
+                          &t.SOURCE_TYPE );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_SOURCE_ENERGY_DIR_MANT,
+                          &t.SOURCE_ENERGY_DIR_MANT );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_SOURCE_ENERGY_DIR_EXP,
+                          &t.SOURCE_ENERGY_DIR_EXP );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_SOURCE_MEASURE_MANT,
+                          &t.SOURCE_MEASURE_MANT );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_SOURCE_MEASURE_EXP,
+                          &t.SOURCE_MEASURE_EXP );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_SOURCE_MEASURE_UNIT,
+                          &t.SOURCE_MEASURE_UNIT );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_UNASSIGNED1,
+                          &t.UNASSIGNED1 );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    err = segy_get_field( this->buffer.data(),
+                          SEGY_TR_UNASSIGNED2,
+                          &t.UNASSIGNED2 );
+    if( err ) throw std::runtime_error( "unable to read trace header field" );
+
+    return t;
 }
 
 template< typename T >
