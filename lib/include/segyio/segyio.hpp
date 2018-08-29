@@ -310,6 +310,7 @@ class simple_file : protected filehandle {
         int samples;
         int tracecount = 0;
         int format;
+        int elemsize = 4;
         int ext_headers; // possibly int32_t
 
         int sorting = SEGY_UNKNOWN_SORTING;
@@ -345,6 +346,31 @@ simple_file::simple_file( const std::string& path, const config& c ) :
     this->trace0 = segy_trace0( binheader );
     this->format = segy_format( binheader );
     this->trsize = segy_trsize( this->format, samples );
+
+    /* fallback to assuming 4-byte ibm float if the format field is rubbish */
+    if( this->trsize < 0 ) this->trsize = segy_trace_bsize( samples );
+
+    /*
+     * if set_format errors, it's because the format-field in the binary header
+     * is 0 or some other garbage. if so, assume the file is 4-byte ibm float
+     */
+    segy_set_format( this->get(), format );
+
+    this->elemsize = 4;
+    switch( format ) {
+        case SEGY_IBM_FLOAT_4_BYTE:             this->elemsize = 4; break;
+        case SEGY_SIGNED_INTEGER_4_BYTE:        this->elemsize = 4; break;
+        case SEGY_SIGNED_SHORT_2_BYTE:          this->elemsize = 2; break;
+        case SEGY_FIXED_POINT_WITH_GAIN_4_BYTE: this->elemsize = 4; break;
+        case SEGY_IEEE_FLOAT_4_BYTE:            this->elemsize = 4; break;
+        case SEGY_SIGNED_CHAR_1_BYTE:           this->elemsize = 1; break;
+
+        case SEGY_NOT_IN_USE_1:
+        case SEGY_NOT_IN_USE_2:
+        default:
+            break;
+    }
+
     this->buffer.resize( this->trsize );
 
     this->samples = segy_samples( binheader );
