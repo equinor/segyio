@@ -429,6 +429,11 @@ static struct options parse_options( int argc, char** argv ){
                         return opts;
                     }
 
+                    if( r->start == 0 )
+                        exit( errmsg( -3, "out of range" ) );
+
+                    r->stop = r->start;
+
                     goto done;
                 }
 
@@ -439,6 +444,9 @@ static struct options parse_options( int argc, char** argv ){
                     opts.errmsg = "range parameters must be positive";
                     return opts;
                }
+
+               if( r->start == 0 )
+                   exit( errmsg( -3, "out of range" ) );
 
                // if sscanf found something it consumes 1 argument, and we
                // won't have to rewind optind
@@ -500,6 +508,7 @@ int main( int argc, char** argv ) {
 
     /* verify all ranges are sane */
     for( range* r = opts.r; r < opts.r + opts.rsize; ++r ) {
+        if( r->stop == 0 && r->step == 0 ) continue;
         if( r->start > r->stop && strict )
             exit( errmsg( -3, "Range is empty" ) );
     }
