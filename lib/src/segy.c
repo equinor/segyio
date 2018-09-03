@@ -997,15 +997,18 @@ int segy_sorting( segy_file* fp,
     err = segy_traceheader( fp, 0, traceheader, trace0, trace_bsize );
     if( err != SEGY_OK ) return err;
 
-    if( il < 0 || il >= SEGY_TRACE_HEADER_SIZE )
-        return SEGY_INVALID_FIELD;
-
-    if( xl < 0 || xl >= SEGY_TRACE_HEADER_SIZE )
-        return SEGY_INVALID_FIELD;
-
     /* make sure field is valid, so we don't have to check errors later */
-    if( field_size[ il ] == 0 || field_size[ xl ] == 0 )
-        return SEGY_INVALID_FIELD;
+    const int fields[] = { il, xl, tr_offset };
+    int len = sizeof( fields ) / sizeof( int );
+    for( int i = 0; i < len; ++i ) {
+        const int f = fields[ i ];
+        if( f < 0 )
+            return SEGY_INVALID_FIELD;
+        if( f >= SEGY_TRACE_HEADER_SIZE )
+            return SEGY_INVALID_FIELD;
+        if( field_size[ f ] == 0 )
+            return SEGY_INVALID_FIELD;
+    }
 
     int il0 = 0, xl0 = 0, il1 = 0, xl1 = 0, off0 = 0, off1 = 0;
 

@@ -393,6 +393,20 @@ TEST_CASE_METHOD( smallfields,
     CHECK( sorting == SEGY_CROSSLINE_SORTING );
 }
 
+TEST_CASE_METHOD( smallfields,
+                  MMAP_TAG "invalid in-between byte offsets are detected",
+                  MMAP_TAG "[c.segy]" ) {
+    int sorting;
+    Err err = segy_sorting( fp, il + 1, xl, of, &sorting, trace0, trace_bsize );
+    CHECK( err == SEGY_INVALID_FIELD );
+
+    err = segy_sorting( fp, il, xl + 1, of, &sorting, trace0, trace_bsize );
+    CHECK( err == SEGY_INVALID_FIELD );
+
+    err = segy_sorting( fp, il, xl, of + 1, &sorting, trace0, trace_bsize );
+    CHECK( err == SEGY_INVALID_FIELD );
+}
+
 TEST_CASE_METHOD( smallsize,
                   MMAP_TAG "post-stack file offset-count is 1",
                   MMAP_TAG "[c.segy]" ) {
