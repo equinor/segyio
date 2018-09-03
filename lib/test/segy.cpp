@@ -168,6 +168,10 @@ void regular_geometry( segy_file* fp,
     }
 }
 
+bool success( Err err ) {
+    return err == Err::ok();
+}
+
 struct smallfix {
     segy_file* fp = nullptr;
 
@@ -200,6 +204,15 @@ struct smallbasic : smallfix {
     int trace_bsize = 50 * 4;
 };
 
+struct smallheader : smallbasic {
+    char header[ SEGY_TRACE_HEADER_SIZE ];
+
+    smallheader() : smallbasic() {
+        Err err = segy_traceheader( fp, 0, header, trace0, trace_bsize );
+        REQUIRE( success( err ) );
+    }
+};
+
 struct smallfields : smallbasic {
     int il = SEGY_TR_INLINE;
     int xl = SEGY_TR_CROSSLINE;
@@ -222,10 +235,6 @@ struct smallcube : smallshape {
     std::vector< int > inlines = { 1, 2, 3, 4, 5 };
     std::vector< int > crosslines = { 20, 21, 22, 23, 24 };
 };
-
-bool success( Err err ) {
-    return err == Err::ok();
-}
 
 int arbitrary_int() {
     /*
@@ -303,6 +312,60 @@ TEST_CASE_METHOD( smallbasic,
     Err err = segy_traces( fp, &traces, trace0, too_long_bsize );
     CHECK( err == SEGY_TRACE_SIZE_MISMATCH );
     CHECK( traces == input_traces );
+}
+
+TEST_CASE_METHOD( smallheader,
+                  MMAP_TAG "valid trace-header fields can be read",
+                  MMAP_TAG "[c.segy]" ) {
+
+    int32_t ilno;
+    Err err = segy_get_field( header, SEGY_TR_INLINE, &ilno );
+    CHECK( success( err ) );
+    CHECK( ilno == 1 );
+}
+
+TEST_CASE_METHOD( smallheader,
+                  MMAP_TAG "zero header field is an argument error",
+                  MMAP_TAG "[c.segy]" ) {
+    const int32_t input_value = arbitrary_int();
+    auto value = input_value;
+    Err err = segy_get_field( header, 0, &value );
+
+    CHECK( err == Err::field() );
+    CHECK( value == input_value );
+}
+
+TEST_CASE_METHOD( smallheader,
+                  MMAP_TAG "negative header field is an argument error",
+                  MMAP_TAG "[c.segy]" ) {
+    const int32_t input_value = arbitrary_int();
+    auto value = input_value;
+    Err err = segy_get_field( header, -1, &value );
+
+    CHECK( err == Err::field() );
+    CHECK( value == input_value );
+}
+
+TEST_CASE_METHOD( smallheader,
+                  MMAP_TAG "unaligned header field is an argument error",
+                  MMAP_TAG "[c.segy]" ) {
+    const int32_t input_value = arbitrary_int();
+    auto value = input_value;
+    Err err = segy_get_field( header, SEGY_TR_INLINE + 1, &value );
+
+    CHECK( err == Err::field() );
+    CHECK( value == input_value );
+}
+
+TEST_CASE_METHOD( smallheader,
+                  MMAP_TAG "too large header field is an argument error",
+                  MMAP_TAG "[c.segy]" ) {
+    const int32_t input_value = arbitrary_int();
+    auto value = input_value;
+    Err err = segy_get_field( header, SEGY_TRACE_HEADER_SIZE + 10, &value );
+
+    CHECK( err == Err::field() );
+    CHECK( value == input_value );
 }
 
 TEST_CASE_METHOD( smallfields,
