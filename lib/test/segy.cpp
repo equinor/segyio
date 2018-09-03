@@ -104,30 +104,6 @@ void regular_geometry( segy_file* fp,
     const int il = SEGY_TR_INLINE;
     const int xl = SEGY_TR_CROSSLINE;
     const int of = SEGY_TR_OFFSET;
-    GIVEN( "an inline sorted file" ) {
-        THEN( "inline sorting is inferred" ) {
-            int sorting = -1;
-            const Err err = segy_sorting( fp,
-                                          il, xl, of,
-                                          &sorting,
-                                          trace0, trace_bsize );
-            CHECK( err == Err::ok() );
-            CHECK( sorting == SEGY_INLINE_SORTING );
-        }
-
-        WHEN( "swapping inline and crossline position" ) {
-            THEN( "crossline sorting is inferred" ) {
-                int sorting = -1;
-                const Err err = segy_sorting( fp,
-                                              xl, il, of,
-                                              &sorting,
-                                              trace0, trace_bsize );
-                CHECK( err == Err::ok() );
-                CHECK( sorting == SEGY_CROSSLINE_SORTING );
-            }
-        }
-    }
-
     const int sorting = SEGY_INLINE_SORTING;
 
     GIVEN( "a post stack file" ) {
@@ -192,312 +168,652 @@ void regular_geometry( segy_file* fp,
     }
 }
 
+bool success( Err err ) {
+    return err == Err::ok();
 }
 
-SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
-    const char* file = "test-data/small.sgy";
+struct smallfix {
+    segy_file* fp = nullptr;
 
-    std::unique_ptr< segy_file, decltype( &segy_close ) >
-        ufp{ segy_open( file, "rb" ), &segy_close };
+    smallfix() {
+        fp = segy_open( "test-data/small.sgy", "rb" );
+        REQUIRE( fp );
 
-    REQUIRE( ufp );
-
-    auto fp = ufp.get();
-    if( MMAP_TAG != std::string("") )
-        REQUIRE( Err( segy_mmap( fp ) ) == Err::ok() );
-
-    WHEN( "finding traces initial byte offset and sizes" ) {
-        char header[ SEGY_BINARY_HEADER_SIZE ];
-        REQUIRE( Err( segy_binheader( fp, header ) ) == Err::ok() );
-        int samples = segy_samples( header );
-        long trace0 = segy_trace0( header );
-        int trace_bsize = segy_trsize( SEGY_IBM_FLOAT_4_BYTE, samples );
-
-        CHECK( trace0      == 3600 );
-        CHECK( samples     == 50 );
-        CHECK( trace_bsize == 50 * 4 );
+        if( MMAP_TAG != std::string("") )
+            REQUIRE( Err( segy_mmap( fp ) ) == Err::ok() );
     }
 
-    WHEN( "overriding sample format" ) {
-        Err err = segy_set_format( fp, SEGY_IEEE_FLOAT_4_BYTE );
-        CHECK( err == Err::ok() );
+    smallfix( const smallfix& ) = delete;
+    smallfix& operator=( const smallfix& ) = delete;
 
-        THEN( "it fails on invalid formats" ) {
-            err = segy_set_format( fp, 10 );
-            CHECK( err == Err::args() );
-        }
+    ~smallfix() {
+        if( fp ) segy_close( fp );
     }
+};
 
-    const long trace0 = 3600;
-    const int trace_bsize = 50 * 4;
-    const int samples = 50;
+struct smallbin : smallfix {
+    char bin[ SEGY_BINARY_HEADER_SIZE ];
 
-    WHEN( "determining number of traces" ) {
-        int traces = 0;
-        Err err = segy_traces( fp, &traces, trace0, trace_bsize );
-        REQUIRE( err == Err::ok() );
-        CHECK( traces == 25 );
-
-        GIVEN( "trace0 outside its domain" ) {
-            WHEN( "trace0 is after end-of-file" ) {
-                err = segy_traces( fp, &traces, 50000, trace_bsize );
-                THEN( "segy_traces fail" )
-                    CHECK( err == Err::args() );
-                THEN( "the input does not change" )
-                    CHECK( traces == 25 );
-            }
-
-            WHEN( "trace0 is negative" ) {
-                err = segy_traces( fp, &traces, -1, trace_bsize );
-                THEN( "segy_traces fail" )
-                    CHECK( err == Err::args() );
-                THEN( "the input does not change" )
-                    CHECK( traces == 25 );
-            }
-        }
+    smallbin() : smallfix() {
+        REQUIRE( Err( segy_binheader( fp, bin ) ) == Err::ok() );
     }
+};
 
-    const int traces = 25;
-    const int inlines_sizes = 5;
-    const int crosslines_sizes = 5;
-    const int offset_label = 1;
+struct smallbasic : smallfix {
+    long trace0 = 3600;
+    int trace_bsize = 50 * 4;
+    int samples = 50;
+};
 
-    regular_geometry( fp, traces,
-                          trace0,
-                          trace_bsize,
-                          inlines_sizes,
-                          crosslines_sizes,
-                          offset_label );
+struct smallheader : smallbasic {
+    char header[ SEGY_TRACE_HEADER_SIZE ];
 
-    const int il = SEGY_TR_INLINE;
-    const int xl = SEGY_TR_CROSSLINE;
-    const int of = SEGY_TR_OFFSET;
-    const int sorting = SEGY_INLINE_SORTING;
-    const int offsets = 1;
-    const int format = SEGY_IBM_FLOAT_4_BYTE;
-
-    WHEN( "inferring inline structure" ) {
-        const std::vector< int > indices = { 1, 2, 3, 4, 5 };
-        CHECK( segy_inline_length( crosslines_sizes ) == 5 );
-
-        WHEN( "finding inline numbers" ) {
-            std::vector< int > result( inlines_sizes );
-            const Err err = segy_inline_indices( fp,
-                                                 il,
-                                                 sorting,
-                                                 inlines_sizes,
-                                                 crosslines_sizes,
-                                                 offsets,
-                                                 result.data(),
-                                                 trace0, trace_bsize );
-            CHECK( err == Err::ok() );
-            CHECK_THAT( result, Catch::Equals( indices ) );
-        }
-
-        WHEN( "determining inline 4's first trace number" ) {
-            GIVEN( "an inline sorted file" ) THEN( "the stride is 1" ) {
-                int stride = -1;
-                Err err = segy_inline_stride( sorting, inlines_sizes, &stride );
-                CHECK( err == Err::ok() );
-                CHECK( stride == 1 );
-            }
-
-            const int stride = 1;
-            int line_trace0 = -1;
-            const Err err = segy_line_trace0( 4,
-                                              crosslines_sizes, stride,
-                                              offsets,
-                                              indices.data(), inlines_sizes,
-                                              &line_trace0 );
-            CHECK( err == Err::ok() );
-            CHECK( line_trace0 == 15 );
-        }
+    smallheader() : smallbasic() {
+        Err err = segy_traceheader( fp, 0, header, trace0, trace_bsize );
+        REQUIRE( success( err ) );
     }
+};
 
-    WHEN( "reading a trace header" ) {
-        char buf[ SEGY_TRACE_HEADER_SIZE ] = {};
+struct smallfields : smallbasic {
+    int il = SEGY_TR_INLINE;
+    int xl = SEGY_TR_CROSSLINE;
+    int of = SEGY_TR_OFFSET;
+};
 
-        GIVEN( "a valid field" ) {
-            Err err = segy_traceheader( fp, 0, buf, trace0, trace_bsize );
-            CHECK( err == Err::ok() );
+struct smallstep : smallbasic {
+    int traceno = 10;
+    int format = SEGY_IBM_FLOAT_4_BYTE;
+};
 
-            int ilno = 0;
-            err = segy_get_field( buf, SEGY_TR_INLINE, &ilno );
-            CHECK( err == Err::ok() );
-            CHECK( ilno == 1 );
+struct smallsize : smallfields {
+    int traces = 25;
+};
+
+struct smallshape : smallsize {
+    int offsets = 1;
+    int ilines = 5;
+    int xlines = 5;
+    int sorting = SEGY_INLINE_SORTING;
+};
+
+struct smallcube : smallshape {
+    int stride = 1;
+    std::vector< int > inlines = { 1, 2, 3, 4, 5 };
+    std::vector< int > crosslines = { 20, 21, 22, 23, 24 };
+    int format = SEGY_IBM_FLOAT_4_BYTE;
+};
+
+int arbitrary_int() {
+    /*
+     * in order to verify that functions don't modify their output arguments if
+     * the function fail, it has to be compared to an arbitrary value that
+     * should be equal before and after. It has to be initialised, but the
+     * value itself is of no significance.
+     */
+    return -1;
+}
+
+}
+
+TEST_CASE_METHOD( smallbin,
+                  MMAP_TAG "samples+positions from binary header are correct",
+                  MMAP_TAG "[c.segy]" ) {
+    int samples = segy_samples( bin );
+    long trace0 = segy_trace0( bin );
+    int trace_bsize = segy_trsize( SEGY_IBM_FLOAT_4_BYTE, samples );
+
+    CHECK( trace0      == 3600 );
+    CHECK( samples     == 50 );
+    CHECK( trace_bsize == 50 * 4 );
+}
+
+TEST_CASE_METHOD( smallfix,
+                  MMAP_TAG "sample format can be overriden",
+                  MMAP_TAG "[c.segy]" ) {
+    Err err = segy_set_format( fp, SEGY_IEEE_FLOAT_4_BYTE );
+    CHECK( err == Err::ok() );
+}
+
+TEST_CASE_METHOD( smallfix,
+                  MMAP_TAG "sample format fails on invalid format",
+                  MMAP_TAG "[c.segy]" ) {
+    Err err = segy_set_format( fp, 10 );
+    CHECK( err == Err::args() );
+}
+
+TEST_CASE_METHOD( smallbasic,
+                  MMAP_TAG "trace count is 25",
+                  MMAP_TAG "[c.segy]" ) {
+    int traces;
+    Err err = segy_traces( fp, &traces, trace0, trace_bsize );
+    CHECK( success( err ) );
+    CHECK( traces == 25 );
+}
+
+TEST_CASE_METHOD( smallbasic,
+                  MMAP_TAG "trace0 beyond EOF is an argument error",
+                  MMAP_TAG "[c.segy]" ) {
+    const int input_traces = arbitrary_int();
+    int traces = input_traces;
+    Err err = segy_traces( fp, &traces, 50000, trace_bsize );
+    CHECK( err == Err::args() );
+    CHECK( traces == input_traces );
+}
+
+TEST_CASE_METHOD( smallbasic,
+                  MMAP_TAG "negative trace0 is an argument error",
+                  MMAP_TAG "[c.segy]" ) {
+    const int input_traces = arbitrary_int();
+    int traces = input_traces;
+    Err err = segy_traces( fp, &traces, -1, trace_bsize );
+    CHECK( err == Err::args() );
+    CHECK( traces == input_traces );
+}
+
+TEST_CASE_METHOD( smallbasic,
+                  MMAP_TAG "erroneous trace_bsize is detected",
+                  MMAP_TAG "[c.segy]" ) {
+    const int input_traces = arbitrary_int();
+    int traces = input_traces;
+    const int too_long_bsize = trace_bsize + sizeof( float );
+    Err err = segy_traces( fp, &traces, trace0, too_long_bsize );
+    CHECK( err == SEGY_TRACE_SIZE_MISMATCH );
+    CHECK( traces == input_traces );
+}
+
+TEST_CASE_METHOD( smallheader,
+                  MMAP_TAG "valid trace-header fields can be read",
+                  MMAP_TAG "[c.segy]" ) {
+
+    int32_t ilno;
+    Err err = segy_get_field( header, SEGY_TR_INLINE, &ilno );
+    CHECK( success( err ) );
+    CHECK( ilno == 1 );
+}
+
+TEST_CASE_METHOD( smallheader,
+                  MMAP_TAG "zero header field is an argument error",
+                  MMAP_TAG "[c.segy]" ) {
+    const int32_t input_value = arbitrary_int();
+    auto value = input_value;
+    Err err = segy_get_field( header, 0, &value );
+
+    CHECK( err == Err::field() );
+    CHECK( value == input_value );
+}
+
+TEST_CASE_METHOD( smallheader,
+                  MMAP_TAG "negative header field is an argument error",
+                  MMAP_TAG "[c.segy]" ) {
+    const int32_t input_value = arbitrary_int();
+    auto value = input_value;
+    Err err = segy_get_field( header, -1, &value );
+
+    CHECK( err == Err::field() );
+    CHECK( value == input_value );
+}
+
+TEST_CASE_METHOD( smallheader,
+                  MMAP_TAG "unaligned header field is an argument error",
+                  MMAP_TAG "[c.segy]" ) {
+    const int32_t input_value = arbitrary_int();
+    auto value = input_value;
+    Err err = segy_get_field( header, SEGY_TR_INLINE + 1, &value );
+
+    CHECK( err == Err::field() );
+    CHECK( value == input_value );
+}
+
+TEST_CASE_METHOD( smallheader,
+                  MMAP_TAG "too large header field is an argument error",
+                  MMAP_TAG "[c.segy]" ) {
+    const int32_t input_value = arbitrary_int();
+    auto value = input_value;
+    Err err = segy_get_field( header, SEGY_TRACE_HEADER_SIZE + 10, &value );
+
+    CHECK( err == Err::field() );
+    CHECK( value == input_value );
+}
+
+TEST_CASE_METHOD( smallfields,
+                  MMAP_TAG "inline sorting is detected",
+                  MMAP_TAG "[c.segy]" ) {
+    int sorting;
+    Err err = segy_sorting( fp, il, xl, of, &sorting, trace0, trace_bsize );
+    CHECK( success( err ) );
+    CHECK( sorting == SEGY_INLINE_SORTING );
+}
+
+TEST_CASE_METHOD( smallfields,
+                  MMAP_TAG "crossline sorting is detected with swapped il/xl",
+                  MMAP_TAG "[c.segy]" ) {
+    int sorting;
+    Err err = segy_sorting( fp, xl, il, of, &sorting, trace0, trace_bsize );
+    CHECK( success( err ) );
+    CHECK( sorting == SEGY_CROSSLINE_SORTING );
+}
+
+TEST_CASE_METHOD( smallsize,
+                  MMAP_TAG "post-stack file offset-count is 1",
+                  MMAP_TAG "[c.segy]" ) {
+    int offsets;
+    Err err = segy_offsets( fp,
+                            il,
+                            xl,
+                            traces,
+                            &offsets,
+                            trace0,
+                            trace_bsize );
+
+    CHECK( success( err ) );
+    CHECK( offsets == 1 );
+}
+
+TEST_CASE_METHOD( smallsize,
+                  MMAP_TAG "swapped il/xl post-stack file offset-count is 1",
+                  MMAP_TAG "[c.segy]" ) {
+    int offsets;
+    Err err = segy_offsets( fp,
+                            xl,
+                            il,
+                            traces,
+                            &offsets,
+                            trace0,
+                            trace_bsize );
+
+    CHECK( success( err ) );
+    CHECK( offsets == 1 );
+}
+
+TEST_CASE_METHOD( smallshape,
+                  MMAP_TAG "correct # of lines are detected",
+                  MMAP_TAG "[c.segy]" ) {
+
+    int expected_ils = 5;
+    int expected_xls = 5;
+
+    int count_inlines;
+    int count_crosslines;
+    Err err_count = segy_count_lines( fp,
+                                      xl,
+                                      offsets,
+                                      &count_inlines,
+                                      &count_crosslines,
+                                      trace0,
+                                      trace_bsize );
+
+    int lines_inlines;
+    int lines_crosslines;
+    Err err_lines = segy_lines_count( fp,
+                                      il,
+                                      xl,
+                                      sorting,
+                                      offsets,
+                                      &lines_inlines,
+                                      &lines_crosslines,
+                                      trace0,
+                                      trace_bsize );
+
+    CHECK( success( err_count ) );
+    CHECK( success( err_lines ) );
+
+    CHECK( count_inlines    == expected_ils );
+    CHECK( count_crosslines == expected_xls );
+
+    CHECK( lines_inlines    == expected_ils );
+    CHECK( lines_crosslines == expected_xls );
+
+    CHECK( lines_inlines    == count_inlines );
+    CHECK( lines_crosslines == count_crosslines );
+}
+
+TEST_CASE_METHOD( smallshape,
+                  MMAP_TAG "line lengths are correct",
+                  MMAP_TAG "[c.segy]" ) {
+    CHECK( segy_inline_length( xlines ) == ilines );
+    CHECK( segy_inline_length( ilines ) == xlines );
+}
+
+TEST_CASE_METHOD( smallshape,
+                  MMAP_TAG "correct offset labels are detected",
+                  MMAP_TAG "[c.segy]" ) {
+
+    const std::vector< int > expected = { 1 };
+    std::vector< int > labels( 1 );
+    Err err = segy_offset_indices( fp,
+                                   of,
+                                   offsets,
+                                   labels.data(),
+                                   trace0,
+                                   trace_bsize );
+    CHECK( success( err ) );
+    CHECK_THAT( labels, Catch::Equals( expected ) );
+}
+
+TEST_CASE_METHOD( smallshape,
+                  MMAP_TAG "correct inline labels are detected",
+                  MMAP_TAG "[c.segy]" ) {
+
+    const std::vector< int > expected = { 1, 2, 3, 4, 5 };
+    std::vector< int > labels( 5 );
+
+    Err err = segy_inline_indices( fp,
+                                   il,
+                                   sorting,
+                                   ilines,
+                                   xlines,
+                                   offsets,
+                                   labels.data(),
+                                   trace0,
+                                   trace_bsize );
+
+    CHECK( success( err ) );
+    CHECK_THAT( labels, Catch::Equals( expected ) );
+}
+
+TEST_CASE_METHOD( smallshape,
+                  MMAP_TAG "correct crossline labels are detected",
+                  MMAP_TAG "[c.segy]" ) {
+
+    const std::vector< int > expected = { 20, 21, 22, 23, 24 };
+    std::vector< int > labels( 5 );
+
+    Err err = segy_crossline_indices( fp,
+                                      xl,
+                                      sorting,
+                                      ilines,
+                                      xlines,
+                                      offsets,
+                                      labels.data(),
+                                      trace0,
+                                      trace_bsize );
+
+    CHECK( success( err ) );
+    CHECK_THAT( labels, Catch::Equals( expected ) );
+}
+
+TEST_CASE_METHOD( smallshape,
+                  MMAP_TAG "correct inline stride is detected",
+                  MMAP_TAG "[c.segy]" ) {
+    int stride;
+    Err err = segy_inline_stride( sorting, ilines, &stride );
+    CHECK( success( err ) );
+    CHECK( stride == 1 );
+}
+
+TEST_CASE_METHOD( smallshape,
+                  MMAP_TAG "correct inline stride with swapped sorting",
+                  MMAP_TAG "[c.segy]" ) {
+    int stride;
+    Err err = segy_inline_stride( SEGY_CROSSLINE_SORTING, ilines, &stride );
+    CHECK( success( err ) );
+    CHECK( stride == ilines );
+}
+
+TEST_CASE_METHOD( smallcube,
+                  MMAP_TAG "correct first trace is detected for an inline",
+                  MMAP_TAG "[c.segy]" ) {
+    const int label = inlines.at( 3 );
+    int line_trace0;
+    Err err = segy_line_trace0( label,
+                                xlines,
+                                stride,
+                                offsets,
+                                inlines.data(),
+                                inlines.size(),
+                                &line_trace0 );
+    CHECK( success( err ) );
+    CHECK( line_trace0 == 15 );
+}
+
+TEST_CASE_METHOD( smallcube,
+                  MMAP_TAG "missing inline-label is detected and reported",
+                  MMAP_TAG "[c.segy]" ) {
+    const int label = inlines.back() + 1;
+    int line_trace0;
+    Err err = segy_line_trace0( label,
+                                xlines,
+                                stride,
+                                offsets,
+                                inlines.data(),
+                                inlines.size(),
+                                &line_trace0 );
+    CHECK( err == SEGY_MISSING_LINE_INDEX );
+}
+
+TEST_CASE_METHOD( smallshape,
+                  MMAP_TAG "correct crossline stride is detected",
+                  MMAP_TAG "[c.segy]" ) {
+    int stride;
+    Err err = segy_crossline_stride( sorting, xlines, &stride );
+    CHECK( success( err ) );
+    CHECK( stride == ilines );
+}
+
+TEST_CASE_METHOD( smallshape,
+                  MMAP_TAG "correct crossline stride with swapped sorting",
+                  MMAP_TAG "[c.segy]" ) {
+    int stride;
+    Err err = segy_crossline_stride( SEGY_CROSSLINE_SORTING, xlines, &stride );
+    CHECK( success( err ) );
+    CHECK( stride == 1 );
+}
+
+TEST_CASE_METHOD( smallcube,
+                  MMAP_TAG "correct first trace is detected for a crossline",
+                  MMAP_TAG "[c.segy]" ) {
+    const int label = crosslines.at( 2 );
+    const int stride = ilines;
+    int line_trace0;
+    Err err = segy_line_trace0( label,
+                                ilines,
+                                stride,
+                                offsets,
+                                crosslines.data(),
+                                crosslines.size(),
+                                &line_trace0 );
+    CHECK( success( err ) );
+    CHECK( line_trace0 == 2 );
+}
+
+TEST_CASE_METHOD( smallcube,
+                  MMAP_TAG "missing crossline-label is detected and reported",
+                  MMAP_TAG "[c.segy]" ) {
+    const int label = crosslines.back() + 1;
+    const int stride = ilines;
+    int line_trace0;
+    Err err = segy_line_trace0( label,
+                                ilines,
+                                stride,
+                                offsets,
+                                inlines.data(),
+                                inlines.size(),
+                                &line_trace0 );
+    CHECK( err == SEGY_MISSING_LINE_INDEX );
+}
+
+TEST_CASE_METHOD( smallstep,
+                  MMAP_TAG "read ascending strided subtrace",
+                  MMAP_TAG "[c.segy]" ) {
+    const int start = 3;
+    const int stop  = 19;
+    const int step  = 5;
+    void* rangebuf = nullptr;
+    const std::vector< float > expected = { 3.20003f,
+                                            3.20008f,
+                                            3.20013f,
+                                            3.20018f };
+    std::vector< float > xs( expected.size() );
+
+    Err err = segy_readsubtr( fp,
+                              traceno,
+                              start,
+                              stop,
+                              step,
+                              xs.data(),
+                              rangebuf,
+                              trace0,
+                              trace_bsize );
+    segy_to_native( format, xs.size(), xs.data() );
+    CHECK( success( err ) );
+    CHECK_THAT( xs, ApproxRange( expected ) );
+}
+
+TEST_CASE_METHOD( smallstep,
+                  MMAP_TAG "read descending strided subtrace",
+                  MMAP_TAG "[c.segy]" ) {
+    const int start = 18;
+    const int stop  = 2;
+    const int step  = -5;
+
+    void* rangebuf = nullptr;
+    const std::vector< float > expected = { 3.20018f,
+                                            3.20013f,
+                                            3.20008f,
+                                            3.20003f };
+    std::vector< float > xs( expected.size() );
+
+    Err err = segy_readsubtr( fp,
+                              traceno,
+                              start,
+                              stop,
+                              step,
+                              xs.data(),
+                              rangebuf,
+                              trace0,
+                              trace_bsize );
+    segy_to_native( format, xs.size(), xs.data() );
+    CHECK( success( err ) );
+    CHECK_THAT( xs, ApproxRange( expected ) );
+}
+
+TEST_CASE_METHOD( smallstep,
+                  MMAP_TAG "read descending contiguous subtrace",
+                  MMAP_TAG "[c.segy]" ) {
+    const int start = 3;
+    const int stop  = -1;
+    const int step  = -1;
+
+    void* rangebuf = nullptr;
+    const std::vector< float > expected = { 3.20003f,
+                                            3.20002f,
+                                            3.20001f,
+                                            3.20000f };
+    std::vector< float > xs( expected.size() );
+
+    Err err = segy_readsubtr( fp,
+                              traceno,
+                              start,
+                              stop,
+                              step,
+                              xs.data(),
+                              rangebuf,
+                              trace0,
+                              trace_bsize );
+    segy_to_native( format, xs.size(), xs.data() );
+    CHECK( success( err ) );
+    CHECK_THAT( xs, ApproxRange( expected ) );
+}
+
+TEST_CASE_METHOD( smallstep,
+                  MMAP_TAG "read descending strided subtrace with pre-start",
+                  MMAP_TAG "[c.segy]" ) {
+    const int start = 24;
+    const int stop  = -1;
+    const int step  = -5;
+
+    const std::vector< float > expected = { 3.20024f,
+                                            3.20019f,
+                                            3.20014f,
+                                            3.20009f,
+                                            3.20004f };
+    std::vector< float > xs( expected.size() );
+
+    Err err = segy_readsubtr( fp,
+                              traceno,
+                              start,
+                              stop,
+                              step,
+                              xs.data(),
+                              nullptr,
+                              trace0,
+                              trace_bsize );
+    segy_to_native( format, xs.size(), xs.data() );
+    CHECK( success( err ) );
+    CHECK_THAT( xs, ApproxRange( expected ) );
+}
+
+TEST_CASE_METHOD( smallcube,
+                  MMAP_TAG "reading the first inline gives correct values",
+                  MMAP_TAG "[c.segy]" ) {
+
+    // first line starts at first trace
+    const int line_trace0 = 0;
+    const std::vector< float > expected = [=] {
+        std::vector< float > xs( samples * xlines );
+        for( int i = 0; i < xlines; ++i ) {
+            Err err = segy_readtrace( fp,
+                                      i,
+                                      xs.data() + (i * samples),
+                                      trace0,
+                                      trace_bsize );
+            REQUIRE( success( err ) );
         }
 
-        GIVEN( "an invalid field" ) {
-            int x = -1;
-            Err err = segy_get_field( buf, SEGY_TRACE_HEADER_SIZE + 10, &x );
-            CHECK( err == Err::field() );
-            CHECK( x == -1 );
+        segy_to_native( format, xs.size(), xs.data() );
+        return xs;
+    }();
 
-            err = segy_get_field( buf, SEGY_TR_INLINE + 1, &x );
-            CHECK( err == Err::field() );
-            CHECK( x == -1 );
+    std::vector< float > line( expected.size() );
+    Err err = segy_read_line( fp,
+                              line_trace0,
+                              crosslines.size(),
+                              stride,
+                              offsets,
+                              line.data(),
+                              trace0,
+                              trace_bsize );
+
+    segy_to_native( format, line.size(), line.data() );
+    CHECK( success( err ) );
+    CHECK_THAT( line, ApproxRange( expected ) );
+}
+
+TEST_CASE_METHOD( smallcube,
+                  MMAP_TAG "reading the first crossline gives correct values",
+                  MMAP_TAG "[c.segy]" ) {
+
+    // first line starts at first trace
+    const int line_trace0 = 0;
+    const int stride = ilines;
+    const std::vector< float > expected = [=] {
+        std::vector< float > xs( samples * ilines );
+        for( int i = 0; i < ilines; ++i ) {
+            Err err = segy_readtrace( fp,
+                                      i * stride,
+                                      xs.data() + (i * samples),
+                                      trace0,
+                                      trace_bsize );
+            REQUIRE( success( err ) );
         }
-    }
 
-    WHEN( "inferring crossline structure" ) {
-        const std::vector< int > indices = { 20, 21, 22, 23, 24 };
-        CHECK( segy_crossline_length( inlines_sizes ) == 5 );
+        segy_to_native( format, xs.size(), xs.data() );
+        return xs;
+    }();
 
-        WHEN( "finding crossline numbers" ) {
-            std::vector< int > result( crosslines_sizes );
-            const Err err = segy_crossline_indices( fp,
-                                                    xl,
-                                                    sorting,
-                                                    inlines_sizes,
-                                                    crosslines_sizes,
-                                                    offsets,
-                                                    result.data(),
-                                                    trace0, trace_bsize );
-            CHECK( err == Err::ok() );
-            CHECK_THAT( result, Catch::Equals( indices ) );
-        }
+    std::vector< float > line( expected.size() );
+    Err err = segy_read_line( fp,
+                              line_trace0,
+                              inlines.size(),
+                              stride,
+                              offsets,
+                              line.data(),
+                              trace0,
+                              trace_bsize );
 
-        WHEN( "determining crossline 22's first trace number" ) {
-            GIVEN( "an inline sorted file" ) THEN( "the stride is 5" ) {
-                int stride = -1;
-                Err err = segy_crossline_stride( sorting,
-                                                 crosslines_sizes,
-                                                 &stride );
-                CHECK( err == Err::ok() );
-                CHECK( stride == 5 );
-            }
-
-            const int stride = 5;
-            int line_trace0 = -1;
-            const Err err = segy_line_trace0( 22,
-                                              inlines_sizes, stride,
-                                              offsets,
-                                              indices.data(), crosslines_sizes,
-                                              &line_trace0 );
-            CHECK( err == Err::ok() );
-            CHECK( line_trace0 == 2 );
-        }
-    }
-
-    WHEN( "reading a subtrace" ) {
-
-        const std::vector< slice > inputs = {
-            {  3,  19,   5 },
-            { 18,   2,  -5 },
-            {  3,  -1,  -1 },
-            { 24,  -1,  -5 }
-        };
-
-        const std::vector< std::vector< float > > expect = {
-            { 3.20003f, 3.20008f, 3.20013f, 3.20018f },
-            { 3.20018f, 3.20013f, 3.20008f, 3.20003f },
-            { 3.20003f, 3.20002f, 3.20001f, 3.20000f },
-            { 3.20024f, 3.20019f, 3.20014f, 3.20009f, 3.20004f }
-        };
-
-        for( size_t i = 0; i < inputs.size(); ++i ) {
-            WHEN( "slice is " + str( inputs[ i ] ) ) {
-                std::vector< float > buf( expect[ i ].size() );
-
-                auto start = inputs[ i ].start;
-                auto stop  = inputs[ i ].stop;
-                auto step  = inputs[ i ].step;
-
-                Err err = segy_readsubtr( fp,
-                                          10,
-                                          start, stop, step,
-                                          buf.data(),
-                                          nullptr,
-                                          trace0, trace_bsize );
-                segy_to_native( format, buf.size(), buf.data() );
-                CHECK( err == Err::ok() );
-                CHECK_THAT( buf, ApproxRange( expect[ i ] ) );
-            }
-        }
-    }
-
-    const std::vector< int > inlines = { 1, 2, 3, 4, 5 };
-    const std::vector< int > crosslines = { 20, 21, 22, 23, 24 };
-    const int inline_length = 5;
-    const int crossline_length = 5;
-
-    WHEN( "reading an inline" ) {
-        for( const auto il : inlines ) {
-            std::vector< float > line( inline_length * samples );
-            const int stride = 1;
-
-            int line_trace0 = -1;
-            Err err = segy_line_trace0( il,
-                                        inline_length,
-                                        stride,
-                                        offsets,
-                                        inlines.data(),
-                                        inlines.size(),
-                                        &line_trace0 );
-            REQUIRE( err == Err::ok() );
-            REQUIRE( line_trace0 != -1 );
-
-            err = segy_read_line( fp,
-                                  line_trace0,
-                                  inlines_sizes,
-                                  stride,
-                                  offsets,
-                                  line.data(),
-                                  trace0, trace_bsize );
-            REQUIRE( err == Err::ok() );
-            segy_to_native( format, line.size(), line.data() );
-
-            for( const auto xl : crosslines ) {
-                auto point = std::to_string(il) + ", " + std::to_string(xl);
-                THEN( "at intersection (" + point + ")" ) {
-                    const auto i = (xl - 20) * samples;
-                    for( size_t s = 0; s < samples; ++s ) {
-                        const float expected = il + (0.01 * xl) + (1e-5 * s);
-                        CHECK( line.at(i+s) == Approx( expected ) );
-                    }
-                }
-            }
-        }
-    }
-
-    WHEN( "reading a crossline" ) {
-        for( const auto xl : crosslines ) {
-            std::vector< float > line( crossline_length * samples );
-            const int stride = 5;
-
-            int line_trace0 = -1;
-            Err err = segy_line_trace0( xl,
-                                        crosslines_sizes,
-                                        stride,
-                                        offsets,
-                                        crosslines.data(),
-                                        crosslines.size(),
-                                        &line_trace0 );
-            REQUIRE( err == Err::ok() );
-            REQUIRE( line_trace0 != -1 );
-
-            err = segy_read_line( fp,
-                                  line_trace0,
-                                  crosslines_sizes,
-                                  stride,
-                                  offsets,
-                                  line.data(),
-                                  trace0, trace_bsize );
-            REQUIRE( err == Err::ok() );
-            segy_to_native( format, line.size(), line.data() );
-
-            for( const auto il : inlines ) {
-                auto point = std::to_string(il) + ", " + std::to_string(xl);
-                THEN( "at intersection (" + point + ")" ) {
-                    const auto i = (il - 1) * samples;
-                    for( size_t s = 0; s < samples; ++s ) {
-                        const float expected = il + (0.01 * xl) + (1e-5 * s);
-                        CHECK( line.at(i+s) == Approx( expected ) );
-                    }
-                }
-            }
-        }
-    }
+    segy_to_native( format, line.size(), line.data() );
+    CHECK( success( err ) );
+    CHECK_THAT( line, ApproxRange( expected ) );
 }
 
 SCENARIO( MMAP_TAG "writing to a file", "[c.segy]" MMAP_TAG ) {

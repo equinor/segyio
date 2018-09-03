@@ -7,3 +7,7 @@ preprocessorErrorDirective:*Python.h
 // cppcheck struggles with the expression templates of catch, giving this error
 // for long == long comparisons
 compareBoolExpressionWithInt:*lib/test/segy.cpp
+
+// cppcheck gets very confused by fixtures, claiming members are unused,
+// so just ignore that warning
+unusedStructMember:*lib/test/segy.cpp
