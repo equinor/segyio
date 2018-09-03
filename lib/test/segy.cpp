@@ -206,6 +206,10 @@ struct smallfields : smallbasic {
     int of = SEGY_TR_OFFSET;
 };
 
+struct smallsize : smallfields {
+    int traces = 25;
+};
+
 bool success( Err err ) {
     return err == Err::ok();
 }
@@ -304,6 +308,38 @@ TEST_CASE_METHOD( smallfields,
     Err err = segy_sorting( fp, xl, il, of, &sorting, trace0, trace_bsize );
     CHECK( success( err ) );
     CHECK( sorting == SEGY_CROSSLINE_SORTING );
+}
+
+TEST_CASE_METHOD( smallsize,
+                  MMAP_TAG "post-stack file offset-count is 1",
+                  MMAP_TAG "[c.segy]" ) {
+    int offsets;
+    Err err = segy_offsets( fp,
+                            il,
+                            xl,
+                            traces,
+                            &offsets,
+                            trace0,
+                            trace_bsize );
+
+    CHECK( success( err ) );
+    CHECK( offsets == 1 );
+}
+
+TEST_CASE_METHOD( smallsize,
+                  MMAP_TAG "swapped il/xl post-stack file offset-count is 1",
+                  MMAP_TAG "[c.segy]" ) {
+    int offsets;
+    Err err = segy_offsets( fp,
+                            xl,
+                            il,
+                            traces,
+                            &offsets,
+                            trace0,
+                            trace_bsize );
+
+    CHECK( success( err ) );
+    CHECK( offsets == 1 );
 }
 
 SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
