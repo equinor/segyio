@@ -210,6 +210,13 @@ struct smallsize : smallfields {
     int traces = 25;
 };
 
+struct smallshape : smallsize {
+    int offsets = 1;
+    int ilines = 5;
+    int xlines = 5;
+    int sorting = SEGY_INLINE_SORTING;
+};
+
 bool success( Err err ) {
     return err == Err::ok();
 }
@@ -340,6 +347,48 @@ TEST_CASE_METHOD( smallsize,
 
     CHECK( success( err ) );
     CHECK( offsets == 1 );
+}
+
+TEST_CASE_METHOD( smallshape,
+                  MMAP_TAG "correct # of lines are detected",
+                  MMAP_TAG "[c.segy]" ) {
+
+    int expected_ils = 5;
+    int expected_xls = 5;
+
+    int count_inlines;
+    int count_crosslines;
+    Err err_count = segy_count_lines( fp,
+                                      xl,
+                                      offsets,
+                                      &count_inlines,
+                                      &count_crosslines,
+                                      trace0,
+                                      trace_bsize );
+
+    int lines_inlines;
+    int lines_crosslines;
+    Err err_lines = segy_lines_count( fp,
+                                      il,
+                                      xl,
+                                      sorting,
+                                      offsets,
+                                      &lines_inlines,
+                                      &lines_crosslines,
+                                      trace0,
+                                      trace_bsize );
+
+    CHECK( success( err_count ) );
+    CHECK( success( err_lines ) );
+
+    CHECK( count_inlines    == expected_ils );
+    CHECK( count_crosslines == expected_xls );
+
+    CHECK( lines_inlines    == expected_ils );
+    CHECK( lines_crosslines == expected_xls );
+
+    CHECK( lines_inlines    == count_inlines );
+    CHECK( lines_crosslines == count_crosslines );
 }
 
 SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
