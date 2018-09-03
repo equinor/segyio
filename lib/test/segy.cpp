@@ -219,6 +219,11 @@ struct smallfields : smallbasic {
     int of = SEGY_TR_OFFSET;
 };
 
+struct smallstep : smallbasic {
+    int traceno = 10;
+    int format = SEGY_IBM_FLOAT_4_BYTE;
+};
+
 struct smallsize : smallfields {
     int traces = 25;
 };
@@ -625,6 +630,117 @@ TEST_CASE_METHOD( smallcube,
     CHECK( err == SEGY_MISSING_LINE_INDEX );
 }
 
+TEST_CASE_METHOD( smallstep,
+                  MMAP_TAG "read ascending strided subtrace",
+                  MMAP_TAG "[c.segy]" ) {
+    const int start = 3;
+    const int stop  = 19;
+    const int step  = 5;
+    void* rangebuf = nullptr;
+    const std::vector< float > expected = { 3.20003f,
+                                            3.20008f,
+                                            3.20013f,
+                                            3.20018f };
+    std::vector< float > xs( expected.size() );
+
+    Err err = segy_readsubtr( fp,
+                              traceno,
+                              start,
+                              stop,
+                              step,
+                              xs.data(),
+                              rangebuf,
+                              trace0,
+                              trace_bsize );
+    segy_to_native( format, xs.size(), xs.data() );
+    CHECK( success( err ) );
+    CHECK_THAT( xs, ApproxRange( expected ) );
+}
+
+TEST_CASE_METHOD( smallstep,
+                  MMAP_TAG "read descending strided subtrace",
+                  MMAP_TAG "[c.segy]" ) {
+    const int start = 18;
+    const int stop  = 2;
+    const int step  = -5;
+
+    void* rangebuf = nullptr;
+    const std::vector< float > expected = { 3.20018f,
+                                            3.20013f,
+                                            3.20008f,
+                                            3.20003f };
+    std::vector< float > xs( expected.size() );
+
+    Err err = segy_readsubtr( fp,
+                              traceno,
+                              start,
+                              stop,
+                              step,
+                              xs.data(),
+                              rangebuf,
+                              trace0,
+                              trace_bsize );
+    segy_to_native( format, xs.size(), xs.data() );
+    CHECK( success( err ) );
+    CHECK_THAT( xs, ApproxRange( expected ) );
+}
+
+TEST_CASE_METHOD( smallstep,
+                  MMAP_TAG "read descending contiguous subtrace",
+                  MMAP_TAG "[c.segy]" ) {
+    const int start = 3;
+    const int stop  = -1;
+    const int step  = -1;
+
+    void* rangebuf = nullptr;
+    const std::vector< float > expected = { 3.20003f,
+                                            3.20002f,
+                                            3.20001f,
+                                            3.20000f };
+    std::vector< float > xs( expected.size() );
+
+    Err err = segy_readsubtr( fp,
+                              traceno,
+                              start,
+                              stop,
+                              step,
+                              xs.data(),
+                              rangebuf,
+                              trace0,
+                              trace_bsize );
+    segy_to_native( format, xs.size(), xs.data() );
+    CHECK( success( err ) );
+    CHECK_THAT( xs, ApproxRange( expected ) );
+}
+
+TEST_CASE_METHOD( smallstep,
+                  MMAP_TAG "read descending strided subtrace with pre-start",
+                  MMAP_TAG "[c.segy]" ) {
+    const int start = 24;
+    const int stop  = -1;
+    const int step  = -5;
+
+    const std::vector< float > expected = { 3.20024f,
+                                            3.20019f,
+                                            3.20014f,
+                                            3.20009f,
+                                            3.20004f };
+    std::vector< float > xs( expected.size() );
+
+    Err err = segy_readsubtr( fp,
+                              traceno,
+                              start,
+                              stop,
+                              step,
+                              xs.data(),
+                              nullptr,
+                              trace0,
+                              trace_bsize );
+    segy_to_native( format, xs.size(), xs.data() );
+    CHECK( success( err ) );
+    CHECK_THAT( xs, ApproxRange( expected ) );
+}
+
 SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
     const char* file = "test-data/small.sgy";
 
@@ -659,43 +775,6 @@ SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
     const int sorting = SEGY_INLINE_SORTING;
     const int offsets = 1;
     const int format = SEGY_IBM_FLOAT_4_BYTE;
-
-    WHEN( "reading a subtrace" ) {
-
-        const std::vector< slice > inputs = {
-            {  3,  19,   5 },
-            { 18,   2,  -5 },
-            {  3,  -1,  -1 },
-            { 24,  -1,  -5 }
-        };
-
-        const std::vector< std::vector< float > > expect = {
-            { 3.20003f, 3.20008f, 3.20013f, 3.20018f },
-            { 3.20018f, 3.20013f, 3.20008f, 3.20003f },
-            { 3.20003f, 3.20002f, 3.20001f, 3.20000f },
-            { 3.20024f, 3.20019f, 3.20014f, 3.20009f, 3.20004f }
-        };
-
-        for( size_t i = 0; i < inputs.size(); ++i ) {
-            WHEN( "slice is " + str( inputs[ i ] ) ) {
-                std::vector< float > buf( expect[ i ].size() );
-
-                auto start = inputs[ i ].start;
-                auto stop  = inputs[ i ].stop;
-                auto step  = inputs[ i ].step;
-
-                Err err = segy_readsubtr( fp,
-                                          10,
-                                          start, stop, step,
-                                          buf.data(),
-                                          nullptr,
-                                          trace0, trace_bsize );
-                segy_to_native( format, buf.size(), buf.data() );
-                CHECK( err == Err::ok() );
-                CHECK_THAT( buf, ApproxRange( expect[ i ] ) );
-            }
-        }
-    }
 
     const std::vector< int > inlines = { 1, 2, 3, 4, 5 };
     const std::vector< int > crosslines = { 20, 21, 22, 23, 24 };
