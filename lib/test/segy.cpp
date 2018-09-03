@@ -816,47 +816,6 @@ TEST_CASE_METHOD( smallcube,
     CHECK_THAT( line, ApproxRange( expected ) );
 }
 
-SCENARIO( MMAP_TAG "reading a file", "[c.segy]" MMAP_TAG ) {
-    const char* file = "test-data/small.sgy";
-
-    std::unique_ptr< segy_file, decltype( &segy_close ) >
-        ufp{ segy_open( file, "rb" ), &segy_close };
-
-    REQUIRE( ufp );
-
-    auto fp = ufp.get();
-    if( MMAP_TAG != std::string("") )
-        REQUIRE( Err( segy_mmap( fp ) ) == Err::ok() );
-
-    const long trace0 = 3600;
-    const int trace_bsize = 50 * 4;
-    const int samples = 50;
-
-    const int traces = 25;
-    const int inlines_sizes = 5;
-    const int crosslines_sizes = 5;
-    const int offset_label = 1;
-
-    regular_geometry( fp, traces,
-                          trace0,
-                          trace_bsize,
-                          inlines_sizes,
-                          crosslines_sizes,
-                          offset_label );
-
-    const int il = SEGY_TR_INLINE;
-    const int xl = SEGY_TR_CROSSLINE;
-    const int of = SEGY_TR_OFFSET;
-    const int sorting = SEGY_INLINE_SORTING;
-    const int offsets = 1;
-    const int format = SEGY_IBM_FLOAT_4_BYTE;
-
-    const std::vector< int > inlines = { 1, 2, 3, 4, 5 };
-    const std::vector< int > crosslines = { 20, 21, 22, 23, 24 };
-    const int inline_length = 5;
-    const int crossline_length = 5;
-}
-
 SCENARIO( MMAP_TAG "writing to a file", "[c.segy]" MMAP_TAG ) {
     const long trace0 = 3600;
     const int trace_bsize = 50 * 4;
