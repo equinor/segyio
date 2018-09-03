@@ -1016,6 +1016,50 @@ TEST_CASE_METHOD( smallfields,
     CHECK_THAT( out, Catch::Equals( crosslines ) );
 }
 
+TEST_CASE( MMAP_TAG "setting unaligned header-field fails",
+           MMAP_TAG "[c.segy]" ) {
+    char header[ SEGY_TRACE_HEADER_SIZE ];
+    const int32_t v = arbitrary_int();
+
+    Err err = segy_set_field( header, SEGY_TR_INLINE + 1, v );
+    CHECK( err == Err::field() );
+}
+
+TEST_CASE( MMAP_TAG "setting negative header-field fails",
+           MMAP_TAG "[c.segy]" ) {
+    char header[ SEGY_TRACE_HEADER_SIZE ];
+    const int32_t v = arbitrary_int();
+
+    Err err = segy_set_field( header, -1, v );
+    CHECK( err == Err::field() );
+}
+
+TEST_CASE( MMAP_TAG "setting too large header-field fails",
+           MMAP_TAG "[c.segy]" ) {
+    char header[ SEGY_TRACE_HEADER_SIZE ];
+    const int32_t v = arbitrary_int();
+
+    Err err = segy_set_field( header, SEGY_TRACE_HEADER_SIZE + 10, v );
+    CHECK( err == Err::field() );
+}
+
+TEST_CASE( MMAP_TAG "setting correct header fields succeeds",
+           MMAP_TAG "[c.segy]" ) {
+    char header[ SEGY_TRACE_HEADER_SIZE ];
+    const int32_t input = 1;
+    const int field = SEGY_TR_INLINE;
+
+    Err err = segy_set_field( header, field, input );
+    CHECK( success( err ) );
+
+
+    int32_t output;
+    err = segy_get_field( header, field, &output );
+    CHECK( success( err ) );
+
+    CHECK( output == input );
+}
+
 SCENARIO( MMAP_TAG "modifying trace header", "[c.segy]" MMAP_TAG ) {
 
     const int samples = 10;
@@ -1027,11 +1071,6 @@ SCENARIO( MMAP_TAG "modifying trace header", "[c.segy]" MMAP_TAG ) {
 
     WHEN( "writing iline no" ) {
         char header[ SEGY_TRACE_HEADER_SIZE ] = {};
-
-        GIVEN( "an invalid field" ) {
-            Err err = segy_set_field( header, SEGY_TR_INLINE + 1, 2 );
-            CHECK( err == Err::field() );
-        }
 
         Err err = segy_set_field( header, SEGY_TR_INLINE, 2 );
         CHECK( err == Err::ok() );
