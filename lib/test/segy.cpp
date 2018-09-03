@@ -830,74 +830,130 @@ TEST_CASE_METHOD( smallcube,
     CHECK_THAT( line, ApproxRange( expected ) );
 }
 
-SCENARIO( MMAP_TAG "writing to a file", "[c.segy]" MMAP_TAG ) {
-    const long trace0 = 3600;
-    const int trace_bsize = 50 * 4;
-    const float dummy[ 50 ] = {};
+template< int Start, int Stop, int Step >
+struct writesubtr {
+    segy_file* fp = nullptr;
 
-    WHEN( "writing parts of a trace" ) {
-        const int format = SEGY_IBM_FLOAT_4_BYTE;
+    int start = Start;
+    int stop  = Stop;
+    int step  = Step;
 
-        const std::vector< slice > inputs = {
-            {  3,  19,   5 },
-            { 18,   2,  -5 },
-            {  3,  -1,  -1 },
-            { 24,  -1,  -5 }
-        };
+    int traceno = 5;
+    int trace0 = 3600;
+    int trace_bsize = 50 * 4;
 
-        const std::vector< std::vector< float > > expect = {
-            { 3.20003f, 3.20008f, 3.20013f, 3.20018f },
-            { 3.20018f, 3.20013f, 3.20008f, 3.20003f },
-            { 3.20003f, 3.20002f, 3.20001f, 3.20000f },
-            { 3.20024f, 3.20019f, 3.20014f, 3.20009f, 3.20004f }
-        };
+    int format = SEGY_IBM_FLOAT_4_BYTE;
+    void* rangebuf = nullptr;
 
-        for( size_t i = 0; i < inputs.size(); ++i ) {
-            WHEN( "slice is " + str( inputs[ i ] ) ) {
-                const auto file = "wsubtr" MMAP_TAG + str(inputs[i]) + ".sgy";
+    std::vector< float > trace;
+    std::vector< float > expected;
 
-                std::unique_ptr< segy_file, decltype( &segy_close ) >
-                    ufp{ segy_open( file.c_str(), "w+b" ), &segy_close };
+    writesubtr() {
+        std::string name = MMAP_TAG + std::string("write-sub-trace ")
+                         + "[" + std::to_string( start )
+                         + "," + std::to_string( stop )
+                         + "," + std::to_string( step )
+                         + "].sgy";
 
-                REQUIRE( ufp );
-                auto fp = ufp.get();
+        fp = segy_open( name.c_str(), "w+b" );
 
-                Err err = segy_writetrace( fp, 10, dummy, trace0, trace_bsize );
-                REQUIRE( err == Err::ok() );
+        REQUIRE( fp );
 
-                if( MMAP_TAG != std::string("") )
-                    REQUIRE( Err( segy_mmap( fp ) ) == Err::ok() );
+        if( MMAP_TAG != std::string( "" ) )
+            REQUIRE( segy_mmap( fp ) );
 
-                std::vector< float > buf( expect[ i ].size() );
 
-                auto start = inputs[ i ].start;
-                auto stop  = inputs[ i ].stop;
-                auto step  = inputs[ i ].step;
+        trace.assign( 50, 0 );
+        expected.resize( trace.size() );
 
-                auto out = expect[ i ];
-                segy_from_native( format, out.size(), out.data() );
-
-                err = segy_writesubtr( fp,
-                                       i,
-                                       start, stop, step,
-                                       out.data(),
-                                       nullptr,
-                                       trace0, trace_bsize );
-                CHECK( err == Err::ok() );
-                THEN( "updates are observable" ) {
-                    err = segy_readsubtr( fp,
-                                          i,
-                                          start, stop, step,
-                                          buf.data(),
-                                          nullptr,
-                                          trace0, trace_bsize );
-                    segy_to_native( format, buf.size(), buf.data() );
-                    CHECK( err == Err::ok() );
-                    CHECK_THAT( buf, ApproxRange( expect[ i ] ) );
-                }
-            }
-        }
+        Err err = segy_writetrace( fp, traceno, trace.data(), trace0, trace_bsize );
+        REQUIRE( success( err ) );
     }
+
+    ~writesubtr() {
+        REQUIRE( fp );
+
+        /* test that writes are observable */
+
+        trace.assign( trace.size(), 0 );
+        Err err = segy_readtrace( fp, traceno, trace.data(), trace0, trace_bsize );
+
+        CHECK( success( err ) );
+        segy_to_native( format, trace.size(), trace.data() );
+
+        CHECK_THAT( trace, ApproxRange( expected ) );
+        segy_close( fp );
+    }
+
+    writesubtr( const writesubtr& ) = delete;
+    writesubtr& operator=( const writesubtr& ) = delete;
+};
+
+TEST_CASE_METHOD( (writesubtr< 3, 19, 5 >),
+                  MMAP_TAG "write ascending strided subtrace",
+                  MMAP_TAG "[c.segy]" ) {
+    std::vector< float > out = { 3, 8, 13, 18 };
+    expected.at( 3 )  = out.at( 0 );
+    expected.at( 8 )  = out.at( 1 );
+    expected.at( 13 ) = out.at( 2 );
+    expected.at( 18 ) = out.at( 3 );
+    segy_from_native( format, out.size(), out.data() );
+
+    Err err = segy_writesubtr( fp, traceno,
+                                   start,
+                                   stop,
+                                   step,
+                                   out.data(),
+                                   rangebuf,
+                                   trace0,
+                                   trace_bsize );
+
+    CHECK( success( err ) );
+}
+
+TEST_CASE_METHOD( (writesubtr< 18, 2, -5 >),
+                  MMAP_TAG "write descending strided subtrace",
+                  MMAP_TAG "[c.segy]" ) {
+    std::vector< float > out = { 18, 13, 8, 3 };
+    expected.at( 18 ) = out.at( 0 );
+    expected.at( 13 ) = out.at( 1 );
+    expected.at( 8 )  = out.at( 2 );
+    expected.at( 3 )  = out.at( 3 );
+    segy_from_native( format, out.size(), out.data() );
+
+    Err err = segy_writesubtr( fp, traceno,
+                                   start,
+                                   stop,
+                                   step,
+                                   out.data(),
+                                   rangebuf,
+                                   trace0,
+                                   trace_bsize );
+
+    CHECK( success( err ) );
+}
+
+TEST_CASE_METHOD( (writesubtr< 24, -1, -5 >),
+                  MMAP_TAG "write descending strided subtrace with pre-start",
+                  MMAP_TAG "[c.segy]" ) {
+    std::vector< float > out = { 24, 19, 14, 9, 4 };
+    expected.at( 24 ) = out.at( 0 );
+    expected.at( 19 ) = out.at( 1 );
+    expected.at( 14 ) = out.at( 2 );
+    expected.at( 9 )  = out.at( 3 );
+    expected.at( 4 )  = out.at( 4 );
+    segy_from_native( format, out.size(), out.data() );
+
+    Err err = segy_writesubtr( fp, traceno,
+                                   start,
+                                   stop,
+                                   step,
+                                   out.data(),
+                                   rangebuf,
+                                   trace0,
+                                   trace_bsize );
+
+    CHECK( success( err ) );
 }
 
 TEST_CASE_METHOD( smallfields,
@@ -1001,7 +1057,7 @@ TEST_CASE_METHOD( smallfields,
 TEST_CASE_METHOD( smallfields,
                   MMAP_TAG "reverse-reading every 5th crossline label",
                   MMAP_TAG "[c.segy]" ) {
-    const std::vector< int > crosslines = { 24, 24, 24, 24 };
+    const std::vector< int > crosslines = { 24, 24, 24, 24, 24 };
     const int start = 24, stop = -1, step = -5;
 
     std::vector< int > out( crosslines.size() );
