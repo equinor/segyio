@@ -900,93 +900,120 @@ SCENARIO( MMAP_TAG "writing to a file", "[c.segy]" MMAP_TAG ) {
     }
 }
 
-SCENARIO( MMAP_TAG "extracting header fields", "[c.segy]" MMAP_TAG ) {
+TEST_CASE_METHOD( smallfields,
+                  MMAP_TAG "reading inline label from every trace header",
+                  MMAP_TAG "[c.segy]" ) {
+    const std::vector< int > inlines = {
+        1, 1, 1, 1, 1,
+        2, 2, 2, 2, 2,
+        3, 3, 3, 3, 3,
+        4, 4, 4, 4, 4,
+        5, 5, 5, 5, 5,
+    };
 
-    const char* file = "test-data/small.sgy";
+    const int start = 0, stop = 25, step = 1;
 
-    std::unique_ptr< segy_file, decltype( &segy_close ) >
-        ufp{ segy_open( file, "rb" ), &segy_close };
+    std::vector< int > out( inlines.size() );
+    const Err err = segy_field_forall( fp,
+                                       il,
+                                       start, stop, step,
+                                       out.data(),
+                                       trace0,
+                                       trace_bsize );
 
-    REQUIRE( ufp );
-    auto fp = ufp.get();
+    CHECK( success( err ) );
+    CHECK_THAT( out, Catch::Equals( inlines ) );
+}
 
-    const int trace0 = 3600;
-    const int trace_bsize = 50 * 4;
+TEST_CASE_METHOD( smallfields,
+                  MMAP_TAG "reading crossline label from every trace header",
+                  MMAP_TAG "[c.segy]" ) {
+    const std::vector< int > crosslines = {
+        20, 21, 22, 23, 24,
+        20, 21, 22, 23, 24,
+        20, 21, 22, 23, 24,
+        20, 21, 22, 23, 24,
+        20, 21, 22, 23, 24,
+    };
 
-    if( MMAP_TAG != std::string("") )
-        REQUIRE( Err( segy_mmap( fp ) ) == Err::ok() );
+    const int start = 0, stop = 25, step = 1;
 
-    WHEN( "reading inline labels" ) {
-        const std::vector< int > inlines = {
-            1, 1, 1, 1, 1,
-            2, 2, 2, 2, 2,
-            3, 3, 3, 3, 3,
-            4, 4, 4, 4, 4,
-            5, 5, 5, 5, 5,
-        };
+    std::vector< int > out( crosslines.size() );
+    const Err err = segy_field_forall( fp,
+                                       xl,
+                                       start, stop, step,
+                                       out.data(),
+                                       trace0,
+                                       trace_bsize );
 
-        std::vector< int > buf( inlines.size() );
+    CHECK( success( err ) );
+    CHECK_THAT( out, Catch::Equals( crosslines ) );
+}
 
-        const slice input = { 0, 25, 1 };
-        const auto start = input.start;
-        const auto stop  = input.stop;
-        const auto step  = input.step;
+TEST_CASE_METHOD( smallfields,
+                  MMAP_TAG "reading every 3rd crossline label",
+                  MMAP_TAG "[c.segy]" ) {
+    const std::vector< int > crosslines = {
+            21,         24,
+                22,
+        20,         23,
+            21,         24,
+                22,
+    };
+    const int start = 1, stop = 25, step = 3;
 
-        const Err err = segy_field_forall( fp,
-                                           SEGY_TR_INLINE,
-                                           start, stop, step,
-                                           buf.data(),
-                                           trace0, trace_bsize );
-        CHECK( err == Err::ok() );
+    std::vector< int > out( crosslines.size() );
+    const Err err = segy_field_forall( fp,
+                                       xl,
+                                       start, stop, step,
+                                       out.data(),
+                                       trace0,
+                                       trace_bsize );
 
-        WHEN( "in range " + str( input ) )
-            CHECK_THAT( buf, Catch::Equals( inlines ) );
-    }
+    CHECK( success( err ) );
+    CHECK_THAT( out, Catch::Equals( crosslines ) );
+}
 
-    WHEN( "reading crossline labels" ) {
-        const std::vector< std::pair< slice, std::vector< int > > > pairs = {
-            { {  0, 25,  1 }, { 20, 21, 22, 23, 24,
-                                20, 21, 22, 23, 24,
-                                20, 21, 22, 23, 24,
-                                20, 21, 22, 23, 24,
-                                20, 21, 22, 23, 24, }, },
+TEST_CASE_METHOD( smallfields,
+                  MMAP_TAG "reverse-reading every 3rd crossline label",
+                  MMAP_TAG "[c.segy]" ) {
+    const std::vector< int > crosslines = {
+                22,
+        24,         21,
+            23,         20,
+                22,
+        24,         21
+    };
+    const int start = 22, stop = 0, step = -3;
 
-            { {  1, 25,  3 }, {     21,         24,
-                                        22,
-                                20,         23,
-                                    21,         24,
-                                        22,         }, },
+    std::vector< int > out( crosslines.size() );
+    const Err err = segy_field_forall( fp,
+                                       xl,
+                                       start, stop, step,
+                                       out.data(),
+                                       trace0,
+                                       trace_bsize );
 
-            { { 22,  0, -3 }, {         22,
-                                24,         21,
-                                    23,         20,
-                                        22,
-                                24,         21      }, },
+    CHECK( success( err ) );
+    CHECK_THAT( out, Catch::Equals( crosslines ) );
+}
 
-            { { 24, -1, -5 }, { 24, 24, 24, 24, 24  }, },
-        };
+TEST_CASE_METHOD( smallfields,
+                  MMAP_TAG "reverse-reading every 5th crossline label",
+                  MMAP_TAG "[c.segy]" ) {
+    const std::vector< int > crosslines = { 24, 24, 24, 24 };
+    const int start = 24, stop = -1, step = -5;
 
-        for( const auto& p : pairs ) {
-            const auto& input = p.first;
-            const auto& xl = p.second;
+    std::vector< int > out( crosslines.size() );
+    const Err err = segy_field_forall( fp,
+                                       xl,
+                                       start, stop, step,
+                                       out.data(),
+                                       trace0,
+                                       trace_bsize );
 
-            std::vector< int > buf( xl.size() );
-
-            const auto start = input.start;
-            const auto stop  = input.stop;
-            const auto step  = input.step;
-
-            const Err err = segy_field_forall( fp,
-                                               SEGY_TR_CROSSLINE,
-                                               start, stop, step,
-                                               buf.data(),
-                                               trace0, trace_bsize );
-            CHECK( err == Err::ok() );
-
-            WHEN( "in range " + str( input ) )
-                CHECK_THAT( buf, Catch::Equals( xl ) );
-        }
-    }
+    CHECK( success( err ) );
+    CHECK_THAT( out, Catch::Equals( crosslines ) );
 }
 
 SCENARIO( MMAP_TAG "modifying trace header", "[c.segy]" MMAP_TAG ) {
