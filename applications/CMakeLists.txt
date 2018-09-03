@@ -63,7 +63,8 @@ endif ()
 
 set(small ${testdata}/small.sgy)
 set(test ${CMAKE_CURRENT_SOURCE_DIR}/test)
-add_test(NAME catr.arg.t        COMMAND segyio-catr -t 5 ${small})
+add_test(NAME catr.arg.t1       COMMAND segyio-catr -t 0 ${small})
+add_test(NAME catr.arg.t2       COMMAND segyio-catr -t 5 ${small})
 add_test(NAME catr.arg.r1       COMMAND segyio-catr -r 5 ${small})
 add_test(NAME catr.arg.r2       COMMAND segyio-catr -r 1 2 ${small})
 add_test(NAME catr.arg.r3       COMMAND segyio-catr -r 1 2 3 ${small} -r 5 6)
@@ -81,7 +82,8 @@ add_test(NAME cath.fail.nosegy  COMMAND segyio-cath ${test}/cath.output)
 add_test(NAME cath.fail.nofile  COMMAND segyio-cath --strict not-exist)
 add_test(NAME cath.fail.noarg   COMMAND segyio-cath)
 
-set_tests_properties(catb.fail.nosegy
+set_tests_properties(catr.arg.t1
+                     catb.fail.nosegy
                      catb.fail.nofile
                      catb.fail.noarg
                      cath.fail.nosegy
