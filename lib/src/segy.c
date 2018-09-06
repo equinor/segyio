@@ -975,15 +975,20 @@ int segy_sample_indices( segy_file* fp,
 }
 
 /*
- * Determine how a file is sorted. Expects the following two fields from the
- * trace header to guide sorting: the inline number `il` and the crossline
- * number `xl`.
+ * Determine how a file is sorted. Expects the following three fields from the
+ * trace header to guide sorting: the inline number `il`, the crossline
+ * number `xl` and the offset number `tr_offset`.
  *
- * Inspects trace headers 0 and 1 and compares these two fields in the
- * respective trace headers. If the first two traces are components of the same
- * inline, header[0].ilnum should be equal to header[1].ilnum, similarly for
- * crosslines. If neither match, the sorting is considered unknown.
+ * Iterates through trace headers and compare the three fields with the
+ * fields from the previous header. If iline or crossline sorting is established
+ * the method returns the sorting without reading through the rest of the file.
+ *
+ * A file is inline-sorted if inline is the last value to move. Likewise for
+ * crossline sorted. If the file does not qualify as inline- or
+ * crossline-sorted, it is unsorted. Exactly one of the three values should
+ * increment from one trace to another for the file to be properly sorted.
  */
+
 int segy_sorting( segy_file* fp,
                   int il,
                   int xl,
@@ -1010,45 +1015,84 @@ int segy_sorting( segy_file* fp,
             return SEGY_INVALID_FIELD;
     }
 
-    int il0 = 0, xl0 = 0, il1 = 0, xl1 = 0, off0 = 0, off1 = 0;
-
-    segy_get_field( traceheader, il, &il0 );
-    segy_get_field( traceheader, xl, &xl0 );
-    segy_get_field( traceheader, tr_offset, &off0 );
-
     int traces;
     err = segy_traces( fp, &traces, trace0, trace_bsize );
-    if( err != 0 ) return err;
-    int traceno = 1;
+    if( err ) return err;
 
-    do {
-        err = segy_traceheader( fp, traceno, traceheader, trace0, trace_bsize );
-        if( err != SEGY_OK ) return err;
+    if( traces == 1 ) {
+        *sorting = SEGY_CROSSLINE_SORTING;
+        return SEGY_OK;
+    }
 
-        segy_get_field( traceheader, il, &il1 );
-        segy_get_field( traceheader, xl, &xl1 );
-        segy_get_field( traceheader, tr_offset, &off1 );
-        ++traceno;
-    } while( off0 != off1 && traceno < traces );
+    int il_first = 0, il_prev = 0, il_next = 0;
+    int xl_first = 0, xl_prev = 0, xl_next = 0;
+    int of_first = 0, of_prev = 0, of_next = 0;
 
-    /*
-     * sometimes files come with Mx1, 1xN or even 1x1 geometries. When this is
-     * the case we look at the last trace and compare it to the first. If these
-     * numbers match we define the sorting direction as the non-1 dimension
+    segy_get_field( traceheader, il, &il_first );
+    segy_get_field( traceheader, xl, &xl_first );
+    segy_get_field( traceheader, tr_offset, &of_first );
+
+    il_prev = il_first;
+    xl_prev = xl_first;
+    of_prev = of_first;
+
+    /* Iterating through traces, comparing il, xl, and offset values with the
+     * values from the previous trace. Several cases is checked when
+     * determining sorting:
+     * If the offset have wrapped around and either il or xl is incremented,
+     * the sorting is xline or iline, respectivly.
+     * If neither offset, il or xl are incremented, the file is unsorted.
+     * If the offset decrease from one trace to another, the file is unsorted.
+     * If more than one value change from one trace to another, the file is
+     * unsorted.
      */
-    err = segy_traceheader( fp, traces - 1, traceheader, trace0, trace_bsize );
-    if( err != SEGY_OK ) return err;
 
-    int il_last = 0, xl_last = 0;
-    segy_get_field( traceheader, il, &il_last );
-    segy_get_field( traceheader, xl, &xl_last );
+    int traceno = 1;
+    while ( traceno < traces ) {
+        err = segy_traceheader( fp, traceno, traceheader, trace0, trace_bsize );
+        if( err ) return err;
+        ++traceno;
 
-    if     ( il0 == il_last ) *sorting = SEGY_CROSSLINE_SORTING;
-    else if( xl0 == xl_last ) *sorting = SEGY_INLINE_SORTING;
-    else if( il0 == il1 )     *sorting = SEGY_INLINE_SORTING;
-    else if( xl0 == xl1 )     *sorting = SEGY_CROSSLINE_SORTING;
-    else return SEGY_INVALID_SORTING;
+        segy_get_field( traceheader, il, &il_next );
+        segy_get_field( traceheader, xl, &xl_next );
+        segy_get_field( traceheader, tr_offset, &of_next );
 
+        /* the exit condition - offset has wrapped around. */
+        if( of_next == of_first ) {
+            if( il_next == il_prev && xl_next > xl_prev ) {
+                *sorting = SEGY_INLINE_SORTING;
+                return SEGY_OK;
+            }
+
+            if( xl_next == xl_prev && il_next > il_prev ) {
+                *sorting = SEGY_CROSSLINE_SORTING;
+                return SEGY_OK;
+            }
+
+            *sorting = SEGY_UNKNOWN_SORTING;
+            return SEGY_OK;
+        }
+
+        if( of_next <= of_prev ) {
+            *sorting = SEGY_UNKNOWN_SORTING;
+            return SEGY_OK;
+        }
+
+        /* something else than offsets also moved, so this is not sorted */
+        if( il_prev != il_next ) {
+            *sorting = SEGY_UNKNOWN_SORTING;
+            return SEGY_OK;
+        }
+
+        if( xl_prev != xl_next ) {
+            *sorting = SEGY_UNKNOWN_SORTING;
+            return SEGY_OK;
+        }
+
+        of_prev = of_next;
+    }
+
+    *sorting = SEGY_CROSSLINE_SORTING;
     return SEGY_OK;
 }
 
@@ -1170,7 +1214,8 @@ static int count_lines( segy_file* fp,
     int curr = offsets;
 
     while( true ) {
-        if( curr >= traces ) return SEGY_NOTFOUND;
+        if( curr == traces ) break;
+        if( curr >  traces ) return SEGY_NOTFOUND;
 
         err = segy_traceheader( fp, curr, header, trace0, trace_bsize );
         if( err != 0 ) return err;
