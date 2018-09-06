@@ -1202,7 +1202,7 @@ def test_create_from_naught_unstructured(tmpdir):
         # Set header field 'offset' to 1 in all headers
         dst.header = {TraceField.offset: 1}
 
-    with segyio.open(tmpdir / "unstructured.sgy") as f:
+    with segyio.open(tmpdir / "unstructured.sgy", ignore_geometry=True) as f:
         assert 1 == approx(f.trace[1][0], abs=1e-4)
         assert 2 == approx(f.trace[1][1], abs=1e-4)
         assert 150 == approx(f.trace[1][-1], abs=1e-4)
