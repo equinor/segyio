@@ -1058,12 +1058,13 @@ int segy_sorting( segy_file* fp,
 int segy_offsets( segy_file* fp,
                   int il,
                   int xl,
+                  int tr_offset,
                   int traces,
                   int* out,
                   long trace0,
                   int trace_bsize ) {
     int err;
-    int il0 = 0, il1 = 0, xl0 = 0, xl1 = 0;
+    int il0 = 0, il1 = 0, xl0 = 0, xl1 = 0, off0 = 0, offn = 0;
     char header[ SEGY_TRACE_HEADER_SIZE ];
     int offsets = 0;
 
@@ -1084,6 +1085,7 @@ int segy_offsets( segy_file* fp,
 
     segy_get_field( header, il, &il0 );
     segy_get_field( header, xl, &xl0 );
+    segy_get_field( header, tr_offset, &off0 );
 
     do {
         ++offsets;
@@ -1098,6 +1100,17 @@ int segy_offsets( segy_file* fp,
     } while( il0 == il1 && xl0 == xl1 );
 
     *out = offsets;
+
+    int off_priv = off0;
+    for( int i = 1; i < offsets; i++ ) {
+        err = segy_traceheader( fp, i, header, trace0, trace_bsize );
+        if( err != 0 ) return err;
+
+        segy_get_field( header, tr_offset, &offn );
+        if( offn != off_priv + 1 ) return SEGY_INVALID_OFFSETS;
+
+        off_priv = offn;
+    }
     return SEGY_OK;
 }
 

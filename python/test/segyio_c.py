@@ -179,8 +179,9 @@ def test_line_metrics(mmap=False):
 
     ilb = 189
     xlb = 193
+    offb = 37
     metrics = f.metrics()
-    metrics.update(f.cube_metrics(ilb, xlb))
+    metrics.update(f.cube_metrics(ilb, xlb, offb))
     f.close()
 
     sorting = metrics['sorting']
@@ -223,13 +224,14 @@ def test_metrics(mmap=False):
 
     ilb = 189
     xlb = 193
+    offb = 37
 
     with pytest.raises(IndexError):
         metrics = f.metrics()
-        metrics.update(f.cube_metrics(ilb + 1, xlb))
+        metrics.update(f.cube_metrics(ilb + 1, xlb, offb))
 
     metrics = f.metrics()
-    metrics.update(f.cube_metrics(ilb, xlb))
+    metrics.update(f.cube_metrics(ilb, xlb, offb))
 
     assert metrics['trace0'] == _segyio.textsize() + _segyio.binsize()
     assert metrics['samplecount'] == 50
@@ -255,6 +257,7 @@ def test_indices(mmap=False):
 
     ilb = 189
     xlb = 193
+    offb = 37
     metrics = f.metrics()
     dmy = numpy.zeros(2, dtype=numpy.intc)
 
@@ -283,7 +286,7 @@ def test_indices(mmap=False):
     with pytest.raises(ValueError):
         f.indices(dummy_metrics, two, one, off)
 
-    metrics.update(f.cube_metrics(ilb, xlb))
+    metrics.update(f.cube_metrics(ilb, xlb, offb))
 
     # Happy Path
     iline_indexes = numpy.zeros(metrics['iline_count'], dtype=numpy.intc)
@@ -309,9 +312,10 @@ def test_fread_trace0(mmap=False):
 
     ilb = 189
     xlb = 193
+    offb = 37
 
     metrics = f.metrics()
-    metrics.update(f.cube_metrics(ilb, xlb))
+    metrics.update(f.cube_metrics(ilb, xlb, offb))
 
     sorting = metrics['sorting']
     trace_count = metrics['tracecount']
@@ -509,9 +513,10 @@ def read_small(mmap=False):
 
     ilb = 189
     xlb = 193
+    offb = 37
 
     metrics = f.metrics()
-    metrics.update(f.cube_metrics(ilb, xlb))
+    metrics.update(f.cube_metrics(ilb, xlb, offb))
 
     sorting = metrics['sorting']
     trace_count = metrics['tracecount']

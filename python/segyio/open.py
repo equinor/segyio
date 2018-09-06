@@ -5,6 +5,7 @@ import segyio
 
 def open(filename, mode="r", iline = 189,
                              xline = 193,
+                             tr_offset = 37,
                              strict = True,
                              ignore_geometry = False):
     """Open a segy file.
@@ -126,7 +127,7 @@ def open(filename, mode="r", iline = 189,
         return f
 
     try:
-        cube_metrics = f.xfd.cube_metrics(iline, xline)
+        cube_metrics = f.xfd.cube_metrics(iline, xline, tr_offset)
         f._sorting   = cube_metrics['sorting']
         iline_count  = cube_metrics['iline_count']
         xline_count  = cube_metrics['xline_count']
