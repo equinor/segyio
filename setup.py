@@ -53,7 +53,10 @@ def src(x):
     root = os.path.dirname( __file__ )
     return os.path.abspath(os.path.join(root, x))
 
-extra_libs = ['m'] if not 'win' in sys.platform else []
+if 'win' in sys.platform:
+    extra_libs = []
+else:
+    extra_libs = ['m']
 
 def getversion():
     # if this is a tarball distribution, the .git-directory won't be avilable
