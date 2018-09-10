@@ -181,3 +181,4 @@ add_test(NAME python.example.makepsfile   COMMAND ${python} make-ps-file.py test
 add_test(NAME python.example.subcube      COMMAND ${python} copy-sub-cube.py test-data/small.sgy test-data/copy.sgy)
 add_test(NAME python.example.rotate       COMMAND ${python} make-rotated-copies.py test-data/small.sgy ex-rotate.sgy)
 add_test(NAME python.example.scan_min_max COMMAND ${python} scan_min_max.py test-data/small.sgy)
+add_test(NAME python.example.multi-text   COMMAND ${python} make-multiple-text.py test-data/multi-text.sgy)
