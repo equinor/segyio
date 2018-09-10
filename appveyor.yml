@@ -52,7 +52,12 @@ build_script:
     - IF "%platform%" == "x64" set W64="-GVisual Studio 14 2015 Win64"
     - mkdir build
     - ps: pushd build
-    - cmake %APPVEYOR_BUILD_FOLDER% %W64% %MEX% %LANG% -DCMAKE_INSTALL_PREFIX=%INSTALL_DIR%
+    - cmake %APPVEYOR_BUILD_FOLDER%
+            %W64%
+            %MEX%
+            %LANG%
+            -DCMAKE_INSTALL_PREFIX=%INSTALL_DIR%
+            -DBUILD_SHARED_LIBS=ON
     - cmake --build . --config "%configuration%" --target install
     - ctest -C "%configuration%" --output-on-failure
     - ps: popd

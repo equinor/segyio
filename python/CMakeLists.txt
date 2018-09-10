@@ -30,16 +30,16 @@ if (NOT WIN32)
     # setuptools on microsoft compilers doesn't support the --library-dir or
     # --build-dir flag and crashes, so only pass it on non-microsoft platforms
     set(setup-py-libdir build_ext
-                            --rpath        $<TARGET_FILE_DIR:segyio-shared>
-                            --library-dirs $<TARGET_FILE_DIR:segyio-shared>)
+                            --rpath        $<TARGET_FILE_DIR:segyio>
+                            --library-dirs $<TARGET_FILE_DIR:segyio>)
 
     set(install-no-rpath install_lib --build-dir build/install)
-    set(build-no-rpath --library-dirs $<TARGET_FILE_DIR:segyio-shared>
+    set(build-no-rpath --library-dirs $<TARGET_FILE_DIR:segyio>
                        build --build-lib build/install)
 else ()
     set(copy-dll-to-src ${CMAKE_COMMAND} -E
-        copy $<TARGET_FILE:segyio-shared>
-        ${CMAKE_CURRENT_SOURCE_DIR}/segyio/$<TARGET_FILE_NAME:segyio-shared>)
+        copy $<TARGET_FILE:segyio>
+        ${CMAKE_CURRENT_SOURCE_DIR}/segyio/$<TARGET_FILE_NAME:segyio>)
 endif ()
 
 
@@ -67,11 +67,11 @@ add_custom_target(
     # available in the same directory, and build_ext --library-dirs is not
     # support on msvc is not supported, so we must copy out the libsegyio core
     # object and put it here
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:segyio-shared>
-                                     $<TARGET_FILE_NAME:segyio-shared>
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:segyio>
+                                     $<TARGET_FILE_NAME:segyio>
 
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_LINKER_FILE:segyio-shared>
-                                     $<TARGET_LINKER_FILE_NAME:segyio-shared>
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_LINKER_FILE:segyio>
+                                     $<TARGET_LINKER_FILE_NAME:segyio>
 
     # on windows, copy the freshly-built dll to the source directory. this
     # voilates the cmake spirit (as does the version.py writing from
@@ -93,7 +93,7 @@ add_custom_target(
     COMMAND ${python} ${setup-py} build_ext ${build-no-rpath}
 )
 
-add_dependencies(segyio-python segyio-shared)
+add_dependencies(segyio-python segyio)
 
 # write egg_info to the build dir in order not to pollute the source directory
 # and install as if it was through some other distro by using single-version,
