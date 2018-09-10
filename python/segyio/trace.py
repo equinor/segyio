@@ -774,3 +774,88 @@ class Attributes(Sequence):
             indices = range(start, stop, step)
             attrs = np.empty(len(indices), dtype = self.dtype)
             return filehandle.field_forall(attrs, start, stop, step, field)
+
+class Text(Sequence):
+    """Interact with segy in text mode
+
+    This mode gives access to reading and writing functionality for textual
+    headers.
+
+    The primary data type is the python string. Reading textual headers is done
+    with [], and writing is done via assignment. No additional structure is
+    built around the textual header, so everything is treated as one long
+    string without line breaks.
+
+    Notes
+    -----
+    .. versionchanged:: 1.7
+        common list operations (collections.Sequence)
+
+    """
+
+    def __init__(self, filehandle, textcount):
+        super(Text, self).__init__(textcount)
+        self.filehandle = filehandle
+
+    def __getitem__(self, i):
+        """text[i]
+
+        Read the text header at i. 0 is the mandatory, main
+
+        Examples
+        --------
+        Print the textual header:
+
+        >>> print(f.text[0])
+
+        Print the first extended textual header:
+
+        >>> print(f.text[1])
+
+        Print a textual header line-by-line:
+
+        >>> # using zip, from the zip documentation
+        >>> text = str(f.text[0])
+        >>> lines = map(''.join, zip( *[iter(text)] * 80))
+        >>> for line in lines:
+        ...     print(line)
+        ...
+        """
+        try:
+            i = self.wrapindex(i)
+            return self.filehandle.gettext(i)
+
+        except TypeError:
+            def gen():
+                for j in range(*i.indices(len(self))):
+                    yield self.filehandle.gettext(j)
+            return gen()
+
+    def __setitem__(self, i, val):
+        """text[i] = val
+
+        Write a new textual header:
+
+        >>> f.text[0] = make_new_header()
+
+        Copy a tectual header:
+
+        >>> f.text[1] = g.text[0]
+
+        """
+        if isinstance(val, Text):
+            self[index] = val[0]
+            return
+
+        try:
+            i = self.wrapindex(i)
+            self.filehandle.puttext(i, val)
+
+        except TypeError:
+            for i, text in zip(range(*i.indices(len(self))), val):
+                self.filehandle.puttext(i, text)
+
+    def __str__(self):
+        msg = 'str(text) is deprecated, use explicit format instead'
+        warnings.warn(DeprecationWarning, msg)
+        return '\n'.join(map(''.join, zip(*[iter(str(self[0]))] * 80)))

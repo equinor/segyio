@@ -8,7 +8,7 @@ import numpy as np
 
 from .gather import Gather
 from .line import Line
-from .trace import Trace, Header, Attributes
+from .trace import Trace, Header, Attributes, Text
 from .field import Field
 
 from segyio.tracesortingformat import TraceSortingFormat
@@ -746,20 +746,15 @@ class SegyFile(object):
 
         Returns
         -------
-
-        text
-            text headers
+        text : Text
 
         See also
         --------
-
         segyio.tools.wrap : line-wrap a text header
 
         Notes
         -----
-
         .. versionadded:: 1.1
-
 
         Examples
         --------
@@ -791,7 +786,7 @@ class SegyFile(object):
 
 
         """
-        return TextHeader(self)
+        return Text(self.xfd, self._ext_headers + 1)
 
     @property
     def bin(self):
@@ -880,32 +875,3 @@ class spec:
         self.ext_headers = 0
         self.format = None
         self.sorting = None
-
-class TextHeader(object):
-
-    def __init__(self, outer):
-        self.outer = outer
-
-    def __getitem__(self, index):
-        if not 0 <= index <= self.outer.ext_headers:
-            raise IndexError("Textual header {} not in file".format(index))
-
-        return self.outer.xfd.gettext(index)
-
-    def __setitem__(self, index, val):
-        if isinstance(val, TextHeader):
-            self[index] = val[0]
-            return
-
-        if not 0 <= index <= self.outer.ext_headers:
-            raise IndexError("Textual header {} not in file".format(index))
-
-        self.outer.xfd.puttext(index, val)
-
-    def __repr__(self):
-        return "Text(external_headers = {})".format(self.outer.ext_headers)
-
-    def __str__(self):
-        msg = 'str(text) is deprecated, use explicit format instead'
-        warnings.warn(DeprecationWarning, msg)
-        return '\n'.join(map(''.join, zip(*[iter(str(self[0]))] * 80)))
