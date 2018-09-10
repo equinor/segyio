@@ -66,7 +66,10 @@ install(TARGETS segyio-static segyio-shared
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(DIRECTORY include/ DESTINATION include)
-install(EXPORT segyio DESTINATION share/segyio/cmake FILE segyio-config.cmake)
+install(EXPORT segyio
+        DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/segyio/cmake
+        FILE segyio-config.cmake
+)
 export(TARGETS segyio-static segyio-shared FILE segyio-config.cmake)
 
 if (NOT BUILD_TESTING)
