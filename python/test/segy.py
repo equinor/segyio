@@ -272,6 +272,9 @@ def test_attributes():
         assert 1 == f.attributes(il)[0]
         assert 20 == f.attributes(xl)[0]
 
+        assert f.tracecount == len(f.attributes(il))
+        assert iter(f.attributes(il))
+
         ils = [(i // 5) + 1 for i in range(25)]
         attrils = list(map(int, f.attributes(il)[:]))
         assert ils == attrils

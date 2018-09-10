@@ -696,3 +696,81 @@ class Header(Sequence):
 
         for i, src in zip(self.segy.xlines, value):
             self.xline[i] = src
+
+class Attributes(Sequence):
+    """File-wide attribute (header word) reading
+
+    Lazily read a single header word for every trace in the file. The
+    Attributes implement the array interface, and will behave as expected when
+    indexed and sliced.
+
+    Notes
+    -----
+    .. versionadded:: 1.1
+    """
+
+    def __init__(self, field, filehandle, tracecount):
+        super(Attributes, self).__init__(tracecount)
+        self.field = field
+        self.filehandle = filehandle
+        self.tracecount = tracecount
+        self.dtype = np.intc
+
+    def __iter__(self):
+        # attributes requires a custom iter, because self[:] returns a numpy
+        # array, which in itself is iterable, but not an iterator
+        return iter(self[:])
+
+    def __getitem__(self, i):
+        """attributes[:]
+
+        Parameters
+        ----------
+        i : int or slice or array_like
+
+        Returns
+        -------
+        attributes : array_like of dtype
+
+        Examples
+        --------
+        Read all unique sweep frequency end:
+
+        >>> end = segyio.TraceField.SweepFrequencyEnd
+        >>> sfe = np.unique(f.attributes( end )[:])
+
+        Discover the first traces of each unique sweep frequency end:
+
+        >>> end = segyio.TraceField.SweepFrequencyEnd
+        >>> attrs = f.attributes(end)
+        >>> sfe, tracenos = np.unique(attrs[:], return_index = True)
+
+        Scatter plot group x/y-coordinates with SFEs (using matplotlib):
+
+        >>> end = segyio.TraceField.SweepFrequencyEnd
+        >>> attrs = f.attributes(end)
+        >>> _, tracenos = np.unique(attrs[:], return_index = True)
+        >>> gx = f.attributes(segyio.TraceField.GroupX)[tracenos]
+        >>> gy = f.attributes(segyio.TraceField.GroupY)[tracenos]
+        >>> scatter(gx, gy)
+        """
+        try:
+            xs = np.asarray(i, dtype = self.dtype)
+            xs = xs.astype(dtype = self.dtype, order = 'C', copy = False)
+            attrs = np.empty(len(xs), dtype = self.dtype)
+            return self.filehandle.field_foreach(attrs, xs, self.field)
+
+        except TypeError:
+            try:
+                i = slice(i, i + 1, 1)
+            except TypeError:
+                pass
+
+            traces = self.tracecount
+            filehandle = self.filehandle
+            field = self.field
+
+            start, stop, step = i.indices(traces)
+            indices = range(start, stop, step)
+            attrs = np.empty(len(indices), dtype = self.dtype)
+            return filehandle.field_forall(attrs, start, stop, step, field)
