@@ -2,6 +2,48 @@ import numpy
 
 import segyio
 
+def infer_geometry(f, strict, metrics, iline, xline, strict):
+    try:
+        cube_metrics = f.xfd.cube_metrics(iline, xline)
+        f._sorting   = cube_metrics['sorting']
+        iline_count  = cube_metrics['iline_count']
+        xline_count  = cube_metrics['xline_count']
+        offset_count = cube_metrics['offset_count']
+        metrics.update(cube_metrics)
+
+        line_metrics = segyio._segyio.line_metrics(f.sorting,
+                                                   f.tracecount,
+                                                   iline_count,
+                                                   xline_count,
+                                                   offset_count)
+
+        f._iline_length = line_metrics['iline_length']
+        f._iline_stride = line_metrics['iline_stride']
+
+        f._xline_length = line_metrics['xline_length']
+        f._xline_stride = line_metrics['xline_stride']
+
+        f._ilines  = numpy.zeros(iline_count,  dtype = numpy.intc)
+        f._xlines  = numpy.zeros(xline_count,  dtype = numpy.intc)
+        f._offsets = numpy.zeros(offset_count, dtype = numpy.intc)
+        f.xfd.indices(metrics, f.ilines, f.xlines, f.offsets)
+
+        if numpy.unique(f.ilines).size != f.ilines.size:
+            raise ValueError( "Inlines inconsistent - expect all inlines to be unique")
+
+        if numpy.unique(f.xlines).size != f.xlines.size:
+            raise ValueError( "Crosslines inconsistent - expect all crosslines to be unique")
+
+    except:
+        if not strict:
+            f._ilines  = None
+            f._xlines  = None
+            f._offsets = None
+        else:
+            f.close()
+            raise
+
+    return f
 
 def open(filename, mode="r", iline = 189,
                              xline = 193,
@@ -125,44 +167,4 @@ def open(filename, mode="r", iline = 189,
     if ignore_geometry:
         return f
 
-    try:
-        cube_metrics = f.xfd.cube_metrics(iline, xline)
-        f._sorting   = cube_metrics['sorting']
-        iline_count  = cube_metrics['iline_count']
-        xline_count  = cube_metrics['xline_count']
-        offset_count = cube_metrics['offset_count']
-        metrics.update(cube_metrics)
-
-        line_metrics = segyio._segyio.line_metrics(f.sorting,
-                                                   f.tracecount,
-                                                   iline_count,
-                                                   xline_count,
-                                                   offset_count)
-
-        f._iline_length = line_metrics['iline_length']
-        f._iline_stride = line_metrics['iline_stride']
-
-        f._xline_length = line_metrics['xline_length']
-        f._xline_stride = line_metrics['xline_stride']
-
-        f._ilines  = numpy.zeros(iline_count,  dtype = numpy.intc)
-        f._xlines  = numpy.zeros(xline_count,  dtype = numpy.intc)
-        f._offsets = numpy.zeros(offset_count, dtype = numpy.intc)
-        f.xfd.indices(metrics, f.ilines, f.xlines, f.offsets)
-
-        if numpy.unique(f.ilines).size != f.ilines.size:
-            raise ValueError( "Inlines inconsistent - expect all inlines to be unique")
-
-        if numpy.unique(f.xlines).size != f.xlines.size:
-            raise ValueError( "Crosslines inconsistent - expect all crosslines to be unique")
-
-    except:
-        if not strict:
-            f._ilines  = None
-            f._xlines  = None
-            f._offsets = None
-        else:
-            f.close()
-            raise
-
-    return f
+    return infer_geometry(f, metrics, iline, xline, strict)
