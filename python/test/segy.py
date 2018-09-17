@@ -272,6 +272,9 @@ def test_attributes():
         assert 1 == f.attributes(il)[0]
         assert 20 == f.attributes(xl)[0]
 
+        assert f.tracecount == len(f.attributes(il))
+        assert iter(f.attributes(il))
+
         ils = [(i // 5) + 1 for i in range(25)]
         attrils = list(map(int, f.attributes(il)[:]))
         assert ils == attrils
@@ -473,6 +476,31 @@ def test_traces_raw():
         for raw, gen in zip(f.trace.raw[::-1], f.trace[::-1]):
             assert np.array_equal(raw, gen)
 
+def test_read_text_sequence():
+    with segyio.open('test-data/multi-text.sgy', ignore_geometry = True) as f:
+        for text in f.text[:]:
+            assert text
+
+        assert iter(f.text)
+
+@tmpfiles('test-data/multi-text.sgy')
+def test_put_text_sequence(tmpdir):
+    lines = { 1: 'first line', 10: 'last line' }
+    ref = segyio.tools.create_text_header(lines)
+    fname = str(tmpdir / 'multi-text.sgy')
+
+    with segyio.open(fname, mode = 'r+', ignore_geometry = True) as f:
+        f.text[0] = ref
+        f.text[-1] = ref
+        f.text[1:4] = [ref, ref, ref]
+
+    # ref doesn't have to be bytes for reading, but has to in order to compare
+    # with the returned object from text
+    ref = bytearray(ref, 'ascii')
+    ref = bytes(ref)
+    with segyio.open(fname, ignore_geometry = True) as f:
+        for text in f.text:
+            assert text == ref
 
 def test_read_header():
     with segyio.open("test-data/small.sgy") as f:

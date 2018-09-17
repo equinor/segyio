@@ -696,3 +696,166 @@ class Header(Sequence):
 
         for i, src in zip(self.segy.xlines, value):
             self.xline[i] = src
+
+class Attributes(Sequence):
+    """File-wide attribute (header word) reading
+
+    Lazily read a single header word for every trace in the file. The
+    Attributes implement the array interface, and will behave as expected when
+    indexed and sliced.
+
+    Notes
+    -----
+    .. versionadded:: 1.1
+    """
+
+    def __init__(self, field, filehandle, tracecount):
+        super(Attributes, self).__init__(tracecount)
+        self.field = field
+        self.filehandle = filehandle
+        self.tracecount = tracecount
+        self.dtype = np.intc
+
+    def __iter__(self):
+        # attributes requires a custom iter, because self[:] returns a numpy
+        # array, which in itself is iterable, but not an iterator
+        return iter(self[:])
+
+    def __getitem__(self, i):
+        """attributes[:]
+
+        Parameters
+        ----------
+        i : int or slice or array_like
+
+        Returns
+        -------
+        attributes : array_like of dtype
+
+        Examples
+        --------
+        Read all unique sweep frequency end:
+
+        >>> end = segyio.TraceField.SweepFrequencyEnd
+        >>> sfe = np.unique(f.attributes( end )[:])
+
+        Discover the first traces of each unique sweep frequency end:
+
+        >>> end = segyio.TraceField.SweepFrequencyEnd
+        >>> attrs = f.attributes(end)
+        >>> sfe, tracenos = np.unique(attrs[:], return_index = True)
+
+        Scatter plot group x/y-coordinates with SFEs (using matplotlib):
+
+        >>> end = segyio.TraceField.SweepFrequencyEnd
+        >>> attrs = f.attributes(end)
+        >>> _, tracenos = np.unique(attrs[:], return_index = True)
+        >>> gx = f.attributes(segyio.TraceField.GroupX)[tracenos]
+        >>> gy = f.attributes(segyio.TraceField.GroupY)[tracenos]
+        >>> scatter(gx, gy)
+        """
+        try:
+            xs = np.asarray(i, dtype = self.dtype)
+            xs = xs.astype(dtype = self.dtype, order = 'C', copy = False)
+            attrs = np.empty(len(xs), dtype = self.dtype)
+            return self.filehandle.field_foreach(attrs, xs, self.field)
+
+        except TypeError:
+            try:
+                i = slice(i, i + 1, 1)
+            except TypeError:
+                pass
+
+            traces = self.tracecount
+            filehandle = self.filehandle
+            field = self.field
+
+            start, stop, step = i.indices(traces)
+            indices = range(start, stop, step)
+            attrs = np.empty(len(indices), dtype = self.dtype)
+            return filehandle.field_forall(attrs, start, stop, step, field)
+
+class Text(Sequence):
+    """Interact with segy in text mode
+
+    This mode gives access to reading and writing functionality for textual
+    headers.
+
+    The primary data type is the python string. Reading textual headers is done
+    with [], and writing is done via assignment. No additional structure is
+    built around the textual header, so everything is treated as one long
+    string without line breaks.
+
+    Notes
+    -----
+    .. versionchanged:: 1.7
+        common list operations (collections.Sequence)
+
+    """
+
+    def __init__(self, filehandle, textcount):
+        super(Text, self).__init__(textcount)
+        self.filehandle = filehandle
+
+    def __getitem__(self, i):
+        """text[i]
+
+        Read the text header at i. 0 is the mandatory, main
+
+        Examples
+        --------
+        Print the textual header:
+
+        >>> print(f.text[0])
+
+        Print the first extended textual header:
+
+        >>> print(f.text[1])
+
+        Print a textual header line-by-line:
+
+        >>> # using zip, from the zip documentation
+        >>> text = str(f.text[0])
+        >>> lines = map(''.join, zip( *[iter(text)] * 80))
+        >>> for line in lines:
+        ...     print(line)
+        ...
+        """
+        try:
+            i = self.wrapindex(i)
+            return self.filehandle.gettext(i)
+
+        except TypeError:
+            def gen():
+                for j in range(*i.indices(len(self))):
+                    yield self.filehandle.gettext(j)
+            return gen()
+
+    def __setitem__(self, i, val):
+        """text[i] = val
+
+        Write a new textual header:
+
+        >>> f.text[0] = make_new_header()
+
+        Copy a tectual header:
+
+        >>> f.text[1] = g.text[0]
+
+        """
+        if isinstance(val, Text):
+            self[index] = val[0]
+            return
+
+        try:
+            i = self.wrapindex(i)
+            self.filehandle.puttext(i, val)
+
+        except TypeError:
+            for i, text in zip(range(*i.indices(len(self))), val):
+                self.filehandle.puttext(i, text)
+
+    def __str__(self):
+        msg = 'str(text) is deprecated, use explicit format instead'
+        warnings.warn(DeprecationWarning, msg)
+        return '\n'.join(map(''.join, zip(*[iter(str(self[0]))] * 80)))

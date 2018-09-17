@@ -8,7 +8,7 @@ import numpy as np
 
 from .gather import Gather
 from .line import Line
-from .trace import Trace, Header
+from .trace import Trace, Header, Attributes, Text
 from .field import Field
 
 from segyio.tracesortingformat import TraceSortingFormat
@@ -398,62 +398,16 @@ class SegyFile(object):
         Returns
         -------
 
-        attrs : list of int
-            A sliceable list of header words
+        attrs : Attributes
+            A sliceable array_like of header words
 
         Notes
         -----
 
         .. versionadded:: 1.1
 
-        Examples
-        --------
-
-        Read all unique sweep frequency end::
-
-        >>> end = segyio.TraceField.SweepFrequencyEnd
-        >>> sfe = np.unique(f.attributes( end )[:])
-
-        Discover the first traces of each unique sweep frequency end:
-
-        >>> end = segyio.TraceField.SweepFrequencyEnd
-        >>> attrs = f.attributes(end)
-        >>> sfe, tracenos = np.unique(attrs[:], return_index = True)
-
-        Scatter plot group x/y-coordinates with SFEs (using matplotlib):
-
-        >>> end = segyio.TraceField.SweepFrequencyEnd
-        >>> attrs = f.attributes(end)
-        >>> _, tracenos = np.unique(attrs[:], return_index = True)
-        >>> gx = f.attributes(segyio.TraceField.GroupX)[tracenos]
-        >>> gy = f.attributes(segyio.TraceField.GroupY)[tracenos]
-        >>> scatter(gx, gy)
-
         """
-        class attr:
-            def __getitem__(inner, rng):
-                try: iter(rng)
-                except TypeError: pass
-                else: return inner._getitem_list(rng)
-
-                if not isinstance(rng, slice):
-                    rng = slice(rng, rng + 1, 1)
-
-                traces = self.tracecount
-                start, stop, step = rng.indices(traces)
-                attrs = np.empty(len(range(*rng.indices(traces))), dtype = np.intc)
-                return self.xfd.field_forall(attrs, start, stop, step, field)
-
-            def _getitem_list(inner, xs):
-                if not isinstance(xs, np.ndarray):
-                    xs = np.asarray(xs, dtype = np.intc)
-
-                xs = xs.astype(dtype = np.intc, order = 'C', copy = False)
-                attrs = np.empty(len(xs), dtype = np.intc)
-                return self.xfd.field_foreach(attrs, xs, field)
-
-        return attr()
-
+        return Attributes(field, self.xfd, self.tracecount)
 
     @property
     def trace(self):
@@ -792,20 +746,15 @@ class SegyFile(object):
 
         Returns
         -------
-
-        text
-            text headers
+        text : Text
 
         See also
         --------
-
         segyio.tools.wrap : line-wrap a text header
 
         Notes
         -----
-
         .. versionadded:: 1.1
-
 
         Examples
         --------
@@ -837,7 +786,7 @@ class SegyFile(object):
 
 
         """
-        return TextHeader(self)
+        return Text(self.xfd, self._ext_headers + 1)
 
     @property
     def bin(self):
@@ -926,32 +875,3 @@ class spec:
         self.ext_headers = 0
         self.format = None
         self.sorting = None
-
-class TextHeader(object):
-
-    def __init__(self, outer):
-        self.outer = outer
-
-    def __getitem__(self, index):
-        if not 0 <= index <= self.outer.ext_headers:
-            raise IndexError("Textual header {} not in file".format(index))
-
-        return self.outer.xfd.gettext(index)
-
-    def __setitem__(self, index, val):
-        if isinstance(val, TextHeader):
-            self[index] = val[0]
-            return
-
-        if not 0 <= index <= self.outer.ext_headers:
-            raise IndexError("Textual header {} not in file".format(index))
-
-        self.outer.xfd.puttext(index, val)
-
-    def __repr__(self):
-        return "Text(external_headers = {})".format(self.outer.ext_headers)
-
-    def __str__(self):
-        msg = 'str(text) is deprecated, use explicit format instead'
-        warnings.warn(DeprecationWarning, msg)
-        return '\n'.join(map(''.join, zip(*[iter(str(self[0]))] * 80)))
