@@ -20,9 +20,12 @@ sudo: required
 matrix:
     fast_finish: true
     include:
-        - os: linux
-          compiler: clang
-          python: 3.6
+        - python: 3.7
+          dist: xenial
+          sudo: true
+        - compiler: clang
+          python: 3.7
+          dist: xenial
           env:
             - SCAN="scan-build --status-bugs"
             - SOURCEDEPLOY=1
@@ -43,6 +46,10 @@ matrix:
           language: generic
           env: MB_PYTHON_VERSION=3.6
           python: 3.6
+        - os: osx
+          language: generic
+          env: MB_PYTHON_VERSION=3.7
+          python: 3.7
 
 addons:
     apt:
