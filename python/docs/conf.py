@@ -45,7 +45,23 @@ extensions = [
 
 autosummary_generate = True
 add_module_names = False
-autodoc_default_flags = ['members', 'inherited-members']
+
+# sphinx 1.8 deprecates autodoc_default_flags. docs should be buildable with
+# warnings-as-errors, but the docs really don't require more than sphinx 1.5.
+# use the new autodoc config if built with >= 1.8
+#
+# ref http://luc.lino-framework.org/blog/2018/0821.html
+
+from distutils.version import LooseVersion
+import sphinx
+
+if LooseVersion(sphinx.__version__) < LooseVersion("1.8"):
+    autodoc_default_flags = ['members', 'inherited-members']
+else:
+    autodoc_default_options = {
+        'members': None,
+        'inherited-members': None,
+    }
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
