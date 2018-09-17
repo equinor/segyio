@@ -109,7 +109,7 @@ void regular_geometry( segy_file* fp,
     GIVEN( "a post stack file" ) {
         int offsets = -1;
         const Err err = segy_offsets( fp,
-                                      il, xl, traces,
+                                      il, xl, of, traces,
                                       &offsets,
                                       trace0, trace_bsize );
         THEN( "there is only one offset" ) {
@@ -120,7 +120,7 @@ void regular_geometry( segy_file* fp,
         WHEN( "swapping inline and crossline position" ) {
             int offsets = -1;
             const Err err = segy_offsets( fp,
-                                          xl, il, traces,
+                                          xl, il, of, traces,
                                           &offsets,
                                           trace0, trace_bsize );
             THEN( "there is only one offset" ) {
@@ -414,6 +414,7 @@ TEST_CASE_METHOD( smallsize,
     Err err = segy_offsets( fp,
                             il,
                             xl,
+                            of,
                             traces,
                             &offsets,
                             trace0,
@@ -430,6 +431,7 @@ TEST_CASE_METHOD( smallsize,
     Err err = segy_offsets( fp,
                             xl,
                             il,
+                            of,
                             traces,
                             &offsets,
                             trace0,
@@ -1460,4 +1462,93 @@ SCENARIO( MMAP_TAG "reading a 2-byte int file", "[c.segy][2-byte]" MMAP_TAG ) {
             }
         }
     }
+}
+
+SCENARIO( MMAP_TAG "determining number of offsets", "[c.segy]" MMAP_TAG ) {
+
+        int err = 0;
+        int offsets = 0;
+
+        WHEN( "There is only one offset" ) {
+            const char* file = "test-data/small.sgy";
+
+            std::unique_ptr< segy_file, decltype( &segy_close ) >
+                ufp{ segy_open( file, "rb" ), &segy_close };
+
+            REQUIRE( ufp );
+            auto fp = ufp.get();
+
+            char header[ SEGY_BINARY_HEADER_SIZE ];
+            REQUIRE( Err( segy_binheader( fp, header ) ) == Err::ok() );
+
+            long trace0 = segy_trace0( header );
+            int samples = segy_samples( header );
+            int format = segy_format( header );
+            int trace_bsize = segy_trsize( format, samples );
+            int traces;
+            REQUIRE( Err(
+                segy_traces( fp, &traces, trace0, trace_bsize) ) == Err::ok() );
+
+             err = segy_offsets( fp, SEGY_TR_INLINE,
+                                     SEGY_TR_CROSSLINE,
+                                     SEGY_TR_OFFSET,
+                                     traces,
+                                     &offsets,
+                                     trace0,
+                                     trace_bsize );
+
+            CHECK( offsets == 1 );
+            CHECK( err == SEGY_OK );
+        }
+
+        const char* file = "test-data/1x1.sgy";
+
+        std::unique_ptr< segy_file, decltype( &segy_close ) >
+            ufp{ segy_open( file, "rb" ), &segy_close };
+
+        REQUIRE( ufp );
+        auto fp = ufp.get();
+
+        char header[ SEGY_BINARY_HEADER_SIZE ];
+        REQUIRE( Err( segy_binheader( fp, header ) ) == Err::ok() );
+
+        long trace0 = segy_trace0( header );
+        int samples = segy_samples( header );
+        int format = segy_format( header );
+        int trace_bsize = segy_trsize( format, samples );
+        int traces;
+        REQUIRE( Err(
+            segy_traces( fp, &traces, trace0, trace_bsize) ) == Err::ok() );
+
+        WHEN( "There are four unique offset" ) {
+            err = segy_offsets( fp, SEGY_TR_INLINE,
+                                    SEGY_TR_CROSSLINE,
+                                    SEGY_TR_OFFSET,
+                                    traces,
+                                    &offsets,
+                                    trace0,
+                                    trace_bsize );
+
+            CHECK( offsets == 4 );
+            CHECK( err == SEGY_OK );
+        }
+
+        WHEN( "There are four offset, but they are not unique"  ) {
+            const char* file = "test-data/1x1.sgy";
+            /*
+             * This case is tested by passing SEGY_TR_SEG_LINE as the
+             * offset-byte which we know is zero for all traces. Hence, the
+             * offsets is not unique
+             */
+            err = segy_offsets( fp, SEGY_TR_INLINE,
+                                    SEGY_TR_CROSSLINE,
+                                    SEGY_TR_SEQ_LINE,
+                                    traces,
+                                    &offsets,
+                                    trace0,
+                                    trace_bsize );
+
+            CHECK( offsets == 4 );
+            CHECK( err == SEGY_INVALID_OFFSETS );
+        }
 }

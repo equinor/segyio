@@ -688,7 +688,8 @@ PyObject* cube_metrics( segyiofd* self, PyObject* args ) {
 
     int il;
     int xl;
-    if( !PyArg_ParseTuple( args, "ii", &il, &xl ) ) return NULL;
+    int off;
+    if( !PyArg_ParseTuple( args, "iii", &il, &xl, &off ) ) return NULL;
 
     metrics_errmsg errmsg = { il, xl, SEGY_TR_OFFSET };
 
@@ -705,6 +706,7 @@ PyObject* cube_metrics( segyiofd* self, PyObject* args ) {
     int offset_count = -1;
     err = segy_offsets( fp, il,
                             xl,
+                            off,
                             self->tracecount,
                             &offset_count,
                             self->trace0,

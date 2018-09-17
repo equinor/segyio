@@ -50,6 +50,7 @@ int main(int argc, char* argv[]) {
 
     int xl_field = SEGY_TR_CROSSLINE;
     int il_field = SEGY_TR_INLINE;
+    int of_field = SEGY_TR_OFFSET;
 
     bool memory_map = argc > 2 && strcmp( argv[ 2 ], "mmap" ) == 0;
 
@@ -108,7 +109,7 @@ int main(int argc, char* argv[]) {
     }
 
     int offsets;
-    err = segy_offsets( fp, il_field, xl_field, traces, &offsets, trace0, trace_bsize );
+    err = segy_offsets( fp, il_field, xl_field, of_field, traces, &offsets, trace0, trace_bsize );
     if( err != 0 ) {
         perror( "Could not determine offsets" );
         exit( err );
