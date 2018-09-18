@@ -168,17 +168,21 @@ def create(filename, spec):
     ext_headers = spec.ext_headers if hasattr(spec, 'ext_headers') else 0
     samples = numpy.asarray(spec.samples)
 
-    binary = bytearray(_segyio.binsize())
-    _segyio.putfield(binary, 3217, 4000)
-    _segyio.putfield(binary, 3221, len(samples))
-    _segyio.putfield(binary, 3225, int(spec.format))
-    _segyio.putfield(binary, 3505, int(ext_headers))
+    fd = _segyio.segyiofd(str(filename), 'w+')
+    fd.segymake(
+        samples = len(samples),
+        tracecount = tracecount,
+        format = int(spec.format),
+        ext_headers = int(ext_headers),
+    )
 
-    f = segyio.SegyFile(str(filename), "w+", tracecount = tracecount,
-                                             binary = binary)
+    f = segyio.SegyFile(fd,
+            filename = str(filename),
+            mode = 'w+',
+            iline = int(spec.iline),
+            xline = int(spec.xline),
+    )
 
-    f._il            = int(spec.iline)
-    f._xl            = int(spec.xline)
     f._samples       = samples
 
     if structured(spec):
@@ -201,6 +205,21 @@ def create(filename, spec):
         f._xline_stride = line_metrics['xline_stride']
 
     f.text[0] = default_text_header(f._il, f._xl, segyio.TraceField.offset)
-    f.xfd.putbin(binary)
+
+    if len(samples) == 1:
+        interval = int(samples[0] * 1000)
+    else:
+        interval = int((samples[1] - samples[0]) * 1000)
+
+    f.bin.update(
+        ntrpr    = tracecount,
+        nart     = tracecount,
+        hdt      = interval,
+        dto      = interval,
+        hns      = len(samples),
+        nso      = len(samples),
+        format   = int(spec.format),
+        exth     = ext_headers,
+    )
 
     return f

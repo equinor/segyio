@@ -222,39 +222,9 @@ namespace fd {
 int init( segyiofd* self, PyObject* args, PyObject* kwargs ) {
     char* filename = NULL;
     char* mode = NULL;
-    int tracecount = 0;
-    buffer_guard buffer;
 
-    static const char* kwlist[] = {
-        "filename",
-        "mode",
-        "tracecount",
-        "binary",
-        NULL,
-    };
-
-    // https://mail.python.org/pipermail/python-dev/2006-February/060689.html
-    // python3 fixes the non-constness of the kwlist arg in
-    // ParseTupleAndKeywords, since C++ really prefers writing string literals
-    // as const
-    //
-    // Remove the const_cast when python2 support is dropped
-    if( !PyArg_ParseTupleAndKeywords( args, kwargs,
-                "ss|iz*",
-                const_cast< char** >(kwlist),
-                &filename,
-                &mode,
-                &tracecount,
-                &buffer ) )
+    if( !PyArg_ParseTuple( args, "ss", &filename, &mode ) )
         return -1;
-
-    const char* binary = buffer.buf< const char >();
-
-    if( binary && buffer.len() < SEGY_BINARY_HEADER_SIZE ) {
-        ValueError( "internal: binary buffer too small, expected %i, was %zd",
-                    SEGY_BINARY_HEADER_SIZE, buffer.len() );
-        return -1;
-    }
 
     if( std::strlen( mode ) == 0 ) {
         ValueError( "mode string must be non-empty" );
@@ -283,18 +253,25 @@ int init( segyiofd* self, PyObject* args, PyObject* kwargs ) {
         return -1;
     }
 
-    char bin[ SEGY_BINARY_HEADER_SIZE ] = {};
+    /*
+     * init can be called multiple times, which is treated as opening a new
+     * file on the same object. That means the previous file handle must be
+     * properly closed before the new file is set
+     */
+    self->fd.swap( fd );
 
-    if( !binary ) {
-        const int err = segy_binheader( fd, bin );
+    return 0;
+}
 
-        if( err ) {
-            Error( err );
-            return -1;
-        }
+PyObject* segyopen( segyiofd* self ) {
+    segy_file* fp = self->fd;
+    if( !fp ) return NULL;
 
-        binary = bin;
-    }
+    int tracecount = 0;
+
+    char binary[ SEGY_BINARY_HEADER_SIZE ] = {};
+    int err = segy_binheader( fp, binary );
+    if( err ) return Error( err );
 
     const long trace0 = segy_trace0( binary );
     const int samplecount = segy_samples( binary );
@@ -308,7 +285,7 @@ int init( segyiofd* self, PyObject* args, PyObject* kwargs ) {
      * if set_format errors, it's because the format-field in the binary header
      * is 0 or some other garbage. if so, assume the file is 4-byte ibm float
      */
-   segy_set_format( fd, format );
+   segy_set_format( fp, format );
    int elemsize = 4;
 
     switch( format ) {
@@ -325,37 +302,24 @@ int init( segyiofd* self, PyObject* args, PyObject* kwargs ) {
             break;
     }
 
-    if( tracecount == 0 ) {
-        const int err = segy_traces( fd, &tracecount, trace0, trace_bsize );
-        switch( err ) {
-            case SEGY_OK: break;
+    err = segy_traces( fp, &tracecount, trace0, trace_bsize );
+    switch( err ) {
+        case SEGY_OK: break;
 
-            case SEGY_FSEEK_ERROR:
-                IOErrno();
-                return -1;
+        case SEGY_FSEEK_ERROR:
+            return IOErrno();
 
-            case SEGY_INVALID_ARGS:
-                RuntimeError( "unable to count traces, "
-                              "no data traces past headers" );
-                return -1;
+        case SEGY_INVALID_ARGS:
+            return RuntimeError( "unable to count traces, "
+                                 "no data traces past headers" );
 
-            case SEGY_TRACE_SIZE_MISMATCH:
-                RuntimeError( "trace count inconsistent with file size, "
-                              "trace lengths possibly of non-uniform" );
-                return -1;
+        case SEGY_TRACE_SIZE_MISMATCH:
+            return RuntimeError( "trace count inconsistent with file size, "
+                                 "trace lengths possibly of non-uniform" );
 
-            default:
-                Error( err );
-                return -1;
-        }
+        default:
+            return Error( err );
     }
-
-    /*
-     * init can be called multiple times, which is treated as opening a new
-     * file on the same object. That means the previous file handle must be
-     * properly closed before the new file is set
-     */
-    self->fd.swap( fd );
 
     self->trace0 = trace0;
     self->trace_bsize = trace_bsize;
@@ -364,7 +328,97 @@ int init( segyiofd* self, PyObject* args, PyObject* kwargs ) {
     self->samplecount = samplecount;
     self->tracecount = tracecount;
 
-    return 0;
+    Py_INCREF( self );
+    return (PyObject*) self;
+}
+
+PyObject* segycreate( segyiofd* self, PyObject* args, PyObject* kwargs ) {
+    segy_file* fp = self->fd;
+    if( !fp ) return NULL;
+
+    int samples;
+    int tracecount;
+    int ext_headers = 0;
+    int format = SEGY_IBM_FLOAT_4_BYTE;
+
+    // https://mail.python.org/pipermail/python-dev/2006-February/060689.html
+    // python3 fixes the non-constness of the kwlist arg in
+    // ParseTupleAndKeywords, since C++ really prefers writing string literals
+    // as const
+    //
+    // Remove the const_cast when python2 support is dropped
+    static const char* kwlist[] = {
+        "samples",
+        "tracecount",
+        "format",
+        "ext_headers",
+        NULL,
+    };
+
+    if( !PyArg_ParseTupleAndKeywords( args, kwargs,
+                "ii|ii",
+                const_cast< char** >(kwlist),
+                &samples,
+                &tracecount,
+                &format,
+                &ext_headers ) )
+        return NULL;
+
+    if( samples <= 0 )
+        return ValueError( "expected samples > 0" );
+
+    if( tracecount <= 0 )
+        return ValueError( "expected tracecount > 0" );
+
+    if( ext_headers < 0 )
+        return ValueError( "ext_headers must be non-negative" );
+
+    switch( format ) {
+        case SEGY_IBM_FLOAT_4_BYTE:
+        case SEGY_SIGNED_INTEGER_4_BYTE:
+        case SEGY_SIGNED_SHORT_2_BYTE:
+        case SEGY_FIXED_POINT_WITH_GAIN_4_BYTE:
+        case SEGY_IEEE_FLOAT_4_BYTE:
+        case SEGY_SIGNED_CHAR_1_BYTE:
+            break;
+
+        default:
+            return ValueError( "unknown format identifier" );
+    }
+
+
+    int elemsize = 4;
+    switch( format ) {
+        case SEGY_IBM_FLOAT_4_BYTE:
+        case SEGY_SIGNED_INTEGER_4_BYTE:
+        case SEGY_FIXED_POINT_WITH_GAIN_4_BYTE:
+        case SEGY_IEEE_FLOAT_4_BYTE:
+            elemsize = 4;
+            break;
+
+        case SEGY_SIGNED_SHORT_2_BYTE:
+            elemsize = 2;
+            break;
+
+        case SEGY_SIGNED_CHAR_1_BYTE:
+            elemsize = 1;
+            break;
+
+        default:
+            assert(false || "format should already be checked" );
+            break;
+    }
+
+    self->trace0 = SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE +
+                   SEGY_TEXT_HEADER_SIZE * ext_headers;
+    self->trace_bsize = segy_trsize( format, samples );
+    self->format = format;
+    self->elemsize = elemsize;
+    self->samplecount = samples;
+    self->tracecount = tracecount;
+
+    Py_INCREF( self );
+    return (PyObject*) self;
 }
 
 void dealloc( segyiofd* self ) {
@@ -1159,6 +1213,10 @@ PyObject* rotation( segyiofd* self, PyObject* args ) {
 }
 
 PyMethodDef methods [] = {
+    { "segyopen", (PyCFunction) fd::segyopen, METH_NOARGS, "Open file." },
+    { "segymake", (PyCFunction) fd::segycreate,
+      METH_VARARGS | METH_KEYWORDS, "Create file." },
+
     { "close", (PyCFunction) fd::close, METH_VARARGS, "Close file." },
     { "flush", (PyCFunction) fd::flush, METH_VARARGS, "Flush file." },
     { "mmap",  (PyCFunction) fd::mmap,  METH_NOARGS,  "mmap file."  },
