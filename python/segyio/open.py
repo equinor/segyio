@@ -2,7 +2,7 @@ import numpy
 
 import segyio
 
-def infer_geometry(f, strict, metrics, iline, xline, strict):
+def infer_geometry(f, metrics, iline, xline, strict):
     try:
         cube_metrics = f.xfd.cube_metrics(iline, xline)
         f._sorting   = cube_metrics['sorting']
@@ -151,8 +151,17 @@ def open(filename, mode="r", iline = 189,
         solution = 'use r+ to open in read-write'
         raise ValueError(', '.join((problem, solution)))
 
-    f = segyio.SegyFile(filename, mode, iline, xline)
-    metrics = f.xfd.metrics()
+    from . import _segyio
+    fd = _segyio.segyiofd(str(filename), mode)
+    fd.segyopen()
+    metrics = fd.metrics()
+
+    f = segyio.SegyFile(fd,
+            filename = str(filename),
+            mode = mode,
+            iline = iline,
+            xline = xline,
+    )
 
     try:
         dt = segyio.tools.dt(f, fallback_dt = 4000.0) / 1000.0
