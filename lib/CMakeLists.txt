@@ -10,6 +10,7 @@ target_compile_options(segyio BEFORE
     PRIVATE
         ${c99}
         $<$<CONFIG:Debug>:${warnings-c}>
+        $<${HOST_BIG_ENDIAN}:HOST_BIG_ENDIAN>
 )
 target_compile_definitions(segyio
     PRIVATE
@@ -56,12 +57,14 @@ if (NOT BUILD_TESTING)
     return ()
 endif ()
 
-configure_file(${testdata}/small.sgy test-data/small.sgy             COPYONLY)
-configure_file(${testdata}/small.sgy test-data/small-w.sgy           COPYONLY)
-configure_file(${testdata}/1x1.sgy   test-data/1x1.sgy               COPYONLY)
-configure_file(${testdata}/1xN.sgy   test-data/1xN.sgy               COPYONLY)
-configure_file(${testdata}/f3.sgy    test-data/f3.sgy                COPYONLY)
-configure_file(${testdata}/text.sgy  test-data/text.sgy              COPYONLY)
+configure_file(${testdata}/small.sgy      test-data/small.sgy      COPYONLY)
+configure_file(${testdata}/small.sgy      test-data/small-w.sgy    COPYONLY)
+configure_file(${testdata}/small-lsb.sgy  test-data/small-lsb.sgy  COPYONLY)
+configure_file(${testdata}/1x1.sgy        test-data/1x1.sgy        COPYONLY)
+configure_file(${testdata}/1xN.sgy        test-data/1xN.sgy        COPYONLY)
+configure_file(${testdata}/f3.sgy         test-data/f3.sgy         COPYONLY)
+configure_file(${testdata}/f3-lsb.sgy     test-data/f3-lsb.sgy     COPYONLY)
+configure_file(${testdata}/text.sgy       test-data/text.sgy       COPYONLY)
 
 add_executable(c.segy test/testsuite.cpp
                       test/segy.cpp
@@ -79,6 +82,8 @@ target_compile_definitions(c.segy
     PRIVATE
         ${mmap}
 )
-add_test(NAME c.segy      COMMAND c.segy)
-add_test(NAME c.segy.mmap COMMAND c.segy --test-mmap)
-add_test(NAME cpp.segy    COMMAND c.segy [c++])
+add_test(NAME c.segy          COMMAND c.segy)
+add_test(NAME c.segy.mmap     COMMAND c.segy --test-mmap)
+add_test(NAME c.segy.lsb      COMMAND c.segy --test-lsb)
+add_test(NAME c.segy.mmap.lsb COMMAND c.segy --test-mmap --test-lsb)
+add_test(NAME cpp.segy        COMMAND c.segy [c++])

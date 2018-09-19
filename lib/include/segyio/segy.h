@@ -62,18 +62,26 @@ int segy_sample_interval( segy_file*, float fallback , float* dt );
 /* exception: the int returned is an enum, SEGY_FORMAT, not an error code */
 int segy_format( const char* binheader );
 /* override the assumed format of the samples.
+ * set file as LSB/MSB (little/big endian)
  *
  * by default, segyio assumes a 4-byte float format (usually IBM float). The
  * to/from native functions take this parameter explicitly, but functions like
  * read_subtrace requires the size of each element.
  *
- * `format` is the SEGY_FORMAT enum. if this function is not called, for
- * backwards compatibility reasons, the format is always assumed to be IBM
- * float.
+ * `format` is the SEGY_FORMAT and SEGY_FILEOPT enum. if this function is not
+ * called, for backwards compatibility reasons, the format is always assumed to
+ * be IBM float.
  *
  * The binary header is not implicitly queried, because it's often broken and
  * unreliable with this information - however, if the header IS considered to
  * be reliable, the result of `segy_format` can be passed to this function.
+ *
+ * By default, segyio assumes files are MSB. However, some files (seismic unix,
+ * SEG-Y rev2) are LSB. *all* functions returning bytes in segyio will output
+ * MSB, regardless of the properties of the underlying file.
+ *
+ * independent format flags can be OR'd together:
+ * segy_set_format( SEGY_IEEE_FLOAT_4_BYTE | SEGY_LSB );
  */
 int segy_set_format( segy_file*, int format );
 
@@ -242,6 +250,12 @@ int segy_writesubtr( segy_file*,
  * convert to/from native float from segy formats (likely IBM or IEEE).  Size
  * parameter is long long because it needs to know the number of *samples*,
  * which can be very large for bulk conversion of a collection of traces.
+ *
+ * to/from native are unaware of the host architecture, and always assume MSB
+ * layout. However, the read/write functions of segyio are aware, so as long as
+ * only segyio functions are used, you do not need to care about the endianenss
+ * of your platform. Some care must be taken, because you need to explicitly
+ * tell segyio if your file uses LSB.
  */
 int segy_to_native( int format,
                     long long size,
@@ -549,6 +563,11 @@ typedef enum {
     SEGY_NOT_IN_USE_2 = 7,
     SEGY_SIGNED_CHAR_1_BYTE = 8
 } SEGY_FORMAT;
+
+typedef enum {
+    SEGY_LSB = (1 << 8),
+    SEGY_MSB = (1 << 9),
+} SEGY_FILEOPT;
 
 typedef enum {
     SEGY_UNKNOWN_SORTING = 0,

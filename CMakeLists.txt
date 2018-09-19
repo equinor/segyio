@@ -5,6 +5,7 @@ include(CheckFunctionExists)
 include(CheckIncludeFile)
 include(CTest)
 include(GNUInstallDirs)
+include(TestBigEndian)
 
 if (DEFINED ENV{SEGYIO_NO_GIT_VER})
     set(SEGYIO_NO_GIT_VER CACHE BOOL "Ignore version from git" ON)
@@ -126,6 +127,8 @@ if (NOT MSVC)
 else()
     list(APPEND warnings-c /W3 /wd4996)
 endif ()
+
+test_big_endian(HOST_BIG_ENDIAN)
 
 # add documentation master target for other documentation sub targets to hook
 # into
