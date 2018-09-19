@@ -10,6 +10,7 @@ target_compile_options(segyio BEFORE
     PRIVATE
         ${c99}
         $<$<CONFIG:Debug>:${warnings-c}>
+        $<${HOST_BIG_ENDIAN}:HOST_BIG_ENDIAN>
 )
 target_compile_definitions(segyio
     PRIVATE

@@ -1524,6 +1524,38 @@ int segy_writesubtr( segy_file* fp,
     return SEGY_OK;
 }
 
+/*
+ * The to/from native functions are aware of the underlying architecture and
+ * the endianness of the input data (through the format enumerator).
+ *
+ * LSB - little endian (least-significant)
+ * MSB - big endian (least-significant)
+ *
+ * For the 4-byte IEEE formats, there are the following scenarios:
+ *
+ *          +  HOST LSB | HOST MSB
+ * FILE LSB |   no-op   |  bswap
+ * FILE MSB |   bswap   |  no-op
+ *
+ * the ntohs/ntohl functions gracefully handle all FILE MSB, regardless of host
+ * endianness. FILE LSB+HOST MSB is handled with the same logic, yielding:
+ *
+ *          +  HOST LSB | HOST MSB
+ * FILE LSB |   no-op   |  ntohl
+ * FILE MSB |   ntohl   |  ntohl
+ *
+ * i.e. the only case that needs to be handled with explicit knowledge of both
+ * host and file endianness is LSB+LSB.
+ */
+
+#ifdef HOST_BIG_ENDIAN
+    #define HOST_LSB 0
+    #define HOST_MSB 1
+#else
+    #define HOST_LSB 1
+    #define HOST_MSB 0
+#endif
+
 int segy_to_native( int format,
                     long long size,
                     void* buf ) {
@@ -1531,6 +1563,9 @@ int segy_to_native( int format,
     const int elemsize = formatsize( format );
     if( elemsize < 0 ) return SEGY_INVALID_ARGS;
     char* dst = (char*)buf;
+
+    if( format == SEGY_IEEE_LSB && HOST_LSB )
+        return SEGY_OK;
 
     if( elemsize == sizeof( uint32_t ) ) {
         uint32_t u;
@@ -1563,6 +1598,9 @@ int segy_to_native( int format,
 int segy_from_native( int format,
                       long long size,
                       void* buf ) {
+
+    if( format == SEGY_IEEE_LSB && HOST_LSB )
+        return SEGY_OK;
 
     const int elemsize = formatsize( format );
     if( elemsize < 0 ) return SEGY_INVALID_ARGS;

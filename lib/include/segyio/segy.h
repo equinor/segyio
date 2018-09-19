@@ -242,6 +242,10 @@ int segy_writesubtr( segy_file*,
  * convert to/from native float from segy formats (likely IBM or IEEE).  Size
  * parameter is long long because it needs to know the number of *samples*,
  * which can be very large for bulk conversion of a collection of traces.
+ *
+ * to/from native are aware of the host architecture, and will transparently
+ * handle both little- and big-endian file formats, on little- and big-endian
+ * machines.
  */
 int segy_to_native( int format,
                     long long size,
@@ -540,11 +544,13 @@ typedef enum {
 } SEGY_BINFIELD;
 
 typedef enum {
+    SEGY_IEEE_LSB = -1,
     SEGY_IBM_FLOAT_4_BYTE = 1,
     SEGY_SIGNED_INTEGER_4_BYTE = 2,
     SEGY_SIGNED_SHORT_2_BYTE = 3,
     SEGY_FIXED_POINT_WITH_GAIN_4_BYTE = 4, // Obsolete
     SEGY_IEEE_FLOAT_4_BYTE = 5,
+    SEGY_IEEE_MSB = 5, // alias for symmetry with LSB
     SEGY_NOT_IN_USE_1 = 6,
     SEGY_NOT_IN_USE_2 = 7,
     SEGY_SIGNED_CHAR_1_BYTE = 8
