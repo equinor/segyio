@@ -1544,6 +1544,8 @@ int segy_writesubtr( segy_file* fp,
  * FILE LSB |   no-op   |  ntohl
  * FILE MSB |   ntohl   |  ntohl
  *
+ * TODO: fix bug with MSB
+ *
  * i.e. the only case that needs to be handled with explicit knowledge of both
  * host and file endianness is LSB+LSB.
  */

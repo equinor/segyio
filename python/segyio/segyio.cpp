@@ -58,6 +58,11 @@ PyObject* ValueError( const char* msg ) {
     return NULL;
 }
 
+template< typename T1 >
+PyObject* ValueError( const char* msg, T1 t1 ) {
+    return PyErr_Format( PyExc_ValueError, msg, t1 );
+}
+
 template< typename T1, typename T2 >
 PyObject* ValueError( const char* msg, T1 t1, T2 t2 ) {
     return PyErr_Format( PyExc_ValueError, msg, t1, t2 );
@@ -415,6 +420,68 @@ PyObject* segycreate( segyiofd* self, PyObject* args, PyObject* kwargs ) {
     self->format = format;
     self->elemsize = elemsize;
     self->samplecount = samples;
+    self->tracecount = tracecount;
+
+    Py_INCREF( self );
+    return (PyObject*) self;
+}
+
+PyObject* suopen( segyiofd* self, PyObject* args ) {
+    segy_file* fp = self->fd;
+    if( !fp ) return NULL;
+
+    int format = 0;
+    if( !PyArg_ParseTuple( args, "i", &format ) )
+        return NULL;
+
+    switch( format ) {
+        case SEGY_IEEE_LSB:
+        case SEGY_IEEE_MSB:
+            break;
+
+        default:
+            return ValueError( "unknown float format, was %d", format );
+    }
+
+    char header[ SEGY_TRACE_HEADER_SIZE ] = {};
+
+    int err = segy_traceheader( fp, 0, header, 0, 0 );
+    if( err )
+        return IOError( "unable to read first trace header in SU file" );
+
+    int32_t f;
+    segy_get_field( header, SEGY_TR_SAMPLE_COUNT, &f );
+
+    const long trace0 = 0;
+    const int samplecount = f;
+    const int elemsize = sizeof( float );
+    int trace_bsize = elemsize * samplecount;
+
+    int tracecount;
+    err = segy_traces( fp, &tracecount, trace0, trace_bsize );
+    switch( err ) {
+        case SEGY_OK: break;
+
+        case SEGY_FSEEK_ERROR:
+            return IOErrno();
+
+        case SEGY_INVALID_ARGS:
+            return RuntimeError( "unable to count traces, "
+                                 "no data traces past headers" );
+
+        case SEGY_TRACE_SIZE_MISMATCH:
+            return RuntimeError( "trace count inconsistent with file size, "
+                                 "trace lengths possibly of non-uniform" );
+
+        default:
+            return Error( err );
+    }
+
+    self->trace0 = trace0;
+    self->trace_bsize = trace_bsize;
+    self->format = format;
+    self->elemsize = elemsize;
+    self->samplecount = samplecount;
     self->tracecount = tracecount;
 
     Py_INCREF( self );
@@ -1216,6 +1283,8 @@ PyMethodDef methods [] = {
     { "segyopen", (PyCFunction) fd::segyopen, METH_NOARGS, "Open file." },
     { "segymake", (PyCFunction) fd::segycreate,
       METH_VARARGS | METH_KEYWORDS, "Create file." },
+
+    { "suopen", (PyCFunction) fd::suopen, METH_VARARGS, "Open SU file." },
 
     { "close", (PyCFunction) fd::close, METH_VARARGS, "Close file." },
     { "flush", (PyCFunction) fd::flush, METH_VARARGS, "Flush file." },

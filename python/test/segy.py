@@ -57,6 +57,41 @@ def test_inline_4():
         # last sample
         assert 4.24049 == approx(data[last_line, sample_count - 1], abs=1e-6)
 
+def test_inline_4_seismic_unix():
+    with segyio.su.open('test-data/small.su',
+            iline = 5,
+            xline = 21,
+            endian = 'big',
+        ) as f:
+
+        sample_count = len(f.samples)
+        assert 50 == sample_count
+
+        data = f.iline[4]
+
+        assert 4.2 == approx(data[0, 0], abs=1e-6)
+        # middle sample
+        assert 4.20024 == approx(data[0, sample_count // 2 - 1], abs=1e-6)
+        # last sample
+        assert 4.20049 == approx(data[0, -1], abs=1e-6)
+
+        # middle xline
+        middle_line = 2
+        # first sample
+        assert 4.22 == approx(data[middle_line, 0], abs=1e-5)
+        # middle sample
+        assert 4.22024 == approx(data[middle_line, sample_count // 2 - 1], abs=1e-6)
+        # last sample
+        assert 4.22049 == approx(data[middle_line, -1], abs=1e-6)
+
+        # last xline
+        last_line = (len(f.xlines) - 1)
+        # first sample
+        assert 4.24 == approx(data[last_line, 0], abs=1e-5)
+        # middle sample
+        assert 4.24024 == approx(data[last_line, sample_count // 2 - 1], abs=1e-6)
+        # last sample
+        assert 4.24049 == approx(data[last_line, sample_count - 1], abs=1e-6)
 
 def test_xline_22():
     with segyio.open("test-data/small.sgy") as f:
@@ -196,7 +231,6 @@ def test_headers_offset():
 
         assert f.header[0][xl] == f.header[1][xl]
         assert not f.header[1][xl] == f.header[2][xl]
-
 
 def test_header_dict_methods():
     with segyio.open("test-data/small.sgy") as f:
@@ -526,6 +560,16 @@ def test_read_header():
         with pytest.raises(KeyError):
             _ = f.header[0][700]
 
+def test_read_header_seismic_unix():
+    il, xl = 5, 21
+    with segyio.su.open('test-data/small.su',
+                        ignore_geometry = True,
+                        endian = 'big') as f:
+        assert 1 == f.header[0][il]
+        assert 1 == f.header[1][il]
+        assert 5 == f.header[-1][il]
+        assert 5 == f.header[24][il]
+        assert dict(f.header[-1]) == dict(f.header[24])
 
 @tmpfiles("test-data/small.sgy")
 def test_write_header(tmpdir):
