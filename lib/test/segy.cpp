@@ -196,8 +196,8 @@ struct smallfix {
         fp = segy_open( "test-data/small.sgy", "rb" );
         REQUIRE( fp );
 
-        if( MMAP_TAG != std::string("") )
-            REQUIRE( Err( segy_mmap( fp ) ) == Err::ok() );
+        if( mmapd() )
+            REQUIRE( success( segy_mmap( fp ) ) );
     }
 
     smallfix( const smallfix& ) = delete;
@@ -1175,8 +1175,8 @@ SCENARIO( MMAP_TAG "modifying trace header", "[c.segy]" MMAP_TAG ) {
         REQUIRE( err == Err::ok() );
         err = segy_writetrace( fp, 10, emptytr, trace0, trace_bsize );
         REQUIRE( err == Err::ok() );
-        if( MMAP_TAG != std::string("") )
-            REQUIRE( Err( segy_mmap( fp ) ) == Err::ok() );
+        if( mmapd() )
+            REQUIRE( success( segy_mmap( fp ) ) );
 
         err = segy_write_traceheader( fp, 5, header, trace0, trace_bsize );
         CHECK( err == Err::ok() );
@@ -1249,8 +1249,8 @@ SCENARIO( MMAP_TAG "reading text header", "[c.segy]" MMAP_TAG ) {
         REQUIRE( ufp );
 
         auto fp = ufp.get();
-        if( MMAP_TAG != std::string("") )
-            REQUIRE( Err( segy_mmap( fp ) ) == Err::ok() );
+        if( mmapd() )
+            REQUIRE( success( segy_mmap( fp ) ) );
 
         char ascii[ SEGY_TEXT_HEADER_SIZE + 1 ] = {};
         const Err err = segy_read_textheader( fp, ascii );
@@ -1296,8 +1296,8 @@ SCENARIO( MMAP_TAG "reading a 2-byte int file", "[c.segy][2-byte]" MMAP_TAG ) {
     REQUIRE( ufp );
 
     auto fp = ufp.get();
-    if( MMAP_TAG != std::string("") )
-        REQUIRE( Err( segy_mmap( fp ) ) == Err::ok() );
+    if( mmapd() )
+        REQUIRE( success( segy_mmap( fp ) ) );
 
     WHEN( "finding traces initial byte offset and sizes" ) {
         char header[ SEGY_BINARY_HEADER_SIZE ];
