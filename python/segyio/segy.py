@@ -750,36 +750,6 @@ class SegyFile(object):
         Notes
         -----
         .. versionadded:: 1.1
-
-        Examples
-        --------
-
-        Print the textual header:
-
-        >>> print(f.text[0])
-
-        Print the first extended textual header:
-
-        >>> print(f.text[1])
-
-        Write a new textual header:
-
-        >>> f.text[0] = make_new_header()
-
-        Copy a tectual header:
-
-        >>> f.text[1] = g.text[0]
-
-        Print a textual header line-by-line:
-
-        >>> # using zip, from the zip documentation
-        >>> text = str(f.text[0])
-        >>> lines = map(''.join, zip( *[iter(text)] * 80))
-        >>> for line in lines:
-        ...     print(line)
-        ...
-
-
         """
         return Text(self.xfd, self._ext_headers + 1)
 
