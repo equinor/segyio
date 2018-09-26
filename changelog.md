@@ -1,3 +1,18 @@
+# 1.7.0
+* segyio has learned to open non-ascii file paths on Windows
+* Fixed an issue where segyio-catr would sometimes print the same trace twice
+* segyio no longer incorrectly considers files where the
+  inline/crossline/offset triple doesn't change sorted
+* The test suite has seen some overhaul, making test cases more focused on the
+  actual thing to test
+* Checking sorting won't silently fail when the offset-word is broken
+* `f.text` is now a Sequence, meaning it has slicing and other common array
+  operations
+* The makefiles no longer build both static and shared libraries, but rather
+  respect the BUILD_SHARED_LIBS variable
+* Python 3.7 support
+* Various refactoring and internal improvements
+
 # 1.6.0
 * segyio has learned to handle int16 and int32 sample formats
 * segyio has learned to write any array_likes with any float-convertible
