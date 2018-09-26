@@ -26,9 +26,12 @@ Data trace
 .. autoclass:: segyio.trace.RefTrace()
     :special-members: __getitem__, __setitem__, __len__, __contains__, __iter__
 
-Trace header
-------------
+Trace header and attributes
+---------------------------
 .. autoclass:: segyio.trace.Header()
+    :special-members: __getitem__, __setitem__, __len__, __contains__, __iter__
+
+.. autoclass:: segyio.trace.Attributes()
     :special-members: __getitem__, __setitem__, __len__, __contains__, __iter__
 
 Data line
@@ -49,6 +52,11 @@ Gather
 Depth
 -----
 .. autoclass:: segyio.depth.Depth()
+    :special-members: __getitem__, __setitem__, __len__, __contains__, __iter__
+
+Text
+----
+.. autoclass:: segyio.trace.Text()
     :special-members: __getitem__, __setitem__, __len__, __contains__, __iter__
 
 Trace and binary header
