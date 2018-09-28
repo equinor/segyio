@@ -107,8 +107,10 @@ add_custom_command(
             test/cath.output
             test/catr.output
     COMMAND segyio-catb ${small} > catb.out
+    COMMAND segyio-catb ${small} -n -d > catbnd.out
     COMMAND segyio-cath ${small} > cath.out
     COMMAND segyio-catr -r 4 9 -t 12 ${small} > catr.out
+    COMMAND segyio-catr -t 1 ${small} -n -d > catrnd.out
 )
 add_custom_command(
     OUTPUT crop-ns.out crop-ns.sgy
@@ -122,13 +124,20 @@ add_custom_command(
 add_test(NAME catb.output
          COMMAND ${CMAKE_COMMAND} -E compare_files ${test}/catb.output catb.out
 )
+add_test(NAME catb.output.nd
+         COMMAND ${CMAKE_COMMAND} -E compare_files ${test}/catbnd.output
+                                                   catbnd.out
+)
 add_test(NAME cath.output
          COMMAND ${CMAKE_COMMAND} -E compare_files ${test}/cath.output cath.out
 )
 add_test(NAME catr.output
          COMMAND ${CMAKE_COMMAND} -E compare_files ${test}/catr.output catr.out
 )
-
+add_test(NAME catr.output.nd
+         COMMAND ${CMAKE_COMMAND} -E compare_files ${test}/catrnd.output
+                                                   catrnd.out
+)
 add_test(NAME crop.samplecount
          COMMAND ${CMAKE_COMMAND} -E compare_files ${test}/crop-ns.output
                                                    crop-ns.out

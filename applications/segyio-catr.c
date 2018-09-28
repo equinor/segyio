@@ -294,6 +294,107 @@ static const char* segynames[91] = {
    "UNASSIGNED2"
 };
 
+static const char* desc[91] = {
+    "Trace sequence number within line"                                     ,
+    "Trace sequence number within SEG Y file"                               ,
+    "Original field record number"                                          ,
+    "Trace number within the original field record"                         ,
+    "Energy source point number"                                            ,
+    "Ensemble number"                                                       ,
+    "Trace number within the ensemble"                                      ,
+    "Trace identification code"                                             ,
+    "Number of vertically summed traces yielding this trace"                ,
+    "Number of horizontally stacked traces yielding this trace"             ,
+    "Data use"                                                              ,
+    "Distance from center of the source point to the center of the "
+    "receiver group"                                                        ,
+    "Receiver group elevation"                                              ,
+    "Surface elevation at source"                                           ,
+    "Source depth below surface"                                            ,
+    "Datum elevation at receiver group"                                     ,
+    "Datum elevation at source"                                             ,
+    "Water depth at source"                                                 ,
+    "Water depth at group"                                                  ,
+    "Scalar to be applied to all elevations and depths specified in Trace "
+    "Header bytes 41-68 to give the real value"                             ,
+    "Scalar to be applied to all coordinates specified in Trace Header "
+    "bytes 73-88 and to bytes Trace Header 181-188 to give the real value"  ,
+    "Source coordinate - X"                                                 ,
+    "Source coordinate - Y"                                                 ,
+    "Group coordinate - X"                                                  ,
+    "Group coordinate - Y"                                                  ,
+    "Coordinate units"                                                      ,
+    "Weathering velocity"                                                   ,
+    "Subweathering velocity"                                                ,
+    "Uphole time at source in milliseconds"                                 ,
+    "Uphole time at group in milliseconds"                                  ,
+    "Source static correction in milliseconds"                              ,
+    "Group static correction in milliseconds"                               ,
+    "Total static applied in milliseconds"                                  ,
+    "Lag time A"                                                            ,
+    "Lag Time B"                                                            ,
+    "Delay recording time"                                                  ,
+    "Mute time — Start time in milliseconds"                                ,
+    "Mute time — End time in milliseconds"                                  ,
+    "Number of samples in this trace"                                       ,
+    "Sample interval in microseconds (μs) for this trace"                   ,
+    "Gain type of field instruments"                                        ,
+    "Instrument gain constant (dB)"                                         ,
+    "Instrument early or initial gain (dB)"                                 ,
+    "Correlated"                                                            ,
+    "Sweep frequency at start (Hz)"                                         ,
+    "Sweep frequency at end (Hz)"                                           ,
+    "Sweep length in milliseconds"                                          ,
+    "Sweep type"                                                            ,
+    "Sweep trace taper length at start in milliseconds"                     ,
+    "Sweep trace taper length at end in milliseconds"                       ,
+    "Taper type"                                                            ,
+    "Alias filter frequency (Hz), if used"                                  ,
+    "Alias filter slope (dB/octave)"                                        ,
+    "Notch filter frequency (Hz), if used"                                  ,
+    "Notch filter slope (dB/octave)"                                        ,
+    "Low-cut frequency (Hz), if used"                                       ,
+    "High-cut frequency (Hz), if used"                                      ,
+    "Low-cut slope (dB/octave)"                                             ,
+    "High-cut slope (dB/octave)"                                            ,
+    "Year data recorded"                                                    ,
+    "Day of year"                                                           ,
+    "Hour of day (24 hour clock)"                                           ,
+    "Minute of hour"                                                        ,
+    "Second of minute"                                                      ,
+    "Time basis code"                                                       ,
+    "Trace weighting factor"                                                ,
+    "Geophone group number of roll switch position one"                     ,
+    "Geophone group number of trace number one within original field record",
+    "Geophone group number of last trace within original field record"      ,
+    "Gap size (total number of groups dropped)"                             ,
+    "Over travel associated with taper at beginning or end of line"         ,
+    "X coordinate of ensemble (CDP) position of this trace"                 ,
+    "Y coordinate of ensemble (CDP) position of this trace"                 ,
+    "Inline number"                                                         ,
+    "Crossline number"                                                      ,
+    "Shotpoint number"                                                      ,
+    "Scalar to be applied to the shotpoint number in Trace Header bytes "
+    "197-200 to give the real value"                                        ,
+    "Trace value measurement unit"                                          ,
+    "Transduction Constant (mantissa)"                                      ,
+    "Transduction Constant (power of ten exponent)"                         ,
+    "Transduction Units"                                                    ,
+    "Device/Trace Identifier"                                               ,
+    "Scalar to be applied to times specified in Trace Header bytes 95-114 "
+    "to give the true time value in milliseconds"                           ,
+    "Source Type/Orientation"                                               ,
+    "Source Energy Direction with respect to the source orientation "
+    "(vertical and crossline)"                                              ,
+    "Source Energy Direction with respect to the source orientation "
+    "(inline)"                                                              ,
+    "Source Measurement (mantissa)"                                         ,
+    "Source Measurement (power of ten exponent)"                            ,
+    "Source Measurement Unit"                                               ,
+    "Unassigned 1"                                                          ,
+    "Unassigned 2"
+};
+
 static int help() {
     puts(
 "Usage: segyio-catr [OPTION]... FILE\n"
@@ -307,6 +408,8 @@ static int help() {
 "-s,  --strict                fail on unreadable tracefields\n"
 "-S,  --non-strict            don't fail on unreadable tracefields\n"
 "                             this is the default behaviour\n"
+"-n,  --nonzero               only print fields with non-zero values\n"
+"-d,  --description           print with byte offset and field description\n"
 "-k,  --segyio                print with segyio tracefield names\n"
 "-v,  --verbose               increase verbosity\n"
 "     --version               output version information and exit\n"
@@ -330,6 +433,7 @@ struct options {
     int verbosity;
     int version, help;
     int strict, labels;
+    int nonzero, description;
     const char* errmsg;
 };
 
@@ -352,6 +456,8 @@ static struct options parse_options( int argc, char** argv ){
     opts.rsize = 0; opts.r = calloc( sizeof( range ), rallocsize );
     opts.format = 0;
     opts.verbosity = 0;
+    opts.nonzero = 0;
+    opts.description = 0;
     opts.version = 0; opts.help = 0;
     opts.strict = 0; opts.labels = su_labels;
     opts.errmsg = NULL;
@@ -363,6 +469,8 @@ static struct options parse_options( int argc, char** argv ){
         { "segyio",         no_argument,        0, 'k' },
         { "strict",         no_argument,        0, 's' },
         { "non-strict",     no_argument,        0, 'S' },
+        { "description",    no_argument,        0, 'd' },
+        { "nonzero",        no_argument,        0, 'n' },
         { "verbose",        no_argument,        0, 'v' },
         { "version",        no_argument,        0, 'V' },
         { "help",           no_argument,        0, 'h' },
@@ -375,7 +483,7 @@ static struct options parse_options( int argc, char** argv ){
     opterr = 1;
     while( true ) {
        int option_index = 0;
-       int c = getopt_long( argc, argv, "sSkvt:r:f:",
+       int c = getopt_long( argc, argv, "sSkdnvt:r:f:",
                             long_options, &option_index );
 
        if( c == -1 ) break;
@@ -388,6 +496,8 @@ static struct options parse_options( int argc, char** argv ){
            case 'v': ++opts.verbosity; break;
            case 's': opts.strict = 1; break;
            case 'S': opts.strict = 0; break;
+           case 'd': opts.description = 1; break;
+           case 'n': opts.nonzero = 1; break;
            case 'k': opts.labels = segyio_labels; break;
            case 'f': if( strcmp( optarg, "ibm" ) == 0 )
                          opts.format = SEGY_IBM_FLOAT_4_BYTE;
@@ -585,7 +695,16 @@ int main( int argc, char** argv ) {
             for( int j = 0; j < 91; j++ ) {
                 int f;
                 segy_get_field( trheader, fields[j], &f );
-                printf( "%s\t%d\n", labels[j], f );
+                if( opts.nonzero && !f ) continue;
+                if( opts.description ) {
+                    printf( "%s\t%d\t%d\t%s\n",
+                            labels[j],
+                            f,
+                            fields[ j ],
+                            desc[ j ] );
+                }
+                else
+                    printf( "%s\t%d\n", labels[j], f );
             }
         }
     }
