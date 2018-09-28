@@ -1288,7 +1288,7 @@ SCENARIO( MMAP_TAG "reading a 2-byte int file", "[c.segy][2-byte]" MMAP_TAG ) {
     const int format      = SEGY_SIGNED_SHORT_2_BYTE;
     const long trace0     = 3600;
     const int samples     = 75;
-    const int trace_bsize = 75 * 2;
+    const int trace_bsize = samples * 2;
 
     WHEN( "reading data without setting format" ) {
         std::int16_t val;
