@@ -1,0 +1,4 @@
+ntrpr	25	13	Number of data traces per ensemble
+hdt	4000	17	Sample interval in microseconds (μs)
+hns	50	21	Number of samples per data trace
+format	1	25	Data sample format code

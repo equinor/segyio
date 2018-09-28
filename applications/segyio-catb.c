@@ -14,8 +14,10 @@ static int printhelp(){
           "Concatenate the binary header from FILE(s) to seismic unix "
           "output.\n"
           "\n"
-          "--version    output version information and exit\n" 
-          "--help       display this help and exit\n"
+          "-n,  --nonzero       only print fields with non-zero values\n"
+          "-d,  --description   print with byte offset and field description\n"
+          "     --version       output version information and exit\n"
+          "     --help          display this help and exit\n"
           "\n"
         );
     return 0;
@@ -28,22 +30,25 @@ static int get_binary_value( char* binheader, int bfield ){
 }
 
 struct options {
-    int version, help;
+    int version;
+    int help;
+    int nonzero;
+    int description;
     const char* errmsg;
 };
 
 static struct options parse_options( int argc, char** argv ){
     struct options opts;
+    opts.nonzero = 0;
+    opts.description = 0;
     opts.version = 0, opts.help = 0;
     opts.errmsg = NULL;
-
-    struct options opthelp, optversion;
-    opthelp.version = 0, opthelp.help = 1, opthelp.errmsg = NULL;
-    optversion.version = 1, optversion.help = 0, optversion.errmsg = NULL;
     
     static struct option long_options[] = {
-        {"version",     no_argument,    0,    'V'},
-        {"help",        no_argument,    0,    'h'},
+        {"version",         no_argument,    0,    'V'},
+        {"help",            no_argument,    0,    'h'},
+        {"description",     no_argument,    0,    'd'},
+        {"nonzero",         no_argument,    0,    'n'},
         {0, 0, 0, 0}
     };
 
@@ -52,18 +57,21 @@ static struct options parse_options( int argc, char** argv ){
     while( true ){
 
         int option_index = 0;
-        int c = getopt_long( argc, argv, "",
+        int c = getopt_long( argc, argv, "nd",
                             long_options, &option_index);
 
         if ( c == -1 ) break;
         
         switch( c ){
             case  0: break;
-            case 'h': return opthelp;
-            case 'V': return optversion;
-            default: 
-                 opthelp.errmsg = "";
-                 return opthelp;
+            case 'h': opts.help = 1;    return opts;
+            case 'V': opts.version = 1; return opts;
+            case 'd': opts.description = 1; break;
+            case 'n': opts.nonzero = 1; break;
+            default:
+                 opts.help = 1;
+                 opts.errmsg = "";
+                 return opts;
         }
     }
     return opts;
@@ -102,6 +110,39 @@ int main( int argc, char** argv ){
         "rev",
         "trflag",
         "exth"
+    };
+
+    static const char* su_desc[ 30 ] = {
+        "Job identification number"                                         ,
+        "Line number"                                                       ,
+        "Reel number"                                                       ,
+        "Number of data traces per ensemble"                                ,
+        "Number of auxiliary traces per ensemble"                           ,
+        "Sample interval in microseconds (μs)"                              ,
+        "Sample interval in microseconds (μs) of original field recording"  ,
+        "Number of samples per data trace"                                  ,
+        "Number of samples per data trace for original field recording"     ,
+        "Data sample format code"                                           ,
+        "Ensemble fold"                                                     ,
+        "Trace sorting code"                                                ,
+        "Vertical sum code"                                                 ,
+        "Sweep frequency at start (Hz)"                                     ,
+        "Sweep frequency at end (Hz)"                                       ,
+        "Sweep length (ms)"                                                 ,
+        "Sweep type code"                                                   ,
+        "Trace number of sweep channel"                                     ,
+        "Sweep trace taper length in milliseconds at start if tapered"      ,
+        "Sweep trace taper length in milliseconds at end"                   ,
+        "Taper type"                                                        ,
+        "Correlated data traces"                                            ,
+        "Binary gain recovered"                                             ,
+        "Amplitude recovery method"                                         ,
+        "Measurement system"                                                ,
+        "Impulse signal polarity"                                           ,
+        "Vibratory polarity code"                                           ,
+        "SEG Y Format Revision Number"                                      ,
+        "Fixed length trace flag"                                           ,
+        "Number of 3200-byte, Extended Textual File Headers"
     };
 
     static int bfield_value[ 30 ] = {
@@ -159,10 +200,20 @@ int main( int argc, char** argv ){
         if( err ) return errmsg(opterr, "Unable to read binary header"); 
 
         for( int c = 0; c < 30; ++c ){
-            printf( "%s\t%d\n", su[ c ],
-                    get_binary_value( binheader, bfield_value[ c ] ));
+            int field = get_binary_value( binheader, bfield_value[ c ] );
+            if( opts.nonzero && !field) continue;
+
+            if( opts.description ) {
+                int byte_offset = (bfield_value[ c ] - SEGY_TEXT_HEADER_SIZE);
+                printf( "%s\t%d\t%d\t%s\n",
+                    su[ c ],
+                    field,
+                    byte_offset,
+                    su_desc[ c ] );
+            }
+            else
+                printf( "%s\t%d\n", su[ c ], field );
         }
-        
         segy_close( fp );
     }
     return 0;
