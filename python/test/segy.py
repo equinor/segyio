@@ -1397,6 +1397,10 @@ def test_depth_slice_reading():
     with pytest.raises(IndexError):
         _ = f.depth_slice[len(f.samples)]
 
+def test_depth_slice_array_shape():
+    with segyio.open("test-data/1xN.sgy") as f:
+        shape = (len(f.fast), len(f.slow))
+        assert f.depth_slice.shape == shape
 
 @tmpfiles("test-data/small.sgy")
 def test_depth_slice_writing(tmpdir):

@@ -34,10 +34,8 @@ class Depth(Sequence):
 
         if fd.unstructured:
             self.shape = fd.tracecount
-        elif fd.sorting == Sorting.CROSSLINE_SORTING:
-            self.shape = (len(fd.ilines), len(fd.xlines))
         else:
-            self.shape = (len(fd.xlines), len(fd.ilines))
+            self.shape = (len(fd.fast), len(fd.slow))
 
         self.offsets = len(fd.offsets)
 
@@ -50,6 +48,9 @@ class Depth(Sequence):
 
         When i is a slice, a generator of numpy.ndarray is returned.
 
+        The depth slices are returned as a fast-by-slow array, i.e. an inline
+        sorted file with 10 inlines and 5 crosslines has the shape (10,5).
+
         Parameters
         ----------
         i : int or slice
@@ -61,6 +62,13 @@ class Depth(Sequence):
         Notes
         -----
         .. versionadded:: 1.1
+
+        .. warning::
+            The segyio 1.5 and 1.6 series, and 1.7.0, would return the depth_slice in the
+            wrong shape for most files. Since segyio 1.7.1, the arrays have the
+            correct shape, i.e. fast-by-slow. The underlying data was always
+            fast-by-slow, so a numpy array reshape can fix programs using the
+            1.5 and 1.6 series.
 
         Behaves like [] for lists.
 
@@ -83,6 +91,11 @@ class Depth(Sequence):
 
         >>> for d in depth[:250]:
         ...     d.mean()
+
+        >>> len(ilines), len(xlines)
+        (1, 6)
+        >>> f.depth_slice[0]
+        array([[0.  , 0.01, 0.02, 0.03, 0.04, 0.05]], dtype=float32)
         """
 
         try:
