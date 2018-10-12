@@ -1,3 +1,4 @@
+#include <fstream>
 #include <numeric>
 #include <cmath>
 #include <memory>
@@ -15,6 +16,22 @@
 #endif
 
 namespace {
+
+const std::string& copyfile( const std::string& src, const std::string& dst ) {
+    std::ifstream  in( src, std::ios::binary );
+    std::ofstream out( dst, std::ios::binary );
+
+    out << in.rdbuf();
+    return dst;
+}
+
+constexpr bool strequal( const char* x, const char* y ) {
+    return *x == *y && (*x == '\0' || strequal(x + 1, y + 1) );
+}
+
+constexpr bool mmapd() {
+    return !strequal( MMAP_TAG, "" );
+}
 
 struct slice { int start, stop, step; };
 std::string str( const slice& s ) {
@@ -807,7 +824,7 @@ TEST_CASE_METHOD( smallcube,
     CHECK_THAT( line, ApproxRange( expected ) );
 }
 
-template< int Start, int Stop, int Step >
+template< int Start, int Stop, int Step, bool memmap = mmapd() >
 struct writesubtr {
     segy_file* fp = nullptr;
 
@@ -832,13 +849,13 @@ struct writesubtr {
                          + "," + std::to_string( step )
                          + "].sgy";
 
-        fp = segy_open( name.c_str(), "w+b" );
+        copyfile( "test-data/small.sgy", name );
 
+        fp = segy_open( name.c_str(), "r+b" );
         REQUIRE( fp );
 
-        if( MMAP_TAG != std::string( "" ) )
-            REQUIRE( segy_mmap( fp ) );
-
+        if( memmap )
+            REQUIRE( success( segy_mmap( fp ) ) );
 
         trace.assign( 50, 0 );
         expected.resize( trace.size() );

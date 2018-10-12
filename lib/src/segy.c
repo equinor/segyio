@@ -1518,8 +1518,8 @@ int segy_writesubtr( segy_file* fp,
          * be handled by the stride-aware code path
          */
         if( fp->addr ) {
-            err = memread( fp, fp->cur, buf, elemsize * elems );
-            if( err != SEGY_OK ) return err;
+            err = memwrite( fp, fp->cur, buf, elemsize * elems );
+            if( err ) return err;
         } else {
             const int writec = fwrite( buf, elemsize, elems, fp->fp );
             if( writec != elems ) return SEGY_FWRITE_ERROR;
