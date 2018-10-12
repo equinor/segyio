@@ -14,12 +14,19 @@ class Depth(Sequence):
     that SEG-Y data is laid out trace-by-trace on disk, so accessing horizontal
     cuts (fixed z-coordinates in a cartesian grid) is *very* inefficient.
 
+    This mode works even on unstructured files, because it is not reliant on
+    in/crosslines to be sensible. Please note that in the case of unstructured
+    depth slicing, the array shape == tracecount.
+
     Notes
     -----
     .. versionadded:: 1.1
 
     .. versionchanged:: 1.6
         common list operations (collections.Sequence)
+
+    .. versionchanged:: 1.7.1
+       enabled for unstructured files
 
     .. warning::
         Accessing the file by depth (fixed z-coordinate) is inefficient because
@@ -34,10 +41,10 @@ class Depth(Sequence):
 
         if fd.unstructured:
             self.shape = fd.tracecount
+            self.offsets = 1
         else:
             self.shape = (len(fd.fast), len(fd.slow))
-
-        self.offsets = len(fd.offsets)
+            self.offsets = len(fd.offsets)
 
     def __getitem__(self, i):
         """depth[i]
@@ -48,8 +55,9 @@ class Depth(Sequence):
 
         When i is a slice, a generator of numpy.ndarray is returned.
 
-        The depth slices are returned as a fast-by-slow array, i.e. an inline
-        sorted file with 10 inlines and 5 crosslines has the shape (10,5).
+        The depth slices are returned as a fast-by-slow shaped array, i.e. an
+        inline sorted file with 10 inlines and 5 crosslines has the shape
+        (10,5). If the file is unsorted, the array shape == tracecount.
 
         Parameters
         ----------

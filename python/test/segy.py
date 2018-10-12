@@ -782,9 +782,6 @@ def test_open_fails_unstructured():
         with pytest.raises(ValueError):
             _ = f.xline[:, :]
 
-        with pytest.raises(ValueError):
-            _ = f.depth_slice[2]
-
         # operations that don't rely on geometry still works
         assert f.header[2][189] == 1
         assert (list(f.attributes(189)[:]) ==
@@ -1401,6 +1398,13 @@ def test_depth_slice_array_shape():
     with segyio.open("test-data/1xN.sgy") as f:
         shape = (len(f.fast), len(f.slow))
         assert f.depth_slice.shape == shape
+
+def test_depth_slice_unstructured():
+    with segyio.open("test-data/small.sgy", ignore_geometry = True) as f:
+        traces = f.trace.raw[:]
+        shape = len(f.trace)
+        assert f.depth_slice.shape == shape
+        np.testing.assert_almost_equal(f.depth_slice[0], traces[:,0])
 
 @tmpfiles("test-data/small.sgy")
 def test_depth_slice_writing(tmpdir):
