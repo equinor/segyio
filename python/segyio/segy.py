@@ -668,15 +668,19 @@ class SegyFile(object):
     @property
     def depth_slice(self):
         """
-        Interact with segy in depth slice mode
+        Interact with segy in depth slice mode (fixed z-coordinate)
 
         Returns
         -------
         depth : Depth
-        """
 
-        if self.unstructured:
-            raise ValueError(self._unstructured_errmsg)
+        Notes
+        -----
+        .. versionadded:: 1.1
+
+        .. versionchanged:: 1.7.1
+            enabled for unstructured files
+        """
 
         if self.depth is not None:
             return self.depth

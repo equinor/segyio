@@ -14,12 +14,19 @@ class Depth(Sequence):
     that SEG-Y data is laid out trace-by-trace on disk, so accessing horizontal
     cuts (fixed z-coordinates in a cartesian grid) is *very* inefficient.
 
+    This mode works even on unstructured files, because it is not reliant on
+    in/crosslines to be sensible. Please note that in the case of unstructured
+    depth slicing, the array shape == tracecount.
+
     Notes
     -----
     .. versionadded:: 1.1
 
     .. versionchanged:: 1.6
         common list operations (collections.Sequence)
+
+    .. versionchanged:: 1.7.1
+       enabled for unstructured files
 
     .. warning::
         Accessing the file by depth (fixed z-coordinate) is inefficient because
@@ -34,12 +41,10 @@ class Depth(Sequence):
 
         if fd.unstructured:
             self.shape = fd.tracecount
-        elif fd.sorting == Sorting.CROSSLINE_SORTING:
-            self.shape = (len(fd.ilines), len(fd.xlines))
+            self.offsets = 1
         else:
-            self.shape = (len(fd.xlines), len(fd.ilines))
-
-        self.offsets = len(fd.offsets)
+            self.shape = (len(fd.fast), len(fd.slow))
+            self.offsets = len(fd.offsets)
 
     def __getitem__(self, i):
         """depth[i]
@@ -49,6 +54,10 @@ class Depth(Sequence):
         be reflected on disk.
 
         When i is a slice, a generator of numpy.ndarray is returned.
+
+        The depth slices are returned as a fast-by-slow shaped array, i.e. an
+        inline sorted file with 10 inlines and 5 crosslines has the shape
+        (10,5). If the file is unsorted, the array shape == tracecount.
 
         Parameters
         ----------
@@ -61,6 +70,13 @@ class Depth(Sequence):
         Notes
         -----
         .. versionadded:: 1.1
+
+        .. warning::
+            The segyio 1.5 and 1.6 series, and 1.7.0, would return the depth_slice in the
+            wrong shape for most files. Since segyio 1.7.1, the arrays have the
+            correct shape, i.e. fast-by-slow. The underlying data was always
+            fast-by-slow, so a numpy array reshape can fix programs using the
+            1.5 and 1.6 series.
 
         Behaves like [] for lists.
 
@@ -83,6 +99,11 @@ class Depth(Sequence):
 
         >>> for d in depth[:250]:
         ...     d.mean()
+
+        >>> len(ilines), len(xlines)
+        (1, 6)
+        >>> f.depth_slice[0]
+        array([[0.  , 0.01, 0.02, 0.03, 0.04, 0.05]], dtype=float32)
         """
 
         try:
