@@ -1,3 +1,9 @@
+# 1.7.1
+* Fixed an issue where writing traces on memory-mapped files was a no-op
+* Depth slices dimensions are always in fast-by-slow
+* catb/catr has some new output formats
+* Some docs entries updated and fixed
+
 # 1.7.0
 * segyio has learned to open non-ascii file paths on Windows
 * Fixed an issue where segyio-catr would sometimes print the same trace twice
