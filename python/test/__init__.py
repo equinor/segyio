@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import shutil
-import os
+import pytest
 
 def tmpfiles(*files):
     def tmpfiles_decorator(func):
@@ -11,3 +11,15 @@ def tmpfiles(*files):
             func(tmpdir)
         return func_wrapper
     return tmpfiles_decorator
+
+
+@pytest.fixture
+def small(tmpdir):
+    shutil.copy("test-data/small.sgy", str(tmpdir))
+    return tmpdir / "small.sgy"
+
+
+@pytest.fixture
+def smallps(tmpdir):
+    shutil.copy("test-data/small-ps.sgy", str(tmpdir))
+    return tmpdir / "small-ps.sgy"
