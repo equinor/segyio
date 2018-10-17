@@ -62,6 +62,7 @@ option(BUILD_PYTHON      "Build Python library"                     ON)
 option(REQUIRE_PYTHON    "Fail cmake if python cannot be built"     OFF)
 option(BUILD_MEX         "Build Matlab mex files"                   OFF)
 option(BUILD_DOC         "Build documentation"                      OFF)
+option(EXPERIMENTAL      "Enable experimental features"             OFF)
 
 check_include_file(netinet/in.h     HAVE_NETINET_IN_H)
 check_include_file(arpa/inet.h      HAVE_ARPA_INET_H)

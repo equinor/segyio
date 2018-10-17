@@ -11,3 +11,8 @@ compareBoolExpressionWithInt:*lib/test/segy.cpp
 // cppcheck gets very confused by fixtures, claiming members are unused,
 // so just ignore that warning
 unusedStructMember:*lib/test/segy.cpp
+
+// cppcheck struggles with some of the template code of the C++ front,
+// and syntax errors are not that interesting from a cppcheck point of view,
+// since the compiler handles them nicely
+syntaxError:*lib/experimental/segyio/segyio.hpp
