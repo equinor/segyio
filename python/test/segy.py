@@ -17,7 +17,7 @@ import numpy.testing as npt
 import pytest
 from pytest import approx
 
-from test import tmpfiles
+from test import tmpfiles, small, smallps
 
 import segyio
 from segyio import TraceField, BinField
@@ -216,12 +216,11 @@ def test_header_dict_methods():
         iter(f.bin)
 
 
-@tmpfiles('test-data/small.sgy')
-def test_header_dropped_writes(tmpdir):
-    with segyio.open('test-data/small.sgy', mode='r+') as f:
+def test_header_dropped_writes(small):
+    with segyio.open(small, mode='r+') as f:
         f.header[10] = { 1: 5, 5: 10 }
 
-    with segyio.open('test-data/small.sgy', mode='r+') as f:
+    with segyio.open(small, mode='r+') as f:
         x, y = f.header[10], f.header[10]
 
         assert x[1, 5] == { 1: 5, 5: 10 }
@@ -247,14 +246,14 @@ def test_header_dropped_writes(tmpdir):
         assert x[1] == 6
         assert y[1, 5] == { 1: 6, 5: 1 }
 
-@tmpfiles("test-data/small-ps.sgy")
-def test_headers_line_offset(tmpdir):
+
+def test_headers_line_offset(smallps):
     il, xl = TraceField.INLINE_3D, TraceField.CROSSLINE_3D
-    with segyio.open(tmpdir / "small-ps.sgy", "r+") as f:
+    with segyio.open(smallps, "r+") as f:
         f.header.iline[1, 2] = {il: 11}
         f.header.iline[1, 2] = {xl: 13}
 
-    with segyio.open(tmpdir / "small-ps.sgy", strict=False) as f:
+    with segyio.open(smallps, strict=False) as f:
         assert f.header[0][il] == 1
         assert f.header[1][il] == 11
         assert f.header[2][il] == 1
@@ -476,12 +475,14 @@ def test_traces_raw():
         for raw, gen in zip(f.trace.raw[::-1], f.trace[::-1]):
             assert np.array_equal(raw, gen)
 
+
 def test_read_text_sequence():
     with segyio.open('test-data/multi-text.sgy', ignore_geometry = True) as f:
         for text in f.text[:]:
             assert text
 
         assert iter(f.text)
+
 
 @tmpfiles('test-data/multi-text.sgy')
 def test_put_text_sequence(tmpdir):
@@ -501,6 +502,7 @@ def test_put_text_sequence(tmpdir):
     with segyio.open(fname, ignore_geometry = True) as f:
         for text in f.text:
             assert text == ref
+
 
 def test_read_header():
     with segyio.open("test-data/small.sgy") as f:
@@ -527,9 +529,8 @@ def test_read_header():
             _ = f.header[0][700]
 
 
-@tmpfiles("test-data/small.sgy")
-def test_write_header(tmpdir):
-    with segyio.open(tmpdir / "small.sgy", "r+") as f:
+def test_write_header(small):
+    with segyio.open(small, "r+") as f:
         # assign to a field in a header, write immediately
         f.header[0][189] = 42
         f.flush()
@@ -630,9 +631,8 @@ def test_write_header(tmpdir):
         # assertEqual(list(f.header[2].buf), list(f.header[1].buf))
 
 
-@tmpfiles("test-data/small.sgy")
-def test_write_binary(tmpdir):
-    with segyio.open(tmpdir / "small.sgy", "r+") as f:
+def test_write_binary(small):
+    with segyio.open(small, "r+") as f:
         f.bin[3213] = 5
         f.flush()
 
@@ -683,9 +683,9 @@ def test_write_binary(tmpdir):
         # copy a header
         f.bin = f.bin
 
-@tmpfiles("test-data/small.sgy")
-def test_write_header_update_atomic(tmpdir):
-    with segyio.open(tmpdir / "small.sgy", "r+") as f:
+
+def test_write_header_update_atomic(small):
+    with segyio.open(small, "r+") as f:
         orig = dict(f.header[10])
 
         d = { 1:  10,
@@ -720,6 +720,7 @@ def test_write_header_update_atomic(tmpdir):
         assert orig != f.header[10]
         assert fresh == f.header[10]
         assert header == f.header[10]
+
 
 def test_fopen_error():
     # non-existent file
@@ -787,9 +788,9 @@ def test_open_fails_unstructured():
         assert (list(f.attributes(189)[:]) ==
                 [(i // 5) + 1 for i in range(len(f.trace))])
 
-@tmpfiles('test-data/small.sgy')
-def test_write_with_narrowing(tmpdir):
-    with segyio.open(tmpdir / 'small.sgy', mode = 'r+') as f:
+
+def test_write_with_narrowing(small):
+    with segyio.open(small, mode = 'r+') as f:
 
         with pytest.warns(RuntimeWarning):
             ones = np.ones(len(f.samples), dtype=np.float64)
@@ -815,9 +816,9 @@ def test_write_with_narrowing(tmpdir):
             f.xline[last] = threes
             assert np.array_equal(f.xline[last], threes)
 
-@tmpfiles('test-data/small.sgy')
-def test_write_with_array_likes(tmpdir):
-    with segyio.open(tmpdir / 'small.sgy', mode = 'r+') as f:
+
+def test_write_with_array_likes(small):
+    with segyio.open(small, mode = 'r+') as f:
 
         with pytest.warns(RuntimeWarning):
             ones = np.ones(3 * len(f.samples), dtype='single')
@@ -830,10 +831,10 @@ def test_write_with_array_likes(tmpdir):
             f.trace[0] = (1 for _ in range(len(f.samples)))
             assert np.array_equal(f.trace[0], ones)
 
-@tmpfiles("test-data/small.sgy")
-def test_assign_all_traces(tmpdir):
-    orig = str(tmpdir / 'small.sgy')
-    copy = str(tmpdir / 'copy.sgy')
+
+def test_assign_all_traces(small):
+    orig = str(small.dirname + '/small.sgy')
+    copy = str(small.dirname + '/copy.sgy')
     shutil.copy(orig, copy)
 
     with segyio.open(orig) as f:
@@ -858,11 +859,10 @@ def test_traceaccess_from_array():
         _ = f.trace[d[3]]
 
 
-@tmpfiles("test-data/small.sgy")
-def test_create_sgy(tmpdir):
-    small = str(tmpdir / 'small.sgy')
-    fresh = str(tmpdir / 'fresh.sgy')
-    with segyio.open(small) as src:
+def test_create_sgy(small):
+    orig = str(small.dirname + '/small.sgy')
+    fresh = str(small.dirname + '/fresh.sgy')
+    with segyio.open(orig) as src:
         spec = segyio.spec()
         spec.format = int(src.format)
         spec.sorting = int(src.sorting)
@@ -890,11 +890,10 @@ def test_create_sgy(tmpdir):
             # for dsttr, srctr in zip(dst.trace, src.trace):
             #    dsttr = srctr
 
-    assert filecmp.cmp(small, fresh)
+    assert filecmp.cmp(orig, fresh)
 
-@tmpfiles("test-data/small.sgy")
-def test_ref_getitem(tmpdir):
-    small = str(tmpdir / 'small.sgy')
+
+def test_ref_getitem(small):
     with segyio.open(small, mode = 'r+') as f:
         with f.trace.ref as ref:
             expected = ref[10].copy()
@@ -926,9 +925,7 @@ def test_ref_getitem(tmpdir):
         npt.assert_array_almost_equal(expected, f.trace[10])
 
 
-@tmpfiles("test-data/small.sgy")
-def test_ref_inplace_add_foreach(tmpdir):
-    small = str(tmpdir / 'small.sgy')
+def test_ref_inplace_add_foreach(small):
     with segyio.open(small, mode = 'r+') as f:
         expected = f.trace.raw[:] + 1.617
 
@@ -939,9 +936,8 @@ def test_ref_inplace_add_foreach(tmpdir):
     with segyio.open(small) as f:
         npt.assert_array_almost_equal(expected, f.trace.raw[:])
 
-@tmpfiles("test-data/small.sgy")
-def test_ref_preserve_change_except_block(tmpdir):
-    small = str(tmpdir / 'small.sgy')
+
+def test_ref_preserve_change_except_block(small):
     with segyio.open(small, mode = 'r+') as f:
         expected = f.trace.raw[:]
         expected[10][0] = 0
@@ -959,9 +955,7 @@ def test_ref_preserve_change_except_block(tmpdir):
         npt.assert_array_almost_equal(expected, result)
 
 
-@tmpfiles("test-data/small.sgy")
-def test_ref_post_loop_var(tmpdir):
-    small = str(tmpdir / 'small.sgy')
+def test_ref_post_loop_var(small):
     with segyio.open(small, mode = 'r+') as f:
         expected = f.trace[-1]
         expected[0] = 1.617
@@ -974,9 +968,8 @@ def test_ref_post_loop_var(tmpdir):
     with segyio.open(small) as f:
         npt.assert_array_almost_equal(expected, f.trace[-1])
 
-@tmpfiles("test-data/small.sgy")
-def test_ref_sliced(tmpdir):
-    small = str(tmpdir / 'small.sgy')
+
+def test_ref_sliced(small):
     with segyio.open(small, mode = 'r+') as f:
         expected = f.trace.raw[:]
         expected[10:15] += expected[:5]
@@ -988,9 +981,7 @@ def test_ref_sliced(tmpdir):
     with segyio.open(small) as f:
         npt.assert_array_almost_equal(expected, f.trace.raw[:])
 
-@tmpfiles("test-data/small.sgy")
-def test_ref_mixed_for_else(tmpdir):
-    small = str(tmpdir / 'small.sgy')
+def test_ref_mixed_for_else(small):
     with segyio.open(small, mode = 'r+') as f:
         samples = len(f.samples)
         zeros = np.zeros(samples, dtype = f.dtype)
@@ -1013,16 +1004,15 @@ def test_ref_mixed_for_else(tmpdir):
         npt.assert_array_almost_equal(expected, f.trace.raw[:])
 
 
-@tmpfiles("test-data/small.sgy")
-def test_ref_new_file(tmpdir):
+def test_ref_new_file(small):
     # this is the case the trace.ref feature was designed to support, namely
     # creating a file trace-by-trace based on some transformation of another
     # file, or an operation on multiple, where the trace index itself is
     # uninteresting.
 
-    small = str(tmpdir / 'small.sgy')
-    fresh = str(tmpdir / 'fresh.sgy')
-    with segyio.open(small) as src:
+    orig = str(small.dirname + '/small.sgy')
+    fresh = str(small.dirname + '/fresh.sgy')
+    with segyio.open(orig) as src:
 
         spec = segyio.tools.metadata(src)
         with segyio.create(fresh, spec) as dst:
@@ -1042,11 +1032,11 @@ def test_ref_new_file(tmpdir):
         with segyio.open(fresh) as dst:
             npt.assert_array_almost_equal(src.trace.raw[:], dst.trace.raw[:])
 
-@tmpfiles("test-data/small.sgy")
-def test_create_sgy_truncate(tmpdir):
-    small = str(tmpdir / 'small.sgy')
-    trunc = str(tmpdir / 'text-truncated.sgy')
-    with segyio.open(small) as src:
+
+def test_create_sgy_truncate(small):
+    orig = str(small.dirname + '/small.sgy')
+    trunc = str(small.dirname + '/text-truncated.sgy')
+    with segyio.open(orig) as src:
         spec = segyio.tools.metadata(src)
 
         # repeat the text header 3 times
@@ -1063,12 +1053,13 @@ def test_create_sgy_truncate(tmpdir):
 
             dst.trace = src.trace
 
-    assert filecmp.cmp(small, trunc)
+    assert filecmp.cmp(orig, trunc)
 
 
-@tmpfiles("test-data/small.sgy")
-def test_create_sgy_shorter_traces(tmpdir):
-    with segyio.open(tmpdir / "small.sgy") as src:
+def test_create_sgy_shorter_traces(small):
+    orig = str(small.dirname + '/small.sgy')
+    fresh = str(small.dirname + '/small_created_shorter.sgy')
+    with segyio.open(orig) as src:
         spec = segyio.spec()
         spec.format = int(src.format)
         spec.sorting = int(src.sorting)
@@ -1076,7 +1067,7 @@ def test_create_sgy_shorter_traces(tmpdir):
         spec.ilines = src.ilines
         spec.xlines = src.xlines
 
-        with segyio.create(tmpdir / "small_created_shorter.sgy", spec) as dst:
+        with segyio.create(fresh, spec) as dst:
             for i, srch in enumerate(src.header):
                 dst.header[i] = srch
                 d = {TraceField.INLINE_3D: srch[TraceField.INLINE_3D] + 100}
@@ -1091,9 +1082,10 @@ def test_create_sgy_shorter_traces(tmpdir):
             for lineno in dst.xlines:
                 dst.xline[lineno] = src.xline[lineno]
 
-        with segyio.open(tmpdir / "small_created_shorter.sgy") as dst:
+        with segyio.open(fresh) as dst:
             assert 20 == len(dst.samples)
             assert [x + 100 for x in src.ilines] == list(dst.ilines)
+
 
 def test_create_from_naught(tmpdir):
     spec = segyio.spec()
@@ -1169,6 +1161,7 @@ def test_create_from_naught_prestack(tmpdir):
         for x, y in zip(f.iline[:, :], cube):
             assert list(x.flatten()) == list(y.flatten())
 
+
 def test_create_unstructured_hasattrs(tmpdir):
     spec = segyio.spec()
     spec.format = 5
@@ -1182,6 +1175,7 @@ def test_create_unstructured_hasattrs(tmpdir):
         assert not dst.ilines
         assert not dst.xlines
         assert dst.unstructured
+
 
 def test_create_from_naught_unstructured(tmpdir):
     spec = segyio.spec()
@@ -1278,6 +1272,7 @@ def mklines(fname):
         for xl in spec.xlines:
             dst.header.xline[xl] = {TraceField.CROSSLINE_3D: xl}
 
+
 def test_create_bad_specs(tmpdir):
     class C:
         pass
@@ -1320,6 +1315,7 @@ def test_create_bad_specs(tmpdir):
     c.sorting = 2
     with segyio.create(tmpdir / 'ok.sgy', c):
         pass
+
 
 def test_segyio_types():
     with segyio.open("test-data/small.sgy") as f:
@@ -1394,10 +1390,12 @@ def test_depth_slice_reading():
     with pytest.raises(IndexError):
         _ = f.depth_slice[len(f.samples)]
 
+
 def test_depth_slice_array_shape():
     with segyio.open("test-data/1xN.sgy") as f:
         shape = (len(f.fast), len(f.slow))
         assert f.depth_slice.shape == shape
+
 
 def test_depth_slice_unstructured():
     with segyio.open("test-data/small.sgy", ignore_geometry = True) as f:
@@ -1406,8 +1404,8 @@ def test_depth_slice_unstructured():
         assert f.depth_slice.shape == shape
         np.testing.assert_almost_equal(f.depth_slice[0], traces[:,0])
 
-@tmpfiles("test-data/small.sgy")
-def test_depth_slice_writing(tmpdir):
+
+def test_depth_slice_writing(small):
     from itertools import islice
 
     buf = np.empty(shape=(5, 5), dtype=np.single)
@@ -1418,7 +1416,7 @@ def test_depth_slice_writing(tmpdir):
     for x, y in itertools.product(range(5), range(5)):
         buf[x][y] = value(x, y)
 
-    with segyio.open(tmpdir / "small.sgy", "r+") as f:
+    with segyio.open(small, "r+") as f:
         f.depth_slice[7] = buf * 3.14  # assign to depth 7
         assert np.allclose(f.depth_slice[7], buf * 3.14)
 
@@ -1427,6 +1425,7 @@ def test_depth_slice_writing(tmpdir):
         for index, depth_slice in itr:
             assert np.allclose(depth_slice, buf * index)
             next(islice(itr, 3, 3), None)
+
 
 def test_no_16bit_overflow_tracecount(tmpdir):
     spec = segyio.spec()
@@ -1459,6 +1458,7 @@ def test_open_2byte_int_format():
         assert list(f.xlines) == list(range(875, 875 + 18))
         assert f.dtype        == np.dtype(np.int16)
 
+
 def test_readtrace_int16():
     with segyio.open('test-data/f3.sgy') as f:
         tr = f.trace[10]
@@ -1481,6 +1481,7 @@ def test_writetrace_int16(tmpdir):
         assert np.array_equal(f.trace[1], tr + 1)
         assert np.array_equal(f.trace.raw[:2], [tr, tr+1])
 
+
 @tmpfiles('test-data/f3.sgy')
 def test_write_iline_int16(tmpdir):
     with segyio.open(tmpdir / 'f3.sgy', mode = 'r+') as f:
@@ -1492,19 +1493,20 @@ def test_write_iline_int16(tmpdir):
         assert np.array_equal(f.iline[f.ilines[0]], il)
 
 
-@tmpfiles('test-data/small.sgy')
-def test_missing_format_ibmfloat_fallback(tmpdir):
-    with segyio.open(tmpdir / 'small.sgy', mode = 'r+') as f:
+def test_missing_format_ibmfloat_fallback(small):
+    with segyio.open(small, mode = 'r+') as f:
         f.bin[segyio.su.format] = 0
 
     with pytest.warns(UserWarning):
-        with segyio.open(tmpdir / 'small.sgy') as f:
+        with segyio.open(small) as f:
             assert int(f.format) == 1
             assert f.dtype       == np.dtype(np.float32)
+
 
 def test_utf8_filename():
     with segyio.open('test-data/小文件.sgy') as f:
         assert list(f.ilines) == [1, 2, 3, 4, 5]
+
 
 @tmpfiles(u'test-data/小文件.sgy')
 def test_utf8_filename_pypath(tmpdir):
