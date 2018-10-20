@@ -58,6 +58,7 @@ if (POLICY CMP0042)
 endif ()
 
 option(BUILD_SHARED_LIBS "Build language bindings shared"           OFF)
+option(BUILD_BIN         "Build applications"                       ON)
 option(BUILD_PYTHON      "Build Python library"                     ON)
 option(REQUIRE_PYTHON    "Fail cmake if python cannot be built"     OFF)
 option(BUILD_MEX         "Build Matlab mex files"                   OFF)
