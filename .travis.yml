@@ -57,7 +57,6 @@ addons:
         - sourceline: 'ppa:jokva/backports'
         - george-edison55-precise-backports # cmake 3
       packages:
-        - valgrind
         - cppcheck
         - cmake
         - cmake-data
