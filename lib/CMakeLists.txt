@@ -14,7 +14,6 @@ target_compile_options(segyio BEFORE
 )
 target_compile_definitions(segyio
     PRIVATE
-        ${htons}
         ${mmap}
         ${fstat}
         ${ftello}

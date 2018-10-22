@@ -4,18 +4,15 @@
 #define _POSIX_C_SOURCE 200808L
 #define _FILE_OFFSET_BITS 64
 
+#if defined(_WIN32) || defined(_MSC_VER)
+    /* MultiByteToWideChar */
+    #include <windows.h>
+#endif
+
 #ifdef HAVE_MMAP
   #define _POSIX_SOURCE
   #include <sys/mman.h>
 #endif //HAVE_MMAP
-
-#ifdef HAVE_NETINET_IN_H
-#include <netinet/in.h>
-#elif HAVE_ARPA_INET_H
-#include <arpa/inet.h>
-#elif HAVE_WINSOCK2_H
-#include <winsock2.h>
-#endif
 
 #ifdef HAVE_SYS_STAT_H
   #include <sys/types.h>
@@ -81,6 +78,14 @@ static int encode( char* dst,
     return SEGY_OK;
 }
 
+#ifdef HOST_BIG_ENDIAN
+    #define HOST_LSB 0
+    #define HOST_MSB 1
+#else
+    #define HOST_LSB 1
+    #define HOST_MSB 0
+#endif
+
 #define bswap32(v) ( (((v) & 0x000000FF) << 24) \
                    | (((v) & 0x0000FF00) <<  8) \
                    | (((v) & 0x00FF0000) >>  8) \
@@ -90,6 +95,38 @@ static int encode( char* dst,
 #define bswap16(v) ( (((v) & 0x00FF) << 8) \
                    | (((v) & 0xFF00) >> 8) \
                    )
+
+static uint16_t htobe16( uint16_t v ) {
+#ifdef HOST_LSB
+    return bswap16(v);
+#else
+    return v;
+#endif
+}
+
+static uint32_t htobe32( uint32_t v ) {
+#ifdef HOST_LSB
+    return bswap32(v);
+#else
+    return v;
+#endif
+}
+
+static uint16_t be16toh( uint16_t v ) {
+#ifdef HOST_LSB
+    return bswap16(v);
+#else
+    return v;
+#endif
+}
+
+static uint32_t be32toh( uint32_t v ) {
+#ifdef HOST_LSB
+    return bswap32(v);
+#else
+    return v;
+#endif
+}
 
 /*
  * DEPRECATED
@@ -154,7 +191,7 @@ static inline void native_ibm( void* buf ) {
 void ibm2ieee( void* to, const void* from ) {
     uint32_t u;
     memcpy( &u, from, sizeof( u ) );
-    u = ntohl( u );
+    u = be32toh( u );
 
     ibm_native( &u );
     memcpy( to, &u, sizeof( u ) );
@@ -165,7 +202,7 @@ void ieee2ibm( void* to, const void* from ) {
     memcpy( &u, from, sizeof( u ) );
 
     native_ibm( &u );
-    u = htonl( u );
+    u = be32toh( u );
     memcpy( to, &u, sizeof( u ) );
 }
 
@@ -537,12 +574,12 @@ static int get_field( const char* header,
     switch( bsize ) {
         case 4:
             memcpy( &buf32, header + (field - 1), 4 );
-            *f = (int32_t)ntohl( buf32 );
+            *f = (int32_t)be32toh( buf32 );
             return SEGY_OK;
 
         case 2:
             memcpy( &buf16, header + (field - 1), 2 );
-            *f = (int16_t)ntohs( buf16 );
+            *f = (int16_t)be16toh( buf16 );
             return SEGY_OK;
 
         case 0:
@@ -575,12 +612,12 @@ static int set_field( char* header, const int* table, int field, int32_t val ) {
 
     switch( bsize ) {
         case 4:
-            buf32 = htonl( (uint32_t)val );
+            buf32 = htobe32( (uint32_t)val );
             memcpy( header + (field - 1), &buf32, sizeof( buf32 ) );
             return SEGY_OK;
 
         case 2:
-            buf16 = htons( (uint16_t)val );
+            buf16 = htobe16( (uint16_t)val );
             memcpy( header + (field - 1), &buf16, sizeof( buf16 ) );
             return SEGY_OK;
 
@@ -1927,14 +1964,6 @@ int segy_writesubtr( segy_file* fp,
  * FILE LSB |   no-op   |  bswap
  * FILE MSB |   bswap   |  no-op
  */
-
-#ifdef HOST_BIG_ENDIAN
-    #define HOST_LSB 0
-    #define HOST_MSB 1
-#else
-    #define HOST_LSB 1
-    #define HOST_MSB 0
-#endif
 
 static int segy_native_byteswap( int format,
                                  long long size,
