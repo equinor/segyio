@@ -86,15 +86,20 @@ static int encode( char* dst,
     #define HOST_MSB 0
 #endif
 
-#define bswap32(v) ( (((v) & 0x000000FF) << 24) \
-                   | (((v) & 0x0000FF00) <<  8) \
-                   | (((v) & 0x00FF0000) >>  8) \
-                   | (((v) & 0xFF000000) >> 24) \
-                   )
+#if defined __GNUC__
+    #define bswap32(x) __builtin_bswap32((x))
+    #define bswap16(x) __builtin_bswap16((x))
+#else
+    #define bswap32(v) ( (((v) & 0x000000FF) << 24) \
+                       | (((v) & 0x0000FF00) <<  8) \
+                       | (((v) & 0x00FF0000) >>  8) \
+                       | (((v) & 0xFF000000) >> 24) \
+                       )
 
-#define bswap16(v) ( (((v) & 0x00FF) << 8) \
-                   | (((v) & 0xFF00) >> 8) \
-                   )
+    #define bswap16(v) ( (((v) & 0x00FF) << 8) \
+                       | (((v) & 0xFF00) >> 8) \
+                       )
+#endif // __GNUC__
 
 static uint16_t htobe16( uint16_t v ) {
 #ifdef HOST_LSB
