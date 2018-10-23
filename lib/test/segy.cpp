@@ -11,11 +11,25 @@
 #include <segyio/segy.h>
 #include <segyio/util.h>
 
-#ifndef MMAP_TAG
-#define MMAP_TAG ""
-#endif
+#include "test-config.hpp"
 
 namespace {
+
+struct segy_fclose {
+    void operator()( segy_file* fp ) {
+        if( fp ) segy_close( fp );
+    }
+};
+
+using unique_segy = std::unique_ptr< segy_file, segy_fclose >;
+
+segy_file* openfile( const std::string& path, const std::string& mode ) {
+    unique_segy ptr( segy_open( path.c_str(), mode.c_str() ) );
+    REQUIRE( ptr );
+
+    testcfg::config().apply( ptr.get() );
+    return ptr.release();
+}
 
 const std::string& copyfile( const std::string& src, const std::string& dst ) {
     std::ifstream  in( src, std::ios::binary );
@@ -23,14 +37,6 @@ const std::string& copyfile( const std::string& src, const std::string& dst ) {
 
     out << in.rdbuf();
     return dst;
-}
-
-constexpr bool strequal( const char* x, const char* y ) {
-    return *x == *y && (*x == '\0' || strequal(x + 1, y + 1) );
-}
-
-constexpr bool mmapd() {
-    return !strequal( MMAP_TAG, "" );
 }
 
 struct slice { int start, stop, step; };
@@ -170,18 +176,15 @@ struct smallfix {
     segy_file* fp = nullptr;
 
     smallfix() {
-        fp = segy_open( "test-data/small.sgy", "rb" );
-        REQUIRE( fp );
-
-        if( MMAP_TAG != std::string("") )
-            REQUIRE( Err( segy_mmap( fp ) ) == Err::ok() );
+        fp = openfile( "test-data/small.sgy", "rb" );
+        testcfg::config().apply( fp );
     }
 
     smallfix( const smallfix& ) = delete;
     smallfix& operator=( const smallfix& ) = delete;
 
     ~smallfix() {
-        if( fp ) segy_close( fp );
+        segy_fclose()( fp );
     }
 };
 
@@ -250,8 +253,8 @@ int arbitrary_int() {
 }
 
 TEST_CASE_METHOD( smallbin,
-                  MMAP_TAG "samples+positions from binary header are correct",
-                  MMAP_TAG "[c.segy]" ) {
+                  "samples+positions from binary header are correct",
+                  "[c.segy]" ) {
     int samples = segy_samples( bin );
     long trace0 = segy_trace0( bin );
     int trace_bsize = segy_trsize( SEGY_IBM_FLOAT_4_BYTE, samples );
@@ -262,22 +265,22 @@ TEST_CASE_METHOD( smallbin,
 }
 
 TEST_CASE_METHOD( smallfix,
-                  MMAP_TAG "sample format can be overriden",
-                  MMAP_TAG "[c.segy]" ) {
+                  "sample format can be overriden",
+                  "[c.segy]" ) {
     Err err = segy_set_format( fp, SEGY_IEEE_FLOAT_4_BYTE );
     CHECK( err == Err::ok() );
 }
 
 TEST_CASE_METHOD( smallfix,
-                  MMAP_TAG "sample format fails on invalid format",
-                  MMAP_TAG "[c.segy]" ) {
+                  "sample format fails on invalid format",
+                  "[c.segy]" ) {
     Err err = segy_set_format( fp, 10 );
     CHECK( err == Err::args() );
 }
 
 TEST_CASE_METHOD( smallbasic,
-                  MMAP_TAG "trace count is 25",
-                  MMAP_TAG "[c.segy]" ) {
+                  "trace count is 25",
+                  "[c.segy]" ) {
     int traces;
     Err err = segy_traces( fp, &traces, trace0, trace_bsize );
     CHECK( success( err ) );
@@ -285,8 +288,8 @@ TEST_CASE_METHOD( smallbasic,
 }
 
 TEST_CASE_METHOD( smallbasic,
-                  MMAP_TAG "trace0 beyond EOF is an argument error",
-                  MMAP_TAG "[c.segy]" ) {
+                  "trace0 beyond EOF is an argument error",
+                  "[c.segy]" ) {
     const int input_traces = arbitrary_int();
     int traces = input_traces;
     Err err = segy_traces( fp, &traces, 50000, trace_bsize );
@@ -295,8 +298,8 @@ TEST_CASE_METHOD( smallbasic,
 }
 
 TEST_CASE_METHOD( smallbasic,
-                  MMAP_TAG "negative trace0 is an argument error",
-                  MMAP_TAG "[c.segy]" ) {
+                  "negative trace0 is an argument error",
+                  "[c.segy]" ) {
     const int input_traces = arbitrary_int();
     int traces = input_traces;
     Err err = segy_traces( fp, &traces, -1, trace_bsize );
@@ -305,8 +308,8 @@ TEST_CASE_METHOD( smallbasic,
 }
 
 TEST_CASE_METHOD( smallbasic,
-                  MMAP_TAG "erroneous trace_bsize is detected",
-                  MMAP_TAG "[c.segy]" ) {
+                  "erroneous trace_bsize is detected",
+                  "[c.segy]" ) {
     const int input_traces = arbitrary_int();
     int traces = input_traces;
     const int too_long_bsize = trace_bsize + sizeof( float );
@@ -316,8 +319,8 @@ TEST_CASE_METHOD( smallbasic,
 }
 
 TEST_CASE_METHOD( smallheader,
-                  MMAP_TAG "valid trace-header fields can be read",
-                  MMAP_TAG "[c.segy]" ) {
+                  "valid trace-header fields can be read",
+                  "[c.segy]" ) {
 
     int32_t ilno;
     Err err = segy_get_field( header, SEGY_TR_INLINE, &ilno );
@@ -326,8 +329,8 @@ TEST_CASE_METHOD( smallheader,
 }
 
 TEST_CASE_METHOD( smallheader,
-                  MMAP_TAG "zero header field is an argument error",
-                  MMAP_TAG "[c.segy]" ) {
+                  "zero header field is an argument error",
+                  "[c.segy]" ) {
     const int32_t input_value = arbitrary_int();
     auto value = input_value;
     Err err = segy_get_field( header, 0, &value );
@@ -337,8 +340,8 @@ TEST_CASE_METHOD( smallheader,
 }
 
 TEST_CASE_METHOD( smallheader,
-                  MMAP_TAG "negative header field is an argument error",
-                  MMAP_TAG "[c.segy]" ) {
+                  "negative header field is an argument error",
+                  "[c.segy]" ) {
     const int32_t input_value = arbitrary_int();
     auto value = input_value;
     Err err = segy_get_field( header, -1, &value );
@@ -348,8 +351,8 @@ TEST_CASE_METHOD( smallheader,
 }
 
 TEST_CASE_METHOD( smallheader,
-                  MMAP_TAG "unaligned header field is an argument error",
-                  MMAP_TAG "[c.segy]" ) {
+                  "unaligned header field is an argument error",
+                  "[c.segy]" ) {
     const int32_t input_value = arbitrary_int();
     auto value = input_value;
     Err err = segy_get_field( header, SEGY_TR_INLINE + 1, &value );
@@ -359,8 +362,8 @@ TEST_CASE_METHOD( smallheader,
 }
 
 TEST_CASE_METHOD( smallheader,
-                  MMAP_TAG "too large header field is an argument error",
-                  MMAP_TAG "[c.segy]" ) {
+                  "too large header field is an argument error",
+                  "[c.segy]" ) {
     const int32_t input_value = arbitrary_int();
     auto value = input_value;
     Err err = segy_get_field( header, SEGY_TRACE_HEADER_SIZE + 10, &value );
@@ -370,8 +373,8 @@ TEST_CASE_METHOD( smallheader,
 }
 
 TEST_CASE_METHOD( smallfields,
-                  MMAP_TAG "inline sorting is detected",
-                  MMAP_TAG "[c.segy]" ) {
+                  "inline sorting is detected",
+                  "[c.segy]" ) {
     int sorting;
     Err err = segy_sorting( fp, il, xl, of, &sorting, trace0, trace_bsize );
     CHECK( success( err ) );
@@ -379,8 +382,8 @@ TEST_CASE_METHOD( smallfields,
 }
 
 TEST_CASE_METHOD( smallfields,
-                  MMAP_TAG "crossline sorting is detected with swapped il/xl",
-                  MMAP_TAG "[c.segy]" ) {
+                  "crossline sorting is detected with swapped il/xl",
+                  "[c.segy]" ) {
     int sorting;
     Err err = segy_sorting( fp, xl, il, of, &sorting, trace0, trace_bsize );
     CHECK( success( err ) );
@@ -388,8 +391,8 @@ TEST_CASE_METHOD( smallfields,
 }
 
 TEST_CASE_METHOD( smallfields,
-                  MMAP_TAG "invalid in-between byte offsets are detected",
-                  MMAP_TAG "[c.segy]" ) {
+                  "invalid in-between byte offsets are detected",
+                  "[c.segy]" ) {
     int sorting;
     Err err = segy_sorting( fp, il + 1, xl, of, &sorting, trace0, trace_bsize );
     CHECK( err == SEGY_INVALID_FIELD );
@@ -402,8 +405,8 @@ TEST_CASE_METHOD( smallfields,
 }
 
 TEST_CASE_METHOD( smallsize,
-                  MMAP_TAG "post-stack file offset-count is 1",
-                  MMAP_TAG "[c.segy]" ) {
+                  "post-stack file offset-count is 1",
+                  "[c.segy]" ) {
     int offsets;
     Err err = segy_offsets( fp,
                             il,
@@ -418,8 +421,8 @@ TEST_CASE_METHOD( smallsize,
 }
 
 TEST_CASE_METHOD( smallsize,
-                  MMAP_TAG "swapped il/xl post-stack file offset-count is 1",
-                  MMAP_TAG "[c.segy]" ) {
+                  "swapped il/xl post-stack file offset-count is 1",
+                  "[c.segy]" ) {
     int offsets;
     Err err = segy_offsets( fp,
                             xl,
@@ -434,8 +437,8 @@ TEST_CASE_METHOD( smallsize,
 }
 
 TEST_CASE_METHOD( smallshape,
-                  MMAP_TAG "correct # of lines are detected",
-                  MMAP_TAG "[c.segy]" ) {
+                  "correct # of lines are detected",
+                  "[c.segy]" ) {
 
     int expected_ils = 5;
     int expected_xls = 5;
@@ -476,15 +479,15 @@ TEST_CASE_METHOD( smallshape,
 }
 
 TEST_CASE_METHOD( smallshape,
-                  MMAP_TAG "line lengths are correct",
-                  MMAP_TAG "[c.segy]" ) {
+                  "line lengths are correct",
+                  "[c.segy]" ) {
     CHECK( segy_inline_length( xlines ) == ilines );
     CHECK( segy_inline_length( ilines ) == xlines );
 }
 
 TEST_CASE_METHOD( smallshape,
-                  MMAP_TAG "correct offset labels are detected",
-                  MMAP_TAG "[c.segy]" ) {
+                  "correct offset labels are detected",
+                  "[c.segy]" ) {
 
     const std::vector< int > expected = { 1 };
     std::vector< int > labels( 1 );
@@ -499,8 +502,8 @@ TEST_CASE_METHOD( smallshape,
 }
 
 TEST_CASE_METHOD( smallshape,
-                  MMAP_TAG "correct inline labels are detected",
-                  MMAP_TAG "[c.segy]" ) {
+                  "correct inline labels are detected",
+                  "[c.segy]" ) {
 
     const std::vector< int > expected = { 1, 2, 3, 4, 5 };
     std::vector< int > labels( 5 );
@@ -520,8 +523,8 @@ TEST_CASE_METHOD( smallshape,
 }
 
 TEST_CASE_METHOD( smallshape,
-                  MMAP_TAG "correct crossline labels are detected",
-                  MMAP_TAG "[c.segy]" ) {
+                  "correct crossline labels are detected",
+                  "[c.segy]" ) {
 
     const std::vector< int > expected = { 20, 21, 22, 23, 24 };
     std::vector< int > labels( 5 );
@@ -541,8 +544,8 @@ TEST_CASE_METHOD( smallshape,
 }
 
 TEST_CASE_METHOD( smallshape,
-                  MMAP_TAG "correct inline stride is detected",
-                  MMAP_TAG "[c.segy]" ) {
+                  "correct inline stride is detected",
+                  "[c.segy]" ) {
     int stride;
     Err err = segy_inline_stride( sorting, ilines, &stride );
     CHECK( success( err ) );
@@ -550,8 +553,8 @@ TEST_CASE_METHOD( smallshape,
 }
 
 TEST_CASE_METHOD( smallshape,
-                  MMAP_TAG "correct inline stride with swapped sorting",
-                  MMAP_TAG "[c.segy]" ) {
+                  "correct inline stride with swapped sorting",
+                  "[c.segy]" ) {
     int stride;
     Err err = segy_inline_stride( SEGY_CROSSLINE_SORTING, ilines, &stride );
     CHECK( success( err ) );
@@ -559,8 +562,8 @@ TEST_CASE_METHOD( smallshape,
 }
 
 TEST_CASE_METHOD( smallcube,
-                  MMAP_TAG "correct first trace is detected for an inline",
-                  MMAP_TAG "[c.segy]" ) {
+                  "correct first trace is detected for an inline",
+                  "[c.segy]" ) {
     const int label = inlines.at( 3 );
     int line_trace0;
     Err err = segy_line_trace0( label,
@@ -575,8 +578,8 @@ TEST_CASE_METHOD( smallcube,
 }
 
 TEST_CASE_METHOD( smallcube,
-                  MMAP_TAG "missing inline-label is detected and reported",
-                  MMAP_TAG "[c.segy]" ) {
+                  "missing inline-label is detected and reported",
+                  "[c.segy]" ) {
     const int label = inlines.back() + 1;
     int line_trace0;
     Err err = segy_line_trace0( label,
@@ -590,8 +593,8 @@ TEST_CASE_METHOD( smallcube,
 }
 
 TEST_CASE_METHOD( smallshape,
-                  MMAP_TAG "correct crossline stride is detected",
-                  MMAP_TAG "[c.segy]" ) {
+                  "correct crossline stride is detected",
+                  "[c.segy]" ) {
     int stride;
     Err err = segy_crossline_stride( sorting, xlines, &stride );
     CHECK( success( err ) );
@@ -599,8 +602,8 @@ TEST_CASE_METHOD( smallshape,
 }
 
 TEST_CASE_METHOD( smallshape,
-                  MMAP_TAG "correct crossline stride with swapped sorting",
-                  MMAP_TAG "[c.segy]" ) {
+                  "correct crossline stride with swapped sorting",
+                  "[c.segy]" ) {
     int stride;
     Err err = segy_crossline_stride( SEGY_CROSSLINE_SORTING, xlines, &stride );
     CHECK( success( err ) );
@@ -608,8 +611,8 @@ TEST_CASE_METHOD( smallshape,
 }
 
 TEST_CASE_METHOD( smallcube,
-                  MMAP_TAG "correct first trace is detected for a crossline",
-                  MMAP_TAG "[c.segy]" ) {
+                  "correct first trace is detected for a crossline",
+                  "[c.segy]" ) {
     const int label = crosslines.at( 2 );
     const int stride = ilines;
     int line_trace0;
@@ -625,8 +628,8 @@ TEST_CASE_METHOD( smallcube,
 }
 
 TEST_CASE_METHOD( smallcube,
-                  MMAP_TAG "missing crossline-label is detected and reported",
-                  MMAP_TAG "[c.segy]" ) {
+                  "missing crossline-label is detected and reported",
+                  "[c.segy]" ) {
     const int label = crosslines.back() + 1;
     const int stride = ilines;
     int line_trace0;
@@ -641,8 +644,8 @@ TEST_CASE_METHOD( smallcube,
 }
 
 TEST_CASE_METHOD( smallstep,
-                  MMAP_TAG "read ascending strided subtrace",
-                  MMAP_TAG "[c.segy]" ) {
+                  "read ascending strided subtrace",
+                  "[c.segy]" ) {
     const int start = 3;
     const int stop  = 19;
     const int step  = 5;
@@ -668,8 +671,8 @@ TEST_CASE_METHOD( smallstep,
 }
 
 TEST_CASE_METHOD( smallstep,
-                  MMAP_TAG "read descending strided subtrace",
-                  MMAP_TAG "[c.segy]" ) {
+                  "read descending strided subtrace",
+                  "[c.segy]" ) {
     const int start = 18;
     const int stop  = 2;
     const int step  = -5;
@@ -696,8 +699,8 @@ TEST_CASE_METHOD( smallstep,
 }
 
 TEST_CASE_METHOD( smallstep,
-                  MMAP_TAG "read descending contiguous subtrace",
-                  MMAP_TAG "[c.segy]" ) {
+                  "read descending contiguous subtrace",
+                  "[c.segy]" ) {
     const int start = 3;
     const int stop  = -1;
     const int step  = -1;
@@ -724,8 +727,8 @@ TEST_CASE_METHOD( smallstep,
 }
 
 TEST_CASE_METHOD( smallstep,
-                  MMAP_TAG "read descending strided subtrace with pre-start",
-                  MMAP_TAG "[c.segy]" ) {
+                  "read descending strided subtrace with pre-start",
+                  "[c.segy]" ) {
     const int start = 24;
     const int stop  = -1;
     const int step  = -5;
@@ -752,8 +755,8 @@ TEST_CASE_METHOD( smallstep,
 }
 
 TEST_CASE_METHOD( smallcube,
-                  MMAP_TAG "reading the first inline gives correct values",
-                  MMAP_TAG "[c.segy]" ) {
+                  "reading the first inline gives correct values",
+                  "[c.segy]" ) {
 
     // first line starts at first trace
     const int line_trace0 = 0;
@@ -788,8 +791,8 @@ TEST_CASE_METHOD( smallcube,
 }
 
 TEST_CASE_METHOD( smallcube,
-                  MMAP_TAG "reading the first crossline gives correct values",
-                  MMAP_TAG "[c.segy]" ) {
+                  "reading the first crossline gives correct values",
+                  "[c.segy]" ) {
 
     // first line starts at first trace
     const int line_trace0 = 0;
@@ -824,7 +827,7 @@ TEST_CASE_METHOD( smallcube,
     CHECK_THAT( line, ApproxRange( expected ) );
 }
 
-template< int Start, int Stop, int Step, bool memmap = mmapd() >
+template< int Start, int Stop, int Step >
 struct writesubtr {
     segy_file* fp = nullptr;
 
@@ -843,7 +846,7 @@ struct writesubtr {
     std::vector< float > expected;
 
     writesubtr() {
-        std::string name = MMAP_TAG + std::string("write-sub-trace ")
+        std::string name = std::string("write-sub-trace ")
                          + "[" + std::to_string( start )
                          + "," + std::to_string( stop )
                          + "," + std::to_string( step )
@@ -851,11 +854,8 @@ struct writesubtr {
 
         copyfile( "test-data/small.sgy", name );
 
-        fp = segy_open( name.c_str(), "r+b" );
-        REQUIRE( fp );
-
-        if( memmap )
-            REQUIRE( success( segy_mmap( fp ) ) );
+        fp = openfile( name, "r+b" );
+        testcfg::config().apply( fp );
 
         trace.assign( 50, 0 );
         expected.resize( trace.size() );
@@ -884,8 +884,8 @@ struct writesubtr {
 };
 
 TEST_CASE_METHOD( (writesubtr< 3, 19, 5 >),
-                  MMAP_TAG "write ascending strided subtrace",
-                  MMAP_TAG "[c.segy]" ) {
+                  "write ascending strided subtrace",
+                  "[c.segy]" ) {
     std::vector< float > out = { 3, 8, 13, 18 };
     expected.at( 3 )  = out.at( 0 );
     expected.at( 8 )  = out.at( 1 );
@@ -906,8 +906,8 @@ TEST_CASE_METHOD( (writesubtr< 3, 19, 5 >),
 }
 
 TEST_CASE_METHOD( (writesubtr< 18, 2, -5 >),
-                  MMAP_TAG "write descending strided subtrace",
-                  MMAP_TAG "[c.segy]" ) {
+                  "write descending strided subtrace",
+                  "[c.segy]" ) {
     std::vector< float > out = { 18, 13, 8, 3 };
     expected.at( 18 ) = out.at( 0 );
     expected.at( 13 ) = out.at( 1 );
@@ -928,8 +928,8 @@ TEST_CASE_METHOD( (writesubtr< 18, 2, -5 >),
 }
 
 TEST_CASE_METHOD( (writesubtr< 24, -1, -5 >),
-                  MMAP_TAG "write descending strided subtrace with pre-start",
-                  MMAP_TAG "[c.segy]" ) {
+                  "write descending strided subtrace with pre-start",
+                  "[c.segy]" ) {
     std::vector< float > out = { 24, 19, 14, 9, 4 };
     expected.at( 24 ) = out.at( 0 );
     expected.at( 19 ) = out.at( 1 );
@@ -951,8 +951,8 @@ TEST_CASE_METHOD( (writesubtr< 24, -1, -5 >),
 }
 
 TEST_CASE_METHOD( smallfields,
-                  MMAP_TAG "reading inline label from every trace header",
-                  MMAP_TAG "[c.segy]" ) {
+                  "reading inline label from every trace header",
+                  "[c.segy]" ) {
     const std::vector< int > inlines = {
         1, 1, 1, 1, 1,
         2, 2, 2, 2, 2,
@@ -976,8 +976,8 @@ TEST_CASE_METHOD( smallfields,
 }
 
 TEST_CASE_METHOD( smallfields,
-                  MMAP_TAG "reading crossline label from every trace header",
-                  MMAP_TAG "[c.segy]" ) {
+                  "reading crossline label from every trace header",
+                  "[c.segy]" ) {
     const std::vector< int > crosslines = {
         20, 21, 22, 23, 24,
         20, 21, 22, 23, 24,
@@ -1001,8 +1001,8 @@ TEST_CASE_METHOD( smallfields,
 }
 
 TEST_CASE_METHOD( smallfields,
-                  MMAP_TAG "reading every 3rd crossline label",
-                  MMAP_TAG "[c.segy]" ) {
+                  "reading every 3rd crossline label",
+                  "[c.segy]" ) {
     const std::vector< int > crosslines = {
             21,         24,
                 22,
@@ -1025,8 +1025,8 @@ TEST_CASE_METHOD( smallfields,
 }
 
 TEST_CASE_METHOD( smallfields,
-                  MMAP_TAG "reverse-reading every 3rd crossline label",
-                  MMAP_TAG "[c.segy]" ) {
+                  "reverse-reading every 3rd crossline label",
+                  "[c.segy]" ) {
     const std::vector< int > crosslines = {
                 22,
         24,         21,
@@ -1049,8 +1049,8 @@ TEST_CASE_METHOD( smallfields,
 }
 
 TEST_CASE_METHOD( smallfields,
-                  MMAP_TAG "reverse-reading every 5th crossline label",
-                  MMAP_TAG "[c.segy]" ) {
+                  "reverse-reading every 5th crossline label",
+                  "[c.segy]" ) {
     const std::vector< int > crosslines = { 24, 24, 24, 24, 24 };
     const int start = 24, stop = -1, step = -5;
 
@@ -1066,8 +1066,8 @@ TEST_CASE_METHOD( smallfields,
     CHECK_THAT( out, Catch::Equals( crosslines ) );
 }
 
-TEST_CASE( MMAP_TAG "setting unaligned header-field fails",
-           MMAP_TAG "[c.segy]" ) {
+TEST_CASE( "setting unaligned header-field fails",
+           "[c.segy]" ) {
     char header[ SEGY_TRACE_HEADER_SIZE ];
     const int32_t v = arbitrary_int();
 
@@ -1075,8 +1075,8 @@ TEST_CASE( MMAP_TAG "setting unaligned header-field fails",
     CHECK( err == Err::field() );
 }
 
-TEST_CASE( MMAP_TAG "setting negative header-field fails",
-           MMAP_TAG "[c.segy]" ) {
+TEST_CASE( "setting negative header-field fails",
+           "[c.segy]" ) {
     char header[ SEGY_TRACE_HEADER_SIZE ];
     const int32_t v = arbitrary_int();
 
@@ -1084,8 +1084,8 @@ TEST_CASE( MMAP_TAG "setting negative header-field fails",
     CHECK( err == Err::field() );
 }
 
-TEST_CASE( MMAP_TAG "setting too large header-field fails",
-           MMAP_TAG "[c.segy]" ) {
+TEST_CASE( "setting too large header-field fails",
+           "[c.segy]" ) {
     char header[ SEGY_TRACE_HEADER_SIZE ];
     const int32_t v = arbitrary_int();
 
@@ -1093,8 +1093,8 @@ TEST_CASE( MMAP_TAG "setting too large header-field fails",
     CHECK( err == Err::field() );
 }
 
-TEST_CASE( MMAP_TAG "setting correct header fields succeeds",
-           MMAP_TAG "[c.segy]" ) {
+TEST_CASE( "setting correct header fields succeeds",
+           "[c.segy]" ) {
     char header[ SEGY_TRACE_HEADER_SIZE ];
     const int32_t input = 1;
     const int field = SEGY_TR_INLINE;
@@ -1110,7 +1110,7 @@ TEST_CASE( MMAP_TAG "setting correct header fields succeeds",
     CHECK( output == input );
 }
 
-SCENARIO( MMAP_TAG "modifying trace header", "[c.segy]" MMAP_TAG ) {
+SCENARIO( "modifying trace header", "[c.segy]" ) {
 
     const int samples = 10;
     int trace_bsize = segy_trsize( SEGY_IBM_FLOAT_4_BYTE, samples );
@@ -1139,12 +1139,9 @@ SCENARIO( MMAP_TAG "modifying trace header", "[c.segy]" MMAP_TAG ) {
             CHECK( scale == -100 );
         }
 
-        const char* file = MMAP_TAG "write-traceheader.sgy";
+        const char* file = "write-traceheader.sgy";
 
-        std::unique_ptr< segy_file, decltype( &segy_close ) >
-            ufp{ segy_open( file, "w+b" ), &segy_close };
-
-        REQUIRE( ufp );
+        unique_segy ufp( segy_open( file, "w+b" ) );
         auto fp = ufp.get();
 
         /* make a file and write to last trace (to accurately get size) */
@@ -1152,8 +1149,8 @@ SCENARIO( MMAP_TAG "modifying trace header", "[c.segy]" MMAP_TAG ) {
         REQUIRE( err == Err::ok() );
         err = segy_writetrace( fp, 10, emptytr, trace0, trace_bsize );
         REQUIRE( err == Err::ok() );
-        if( MMAP_TAG != std::string("") )
-            REQUIRE( Err( segy_mmap( fp ) ) == Err::ok() );
+
+        testcfg::config().apply( fp );
 
         err = segy_write_traceheader( fp, 5, header, trace0, trace_bsize );
         CHECK( err == Err::ok() );
@@ -1175,7 +1172,7 @@ SCENARIO( MMAP_TAG "modifying trace header", "[c.segy]" MMAP_TAG ) {
     }
 }
 
-SCENARIO( MMAP_TAG "reading text header", "[c.segy]" MMAP_TAG ) {
+SCENARIO( "reading text header", "[c.segy]" ) {
     const std::string expected =
 "C 1 DATE: 22/02/2016                                                            "
 "C 2 AN INCREASE IN AMPLITUDE EQUALS AN INCREASE IN ACOUSTIC IMPEDANCE           "
@@ -1220,14 +1217,9 @@ SCENARIO( MMAP_TAG "reading text header", "[c.segy]" MMAP_TAG ) {
 
         const char* file = "test-data/text.sgy";
 
-        std::unique_ptr< segy_file, decltype( &segy_close ) >
-            ufp{ segy_open( file, "rb" ), &segy_close };
-
-        REQUIRE( ufp );
-
+        unique_segy ufp{ openfile( file, "rb" ) };
         auto fp = ufp.get();
-        if( MMAP_TAG != std::string("") )
-            REQUIRE( Err( segy_mmap( fp ) ) == Err::ok() );
+        testcfg::config().apply( fp );
 
         char ascii[ SEGY_TEXT_HEADER_SIZE + 1 ] = {};
         const Err err = segy_read_textheader( fp, ascii );
@@ -1236,14 +1228,11 @@ SCENARIO( MMAP_TAG "reading text header", "[c.segy]" MMAP_TAG ) {
         CHECK( ascii == expected );
 }
 
-SCENARIO( MMAP_TAG "reading a large file", "[c.segy]" MMAP_TAG ) {
+SCENARIO( "reading a large file", "[c.segy]" ) {
     GIVEN( "a large file" ) {
-        const char* file = MMAP_TAG "4G-file.sgy";
+        const char* file = "4G-file.sgy";
 
-        std::unique_ptr< segy_file, decltype( &segy_close ) >
-            ufp{ segy_open( file, "w+b" ), &segy_close };
-        REQUIRE( ufp );
-
+        unique_segy ufp( segy_open( file, "w+b" ) );
         auto fp = ufp.get();
 
         const int trace = 5000000;
@@ -1264,17 +1253,12 @@ SCENARIO( MMAP_TAG "reading a large file", "[c.segy]" MMAP_TAG ) {
     }
 }
 
-SCENARIO( MMAP_TAG "reading a 2-byte int file", "[c.segy][2-byte]" MMAP_TAG ) {
+SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
     const char* file = "test-data/f3.sgy";
 
-    std::unique_ptr< segy_file, decltype( &segy_close ) >
-        ufp{ segy_open( file, "rb" ), &segy_close };
-
-    REQUIRE( ufp );
-
+    unique_segy ufp{ openfile( file, "rb" ) };
     auto fp = ufp.get();
-    if( MMAP_TAG != std::string("") )
-        REQUIRE( Err( segy_mmap( fp ) ) == Err::ok() );
+    testcfg::config().apply( fp );
 
     WHEN( "finding traces initial byte offset and sizes" ) {
         char header[ SEGY_BINARY_HEADER_SIZE ];
@@ -1456,8 +1440,7 @@ SCENARIO( MMAP_TAG "reading a 2-byte int file", "[c.segy][2-byte]" MMAP_TAG ) {
     }
 }
 
-SCENARIO( MMAP_TAG "checking sorting for wonky files",
-                   "[c.segy]" MMAP_TAG ) {
+SCENARIO( "checking sorting for wonky files", "[c.segy]" ) {
     WHEN( "checking sorting when il, xl and offset is all garbage ") {
         /*
          * In the case where all tracefields ( il, xl, offset ) = ( 0, 0, 0 )
@@ -1468,11 +1451,9 @@ SCENARIO( MMAP_TAG "checking sorting for wonky files",
          */
         const char* file = "test-data/small.sgy";
 
-        std::unique_ptr< segy_file, decltype( &segy_close ) >
-            ufp{ segy_open( file, "rb" ), &segy_close };
-
-        REQUIRE( ufp );
+        unique_segy ufp{ openfile( file, "rb" ) };
         auto fp = ufp.get();
+        testcfg::config().apply( fp );
 
         char header[ SEGY_BINARY_HEADER_SIZE ];
         REQUIRE( Err( segy_binheader( fp, header ) ) == Err::ok() );
@@ -1498,11 +1479,9 @@ SCENARIO( MMAP_TAG "checking sorting for wonky files",
     WHEN( "checking sorting when file have dimentions 1x1 ") {
         const char* file = "test-data/1x1.sgy";
 
-        std::unique_ptr< segy_file, decltype( &segy_close ) >
-            ufp{ segy_open( file, "rb" ), &segy_close };
-
-        REQUIRE( ufp );
+        unique_segy ufp( openfile( file, "rb" ) );
         auto fp = ufp.get();
+        testcfg::config().apply( fp );
 
         char header[ SEGY_BINARY_HEADER_SIZE ];
         REQUIRE( Err( segy_binheader( fp, header ) ) == Err::ok() );
@@ -1528,11 +1507,9 @@ SCENARIO( MMAP_TAG "checking sorting for wonky files",
     WHEN( "checking sorting when file have dimentions 1xN ") {
         const char* file = "test-data/1xN.sgy";
 
-        std::unique_ptr< segy_file, decltype( &segy_close ) >
-            ufp{ segy_open( file, "rb" ), &segy_close };
-
-        REQUIRE( ufp );
+        unique_segy ufp{ openfile( file, "rb" ) };
         auto fp = ufp.get();
+        testcfg::config().apply( fp );
 
         char header[ SEGY_BINARY_HEADER_SIZE ];
         REQUIRE( Err( segy_binheader( fp, header ) ) == Err::ok() );

@@ -65,16 +65,20 @@ configure_file(${testdata}/text.sgy  test-data/text.sgy              COPYONLY)
 
 add_executable(c.segy test/testsuite.cpp
                       test/segy.cpp
-                      test/mmap.cpp
                       test/segyio-cpp.cpp
 )
 target_include_directories(c.segy PRIVATE src experimental)
 target_link_libraries(c.segy catch2 segyio)
-target_compile_options(c.segy BEFORE PRIVATE
-    ${c++11}
-    ${mmap}
-    $<$<CONFIG:Debug>:${warnings-c}>
+target_compile_options(c.segy BEFORE
+    PRIVATE
+        ${c++11}
+        ${mmap}
+        $<$<CONFIG:Debug>:${warnings-c}>
 )
-add_test(NAME c.segy      COMMAND c.segy ~[mmap] [c.segy])
-add_test(NAME c.segy.mmap COMMAND c.segy [mmap])
+target_compile_definitions(c.segy
+    PRIVATE
+        ${mmap}
+)
+add_test(NAME c.segy      COMMAND c.segy)
+add_test(NAME c.segy.mmap COMMAND c.segy --test-mmap)
 add_test(NAME cpp.segy    COMMAND c.segy [c++])
