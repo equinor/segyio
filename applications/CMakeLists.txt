@@ -1,5 +1,9 @@
 project(segyio-apps)
 
+if (NOT BUILD_BIN)
+    return ()
+endif ()
+
 if( NOT HAVE_GETOPT_H OR NOT HAVE_GETOPT_LONG )
     message(WARNING "Could not find getopt. Not building applications.")
     return ()
