@@ -3,7 +3,7 @@ import collections
 import segyio
 from .binfield import BinField
 from .tracefield import TraceField
-from .su import keys as sukeys
+from .su.words import keys as sukeys
 
 class Field(collections.MutableMapping):
     """

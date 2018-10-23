@@ -1,6 +1,6 @@
-from segyio import Enum
-from segyio import TraceField as tf
-from segyio import BinField as bf
+from .. import Enum
+from ..tracefield import TraceField as tf
+from ..binfield import BinField as bf
 
 class su(Enum):
     """Seismic Unix aliases
