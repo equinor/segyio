@@ -2,6 +2,7 @@ Open and create
 ===============
 
 .. autofunction:: segyio.open
+.. autofunction:: segyio.su.open
 .. autofunction:: segyio.create
 
 File handle
