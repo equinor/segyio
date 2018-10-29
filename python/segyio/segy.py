@@ -838,6 +838,114 @@ class SegyFile(object):
 
         return '+' not in self._mode
 
+
+    def interpret(self, ilines, xlines, offsets=None, sorting=TraceSortingFormat.INLINE_SORTING):
+
+        """ (Re)interpret structure on top of a file
+
+        (Re)interpret the structure of the file given the new sorting, ilines,
+        xlines and offset indices. Note that file itself is not changed in any
+        way, it is only segyio's interpretation of the file that changes.
+
+        interpret() expect that the ilines-, xlines- and offsets-indices are
+        unique. It also expect the dimensions of ilines, xlines and offset to
+        match the tracecount.
+
+        Parameters
+        ----------
+
+        f : SegyFile
+        ilines : array_like
+            ilines indices in new structure
+        xlines : array_like
+            xlines indices in new structure
+        offsets : array_like
+            offset indices in new structure
+        sorting : int, string or TraceSortingFormat
+            Sorting in new structure
+
+        Notes
+        -----
+
+        .. versionadded:: 1.8
+
+        Examples
+        --------
+        (Re)interpret the structure of the file:
+        >>> ilines = [10, 11, 12, 13]
+        >>> xlines = [20, 21, 22, 23, 24]
+        >>> with segyio.open(file, ignore_geometry=True) as f:
+        ... f.interpret(ilines, xlines)
+        """
+
+        valid_sortings = {
+            1           : TraceSortingFormat.CROSSLINE_SORTING,
+            2           : TraceSortingFormat.INLINE_SORTING,
+            'iline'     : TraceSortingFormat.INLINE_SORTING,
+            'inline'    : TraceSortingFormat.INLINE_SORTING,
+            'xl'        : TraceSortingFormat.CROSSLINE_SORTING,
+            'crossline' : TraceSortingFormat.CROSSLINE_SORTING,
+            TraceSortingFormat.INLINE_SORTING    : TraceSortingFormat.INLINE_SORTING,
+            TraceSortingFormat.CROSSLINE_SORTING : TraceSortingFormat.CROSSLINE_SORTING,
+        }
+
+        if sorting not in valid_sortings:
+            error = "Invalid sorting"
+            solution = "valid sorting options are: {}".format(valid_sortings.keys())
+            raise ValueError('{}, {}'.format(error, solution))
+
+        if offsets is None:
+            offsets = np.arange(1)
+
+        ilines  = np.asarray(ilines,  dtype=np.intc)
+        xlines  = np.asarray(xlines,  dtype=np.intc)
+        offsets = np.asarray(offsets, dtype=np.intc)
+
+        if np.unique(ilines).size != ilines.size:
+            error = "Inlines inconsistent"
+            solution = "expect all inlines to be unique"
+            raise ValueError("{}, {}".format(error, solution))
+
+        if np.unique(xlines).size != xlines.size:
+            error = "Crosslines inconsistent"
+            solution = "expect all crosslines to be unique"
+            raise ValueError("{}, {}".format(error, solution))
+
+        if np.unique(offsets).size != offsets.size:
+            error = "Offsets inconsistent"
+            solution = "expect all offsets to be unique"
+            raise ValueError("{}, {}".format(error, solution))
+
+        if ilines.size * xlines.size * offsets.size != self.tracecount:
+            error = ("Invalid dimensions, ilines ({}) * xlines ({}) * offsets "
+                     "({}) should match the number of traces ({})").format(ilines.size,
+                                                                           xlines.size,
+                                                                           offsets.size,
+                                                                           self.tracecount)
+            raise ValueError(error)
+
+        from . import _segyio
+
+        line_metrics = _segyio.line_metrics(sorting,
+                                            self.tracecount,
+                                            ilines.size,
+                                            xlines.size,
+                                            offsets.size)
+
+        self._iline_length = line_metrics['iline_length']
+        self._iline_stride = line_metrics['iline_stride']
+
+        self._xline_length = line_metrics['xline_length']
+        self._xline_stride = line_metrics['xline_stride']
+
+        self._sorting = sorting
+        self._offsets = offsets
+        self._ilines = ilines
+        self._xlines = xlines
+
+        return self
+
+
 class spec(object):
     def __init__(self):
         self.iline = 189

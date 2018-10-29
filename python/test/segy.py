@@ -1544,3 +1544,21 @@ def test_utf8_filename():
 def test_utf8_filename_pypath(tmpdir):
     with segyio.open(tmpdir / '小文件.sgy') as f:
         assert list(f.ilines) == [1, 2, 3, 4, 5]
+
+
+def test_interpret_invalid_args():
+    with segyio.open("test-data/small.sgy", ignore_geometry=True) as f:
+        with pytest.raises(ValueError):
+            il = [1, 2, 3, 4]
+            xl = [20, 21, 22, 23, 24]
+            f.interpret(il, xl)
+
+        with pytest.raises(ValueError):
+            il = [1, 2, 3, 4, 5]
+            xl = [20, 21, 22, 23, 24]
+            f.interpret(il, xl, sorting=0)
+
+        with pytest.raises(ValueError):
+            il = [1, 2, 3, 4, 4]
+            xl = [20, 21, 22, 23, 24]
+            f.interpret(il, xl, sorting=0)
