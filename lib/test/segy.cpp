@@ -24,7 +24,8 @@ struct segy_fclose {
 using unique_segy = std::unique_ptr< segy_file, segy_fclose >;
 
 segy_file* openfile( const std::string& path, const std::string& mode ) {
-    unique_segy ptr( segy_open( path.c_str(), mode.c_str() ) );
+    const auto* p = testcfg::config().apply( path.c_str() );
+    unique_segy ptr( segy_open( p, mode.c_str() ) );
     REQUIRE( ptr );
 
     testcfg::config().apply( ptr.get() );
@@ -177,7 +178,6 @@ struct smallfix {
 
     smallfix() {
         fp = openfile( "test-data/small.sgy", "rb" );
-        testcfg::config().apply( fp );
     }
 
     smallfix( const smallfix& ) = delete;
@@ -855,7 +855,6 @@ struct writesubtr {
         copyfile( "test-data/small.sgy", name );
 
         fp = openfile( name, "r+b" );
-        testcfg::config().apply( fp );
 
         trace.assign( 50, 0 );
         expected.resize( trace.size() );
@@ -1147,10 +1146,11 @@ SCENARIO( "modifying trace header", "[c.segy]" ) {
         /* make a file and write to last trace (to accurately get size) */
         err = segy_write_traceheader( fp, 10, emptyhdr, trace0, trace_bsize );
         REQUIRE( err == Err::ok() );
+
         err = segy_writetrace( fp, 10, emptytr, trace0, trace_bsize );
         REQUIRE( err == Err::ok() );
-
-        testcfg::config().apply( fp );
+        /* memory map only after writing last trace, so size is correct */
+        testcfg::config().mmap( fp );
 
         err = segy_write_traceheader( fp, 5, header, trace0, trace_bsize );
         CHECK( err == Err::ok() );
@@ -1219,7 +1219,6 @@ SCENARIO( "reading text header", "[c.segy]" ) {
 
         unique_segy ufp{ openfile( file, "rb" ) };
         auto fp = ufp.get();
-        testcfg::config().apply( fp );
 
         char ascii[ SEGY_TEXT_HEADER_SIZE + 1 ] = {};
         const Err err = segy_read_textheader( fp, ascii );
@@ -1254,11 +1253,8 @@ SCENARIO( "reading a large file", "[c.segy]" ) {
 }
 
 SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
-    const char* file = "test-data/f3.sgy";
-
-    unique_segy ufp{ openfile( file, "rb" ) };
+    unique_segy ufp{ openfile( "test-data/f3.sgy", "rb" ) };
     auto fp = ufp.get();
-    testcfg::config().apply( fp );
 
     WHEN( "finding traces initial byte offset and sizes" ) {
         char header[ SEGY_BINARY_HEADER_SIZE ];
@@ -1449,11 +1445,8 @@ SCENARIO( "checking sorting for wonky files", "[c.segy]" ) {
          * in all traceheaders in file small.sgy, is passed to segy_sorting as
          * il, xl and offset.
          */
-        const char* file = "test-data/small.sgy";
-
-        unique_segy ufp{ openfile( file, "rb" ) };
+        unique_segy ufp{ openfile( "test-data/small.sgy", "rb" ) };
         auto fp = ufp.get();
-        testcfg::config().apply( fp );
 
         char header[ SEGY_BINARY_HEADER_SIZE ];
         REQUIRE( Err( segy_binheader( fp, header ) ) == Err::ok() );
@@ -1479,9 +1472,9 @@ SCENARIO( "checking sorting for wonky files", "[c.segy]" ) {
     WHEN( "checking sorting when file have dimentions 1x1 ") {
         const char* file = "test-data/1x1.sgy";
 
-        unique_segy ufp( openfile( file, "rb" ) );
+        unique_segy ufp( segy_open( file, "rb" ) );
         auto fp = ufp.get();
-        testcfg::config().apply( fp );
+        testcfg::config().mmap( fp );
 
         char header[ SEGY_BINARY_HEADER_SIZE ];
         REQUIRE( Err( segy_binheader( fp, header ) ) == Err::ok() );
@@ -1507,9 +1500,9 @@ SCENARIO( "checking sorting for wonky files", "[c.segy]" ) {
     WHEN( "checking sorting when file have dimentions 1xN ") {
         const char* file = "test-data/1xN.sgy";
 
-        unique_segy ufp{ openfile( file, "rb" ) };
+        unique_segy ufp( segy_open( file, "rb" ) );
         auto fp = ufp.get();
-        testcfg::config().apply( fp );
+        testcfg::config().mmap( fp );
 
         char header[ SEGY_BINARY_HEADER_SIZE ];
         REQUIRE( Err( segy_binheader( fp, header ) ) == Err::ok() );

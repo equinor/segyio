@@ -55,6 +55,14 @@ target_compile_options(segyio-crop BEFORE
     PRIVATE $<$<CONFIG:Debug>:${warnings-c}> ${c99}
 )
 
+add_executable(flip-endianness flip-endianness.cpp)
+target_link_libraries(flip-endianness segyio)
+target_compile_options(flip-endianness BEFORE
+    PRIVATE
+        $<$<CONFIG:Debug>:${warnings-c}>
+        ${c++11}
+)
+
 install(TARGETS segyio-cath
                 segyio-catb
                 segyio-catr

@@ -5,6 +5,7 @@ include(CheckFunctionExists)
 include(CheckIncludeFile)
 include(CTest)
 include(GNUInstallDirs)
+include(TestBigEndian)
 
 if (DEFINED ENV{SEGYIO_NO_GIT_VER})
     set(SEGYIO_NO_GIT_VER CACHE BOOL "Ignore version from git" ON)
@@ -65,24 +66,10 @@ option(BUILD_MEX         "Build Matlab mex files"                   OFF)
 option(BUILD_DOC         "Build documentation"                      OFF)
 option(EXPERIMENTAL      "Enable experimental features"             OFF)
 
-check_include_file(netinet/in.h     HAVE_NETINET_IN_H)
-check_include_file(arpa/inet.h      HAVE_ARPA_INET_H)
-check_include_file(winsock2.h       HAVE_WINSOCK2_H)
 check_include_file(getopt.h         HAVE_GETOPT_H)
 check_include_file(sys/mman.h       HAVE_SYS_MMAN_H)
 check_include_file(sys/stat.h       HAVE_SYS_STAT_H)
 check_function_exists(getopt_long   HAVE_GETOPT_LONG)
-
-if (HAVE_NETINET_IN_H)
-    list(APPEND htons -DHAVE_NETINET_IN_H)
-elseif (HAVE_ARPA_INET_H)
-    list(APPEND htons -DHAVE_ARPA_INET_H)
-elseif (HAVE_WINSOCK2_H)
-    set(ws2 ws2_32)
-    list(APPEND htons -DHAVE_WINSOCK2_H)
-else()
-    message(FATAL_ERROR "Could not find htons")
-endif()
 
 if (HAVE_SYS_MMAN_H)
     list(APPEND mmap -DHAVE_MMAP)
@@ -126,6 +113,8 @@ if (NOT MSVC)
 else()
     list(APPEND warnings-c /W3 /wd4996)
 endif ()
+
+test_big_endian(HOST_BIG_ENDIAN)
 
 # add documentation master target for other documentation sub targets to hook
 # into

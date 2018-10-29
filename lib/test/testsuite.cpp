@@ -5,12 +5,37 @@
 
 #include "test-config.hpp"
 
-void testcfg::apply( segy_file* fp ) {
+const char* testcfg::apply( const char* path ) {
+    if( !this->lsbit ) return path;
+
+    std::string p( path );
+
+    if( p == "test-data/small.sgy" )
+        return "test-data/small-lsb.sgy";
+
+    if( p == "test-data/f3.sgy" )
+        return "test-data/f3-lsb.sgy";
+
+    return path;
+}
+
+void testcfg::mmap( segy_file* fp ) {
     if( this->memmap ) {
     #ifdef HAVE_MMAP
         REQUIRE( segy_mmap( fp ) == SEGY_OK );
     #endif //HAVE_MMAP
     }
+}
+
+void testcfg::lsb( segy_file* fp ) {
+    if( this->lsbit ) {
+        REQUIRE( segy_set_format( fp, SEGY_LSB ) == SEGY_OK );
+    }
+}
+
+void testcfg::apply( segy_file* fp ) {
+    this->mmap( fp );
+    this->lsb( fp );
 }
 
 testcfg& testcfg::config() {
@@ -26,6 +51,7 @@ int main( int argc, char** argv ) {
       using namespace Catch::clara;
       auto cli = session.cli()
           | Opt( cfg.memmap ) ["--test-mmap"] ("run with memory mapped files")
+          | Opt( cfg.lsbit )  ["--test-lsb"]  ("run with LSB files")
           ;
       session.cli( cli );
 
