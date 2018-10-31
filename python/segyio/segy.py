@@ -23,7 +23,11 @@ class SegyFile(object):
 
     _unstructured_errmsg = "File opened in unstructured mode."
 
-    def __init__(self, fd, filename, mode, iline=189, xline=193):
+    def __init__(self, fd, filename, mode, iline=189,
+                                           xline=193,
+                                           endian='big',
+                                           ):
+
         self._filename = filename
         self._mode = mode
         self._il = iline
@@ -74,6 +78,7 @@ class SegyFile(object):
         self._xline = None
         self._gather = None
         self.depth = None
+        self.endian = endian
 
         super(SegyFile, self).__init__()
 
@@ -844,3 +849,4 @@ class spec:
         self.ext_headers = 0
         self.format = None
         self.sorting = None
+        self.endian = 'big'

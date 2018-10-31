@@ -25,9 +25,15 @@ from segyio.field import Field
 from segyio.line import Line, HeaderLine
 from segyio.trace import Trace, Header
 
+smallfiles = [
+    (segyio.open, { 'filename': 'test-data/small.sgy' }),
+    (segyio.open, { 'filename': 'test-data/small-lsb.sgy',
+                    'endian': 'little' }),
+]
 
-def test_inline_4():
-    with segyio.open("test-data/small.sgy") as f:
+@pytest.mark.parametrize(('openfn', 'kwargs'), smallfiles)
+def test_inline_4(openfn, kwargs):
+    with openfn(**kwargs) as f:
         sample_count = len(f.samples)
         assert 50 == sample_count
 
@@ -58,8 +64,9 @@ def test_inline_4():
         assert 4.24049 == approx(data[last_line, sample_count - 1], abs=1e-6)
 
 
-def test_xline_22():
-    with segyio.open("test-data/small.sgy") as f:
+@pytest.mark.parametrize(('openfn', 'kwargs'), smallfiles)
+def test_xline_22(openfn, kwargs):
+    with openfn(**kwargs) as f:
         data = f.xline[22]
 
         size = len(f.samples)
@@ -91,8 +98,9 @@ def test_xline_22():
         assert 5.22049 == approx(data[last_line, size - 1], abs=1e-6)
 
 
-def test_iline_slicing():
-    with segyio.open("test-data/small.sgy") as f:
+@pytest.mark.parametrize(('openfn', 'kwargs'), smallfiles)
+def test_iline_slicing(openfn, kwargs):
+    with openfn(**kwargs) as f:
         assert len(f.ilines) == sum(1 for _ in f.iline)
         assert len(f.ilines) == sum(1 for _ in f.iline[1:6])
         assert len(f.ilines) == sum(1 for _ in f.iline[5:0:-1])
@@ -104,8 +112,9 @@ def test_iline_slicing():
         assert 2 == sum(1 for _ in f.iline[2:6:2])
 
 
-def test_xline_slicing():
-    with segyio.open("test-data/small.sgy") as f:
+@pytest.mark.parametrize(('openfn', 'kwargs'), smallfiles)
+def test_xline_slicing(openfn, kwargs):
+    with openfn(**kwargs) as f:
         assert len(f.xlines) == sum(1 for _ in f.xline)
         assert len(f.xlines) == sum(1 for _ in f.xline[20:25])
         assert len(f.xlines) == sum(1 for _ in f.xline[25:19:-1])
@@ -117,8 +126,9 @@ def test_xline_slicing():
         assert 2 == sum(1 for _ in f.xline[:25:3])
 
 
-def test_open_transposed_lines():
-    with segyio.open("test-data/small.sgy") as f:
+@pytest.mark.parametrize(('openfn', 'kwargs'), smallfiles)
+def test_open_transposed_lines(openfn, kwargs):
+    with openfn(**kwargs) as f:
         il = f.ilines
         xl = f.xlines
 
@@ -127,8 +137,9 @@ def test_open_transposed_lines():
         assert list(xl) == list(f.ilines)
 
 
-def test_file_info():
-    with segyio.open("test-data/small.sgy") as f:
+@pytest.mark.parametrize(('openfn', 'kwargs'), smallfiles)
+def test_file_info(openfn, kwargs):
+    with openfn(**kwargs) as f:
         assert 2 == f.sorting
         assert 1 == f.offsets
         assert 1 == int(f.format)
@@ -154,8 +165,9 @@ def test_open_ignore_geometry():
             _ = f.iline[0]
 
 
-def test_traces_slicing():
-    with segyio.open("test-data/small.sgy") as f:
+@pytest.mark.parametrize(('openfn', 'kwargs'), smallfiles)
+def test_traces_slicing(openfn, kwargs):
+    with openfn(**kwargs) as f:
         traces = list(map(np.copy, f.trace[0:6:2]))
         assert len(traces) == 3
         assert traces[0][49] == f.trace[0][49]
@@ -198,8 +210,9 @@ def test_headers_offset():
         assert not f.header[1][xl] == f.header[2][xl]
 
 
-def test_header_dict_methods():
-    with segyio.open("test-data/small.sgy") as f:
+@pytest.mark.parametrize(('openfn', 'kwargs'), smallfiles)
+def test_header_dict_methods(openfn, kwargs):
+    with openfn(**kwargs) as f:
         assert 89 == len(list(f.header[0].keys()))
         assert 89 == len(list(f.header[1].values()))
         assert 89 == len(list(f.header[2].items()))
@@ -263,8 +276,9 @@ def test_headers_line_offset(smallps):
         assert f.header[2][xl] == 2
 
 
-def test_attributes():
-    with segyio.open("test-data/small.sgy") as f:
+@pytest.mark.parametrize(('openfn', 'kwargs'), smallfiles)
+def test_attributes(openfn, kwargs):
+    with openfn(**kwargs) as f:
         il = TraceField.INLINE_3D
         xl = TraceField.CROSSLINE_3D
 
@@ -444,8 +458,9 @@ def test_line_generators():
             pass
 
 
-def test_fast_slow_dimensions():
-    with segyio.open("test-data/small.sgy", 'r') as f:
+@pytest.mark.parametrize(('openfn', 'kwargs'), smallfiles)
+def test_fast_slow_dimensions(openfn, kwargs):
+    with openfn(**kwargs) as f:
         for iline, fline in zip(f.iline, f.fast):
             assert np.array_equal(iline, fline)
 
@@ -453,8 +468,9 @@ def test_fast_slow_dimensions():
             assert np.array_equal(xline, sline)
 
 
-def test_traces_raw():
-    with segyio.open("test-data/small.sgy") as f:
+@pytest.mark.parametrize(('openfn', 'kwargs'), smallfiles)
+def test_traces_raw(openfn, kwargs):
+    with openfn(**kwargs) as f:
         gen_traces = np.array(list(map(np.copy, f.trace)), dtype=np.single)
 
         raw_traces = f.trace.raw[:]
@@ -504,8 +520,9 @@ def test_put_text_sequence(tmpdir):
             assert text == ref
 
 
-def test_read_header():
-    with segyio.open("test-data/small.sgy") as f:
+@pytest.mark.parametrize(('openfn', 'kwargs'), smallfiles)
+def test_read_header(openfn, kwargs):
+    with openfn(**kwargs) as f:
         assert 1 == f.header[0][189]
         assert 1 == f.header[1][TraceField.INLINE_3D]
         assert 1 == f.header[1][segyio.su.iline]
@@ -1087,13 +1104,15 @@ def test_create_sgy_shorter_traces(small):
             assert [x + 100 for x in src.ilines] == list(dst.ilines)
 
 
-def test_create_from_naught(tmpdir):
+@pytest.mark.parametrize('endian', ['lsb', 'msb'])
+def test_create_from_naught(endian, tmpdir):
     spec = segyio.spec()
     spec.format = 5
     spec.sorting = 2
     spec.samples = range(150)
     spec.ilines = range(1, 11)
     spec.xlines = range(1, 6)
+    spec.endian = endian
 
     with segyio.create(tmpdir / "mk.sgy", spec) as dst:
         tr = np.arange(start=1.000, stop=1.151, step=0.001, dtype=np.single)
@@ -1111,7 +1130,7 @@ def test_create_from_naught(tmpdir):
         # Set header field 'offset' to 1 in all headers
         dst.header = {TraceField.offset: 1}
 
-    with segyio.open(tmpdir / "mk.sgy") as f:
+    with segyio.open(tmpdir / "mk.sgy", endian = endian) as f:
         assert 1 == approx(f.trace[0][0], abs=1e-4)
         assert 1.001 == approx(f.trace[0][1], abs=1e-4)
         assert 1.149 == approx(f.trace[0][-1], abs=1e-4)
@@ -1120,7 +1139,8 @@ def test_create_from_naught(tmpdir):
         assert 1 == f.header[1][TraceField.offset]
 
 
-def test_create_from_naught_prestack(tmpdir):
+@pytest.mark.parametrize('endian', ['lsb', 'msb'])
+def test_create_from_naught_prestack(endian, tmpdir):
     spec = segyio.spec()
     spec.format = 5
     spec.sorting = 2
@@ -1128,6 +1148,7 @@ def test_create_from_naught_prestack(tmpdir):
     spec.ilines = range(1, 4)
     spec.xlines = range(1, 3)
     spec.offsets = range(1, 6)
+    spec.endian = endian
 
     with segyio.create(tmpdir / "mk-ps.sgy", spec) as dst:
         arr = np.arange(start=0.000,
@@ -1149,7 +1170,7 @@ def test_create_from_naught_prestack(tmpdir):
             for xl in spec.xlines:
                 dst.header.xline[xl, of] = {TraceField.CROSSLINE_3D: xl}
 
-    with segyio.open(tmpdir / "mk-ps.sgy") as f:
+    with segyio.open(tmpdir / "mk-ps.sgy", endian = endian) as f:
         assert 101.010 == approx(f.trace[0][0], abs=1e-4)
         assert 101.011 == approx(f.trace[0][1], abs=1e-4)
         assert 101.016 == approx(f.trace[0][-1], abs=1e-4)
@@ -1162,11 +1183,13 @@ def test_create_from_naught_prestack(tmpdir):
             assert list(x.flatten()) == list(y.flatten())
 
 
-def test_create_unstructured_hasattrs(tmpdir):
+@pytest.mark.parametrize('endian', ['lsb', 'msb'])
+def test_create_unstructured_hasattrs(endian, tmpdir):
     spec = segyio.spec()
     spec.format = 5
     spec.samples = range(150)
     spec.tracecount = 50
+    spec.endian = endian
 
     with segyio.create(tmpdir / "mk.sgy", spec) as dst:
         # accessing the sorting, inline and crossline attributes should work,
@@ -1177,11 +1200,13 @@ def test_create_unstructured_hasattrs(tmpdir):
         assert dst.unstructured
 
 
-def test_create_from_naught_unstructured(tmpdir):
+@pytest.mark.parametrize('endian', ['lsb', 'msb'])
+def test_create_from_naught_unstructured(endian, tmpdir):
     spec = segyio.spec()
     spec.format = 5
     spec.samples = range(150)
     spec.tracecount = 50
+    spec.endian = endian
 
     with segyio.create(tmpdir / "unstructured.sgy", spec) as dst:
         tr = np.array(range(150), dtype = np.single)
@@ -1193,7 +1218,9 @@ def test_create_from_naught_unstructured(tmpdir):
         # Set header field 'offset' to 1 in all headers
         dst.header = {TraceField.offset: 1}
 
-    with segyio.open(tmpdir / "unstructured.sgy", ignore_geometry=True) as f:
+    with segyio.open(tmpdir / "unstructured.sgy",
+                     ignore_geometry=True,
+                     endian=endian) as f:
         assert 1 == approx(f.trace[1][0], abs=1e-4)
         assert 2 == approx(f.trace[1][1], abs=1e-4)
         assert 150 == approx(f.trace[1][-1], abs=1e-4)
@@ -1317,8 +1344,9 @@ def test_create_bad_specs(tmpdir):
         pass
 
 
-def test_segyio_types():
-    with segyio.open("test-data/small.sgy") as f:
+@pytest.mark.parametrize(('openfn', 'kwargs'), smallfiles)
+def test_segyio_types(openfn, kwargs):
+    with openfn(**kwargs) as f:
         assert isinstance(f.sorting, int)
         assert isinstance(f.ext_headers, int)
         assert isinstance(f.tracecount, int)
@@ -1362,9 +1390,10 @@ def test_segyio_types():
         assert isinstance(f.text, object)  # inner TextHeader instance
 
 
-def test_depth_slice_reading():
+@pytest.mark.parametrize(('openfn', 'kwargs'), smallfiles)
+def test_depth_slice_reading(openfn, kwargs):
     from itertools import islice
-    with segyio.open("test-data/small.sgy") as f:
+    with openfn(**kwargs) as f:
         assert len(f.depth_slice) == len(f.samples)
 
         for depth_sample in range(len(f.samples))[::5]:
@@ -1397,8 +1426,9 @@ def test_depth_slice_array_shape():
         assert f.depth_slice.shape == shape
 
 
-def test_depth_slice_unstructured():
-    with segyio.open("test-data/small.sgy", ignore_geometry = True) as f:
+@pytest.mark.parametrize(('openfn', 'kwargs'), smallfiles)
+def test_depth_slice_unstructured(openfn, kwargs):
+    with openfn(ignore_geometry = True, **kwargs) as f:
         traces = f.trace.raw[:]
         shape = len(f.trace)
         assert f.depth_slice.shape == shape
@@ -1427,13 +1457,15 @@ def test_depth_slice_writing(small):
             next(islice(itr, 3, 3), None)
 
 
-def test_no_16bit_overflow_tracecount(tmpdir):
+@pytest.mark.parametrize('endian', ['little', 'big'])
+def test_no_16bit_overflow_tracecount(endian, tmpdir):
     spec = segyio.spec()
     spec.format = 1
     spec.sorting = 2
     spec.samples = np.arange(501)
     spec.ilines = np.arange(345)
     spec.xlines = np.arange(250)
+    spec.endian = endian
 
     # build a file with more than 65k traces, which would cause a 16bit int to
     # overflow.

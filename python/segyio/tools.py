@@ -337,6 +337,7 @@ def metadata(f):
     spec.tracecount = f.tracecount
 
     spec.ext_headers = f.ext_headers
+    spec.endian = f.endian
 
     return spec
 

@@ -89,6 +89,9 @@ def create(filename, spec):
     .. versionchanged:: 1.4
        Support for creating unstructured files
 
+    .. versionchanged:: 1.8
+       Support for creating lsb files
+
     The ``spec`` is any object that has the following attributes
 
     Mandatory::
@@ -113,6 +116,8 @@ def create(filename, spec):
     Optional::
 
         ext_headers : int
+        endian : str { 'big', 'msb', 'little', 'lsb' }
+            defaults to 'big'
 
 
     Examples
@@ -168,7 +173,22 @@ def create(filename, spec):
     ext_headers = spec.ext_headers if hasattr(spec, 'ext_headers') else 0
     samples = numpy.asarray(spec.samples)
 
-    fd = _segyio.segyiofd(str(filename), 'w+')
+    endians = {
+        'lsb': 256, # (1 << 8)
+        'little': 256,
+        'msb': 0,
+        'big': 0,
+    }
+    endian = spec.endian if hasattr(spec, 'endian') else 'big'
+    if endian is None:
+        endian = 'big'
+
+    if endian not in endians:
+        problem = 'unknown endianness {}, expected one of: '
+        opts = ' '.join(endians.keys())
+        raise ValueError(problem.format(endian) + opts)
+
+    fd = _segyio.segyiofd(str(filename), 'w+', endians[endian])
     fd.segymake(
         samples = len(samples),
         tracecount = tracecount,
@@ -181,6 +201,7 @@ def create(filename, spec):
             mode = 'w+',
             iline = int(spec.iline),
             xline = int(spec.xline),
+            endian = endian,
     )
 
     f._samples       = samples
