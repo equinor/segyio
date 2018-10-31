@@ -58,6 +58,11 @@ PyObject* ValueError( const char* msg ) {
     return NULL;
 }
 
+template< typename T1 >
+PyObject* ValueError( const char* msg, T1 t1 ) {
+    return PyErr_Format( PyExc_ValueError, msg, t1 );
+}
+
 template< typename T1, typename T2 >
 PyObject* ValueError( const char* msg, T1 t1, T2 t2 ) {
     return PyErr_Format( PyExc_ValueError, msg, t1, t2 );
@@ -222,8 +227,9 @@ namespace fd {
 int init( segyiofd* self, PyObject* args, PyObject* kwargs ) {
     char* filename = NULL;
     char* mode = NULL;
+    int endian = 0;
 
-    if( !PyArg_ParseTuple( args, "ss", &filename, &mode ) )
+    if( !PyArg_ParseTuple( args, "ssi", &filename, &mode, &endian ) )
         return -1;
 
     if( std::strlen( mode ) == 0 ) {
@@ -250,6 +256,23 @@ int init( segyiofd* self, PyObject* args, PyObject* kwargs ) {
 
     if( !fd ) {
         IOErrno();
+        return -1;
+    }
+
+    switch( endian ) {
+        case 0:
+        case SEGY_LSB:
+        case SEGY_MSB:
+            break;
+
+        default:
+            ValueError( "internal: unexpected endianness, was %d", endian );
+            return -1;
+    }
+
+    int err = segy_set_format( fd, endian );
+    if( err ) {
+        ValueError( "internal: error setting endianness, was %d", endian );
         return -1;
     }
 
