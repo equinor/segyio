@@ -838,7 +838,7 @@ class SegyFile(object):
 
         return '+' not in self._mode
 
-class spec:
+class spec(object):
     def __init__(self):
         self.iline = 189
         self.ilines = None
