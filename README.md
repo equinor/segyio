@@ -371,6 +371,20 @@ python examples/make-ps-file.py small-ps.sgy 10 1 5 1 4 1 3
 python examples/make-rotated-copies.py small.sgy
 ```
 
+The small-lsb.sgy file was created by running the flip-endianness program. This
+program is included in the segyio source tree, but not a part of the package,
+and not intended for distribution and installation, only for reproducing test
+files.
+
+The seismic unix file small.su and small-lsb.su were created by the following
+commands:
+
+```bash
+segyread tape=small.sgy ns=50 remap=tracr,cdp byte=189l,193l conv=1 format=1 \
+         > small-lsb.su
+suswapbytes < small.su > small-lsb.su
+```
+
 If you have have small data files with a free license, feel free to submit it
 to the project!
 

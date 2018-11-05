@@ -161,7 +161,7 @@ if(NOT BUILD_TESTING)
     return()
 endif()
 
-file(GLOB sgys "${testdata}/*.sgy")
+file(GLOB sgys ${testdata}/*.sgy ${testdata}/*.su)
 foreach (sgy ${sgys})
     get_filename_component(fl ${sgy} NAME)
     configure_file(${sgy} test-data/${fl} COPYONLY)

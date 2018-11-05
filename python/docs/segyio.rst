@@ -2,6 +2,7 @@ Open and create
 ===============
 
 .. autofunction:: segyio.open
+.. autofunction:: segyio.su.open
 .. autofunction:: segyio.create
 
 File handle
@@ -91,7 +92,7 @@ Binary header keys
 
 Seismic Unix keys
 -----------------
-.. autoclass:: segyio.su
+.. automodule:: segyio.su
     :members:
     :undoc-members:
     :member-order: bysource

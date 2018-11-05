@@ -25,11 +25,23 @@ from segyio.field import Field
 from segyio.line import Line, HeaderLine
 from segyio.trace import Trace, Header
 
-smallfiles = [
-    (segyio.open, { 'filename': 'test-data/small.sgy' }),
-    (segyio.open, { 'filename': 'test-data/small-lsb.sgy',
-                    'endian': 'little' }),
+small_sus = [
+    (segyio.su.open, { 'filename': 'test-data/small.su',
+                       'iline': 5,
+                       'xline': 21 }),
+    (segyio.su.open, { 'filename': 'test-data/small-lsb.su',
+                       'iline': 5,
+                       'xline': 21,
+                       'endian': 'lsb' }),
 ]
+
+small_segys = [
+    (segyio.open,    { 'filename': 'test-data/small.sgy' }),
+    (segyio.open,    { 'filename': 'test-data/small-lsb.sgy',
+                       'endian': 'little' }),
+]
+
+smallfiles = small_segys + small_sus
 
 @pytest.mark.parametrize(('openfn', 'kwargs'), smallfiles)
 def test_inline_4(openfn, kwargs):
@@ -63,6 +75,41 @@ def test_inline_4(openfn, kwargs):
         # last sample
         assert 4.24049 == approx(data[last_line, sample_count - 1], abs=1e-6)
 
+def test_inline_4_seismic_unix():
+    with segyio.su.open('test-data/small.su',
+            iline = 5,
+            xline = 21,
+            endian = 'big',
+        ) as f:
+
+        sample_count = len(f.samples)
+        assert 50 == sample_count
+
+        data = f.iline[4]
+
+        assert 4.2 == approx(data[0, 0], abs=1e-6)
+        # middle sample
+        assert 4.20024 == approx(data[0, sample_count // 2 - 1], abs=1e-6)
+        # last sample
+        assert 4.20049 == approx(data[0, -1], abs=1e-6)
+
+        # middle xline
+        middle_line = 2
+        # first sample
+        assert 4.22 == approx(data[middle_line, 0], abs=1e-5)
+        # middle sample
+        assert 4.22024 == approx(data[middle_line, sample_count // 2 - 1], abs=1e-6)
+        # last sample
+        assert 4.22049 == approx(data[middle_line, -1], abs=1e-6)
+
+        # last xline
+        last_line = (len(f.xlines) - 1)
+        # first sample
+        assert 4.24 == approx(data[last_line, 0], abs=1e-5)
+        # middle sample
+        assert 4.24024 == approx(data[last_line, sample_count // 2 - 1], abs=1e-6)
+        # last sample
+        assert 4.24049 == approx(data[last_line, sample_count - 1], abs=1e-6)
 
 @pytest.mark.parametrize(('openfn', 'kwargs'), smallfiles)
 def test_xline_22(openfn, kwargs):
@@ -137,7 +184,9 @@ def test_open_transposed_lines(openfn, kwargs):
         assert list(xl) == list(f.ilines)
 
 
-@pytest.mark.parametrize(('openfn', 'kwargs'), smallfiles)
+# only run this test for the SEG-Ys, because the SU files are in IEEE float,
+# not IBM float
+@pytest.mark.parametrize(('openfn', 'kwargs'), small_segys)
 def test_file_info(openfn, kwargs):
     with openfn(**kwargs) as f:
         assert 2 == f.sorting
@@ -209,8 +258,19 @@ def test_headers_offset():
         assert f.header[0][xl] == f.header[1][xl]
         assert not f.header[1][xl] == f.header[2][xl]
 
+@pytest.mark.parametrize(('openfn', 'kwargs'), small_sus)
+def test_disabled_methods_seismic_unix(openfn, kwargs):
+    with openfn(**kwargs) as f:
+        with pytest.raises(NotImplementedError):
+            _ = f.text[0]
 
-@pytest.mark.parametrize(('openfn', 'kwargs'), smallfiles)
+        with pytest.raises(NotImplementedError):
+            _ = f.bin
+
+        with pytest.raises(NotImplementedError):
+            f.bin = {}
+
+@pytest.mark.parametrize(('openfn', 'kwargs'), small_segys)
 def test_header_dict_methods(openfn, kwargs):
     with openfn(**kwargs) as f:
         assert 89 == len(list(f.header[0].keys()))
@@ -279,8 +339,8 @@ def test_headers_line_offset(smallps):
 @pytest.mark.parametrize(('openfn', 'kwargs'), smallfiles)
 def test_attributes(openfn, kwargs):
     with openfn(**kwargs) as f:
-        il = TraceField.INLINE_3D
-        xl = TraceField.CROSSLINE_3D
+        il = kwargs.get('iline', TraceField.INLINE_3D)
+        xl = kwargs.get('xline', TraceField.CROSSLINE_3D)
 
         assert 1 == f.attributes(il)[0]
         assert 20 == f.attributes(xl)[0]
@@ -519,15 +579,20 @@ def test_put_text_sequence(tmpdir):
         for text in f.text:
             assert text == ref
 
+@pytest.mark.parametrize(('openfn', 'kwargs'), smallfiles)
+def test_header_getitem_intlikes(openfn, kwargs):
+    with openfn(**kwargs) as f:
+        h = f.header[0]
+        assert 1 == h[37]
+        assert 1 == h[segyio.su.offset]
+        assert 1 == h[TraceField.offset]
 
 @pytest.mark.parametrize(('openfn', 'kwargs'), smallfiles)
 def test_read_header(openfn, kwargs):
     with openfn(**kwargs) as f:
-        assert 1 == f.header[0][189]
-        assert 1 == f.header[1][TraceField.INLINE_3D]
-        assert 1 == f.header[1][segyio.su.iline]
-        assert 5 == f.header[-1][segyio.su.iline]
-        assert 5 == f.header[24][segyio.su.iline]
+        il = kwargs.get('iline', TraceField.INLINE_3D)
+        assert 1 == f.header[0][il]
+        assert 5 == f.header[-1][il]
         assert dict(f.header[-1]) == dict(f.header[24])
 
         with pytest.raises(IndexError):
@@ -545,6 +610,16 @@ def test_read_header(openfn, kwargs):
         with pytest.raises(KeyError):
             _ = f.header[0][700]
 
+def test_read_header_seismic_unix():
+    il = 5
+    with segyio.su.open('test-data/small.su',
+                        ignore_geometry = True,
+                        endian = 'big') as f:
+        assert 1 == f.header[0][il]
+        assert 1 == f.header[1][il]
+        assert 5 == f.header[-1][il]
+        assert 5 == f.header[24][il]
+        assert dict(f.header[-1]) == dict(f.header[24])
 
 def test_write_header(small):
     with segyio.open(small, "r+") as f:
@@ -1386,6 +1461,9 @@ def test_segyio_types(openfn, kwargs):
         assert isinstance(f.trace, Trace)
         assert isinstance(f.trace[0], np.ndarray)
 
+@pytest.mark.parametrize(('openfn', 'kwargs'), small_segys)
+def test_segyio_segy_only_types(openfn, kwargs):
+    with openfn(**kwargs) as f:
         assert isinstance(f.bin, Field)
         assert isinstance(f.text, object)  # inner TextHeader instance
 

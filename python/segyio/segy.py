@@ -54,6 +54,7 @@ class SegyFile(object):
 
         try:
             self._dtype = np.dtype({
+               -1: np.float32,
                 1: np.float32,
                 2: np.int32,
                 3: np.int16,
@@ -802,6 +803,8 @@ class SegyFile(object):
     @property
     def format(self):
         d = {
+           -2: "4-byte native big-endian float",
+           -1: "4-byte native little-endian float",
             1: "4-byte IBM float",
             2: "4-byte signed integer",
             3: "2-byte signed integer",
