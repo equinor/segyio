@@ -4736,8 +4736,17 @@ namespace Catch {
 
     inline IMutableContext& getCurrentMutableContext()
     {
+        /*
+         * False positive reported here:
+         * https://github.com/catchorg/Catch2/issues/1230
+         *
+         * and upstream: https://bugs.llvm.org/show_bug.cgi?id=39201
+         */
+        #ifndef __clang_analyzer__
         if( !IMutableContext::currentContext )
             IMutableContext::createContext();
+        #endif
+
         return *IMutableContext::currentContext;
     }
 
