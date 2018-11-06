@@ -900,9 +900,9 @@ class SegyFile(object):
         if offsets is None:
             offsets = np.arange(1)
 
-        ilines  = np.asarray(ilines,  dtype=np.intc)
-        xlines  = np.asarray(xlines,  dtype=np.intc)
-        offsets = np.asarray(offsets, dtype=np.intc)
+        ilines  = np.copy(np.asarray(ilines,  dtype=np.intc))
+        xlines  = np.copy(np.asarray(xlines,  dtype=np.intc))
+        offsets = np.copy(np.asarray(offsets, dtype=np.intc))
 
         if np.unique(ilines).size != ilines.size:
             error = "Inlines inconsistent"
