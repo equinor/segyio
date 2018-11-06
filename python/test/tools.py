@@ -7,6 +7,8 @@ from test import tmpfiles
 import segyio
 from segyio import BinField
 from segyio import TraceField
+from segyio import TraceSortingFormat
+from segyio import SegySampleFormat
 
 
 @tmpfiles("test-data/small.sgy")
@@ -206,3 +208,143 @@ def test_resample_delay(tmpdir):
     with segyio.open(tmpdir / 'small.sgy') as f:
         assert np.array_equal(new, f.samples)
 
+
+def createfromany(path, data, il=189, xl=193, sample_format=1, dt=4000, delrt=0):
+    segyio.tools.from_array(path, data, il, xl, sample_format, dt, delrt)
+
+
+def createfrom2d(path, data, il=189, xl=193, sample_format=1, dt=4000, delrt=0):
+    segyio.tools.from_array2D(path, data, il, xl, sample_format, dt, delrt)
+
+
+def createfrom3d(path, data, il=189, xl=193, sample_format=1, dt=4000, delrt=0):
+    segyio.tools.from_array3D(path, data, il, xl, sample_format, dt, delrt)
+
+
+def createfrom4d(path, data, il=189, xl=193, sample_format=1, dt=4000, delrt=0):
+    segyio.tools.from_array4D(path, data, il, xl, sample_format, dt, delrt)
+
+
+@pytest.mark.parametrize("create", [createfrom2d, createfromany])
+def testfrom_array_2D(tmpdir, create):
+    fresh = str(tmpdir / 'fresh.sgy')
+    data = np.arange(250, dtype=np.float32).reshape((10,25))
+    dt, delrt = 4000, 0
+    create(fresh, data, dt=dt, delrt=delrt)
+
+    with segyio.open(fresh, 'r') as f:
+        assert int(f.format)     == SegySampleFormat.IBM_FLOAT_4_BYTE
+        assert int(f.sorting)    == TraceSortingFormat.INLINE_SORTING
+        assert len(f.samples)    == 25
+        assert int(f.tracecount) == 10
+
+        assert np.array_equal(f.iline[1], data)
+        assert list(f.ilines)  == [1]
+        assert list(f.xlines)  == list(range(1, 11))
+        assert list(f.offsets) == list(range(1, 2))
+        assert list(f.samples) == list(
+            (np.arange(len(f.samples)) * dt/1000) + delrt)
+
+        ilines  = np.ones(10)
+        xlines  = range(1, 11)
+        offsets = np.ones(10)
+        assert list(f.attributes(TraceField.INLINE_3D))    == list(ilines)
+        assert list(f.attributes(TraceField.CROSSLINE_3D)) == list(xlines)
+        assert list(f.attributes(TraceField.offset))       == list(offsets)
+        assert list(f.attributes(TraceField.TraceNumber))  == list(range(10))
+        assert list(f.attributes(TraceField.CDP_TRACE))    == list(range(10))
+        assert list(f.attributes(TraceField.TRACE_SAMPLE_INTERVAL)) == list(
+            4000 * np.ones(10))
+        assert list(f.attributes(TraceField.TRACE_SAMPLE_COUNT)) == list(
+            25 * np.ones(10))
+        assert list(f.attributes(TraceField.DelayRecordingTime)) == list(
+            np.zeros(10)
+        )
+
+
+@pytest.mark.parametrize("create", [createfrom3d, createfromany])
+def test_from_array3D(tmpdir, create):
+    fresh = str(tmpdir / 'fresh.sgy')
+
+    with segyio.open("test-data/small.sgy") as f:
+        cube = segyio.cube(f)
+        dt, delrt = 4000, 0
+        create(fresh, cube, dt=dt, delrt=delrt)
+        with segyio.open(fresh) as g:
+            assert int(g.format)  == SegySampleFormat.IBM_FLOAT_4_BYTE
+            assert int(g.sorting) == TraceSortingFormat.INLINE_SORTING
+            assert len(g.samples) == len(f.samples)
+            assert g.tracecount   == f.tracecount
+
+            assert np.array_equal(f.trace, g.trace)
+            assert list(g.ilines) == list(range(1, 6))
+            assert list(g.xlines) == list(range(1, 6))
+            assert list(f.offsets) == list(range(1, 2))
+            assert list(f.samples) == list(
+                (np.arange(len(f.samples)) * dt / 1000) + delrt)
+
+            xlines = np.tile(np.arange(1, 6), 5)
+            ilines = np.repeat(np.arange(1, 6), 5)
+            offsets = np.ones(25)
+            assert list(g.attributes(TraceField.INLINE_3D))    == list(ilines)
+            assert list(g.attributes(TraceField.CROSSLINE_3D)) == list(xlines)
+            assert list(g.attributes(TraceField.offset))       == list(offsets)
+            assert list(g.attributes(TraceField.TraceNumber))  == list(range(25))
+            assert list(g.attributes(TraceField.CDP_TRACE))    == list(range(25))
+            assert list(g.attributes(TraceField.TRACE_SAMPLE_INTERVAL)) == list(
+                4000 * np.ones(25))
+            assert list(g.attributes(TraceField.TRACE_SAMPLE_COUNT)) == list(
+                50 * np.ones(25))
+
+            assert g.bin[BinField.SortingCode] == 2
+
+
+@pytest.mark.parametrize("create", [createfrom4d, createfromany])
+def test_from_array4D(tmpdir, create):
+    fresh = str(tmpdir / 'fresh.sgy')
+    data = np.repeat(np.arange(24, dtype=np.float32), 10).reshape((4,3,2,10))
+    dt, delrt = 4000, 0
+    create(fresh, data, dt=dt, delrt=delrt)
+
+    with segyio.open(fresh) as f:
+        assert int(f.format)     == SegySampleFormat.IBM_FLOAT_4_BYTE
+        assert int(f.sorting)    == TraceSortingFormat.INLINE_SORTING
+        assert len(f.samples)    == 10
+        assert int(f.tracecount) == 24
+
+        assert list(f.ilines)  == list(range(1, 5))
+        assert list(f.xlines)  == list(range(1, 4))
+        assert list(f.offsets) == list(range(1, 3))
+        assert list(f.samples) == list(
+            (np.arange(len(f.samples)) * dt / 1000) + delrt)
+
+        iline4 = f.iline[4, 1]
+        assert list(iline4[0, :]) == list(18*np.ones(10))
+        assert list(iline4[2, :]) == list(22*np.ones(10))
+
+        xline2 = f.xline[2, 2]
+        assert list(xline2[1, :]) == list(9 * np.ones(10))
+        assert list(xline2[3, :]) == list(21 * np.ones(10))
+
+        ilines  = np.repeat(np.arange(1, 5), 6)
+        xlines = np.repeat(np.tile(np.arange(1, 4), 4), 2)
+        offsets = np.tile(np.arange(1, 3), 12)
+        assert list(f.attributes(TraceField.INLINE_3D))    == list(ilines)
+        assert list(f.attributes(TraceField.CROSSLINE_3D)) == list(xlines)
+        assert list(f.attributes(TraceField.offset))       == list(offsets)
+
+
+@pytest.mark.parametrize("create", [createfrom2d,
+                                    createfrom3d,
+                                    createfrom4d,
+                                    createfromany])
+def test_create_from_array_invalid_args(tmpdir, create):
+    fresh = str(tmpdir / 'fresh.sgy')
+
+    data = np.arange(100, dtype=np.float32)
+    with pytest.raises(ValueError):
+        create(fresh, data)
+
+    data = "rubbish-input"
+    with pytest.raises(ValueError):
+        create(fresh, data)
