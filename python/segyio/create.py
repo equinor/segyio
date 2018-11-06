@@ -207,23 +207,7 @@ def create(filename, spec):
     f._samples       = samples
 
     if structured(spec):
-        f._sorting       = spec.sorting
-        f._offsets       = numpy.copy(numpy.asarray(spec.offsets, dtype = numpy.intc))
-
-        f._ilines        = numpy.copy(numpy.asarray(spec.ilines, dtype=numpy.intc))
-        f._xlines        = numpy.copy(numpy.asarray(spec.xlines, dtype=numpy.intc))
-
-        line_metrics = _segyio.line_metrics(f.sorting,
-                                            tracecount,
-                                            len(f.ilines),
-                                            len(f.xlines),
-                                            len(f.offsets))
-
-        f._iline_length = line_metrics['iline_length']
-        f._iline_stride = line_metrics['iline_stride']
-
-        f._xline_length = line_metrics['xline_length']
-        f._xline_stride = line_metrics['xline_stride']
+        f.interpret(spec.ilines, spec.xlines, spec.offsets, spec.sorting)
 
     f.text[0] = default_text_header(f._il, f._xl, segyio.TraceField.offset)
 
