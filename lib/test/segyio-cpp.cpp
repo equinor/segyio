@@ -93,6 +93,17 @@ TEST_CASE_METHOD( Unstructured,
     CHECK( z.xline == 20 );
 }
 
+TEST_CASE_METHOD( Unstructured,
+                  "unstructured can get binary header",
+                   "[c++]" ) {
+    auto x = f.get_bin();
+
+    CHECK( x.format == 1 );
+    CHECK( x.samples == 50 );
+    CHECK( x.interval == 4000 );
+    CHECK( x.traces == 25);
+}
+
 struct move_only {
     using filetype = basic_unstructured< disable_copy, open_status >;
     filetype f;
