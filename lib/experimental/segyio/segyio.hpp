@@ -608,6 +608,44 @@ private:
     segyio::fmt fmt;
 };
 
+struct binary_header {
+    int job_identification      = 0;
+    int line                    = 0;
+    int reel                    = 0;
+    int traces                  = 0;
+    int auxiliary_traces        = 0;
+    int interval                = 0;
+    int interval_orig           = 0;
+    int samples                 = 0;
+    int samples_orig            = 0;
+    int format                  = 0;
+    int ensemble_fold           = 0;
+    int sorting                 = 0;
+    int vertical_sum            = 0;
+    int sweep_freq_start        = 0;
+    int sweep_freq_end          = 0;
+    int sweep_length            = 0;
+    int sweep_type              = 0;
+    int sweep_channel           = 0;
+    int sweep_taperlen_start    = 0;
+    int sweep_taperlen_end      = 0;
+    int taper_type              = 0;
+    int correlated              = 0;
+    int binary_gain_recovery    = 0;
+    int amplitude_recovery      = 0;
+    int measurement_system      = 0;
+    int impulse_polarity        = 0;
+    int vibratory_polarity      = 0;
+    int segy_revision           = 0;
+    int trace_flag              = 0;
+    int extended_textheaders    = 0;
+};
+
+template< typename Derived >
+struct binary_header_reader{
+    binary_header get_bin() noexcept(false);
+};
+
 template< typename Derived >
 struct trace_bounds_check {
     void operator()( int i ) const noexcept(false);
@@ -752,6 +790,7 @@ template< template< typename > class... Extras >
 using basic_unstructured = basic_file< simple_handle,
                                        simple_buffer,
                                        trace_meta_fromfile,
+                                       binary_header_reader,
                                        trace_reader,
                                        trace_header_reader,
                                        disable_truncate,
@@ -1255,6 +1294,66 @@ void trace_reader< Derived >::operator()( const segy_file* ) noexcept(false) {
     self->buffer_resize( trace_size );
 }
 
+template< typename Derived >
+binary_header binary_header_reader< Derived >::get_bin() noexcept(false) {
+    char buffer[ SEGY_BINARY_HEADER_SIZE ] = {};
+    auto* self =  static_cast< Derived* >( this );
+
+    auto err = segy_binheader( self->escape(), buffer );
+
+    switch( err ) {
+        case SEGY_OK: break;
+
+        case SEGY_FSEEK_ERROR:
+            throw errnomsg( "unable to seek binary header" );
+
+        case SEGY_FREAD_ERROR:
+            throw errnomsg( "unable to read binary header" );
+
+        default:
+            throw unknown_error( err );
+    }
+
+    const auto getb = [&]( int key ) {
+        int32_t f;
+        segy_get_bfield( buffer, key, &f );
+        return f;
+    };
+
+    binary_header b;
+    b.job_identification    = getb( SEGY_BIN_JOB_ID );
+    b.line                  = getb( SEGY_BIN_LINE_NUMBER );
+    b.reel                  = getb( SEGY_BIN_REEL_NUMBER );
+    b.traces                = getb( SEGY_BIN_TRACES );
+    b.auxiliary_traces      = getb( SEGY_BIN_AUX_TRACES );
+    b.interval              = getb( SEGY_BIN_INTERVAL );
+    b.interval_orig         = getb( SEGY_BIN_INTERVAL_ORIG );
+    b.samples               = getb( SEGY_BIN_SAMPLES );
+    b.samples_orig          = getb( SEGY_BIN_SAMPLES_ORIG );
+    b.format                = getb( SEGY_BIN_FORMAT );
+    b.ensemble_fold         = getb( SEGY_BIN_ENSEMBLE_FOLD );
+    b.sorting               = getb( SEGY_BIN_SORTING_CODE );
+    b.vertical_sum          = getb( SEGY_BIN_VERTICAL_SUM );
+    b.sweep_freq_start      = getb( SEGY_BIN_SWEEP_FREQ_START );
+    b.sweep_freq_end        = getb( SEGY_BIN_SWEEP_FREQ_END );
+    b.sweep_length          = getb( SEGY_BIN_SWEEP_LENGTH );
+    b.sweep_type            = getb( SEGY_BIN_SWEEP );
+    b.sweep_channel         = getb( SEGY_BIN_SWEEP_CHANNEL );
+    b.sweep_taperlen_start  = getb( SEGY_BIN_SWEEP_TAPER_START );
+    b.sweep_taperlen_end    = getb( SEGY_BIN_SWEEP_TAPER_END );
+    b.taper_type            = getb( SEGY_BIN_TAPER );
+    b.correlated            = getb( SEGY_BIN_CORRELATED_TRACES );
+    b.binary_gain_recovery  = getb( SEGY_BIN_BIN_GAIN_RECOVERY );
+    b.amplitude_recovery    = getb( SEGY_BIN_AMPLITUDE_RECOVERY );
+    b.measurement_system    = getb( SEGY_BIN_MEASUREMENT_SYSTEM );
+    b.impulse_polarity      = getb( SEGY_BIN_IMPULSE_POLARITY );
+    b.vibratory_polarity    = getb( SEGY_BIN_VIBRATORY_POLARITY );
+    b.segy_revision         = getb( SEGY_BIN_SEGY_REVISION );
+    b.trace_flag            = getb( SEGY_BIN_TRACE_FLAG );
+    b.extended_textheaders  = getb( SEGY_BIN_EXT_HEADERS );
+
+    return b;
+}
 
 template< typename Derived >
 trace_header trace_header_reader< Derived >::get_th( int i ) noexcept(false) {
