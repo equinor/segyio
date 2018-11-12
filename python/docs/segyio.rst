@@ -92,7 +92,7 @@ Binary header keys
 
 Seismic Unix keys
 -----------------
-.. automodule:: segyio.su
+.. automodule:: segyio.su.words
     :members:
     :undoc-members:
     :member-order: bysource
