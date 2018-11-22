@@ -1,5 +1,4 @@
-from segyio import Enum
-
+from . import Enum
 
 class BinField(Enum):
     """Trace header field enumerator

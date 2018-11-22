@@ -6,7 +6,7 @@ import numpy
 import pytest
 from pytest import approx
 
-from test import tmpfiles
+from . import tmpfiles
 
 import segyio
 import segyio._segyio as _segyio

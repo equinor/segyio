@@ -1,5 +1,4 @@
-from segyio import Enum
-
+from . import Enum
 
 class TraceSortingFormat(Enum):
     UNKNOWN_SORTING = 0

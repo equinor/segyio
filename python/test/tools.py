@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from pytest import approx
 
-from test import tmpfiles
+from . import tmpfiles
 
 import segyio
 from segyio import BinField

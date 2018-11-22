@@ -17,7 +17,7 @@ import numpy.testing as npt
 import pytest
 from pytest import approx
 
-from test import tmpfiles, small, smallps
+from . import tmpfiles, small, smallps
 
 import segyio
 from segyio import TraceField, BinField
