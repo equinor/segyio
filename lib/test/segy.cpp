@@ -1172,6 +1172,62 @@ SCENARIO( "modifying trace header", "[c.segy]" ) {
     }
 }
 
+int check_sorting( const std::string& name ) {
+    int trace0 = 3600;
+    int trace_bsize = 10 * 4;
+    int sorting;
+
+    unique_segy ufp( segy_open( name.c_str(), "rb" ) );
+    auto fp = ufp.get();
+
+    Err err = segy_sorting( fp,
+                            SEGY_TR_INLINE,
+                            SEGY_TR_CROSSLINE,
+                            SEGY_TR_OFFSET,
+                            &sorting,
+                            trace0,
+                            trace_bsize );
+    CHECK( success( err ) );
+
+    return sorting;
+}
+
+TEST_CASE("iline xline and offset decrement", "[c.segy]") {
+    const auto sorting = check_sorting( "test-data/small-ps-dec-il-xl-off.sgy" );
+    CHECK( sorting == SEGY_INLINE_SORTING );
+}
+
+TEST_CASE("iline decrement xline offset increment", "[c.segy]") {
+    const auto sorting = check_sorting( "test-data/small-ps-dec-il-inc-xl-off.sgy" );
+    CHECK( sorting == SEGY_INLINE_SORTING );
+}
+
+TEST_CASE("xline decrement iline offset increment", "[c.segy]") {
+    const auto sorting = check_sorting( "test-data/small-ps-dec-xl-inc-il-off.sgy" );
+    CHECK( sorting == SEGY_INLINE_SORTING );
+}
+
+TEST_CASE("offset decrement iline xline increment", "[c.segy]") {
+    const auto sorting = check_sorting( "test-data/small-ps-dec-off-inc-il-xl.sgy" );
+    CHECK( sorting == SEGY_INLINE_SORTING );
+}
+
+TEST_CASE("iline xline decrement offset increment", "[c.segy]") {
+    const auto sorting = check_sorting( "test-data/small-ps-dec-il-xl-inc-off.sgy" );
+    CHECK( sorting == SEGY_INLINE_SORTING );
+}
+
+TEST_CASE("iline decrement xline increment offset", "[c.segy]") {
+    const auto sorting = check_sorting( "test-data/small-ps-dec-il-off-inc-xl.sgy" );
+    CHECK( sorting == SEGY_INLINE_SORTING );
+}
+
+TEST_CASE("xline offset decrement iline increment", "[c.segy]") {
+    const auto sorting = check_sorting( "test-data/small-ps-dec-xl-off-inc-il.sgy" );
+    CHECK( sorting == SEGY_INLINE_SORTING );
+}
+
+
 SCENARIO( "reading text header", "[c.segy]" ) {
     const std::string expected =
 "C 1 DATE: 22/02/2016                                                            "

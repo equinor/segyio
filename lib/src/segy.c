@@ -1303,9 +1303,9 @@ int segy_sorting( segy_file* fp,
         return SEGY_OK;
     }
 
-    int il_first = 0, il_prev = 0, il_next = 0;
-    int xl_first = 0, xl_prev = 0, xl_next = 0;
-    int of_first = 0, of_prev = 0, of_next = 0;
+    int il_first = 0, il_next = 0, il_prev = 0;
+    int xl_first = 0, xl_next = 0, xl_prev = 0;
+    int of_first = 0, of_next = 0;
 
     segy_get_field( traceheader, il, &il_first );
     segy_get_field( traceheader, xl, &xl_first );
@@ -1313,15 +1313,13 @@ int segy_sorting( segy_file* fp,
 
     il_prev = il_first;
     xl_prev = xl_first;
-    of_prev = of_first;
 
     /* Iterating through traces, comparing il, xl, and offset values with the
      * values from the previous trace. Several cases is checked when
      * determining sorting:
-     * If the offset have wrapped around and either il or xl is incremented,
+     * If the offset have wrapped around and either il or xl is changed,
      * the sorting is xline or iline, respectivly.
-     * If neither offset, il or xl are incremented, the file is unsorted.
-     * If the offset decrease from one trace to another, the file is unsorted.
+     * If neither offset, il or xl changes, the file is unsorted.
      * If more than one value change from one trace to another, the file is
      * unsorted.
      */
@@ -1338,21 +1336,16 @@ int segy_sorting( segy_file* fp,
 
         /* the exit condition - offset has wrapped around. */
         if( of_next == of_first ) {
-            if( il_next == il_prev && xl_next > xl_prev ) {
+            if( il_next == il_prev && xl_next != xl_prev ) {
                 *sorting = SEGY_INLINE_SORTING;
                 return SEGY_OK;
             }
 
-            if( xl_next == xl_prev && il_next > il_prev ) {
+            if( xl_next == xl_prev && il_next != il_prev ) {
                 *sorting = SEGY_CROSSLINE_SORTING;
                 return SEGY_OK;
             }
 
-            *sorting = SEGY_UNKNOWN_SORTING;
-            return SEGY_OK;
-        }
-
-        if( of_next <= of_prev ) {
             *sorting = SEGY_UNKNOWN_SORTING;
             return SEGY_OK;
         }
@@ -1367,8 +1360,6 @@ int segy_sorting( segy_file* fp,
             *sorting = SEGY_UNKNOWN_SORTING;
             return SEGY_OK;
         }
-
-        of_prev = of_next;
     }
 
     *sorting = SEGY_CROSSLINE_SORTING;
