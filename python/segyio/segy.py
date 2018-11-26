@@ -11,7 +11,7 @@ from .line import Line
 from .trace import Trace, Header, Attributes, Text
 from .field import Field
 
-from segyio.tracesortingformat import TraceSortingFormat
+from .tracesortingformat import TraceSortingFormat
 
 
 

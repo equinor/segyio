@@ -1,5 +1,4 @@
-from segyio import Enum
-
+from . import Enum
 
 class TraceField(Enum):
     """Trace header field enumerator

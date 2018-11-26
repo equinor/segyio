@@ -1,7 +1,7 @@
 import segyio
-from segyio import TraceField
-from segyio import TraceSortingFormat
-from segyio import SegySampleFormat
+from . import TraceField
+from . import TraceSortingFormat
+from . import SegySampleFormat
 
 import numpy as np
 import textwrap

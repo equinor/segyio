@@ -1,5 +1,4 @@
-from segyio import Enum
-
+from . import Enum
 
 class SegySampleFormat(Enum):
     IBM_FLOAT_4_BYTE = 1
