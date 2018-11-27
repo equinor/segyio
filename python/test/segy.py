@@ -558,6 +558,8 @@ def test_read_text_sequence():
             assert text
 
         assert iter(f.text)
+        with pytest.deprecated_call():
+            str(f.text)
 
 
 @tmpfiles('test-data/multi-text.sgy')
@@ -566,10 +568,15 @@ def test_put_text_sequence(tmpdir):
     ref = segyio.tools.create_text_header(lines)
     fname = str(tmpdir / 'multi-text.sgy')
 
-    with segyio.open(fname, mode = 'r+', ignore_geometry = True) as f:
+    with segyio.open(fname, mode = 'r+', ignore_geometry = True) as f, \
+            segyio.open("test-data/small.sgy") as g:
         f.text[0] = ref
+        f.text[1] = f.text
         f.text[-1] = ref
-        f.text[1:4] = [ref, ref, ref]
+
+        f.text[2:4] = [g.text, f.text]
+        assert f.text[2] == g.text[0]
+        f.text[2:3] = [ref]
 
     # ref doesn't have to be bytes for reading, but has to in order to compare
     # with the returned object from text
