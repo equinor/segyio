@@ -427,7 +427,8 @@ class HeaderLine(Line):
 
         else:
             step = self.stride * len(self.offsets)
-            return self.header[start::step]
+            stop = start + step * self.length
+            return self.header[start:stop:step]
 
         def gen():
             irange, orange = self.ranges(index, offset)
@@ -496,7 +497,8 @@ class HeaderLine(Line):
                 pass
 
             step = self.stride * len(self.offsets)
-            self.header[start::step] = val
+            stop  = start + step * self.length
+            self.header[start:stop:step] = val
             return
 
         irange, orange = self.ranges(index, offset)
