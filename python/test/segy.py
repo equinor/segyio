@@ -508,6 +508,9 @@ def test_gather_mode():
             assert (2, 10) == g.shape
             assert np.array_equal(line[0], g[0])
 
+        for g, line in zip(f.gather[1, 1:3, 3:4], f.xline[1:3]):
+            assert np.array_equal(empty, g)
+
 
 def test_line_generators():
     with segyio.open("test-data/small.sgy") as f:

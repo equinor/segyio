@@ -140,7 +140,7 @@ class Gather(object):
                 return
 
             if len(xs) == 0:
-                for _, _ in itertools.product(ilrange, xlrange): yield empty
+                for _, _ in itertools.product(il_range, xl_range): yield empty
                 return
 
             for ilno in il_range:
