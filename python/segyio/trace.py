@@ -1,6 +1,7 @@
 import collections
 import contextlib
 import itertools
+import warnings
 import sys
 try: from future_builtins import zip
 except ImportError: pass
@@ -834,17 +835,38 @@ class Text(Sequence):
     def __setitem__(self, i, val):
         """text[i] = val
 
+        Write the ith text header of the file, starting at 0.
+        If val is instance of Text or iterable of Text,
+        value is set to be the first element of every Text
+
+        Parameters
+        ----------
+        i : int or slice
+        val : str, Text or iterable if i is slice
+
+        Examples
+        --------
         Write a new textual header:
 
         >>> f.text[0] = make_new_header()
+        >>> f.text[1:3] = ["new_header1", "new_header_2"]
 
-        Copy a tectual header:
+        Copy a textual header:
 
         >>> f.text[1] = g.text[0]
 
+        Write a textual header based on Text:
+
+        >>> f.text[1] = g.text
+        >>> assert f.text[1] == g.text[0]
+
+        >>> f.text[1:3] = [g1.text, g2.text]
+        >>> assert f.text[1] == g1.text[0]
+        >>> assert f.text[2] == g2.text[0]
+
         """
         if isinstance(val, Text):
-            self[index] = val[0]
+            self[i] = val[0]
             return
 
         try:
@@ -853,9 +875,12 @@ class Text(Sequence):
 
         except TypeError:
             for i, text in zip(range(*i.indices(len(self))), val):
+                if isinstance(text, Text):
+                    text = text[0]
                 self.filehandle.puttext(i, text)
+
 
     def __str__(self):
         msg = 'str(text) is deprecated, use explicit format instead'
-        warnings.warn(DeprecationWarning, msg)
+        warnings.warn(msg, DeprecationWarning)
         return '\n'.join(map(''.join, zip(*[iter(str(self[0]))] * 80)))
