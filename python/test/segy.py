@@ -20,7 +20,7 @@ from pytest import approx
 from . import tmpfiles, small, smallps
 
 import segyio
-from segyio import TraceField, BinField
+from segyio import TraceField, BinField, TraceSortingFormat
 from segyio.field import Field
 from segyio.line import Line, HeaderLine
 from segyio.trace import Trace, Header
@@ -1193,7 +1193,7 @@ def test_create_sgy_shorter_traces(small):
 def test_create_from_naught(endian, tmpdir):
     spec = segyio.spec()
     spec.format = 5
-    spec.sorting = 2
+    spec.sorting = 1
     spec.samples = range(150)
     spec.ilines = range(1, 11)
     spec.xlines = range(1, 6)
@@ -1223,12 +1223,14 @@ def test_create_from_naught(endian, tmpdir):
         assert f.header[0][TraceField.offset] == f.header[1][TraceField.offset]
         assert 1 == f.header[1][TraceField.offset]
 
+        assert f.sorting == TraceSortingFormat.CROSSLINE_SORTING
+
 
 @pytest.mark.parametrize('endian', ['lsb', 'msb'])
 def test_create_from_naught_prestack(endian, tmpdir):
     spec = segyio.spec()
     spec.format = 5
-    spec.sorting = 2
+    #spec.sorting not set by test design
     spec.samples = range(7)
     spec.ilines = range(1, 4)
     spec.xlines = range(1, 3)
@@ -1266,6 +1268,8 @@ def test_create_from_naught_prestack(endian, tmpdir):
 
         for x, y in zip(f.iline[:, :], cube):
             assert list(x.flatten()) == list(y.flatten())
+
+        assert f.sorting == TraceSortingFormat.INLINE_SORTING
 
 
 @pytest.mark.parametrize('endian', ['lsb', 'msb'])
@@ -1420,11 +1424,6 @@ def test_create_bad_specs(tmpdir):
             pass
 
     c.offsets = [1]
-    with pytest.raises(AttributeError):
-        with segyio.create(tmpdir / 'offsets', c):
-            pass
-
-    c.sorting = 2
     with segyio.create(tmpdir / 'ok.sgy', c):
         pass
 

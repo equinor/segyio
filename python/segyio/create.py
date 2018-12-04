@@ -2,6 +2,7 @@ import datetime
 import numpy
 import segyio
 
+from . import TraceSortingFormat
 
 def default_text_header(iline, xline, offset):
     lines = {
@@ -23,17 +24,14 @@ def structured(spec):
     if not hasattr(spec, 'ilines' ): return False
     if not hasattr(spec, 'xlines' ): return False
     if not hasattr(spec, 'offsets'): return False
-    if not hasattr(spec, 'sorting'): return False
 
     if spec.ilines  is None: return False
     if spec.xlines  is None: return False
     if spec.offsets is None: return False
-    if spec.sorting is None: return False
 
     if not list(spec.ilines):  return False
     if not list(spec.xlines):  return False
     if not list(spec.offsets): return False
-    if not int(spec.sorting):  return False
 
     return True
 
@@ -53,9 +51,9 @@ def create(filename, spec):
     Create should be used together with python's ``with`` statement. This ensure
     the data is written. Please refer to the examples.
 
-    The ``segyio.spec()`` function will default offsets and everything in the
-    mandatory group, except format and samples, and requires the caller to fill
-    in *all* the fields in either of the exclusive groups.
+    The ``segyio.spec()`` function will default sorting, offsets and everything
+    in the mandatory group, except format and samples, and requires the caller
+    to fill in *all* the fields in either of the exclusive groups.
 
     If any field is missing from the first exclusive group, and the tracecount
     is set, the resulting file will be considered unstructured. If the
@@ -207,7 +205,10 @@ def create(filename, spec):
     f._samples       = samples
 
     if structured(spec):
-        f.interpret(spec.ilines, spec.xlines, spec.offsets, spec.sorting)
+        sorting = spec.sorting if hasattr(spec, 'sorting') else None
+        if sorting is None:
+            sorting = TraceSortingFormat.INLINE_SORTING
+        f.interpret(spec.ilines, spec.xlines, spec.offsets, sorting)
 
     f.text[0] = default_text_header(f._il, f._xl, segyio.TraceField.offset)
 
