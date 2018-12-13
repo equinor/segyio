@@ -149,6 +149,21 @@ def create(filename, spec):
     ...         dst.header = src.header
     ...         dst.trace = src.trace
 
+     Copy a file, but shift samples time by 50:
+
+    >>> with segyio.open(srcpath) as src:
+    ...     delrt = 50
+    ...     spec = segyio.spec()
+    ...     spec.samples = src.samples + delrt
+    ...     spec.ilines = src.ilines
+    ...     spec.xline = src.xlines
+    ...     with segyio.create(dstpath, spec) as dst:
+    ...         dst.text[0] = src.text[0]
+    ...         dst.bin = src.bin
+    ...         dst.header = src.header
+    ...         dst.header = { TraceField.DelayRecordingTime: delrt }
+    ...         dst.trace = src.trace
+
     Copy a file, but shorten all traces by 50 samples (since v1.4):
 
     >>> with segyio.open(srcpath) as src:
