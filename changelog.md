@@ -1,3 +1,27 @@
+# 1.8.0
+* segyio has learned the seismic unix file format, and can read and write SU
+  files. This feature is found in the segyio.su module
+* segyio supports least-significant-byte (LSB/little-endian) first formatted
+  files
+* Fixed a bug that caused writing headers in non-linear mode very slow,
+  and wrong under some conditions
+* segyio also considers files with descending line/offset numbers sorted, not
+  just ascending
+* The python file handle has learned the interpret method, which allows
+  specifying structure directly, rather than inferring it from file metadata.
+  This is particularly useful for files with structure, but broken headers
+* A new family of from_array functions are added to the tools module,
+  intended for quick-and-easy storing a 2/3/4D volume on disk
+* Sorting defaults to inline in segyio.create if nothing is specified
+* Text.__setitem__ used a wrong variable and didn't really work, but is now
+  fixed
+* Internal imports are tidied up
+* The test suite in both Python and C++ have seen some minor improvements
+* An experimental C++ interface is available for source builds, but is not
+  considered stable - internals and interface can change with no prior notice.
+  The experimental interface is enabled when segyio is built with
+  -DEXPERIMENTAL=ON
+
 # 1.7.1
 * Fixed an issue where writing traces on memory-mapped files was a no-op
 * Depth slices dimensions are always in fast-by-slow
