@@ -552,6 +552,9 @@ int segy_close( segy_file* fp ) {
 #ifdef HAVE_MMAP
     if( !fp->addr ) goto no_mmap;
 
+    // let errors unmapping take preference over flush-errors, as it is far
+    // more severe
+    // cppcheck-suppress redundantAssignment
     err = munmap( fp->addr, fp->fsize );
     if( err != 0 )
         err = SEGY_MMAP_ERROR;
