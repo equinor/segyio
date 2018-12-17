@@ -552,6 +552,9 @@ int segy_close( segy_file* fp ) {
 #ifdef HAVE_MMAP
     if( !fp->addr ) goto no_mmap;
 
+    // let errors unmapping take preference over flush-errors, as it is far
+    // more severe
+    // cppcheck-suppress redundantAssignment
     err = munmap( fp->addr, fp->fsize );
     if( err != 0 )
         err = SEGY_MMAP_ERROR;
@@ -1113,8 +1116,8 @@ int segy_traceheader( segy_file* fp,
     if( err != 0 ) return err;
 
     if( fp->addr ) {
-        const int err = memread( buf, fp, fp->cur, SEGY_TRACE_HEADER_SIZE );
-        if( err ) return err;
+        const int errm = memread( buf, fp, fp->cur, SEGY_TRACE_HEADER_SIZE );
+        if( errm ) return errm;
         return bswap_th( buf, fp->lsb );
     }
 
