@@ -119,13 +119,13 @@ void regular_geometry( segy_file* fp,
         }
 
         WHEN( "swapping inline and crossline position" ) {
-            int offsets = -1;
-            const Err err = segy_offsets( fp,
+            offsets = -1;
+            const Err erc = segy_offsets( fp,
                                           xl, il, traces,
                                           &offsets,
                                           trace0, trace_bsize );
             THEN( "there is only one offset" ) {
-                CHECK( err == Err::ok() );
+                CHECK( erc == Err::ok() );
                 CHECK( offsets == 1 );
             }
         }
@@ -1156,14 +1156,14 @@ SCENARIO( "modifying trace header", "[c.segy]" ) {
         CHECK( err == Err::ok() );
 
         THEN( "changes are observable on disk" ) {
-            char header[ SEGY_TRACE_HEADER_SIZE ] = {};
+            char fresh[ SEGY_TRACE_HEADER_SIZE ] = {};
             int ilno = 0;
             int scale = 0;
-            err = segy_traceheader( fp, 5, header, trace0, trace_bsize );
+            err = segy_traceheader( fp, 5, fresh, trace0, trace_bsize );
             CHECK( err == Err::ok() );
-            err = segy_get_field( header, SEGY_TR_INLINE, &ilno );
+            err = segy_get_field( fresh, SEGY_TR_INLINE, &ilno );
             CHECK( err == Err::ok() );
-            err = segy_get_field( header, SEGY_TR_SOURCE_GROUP_SCALAR, &scale );
+            err = segy_get_field( fresh, SEGY_TR_SOURCE_GROUP_SCALAR, &scale );
             CHECK( err == Err::ok() );
 
             CHECK( ilno == 2 );
@@ -1371,7 +1371,7 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
 
     WHEN( "determining number of traces" ) {
         int traces = 0;
-        Err err = segy_traces( fp, &traces, trace0, trace_bsize );
+        err = segy_traces( fp, &traces, trace0, trace_bsize );
         REQUIRE( err == Err::ok() );
         CHECK( traces == 414 );
 
@@ -1419,14 +1419,15 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
 
         WHEN( "finding inline numbers" ) {
             std::vector< int > result( ilines );
-            const Err err = segy_inline_indices( fp,
-                                                 il,
-                                                 sorting,
-                                                 ilines,
-                                                 xlines,
-                                                 offsets,
-                                                 result.data(),
-                                                 trace0, trace_bsize );
+            err = segy_inline_indices( fp,
+                                       il,
+                                       sorting,
+                                       ilines,
+                                       xlines,
+                                       offsets,
+                                       result.data(),
+                                       trace0,
+                                       trace_bsize );
             CHECK( err == Err::ok() );
             CHECK_THAT( result, Catch::Equals( indices ) );
         }
@@ -1436,7 +1437,7 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
         char buf[ SEGY_TRACE_HEADER_SIZE ] = {};
 
         GIVEN( "a valid field" ) {
-            Err err = segy_traceheader( fp, 0, buf, trace0, trace_bsize );
+            err = segy_traceheader( fp, 0, buf, trace0, trace_bsize );
             CHECK( err == Err::ok() );
 
             int ilno = 0;
@@ -1447,7 +1448,7 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
 
         GIVEN( "an invalid field" ) {
             int x = -1;
-            Err err = segy_get_field( buf, SEGY_TRACE_HEADER_SIZE + 10, &x );
+            err = segy_get_field( buf, SEGY_TRACE_HEADER_SIZE + 10, &x );
             CHECK( err == Err::field() );
             CHECK( x == -1 );
 
@@ -1483,12 +1484,12 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
                 auto stop  = inputs[ i ].stop;
                 auto step  = inputs[ i ].step;
 
-                Err err = segy_readsubtr( fp,
-                                          10,
-                                          start, stop, step,
-                                          buf.data(),
-                                          nullptr,
-                                          trace0, trace_bsize );
+                err = segy_readsubtr( fp,
+                                      10,
+                                      start, stop, step,
+                                      buf.data(),
+                                      nullptr,
+                                      trace0, trace_bsize );
                 segy_to_native( format, buf.size(), buf.data() );
                 CHECK( err == Err::ok() );
                 CHECK_THAT( buf, Catch::Equals( expect[ i ] ) );
