@@ -1172,6 +1172,8 @@ SCENARIO( "modifying trace header", "[c.segy]" ) {
     }
 }
 
+namespace {
+
 int check_sorting( const std::string& name ) {
     int trace0 = 3600;
     int trace_bsize = 10 * 4;
@@ -1190,6 +1192,8 @@ int check_sorting( const std::string& name ) {
     CHECK( success( err ) );
 
     return sorting;
+}
+
 }
 
 TEST_CASE("is sorted when (il, xl, offset) decreases", "[c.segy]") {
