@@ -1116,8 +1116,8 @@ int segy_traceheader( segy_file* fp,
     if( err != 0 ) return err;
 
     if( fp->addr ) {
-        const int err = memread( buf, fp, fp->cur, SEGY_TRACE_HEADER_SIZE );
-        if( err ) return err;
+        const int errm = memread( buf, fp, fp->cur, SEGY_TRACE_HEADER_SIZE );
+        if( errm ) return errm;
         return bswap_th( buf, fp->lsb );
     }
 
