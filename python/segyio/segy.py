@@ -844,19 +844,20 @@ class SegyFile(object):
 
     def interpret(self, ilines, xlines, offsets=None, sorting=TraceSortingFormat.INLINE_SORTING):
 
-        """ (Re)interpret structure on top of a file
+        """ (Re-)interpret structure on top of a file
 
-        (Re)interpret the structure of the file given the new sorting, ilines,
+        (Re-)interpret the structure of the file given the new sorting, ilines,
         xlines and offset indices. Note that file itself is not changed in any
-        way, it is only segyio's interpretation of the file that changes.
+        way, it is only segyio's interpretation of the file that changes. It's
+        a way of telling segyio that a file is laid out in a particular way,
+        even though the header fields say otherwise.
 
-        interpret() expect that the ilines-, xlines- and offsets-indices are
+        `interpret` expect that the ilines-, xlines- and offsets-indices are
         unique. It also expect the dimensions of ilines, xlines and offset to
         match the tracecount.
 
         Parameters
         ----------
-
         f : SegyFile
         ilines : array_like
             ilines indices in new structure
@@ -875,6 +876,7 @@ class SegyFile(object):
         Examples
         --------
         (Re)interpret the structure of the file:
+
         >>> ilines = [10, 11, 12, 13]
         >>> xlines = [20, 21, 22, 23, 24]
         >>> with segyio.open(file, ignore_geometry=True) as f:
