@@ -427,6 +427,49 @@ def read_and_write_traceheader(f, mmap):
     f.close()
 
 
+def test_read_traceheaders():
+    f = _segyio.segyiofd("test-data/small.sgy", "r", 0).segyopen()
+    read_traceheaders_forall(f, False)
+    read_traceheaders_forall(f, True)
+
+    read_traceheaders_foreach(f, False)
+    read_traceheaders_foreach(f, True)
+
+    f.close()
+
+
+def read_traceheaders_forall(f, mmap):
+    if mmap:
+        f.mmap()
+    start, stop, step = 20, -1, -5
+    indices = range(start, stop, step)
+    attrs = numpy.empty(len(indices), dtype=numpy.intc)
+    field = segyio.TraceField.INLINE_3D
+
+    with pytest.raises(ValueError):
+        f.field_forall(attrs, start, stop, 0, field)
+
+    buf_handle = f.field_forall(attrs, start, stop, step, field)
+    numpy.testing.assert_array_equal(attrs, [5, 4, 3, 2, 1])
+    assert buf_handle is attrs
+
+
+def read_traceheaders_foreach(f, mmap):
+    if mmap:
+        f.mmap()
+
+    indices = numpy.asarray([7, 4, 1, 18, 20], dtype=numpy.intc)
+    attrs = numpy.empty(len(indices), dtype=numpy.intc)
+    field = segyio.TraceField.CROSSLINE_3D
+
+    with pytest.raises(ValueError):
+        f.field_foreach(numpy.empty(1, dtype=numpy.intc), indices, field)
+
+    buf_handle = f.field_foreach(attrs, indices, field)
+    numpy.testing.assert_array_equal(attrs, [22, 24, 21, 23, 20])
+    assert buf_handle is attrs
+
+
 @tmpfiles("test-data/small.sgy")
 def test_read_and_write_trace_mmap(tmpdir):
     f = get_instance_segyiofd(tmpdir,
