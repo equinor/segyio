@@ -1,3 +1,6 @@
+# 1.8.2
+* Pass HOST_BIG_ENDIAN as preprocessor directive, not compiler option
+
 # 1.8.1
 * Fixed a docstring formatting issue
 * Fixed a race condition in test suite
