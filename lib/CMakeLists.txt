@@ -10,13 +10,13 @@ target_compile_options(segyio BEFORE
     PRIVATE
         ${c99}
         $<$<CONFIG:Debug>:${warnings-c}>
-        $<${HOST_BIG_ENDIAN}:HOST_BIG_ENDIAN>
 )
 target_compile_definitions(segyio
     PRIVATE
         ${mmap}
         ${fstat}
         ${ftello}
+        $<${HOST_BIG_ENDIAN}:HOST_BIG_ENDIAN>
 )
 set_target_properties(segyio
                       PROPERTIES
