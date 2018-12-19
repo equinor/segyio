@@ -850,6 +850,8 @@ struct writesubtr {
                          + "[" + std::to_string( start )
                          + "," + std::to_string( stop )
                          + "," + std::to_string( step )
+                         + std::string(testcfg::config().memmap ? "-mmap" : "")
+                         + std::string(testcfg::config().lsbit  ? "-lsb"  : "")
                          + "].sgy";
 
         copyfile( "test-data/small.sgy", name );
