@@ -1,3 +1,7 @@
+# 1.8.1
+* Fixed a docstring formatting issue
+* Fixed a race condition in test suite
+
 # 1.8.0
 * segyio has learned the seismic unix file format, and can read and write SU
   files. This feature is found in the segyio.su module
