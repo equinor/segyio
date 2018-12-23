@@ -1,3 +1,6 @@
+# 1.8.3
+* Check endianness variable properly
+
 # 1.8.2
 * Pass HOST_BIG_ENDIAN as preprocessor directive, not compiler option
 

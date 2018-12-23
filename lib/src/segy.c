@@ -102,7 +102,7 @@ static int encode( char* dst,
 #endif // __GNUC__
 
 static uint16_t htobe16( uint16_t v ) {
-#ifdef HOST_LSB
+#if HOST_LSB
     return bswap16(v);
 #else
     return v;
@@ -110,7 +110,7 @@ static uint16_t htobe16( uint16_t v ) {
 }
 
 static uint32_t htobe32( uint32_t v ) {
-#ifdef HOST_LSB
+#if HOST_LSB
     return bswap32(v);
 #else
     return v;
@@ -118,7 +118,7 @@ static uint32_t htobe32( uint32_t v ) {
 }
 
 static uint16_t be16toh( uint16_t v ) {
-#ifdef HOST_LSB
+#if HOST_LSB
     return bswap16(v);
 #else
     return v;
@@ -126,7 +126,7 @@ static uint16_t be16toh( uint16_t v ) {
 }
 
 static uint32_t be32toh( uint32_t v ) {
-#ifdef HOST_LSB
+#if HOST_LSB
     return bswap32(v);
 #else
     return v;
