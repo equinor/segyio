@@ -35,21 +35,22 @@ def main():
                           step  = step,
                           dtype = np.single)
 
-        # one inline is N traces concatenated. We fill in the xline number
-        line = np.concatenate([trace + (xl / 100.0) for xl in spec.xlines])
-        line = line.reshape( (len(spec.xlines), len(spec.samples)) )
+        # Write the file trace-by-trace and update headers with iline, xline
+        # and offset
+        tr = 0
+        for il in spec.ilines:
+            for xl in spec.xlines:
+                f.header[tr] = {
+                    segyio.su.offset : 1,
+                    segyio.su.iline  : il,
+                    segyio.su.xline  : xl
+                }
+                f.trace[tr] = trace + (xl / 100.0) + il
+                tr += 1
 
-        # write the line itself to the file
-        # write the inline number in all this line's headers
-        for ilno in spec.ilines:
-            f.iline[ilno] = (line + ilno)
-            f.header.iline[ilno] = { segyio.TraceField.INLINE_3D: ilno,
-                                     segyio.TraceField.offset: 1
-                                   }
-
-        # then do the same for xlines
-        for xlno in spec.xlines:
-            f.header.xline[xlno] = { segyio.TraceField.CROSSLINE_3D: xlno }
+        f.bin.update(
+            tsort=segyio.TraceSortingFormat.INLINE_SORTING
+        )
 
 
 if __name__ == '__main__':

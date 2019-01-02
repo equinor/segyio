@@ -496,39 +496,7 @@ with segyio.open(output_file, "r+") as src:
         src.iline[i] = 2 * src.iline[i]
 ```
 
-Make segy file from sctrach
-
-```python
-spec = segyio.spec()
-filename = 'name_of_your_file.sgy'
-
-spec = segyio.spec()
-file_out = 'test1.sgy'
-
-spec.sorting = 2
-spec.format = 1
-spec.samples = np.arange(30)
-spec.ilines = np.arange(10)
-spec.xlines = np.arange(20)
-
-with segyio.create(filename, spec) as f:
-
-    # write the line itself to the file and the inline number in all this line's headers
-    for ilno in spec.ilines:
-        f.iline[ilno] = np.zeros(
-            (len(spec.xlines), spec.samples), dtype=np.single) + ilno
-        f.header.iline[ilno] = {
-            segyio.TraceField.INLINE_3D: ilno,
-            segyio.TraceField.offset: 0
-        }
-
-    # then do the same for xlines
-    for xlno in spec.xlines:
-        f.header.xline[xlno] = {
-            segyio.TraceField.CROSSLINE_3D: xlno,
-            segyio.TraceField.TRACE_SAMPLE_INTERVAL: 4000
-        }
-```
+[Make segy file from sctrach](python/examples/make-file.py)
 
 Visualize data using sibling tool [SegyViewer](https://github.com/Statoil/segyviewer):
 

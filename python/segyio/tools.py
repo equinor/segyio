@@ -414,12 +414,15 @@ def from_array(filename, data, iline=189,
                                format=SegySampleFormat.IBM_FLOAT_4_BYTE,
                                dt=4000,
                                delrt=0):
-    """ Create a new SEGY file from an n-dimentional array
-    Create an structured SEGY file with defaulted headers from a 2-, 3- or
-    4-dimensional array. from_array() recognizes the shape of the array and
-    calls the correct from_arrayxD() function. I.e. calling this with a
-    2-dimensional array produces the exact same result as calling from_array2D()
-    directly.
+    """ Create a new SEGY file from an n-dimentional array. Create a structured
+    SEGY file with defaulted headers from a 2-, 3- or 4-dimensional array.
+    ilines, xlines, offsets and samples are inferred from the size of the
+    array. Please refer to the documentation for functions from_array2D,
+    from_array3D and from_array4D to see how the arrays are interpreted.
+
+    Structure-defining fields in the binary header and in the traceheaders are
+    set accordingly. Such fields include, but are not limited to iline, xline
+    and offset. The file also contains a defaulted textual header.
 
     Parameters
     ----------
@@ -452,21 +455,66 @@ def from_array(filename, data, iline=189,
     ...
     """
 
+    dt = int(dt)
+    delrt = int(delrt)
+
     data = np.asarray(data)
     dimensions = len(data.shape)
 
-    if dimensions not in range(2,5):
-        problem = "Expected 2, 3 or 4 dimensions, {} was given".format(dimensions)
+    if dimensions not in range(2, 5):
+        problem = "Expected 2, 3, or 4 dimensions, {} was given".format(dimensions)
         raise ValueError(problem)
 
+    spec = segyio.spec()
+    spec.iline   = iline
+    spec.xline   = xline
+    spec.format  = format
+    spec.sorting = TraceSortingFormat.INLINE_SORTING
+
     if dimensions == 2:
-        return from_array2D(filename, data, iline, xline, format, dt, delrt)
+        spec.ilines  = [1]
+        spec.xlines  = list(range(1, np.size(data,0) + 1))
+        spec.samples = list(range(np.size(data,1)))
+        spec.tracecount = np.size(data, 1)
 
     if dimensions == 3:
-        return from_array3D(filename, data, iline, xline, format, dt, delrt)
+        spec.ilines  = list(range(1, np.size(data, 0) + 1))
+        spec.xlines  = list(range(1, np.size(data, 1) + 1))
+        spec.samples = list(range(np.size(data, 2)))
 
     if dimensions == 4:
-        return from_array4D(filename, data, iline, xline, format, dt, delrt)
+        spec.ilines  = list(range(1, np.size(data, 0) + 1))
+        spec.xlines  = list(range(1, np.size(data, 1) + 1))
+        spec.offsets = list(range(1, np.size(data, 2)+ 1))
+        spec.samples = list(range(np.size(data,3)))
+
+    samplecount = len(spec.samples)
+
+    with segyio.create(filename, spec) as f:
+        tr = 0
+        for ilno, il in enumerate(spec.ilines):
+            for xlno, xl in enumerate(spec.xlines):
+                for offno, off in enumerate(spec.offsets):
+                    f.header[tr] = {
+                        segyio.su.tracf  : tr,
+                        segyio.su.cdpt   : tr,
+                        segyio.su.offset : off,
+                        segyio.su.ns     : samplecount,
+                        segyio.su.dt     : dt,
+                        segyio.su.delrt  : delrt,
+                        segyio.su.iline  : il,
+                        segyio.su.xline  : xl
+                    }
+                    if dimensions == 2: f.trace[tr] = data[tr, :]
+                    if dimensions == 3: f.trace[tr] = data[ilno, xlno, :]
+                    if dimensions == 4: f.trace[tr] = data[ilno, xlno, offno, :]
+                    tr += 1
+
+        f.bin.update(
+            tsort=TraceSortingFormat.INLINE_SORTING,
+            hdt=dt,
+            dto=dt
+        )
 
 
 def from_array2D(filename, data, iline=189,
@@ -530,47 +578,16 @@ def from_array2D(filename, data, iline=189,
     ...     tr = f.trace[0]
     """
 
-    dt = int(dt)
-    delrt = int(delrt)
-
     data = np.asarray(data)
     dimensions = len(data.shape)
 
     if dimensions != 2:
-        problem = "Expected 3 dimensions, {} was given".format(dimensions)
+        problem = "Expected 2 dimensions, {} was given".format(dimensions)
         raise ValueError(problem)
 
-    tracecount = np.size(data, 0)
-    samplecount = np.size(data, 1)
-
-    spec = segyio.spec()
-    spec.iline   = iline
-    spec.xline   = xline
-    spec.format  = format
-    spec.ilines  = [1]
-    spec.xlines  = list(range(1, tracecount + 1))
-    spec.samples = list(range(samplecount))
-    spec.sorting = TraceSortingFormat.INLINE_SORTING
-
-    with segyio.create(filename, spec) as f:
-        f.iline[1] = data
-        for tr in range(f.tracecount):
-            f.header[tr] = {
-                TraceField.TraceNumber           : tr,
-                TraceField.CDP_TRACE             : tr,
-                TraceField.offset                : spec.offsets[0],
-                TraceField.INLINE_3D             : spec.ilines[0],
-                TraceField.CROSSLINE_3D          : spec.xlines[tr],
-                TraceField.TRACE_SAMPLE_COUNT    : samplecount,
-                TraceField.TRACE_SAMPLE_INTERVAL : dt,
-                TraceField.DelayRecordingTime    : delrt
-            }
-
-        f.bin.update(
-            tsort=TraceSortingFormat.INLINE_SORTING,
-            hdt=dt,
-            dto=dt
-        )
+    from_array(filename, data, iline=iline, xline=xline, format=format,
+                                                         dt=dt,
+                                                         delrt=delrt)
 
 
 def from_array3D(filename, data, iline=189,
@@ -634,9 +651,6 @@ def from_array3D(filename, data, iline=189,
     ...
     """
 
-    dt = int(dt)
-    delrt = int(delrt)
-
     data = np.asarray(data)
     dimensions = len(data.shape)
 
@@ -644,46 +658,9 @@ def from_array3D(filename, data, iline=189,
         problem = "Expected 3 dimensions, {} was given".format(dimensions)
         raise ValueError(problem)
 
-    ilinecount = np.size(data, 0)
-    xlinecount = np.size(data, 1)
-    samplecount = np.size(data, 2)
-
-    spec = segyio.spec()
-    spec.iline   = iline
-    spec.xline   = xline
-    spec.format  = format
-    spec.ilines  = list(range(1, ilinecount + 1))
-    spec.xlines  = list(range(1, xlinecount + 1))
-    spec.samples = list(range(samplecount))
-    spec.sorting = TraceSortingFormat.INLINE_SORTING
-
-    with segyio.create(filename, spec) as f:
-        for index, ilno in enumerate(spec.ilines):
-            iline = np.concatenate([data[index,xl,:] for xl in range(xlinecount)])
-            iline = iline.reshape((xlinecount, samplecount))
-            print(ilno)
-
-            f.iline[ilno] = iline
-            f.header.iline[ilno] = { TraceField.INLINE_3D: ilno }
-
-        for xlno in spec.xlines:
-            f.header.xline[xlno] = { TraceField.CROSSLINE_3D: xlno}
-
-        for tr in range(f.tracecount):
-            f.header[tr] = {
-                TraceField.TraceNumber           : tr,
-                TraceField.CDP_TRACE             : tr,
-                TraceField.offset                : spec.offsets[0],
-                TraceField.TRACE_SAMPLE_COUNT    : samplecount,
-                TraceField.TRACE_SAMPLE_INTERVAL : dt,
-                TraceField.DelayRecordingTime    : delrt
-           }
-
-        f.bin.update(
-            tsort=TraceSortingFormat.INLINE_SORTING,
-            hdt=dt,
-            dto=dt
-        )
+    from_array(filename, data, iline=iline, xline=xline, format=format,
+                                                         dt=dt,
+                                                         delrt=delrt)
 
 
 def from_array4D(filename, data, iline=189,
@@ -737,9 +714,6 @@ def from_array4D(filename, data, iline=189,
     ...
     """
 
-    dt = int(dt)
-    delrt = int(delrt)
-
     data = np.asarray(data)
     dimensions = len(data.shape)
 
@@ -747,49 +721,6 @@ def from_array4D(filename, data, iline=189,
         problem = "Expected 4 dimensions, {} was given".format(dimensions)
         raise ValueError(problem)
 
-    ilinecount  = np.size(data, 0)
-    xlinecount  = np.size(data, 1)
-    samplecount = np.size(data, 3)
-    offsetcount = np.size(data, 2)
-
-    spec = segyio.spec()
-    spec.iline   = iline
-    spec.xline   = xline
-    spec.format  = format
-    spec.ilines  = list(range(1, ilinecount + 1))
-    spec.xlines  = list(range(1, xlinecount + 1))
-    spec.offsets = list(range(1, offsetcount + 1))
-    spec.samples = list(range(samplecount))
-    spec.sorting = TraceSortingFormat.INLINE_SORTING
-
-
-    with segyio.create(filename, spec) as f:
-        for ilindex, ilno in enumerate(spec.ilines):
-            for offindex, offno in enumerate(spec.offsets):
-                iline = np.concatenate([data[ilindex, xl, offindex, :] for xl in range(xlinecount)])
-                iline = iline.reshape((xlinecount, samplecount))
-
-                f.iline[ilno, offno] = iline
-                f.header.iline[ilno, offno] = {
-                    TraceField.INLINE_3D : ilno,
-                    TraceField.offset    : offno
-                }
-
-        for xlno in spec.xlines:
-            for offno in spec.offsets:
-                f.header.xline[xlno, offno] = {TraceField.CROSSLINE_3D: xlno}
-
-        for tr in range(f.tracecount):
-            f.header[tr] = {
-                TraceField.TraceNumber           : tr,
-                TraceField.CDP_TRACE             : tr,
-                TraceField.TRACE_SAMPLE_COUNT    : samplecount,
-                TraceField.TRACE_SAMPLE_INTERVAL : dt,
-                TraceField.DelayRecordingTime    : delrt
-           }
-
-        f.bin.update(
-            tsort=TraceSortingFormat.INLINE_SORTING,
-            hdt=dt,
-            dto=dt
-        )
+    from_array(filename, data, iline=iline, xline=xline, format=format,
+                                                         dt=dt,
+                                                         delrt=delrt)
