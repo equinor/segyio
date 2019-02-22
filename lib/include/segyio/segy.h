@@ -125,8 +125,13 @@ int segy_sample_indices( segy_file*,
                          float* buf );
 
 /* text header operations */
-/* buf in all read functions should be minimum segy_textheader_size() in size */
-/* all read_textheader function outputs are zero-terminated C strings */
+/*
+ * buf in all read and write functions should be minimum segy_textheader_size()
+ * in size
+ *
+ * all read_textheader function outputs are zero-terminated C strings. It is
+ * assumed input is ebcdic encoded.
+ */
 int segy_read_textheader( segy_file*, char *buf);
 int segy_textheader_size( void );
 /*
@@ -135,6 +140,19 @@ int segy_textheader_size( void );
  * Behaviour is undefined if the file does not have extended headers
  */
 int segy_read_ext_textheader( segy_file*, int pos, char* buf );
+
+/*
+ * Write the text header. `pos` is regular array indexing, i.e. pos = 0 is the
+ * regular text header, 1 is the first extended textual header. This is *NOT*
+ * the same behaviour as read_ext_textheader.
+ *
+ * The asymmetry in the interface is unfortunate, but a consequence of there
+ * only being support for non-extended headers for a while. The old behaviour
+ * is preserved for backwards compatibility.
+ *
+ * Like the read-textheader functions, the input text should be in ascii and
+ * will be automatically encoded to ebcdic.
+ */
 int segy_write_textheader( segy_file*, int pos, const char* buf );
 
 /* Read the trace header at `traceno` into `buf`. */
