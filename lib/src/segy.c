@@ -1226,13 +1226,13 @@ int segy_sample_interval( segy_file* fp, float fallback, float* dt ) {
      */
 
     *dt = fallback;
-    if( binary_header_dt == 0 && trace_header_dt != 0 )
+    if( binary_header_dt <= 0 && trace_header_dt > 0 )
         *dt = trace_header_dt;
 
-    if( trace_header_dt == 0 && binary_header_dt != 0 )
+    if( trace_header_dt <= 0 && binary_header_dt > 0 )
         *dt = binary_header_dt;
 
-    if( trace_header_dt == binary_header_dt && trace_header_dt != 0 )
+    if( trace_header_dt == binary_header_dt && trace_header_dt > 0 )
         *dt = trace_header_dt;
 
     return SEGY_OK;
