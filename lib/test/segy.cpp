@@ -253,6 +253,71 @@ int arbitrary_int() {
 }
 
 TEST_CASE_METHOD( smallbin,
+                  "use bin-interval when trace-interval is zero",
+                  "[c.segy]" ) {
+
+    std::int32_t hdt = arbitrary_int();
+    segy_get_bfield( bin, SEGY_BIN_INTERVAL, &hdt );
+    REQUIRE( hdt == 4000 );
+
+    float dt = arbitrary_int();
+    const Err err = segy_sample_interval( fp, 100.0, &dt );
+
+    CHECK( err == Err::ok() );
+    CHECK( dt == 4000 );
+}
+
+TEST_CASE( "use fallback interval when both trace and bin is negative",
+           "[c.segy]" ) {
+    auto ufp = unique_segy{
+        segy_open("test-data/interval-neg-bin-neg-trace.sgy", "rb")
+    };
+    auto fp = ufp.get();
+
+    const float fallback = 100.0;
+
+    float dt = arbitrary_int();
+    const Err err = segy_sample_interval( fp, fallback, &dt );
+
+    CHECK( err == Err::ok() );
+    CHECK( dt == fallback );
+}
+
+TEST_CASE( "use trace interval when bin is negative",
+           "[c.segy]" ) {
+    auto ufp = unique_segy{
+        segy_open("test-data/interval-neg-bin-pos-trace.sgy", "rb")
+    };
+    auto fp = ufp.get();
+
+    const float fallback = 100.0;
+    const float expected = 4000.0;
+
+    float dt = arbitrary_int();
+    const Err err = segy_sample_interval( fp, fallback, &dt );
+
+    CHECK( err == Err::ok() );
+    CHECK( dt == expected );
+}
+
+TEST_CASE( "use bin interval when trace is negative",
+           "[c.segy]" ) {
+    auto ufp = unique_segy{
+        segy_open("test-data/interval-pos-bin-neg-trace.sgy", "rb")
+    };
+    auto fp = ufp.get();
+
+    const float fallback = 100.0;
+    const float expected = 2000.0;
+
+    float dt = arbitrary_int();
+    const Err err = segy_sample_interval( fp, fallback, &dt );
+
+    CHECK( err == Err::ok() );
+    CHECK( dt == expected );
+}
+
+TEST_CASE_METHOD( smallbin,
                   "samples+positions from binary header are correct",
                   "[c.segy]" ) {
     int samples = segy_samples( bin );

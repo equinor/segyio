@@ -71,6 +71,9 @@ configure_file(${testdata}/1xN.sgy                            test-data/1xN.sgy 
 configure_file(${testdata}/f3.sgy                             test-data/f3.sgy                               COPYONLY)
 configure_file(${testdata}/f3-lsb.sgy                         test-data/f3-lsb.sgy                           COPYONLY)
 configure_file(${testdata}/text.sgy                           test-data/text.sgy                             COPYONLY)
+configure_file(${testdata}/interval-neg-bin-neg-trace.sgy     test-data/interval-neg-bin-neg-trace.sgy       COPYONLY)
+configure_file(${testdata}/interval-neg-bin-pos-trace.sgy     test-data/interval-neg-bin-pos-trace.sgy       COPYONLY)
+configure_file(${testdata}/interval-pos-bin-neg-trace.sgy     test-data/interval-pos-bin-neg-trace.sgy       COPYONLY)
 
 add_executable(c.segy test/testsuite.cpp
                       test/segy.cpp
