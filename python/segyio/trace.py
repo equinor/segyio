@@ -162,6 +162,17 @@ class Trace(Sequence):
             return self.filehandle.gettr(buf, i, 1, 1)
 
         except TypeError:
+            # we assume this is a generator. extract the indices-tuple right
+            # away, because if this is NOT a slice we want to fail with a type
+            # error right away. If this is done inside gen() then the call will
+            # succeed with a generator, which fails on first next() with an
+            # attribute error
+            try:
+                indices = i.indices(len(self))
+            except AttributeError:
+                msg = 'trace indices must be integers or slices, not {}'
+                raise TypeError(msg.format(type(i).__name__))
+
             def gen():
                 # double-buffer the trace. when iterating over a range, we want
                 # to make sure the visible change happens as late as possible,
@@ -172,7 +183,7 @@ class Trace(Sequence):
                 x = np.zeros(self.shape, dtype=self.dtype)
                 y = np.zeros(self.shape, dtype=self.dtype)
 
-                for j in range(*i.indices(len(self))):
+                for j in range(*indices):
                     self.filehandle.gettr(x, j, 1, 1)
                     x, y = y, x
                     yield y
@@ -328,7 +339,11 @@ class RawTrace(Trace):
             buf = np.zeros(self.shape, dtype = self.dtype)
             return self.filehandle.gettr(buf, i, 1, 1)
         except TypeError:
-            indices = i.indices(len(self))
+            try:
+                indices = i.indices(len(self))
+            except AttributeError:
+                msg = 'trace indices must be integers or slices, not {}'
+                raise TypeError(msg.format(type(i).__name__))
             start, _, step = indices
             length = len(range(*indices))
             buf = np.empty((length, self.shape), dtype = self.dtype)
@@ -486,11 +501,16 @@ class RefTrace(Trace):
             return x
 
         except TypeError:
+            try:
+                indices = i.indices(len(self))
+            except AttributeError:
+                msg = 'trace indices must be integers or slices, not {}'
+                raise TypeError(msg.format(type(i).__name__))
+
             def gen():
                 x = np.zeros(self.shape, dtype = self.dtype)
-
                 try:
-                    for j in range(*i.indices(len(self))):
+                    for j in range(*indices):
                         x = self.fetch(j, x)
                         y = fingerprint(x)
 
@@ -572,6 +592,12 @@ class Header(Sequence):
             return Field.trace(traceno = i, segy = self.segy)
 
         except TypeError:
+            try:
+                indices = i.indices(len(self))
+            except AttributeError:
+                msg = 'trace indices must be integers or slices, not {}'
+                raise TypeError(msg.format(type(i).__name__))
+
             def gen():
                 # double-buffer the header. when iterating over a range, we
                 # want to make sure the visible change happens as late as
@@ -581,7 +607,7 @@ class Header(Sequence):
                 # fully inspect and interact with the last good value.
                 x = Field.trace(None, self.segy)
                 buf = bytearray(x.buf)
-                for j in range(*i.indices(len(self))):
+                for j in range(*indices):
                     # skip re-invoking __getitem__, just update the buffer
                     # directly with fetch, and save some initialisation work
                     buf = x.fetch(buf, j)
@@ -827,8 +853,14 @@ class Text(Sequence):
             return self.filehandle.gettext(i)
 
         except TypeError:
+            try:
+                indices = i.indices(len(self))
+            except AttributeError:
+                msg = 'trace indices must be integers or slices, not {}'
+                raise TypeError(msg.format(type(i).__name__))
+
             def gen():
-                for j in range(*i.indices(len(self))):
+                for j in range(*indices):
                     yield self.filehandle.gettext(j)
             return gen()
 
@@ -874,7 +906,13 @@ class Text(Sequence):
             self.filehandle.puttext(i, val)
 
         except TypeError:
-            for i, text in zip(range(*i.indices(len(self))), val):
+            try:
+                indices = i.indices(len(self))
+            except AttributeError:
+                msg = 'trace indices must be integers or slices, not {}'
+                raise TypeError(msg.format(type(i).__name__))
+
+            for i, text in zip(range(*indices), val):
                 if isinstance(text, Text):
                     text = text[0]
                 self.filehandle.puttext(i, text)
