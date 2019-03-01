@@ -837,6 +837,35 @@ def test_fopen_error():
         segyio.open("test-data/small.sgy", "r+b+toolong")
 
 
+def test_getitem_None():
+    with pytest.raises(TypeError):
+        with segyio.open('test-data/small.sgy') as f:
+            _ = f.trace[None]
+
+    with pytest.raises(TypeError):
+        with segyio.open('test-data/small.sgy') as f:
+            _ = f.trace.raw[None]
+
+    with pytest.raises(TypeError):
+        with segyio.open('test-data/small.sgy') as f:
+            _ = f.header[None]
+
+    with pytest.raises(KeyError):
+        with segyio.open('test-data/small.sgy') as f:
+            _ = f.iline[None]
+
+    with pytest.raises(KeyError):
+        with segyio.open('test-data/small.sgy') as f:
+            _ = f.xline[None]
+
+    with pytest.raises(TypeError):
+        with segyio.open('test-data/small.sgy') as f:
+            _ = f.depth_slice[None]
+
+    with pytest.raises(TypeError):
+        with segyio.open('test-data/small.sgy') as f:
+            _ = f.gather[None]
+
 def test_wrong_lineno():
     with pytest.raises(KeyError):
         with segyio.open("test-data/small.sgy") as f:
