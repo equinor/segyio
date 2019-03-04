@@ -5,7 +5,7 @@
 
 #include "test-config.hpp"
 
-const char* testcfg::apply( const char* path ) {
+std::string testcfg::apply( const char* path ) {
     if( !this->lsbit ) return path;
 
     std::string p( path );

@@ -2,11 +2,13 @@
 #define SEGYIO_TEST_CONFIG_HPP
 #include <segyio/segy.h>
 
+#include <string>
+
 struct testcfg {
     /*
      * If one of the supported files, get -lsb version of file path
      */
-    const char* apply( const char* );
+    std::string apply( const char* );
 
     /*
      * call testcfg::config().apply(fp) to enable both mmap and lsb

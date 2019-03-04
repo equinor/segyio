@@ -24,8 +24,8 @@ struct segy_fclose {
 using unique_segy = std::unique_ptr< segy_file, segy_fclose >;
 
 segy_file* openfile( const std::string& path, const std::string& mode ) {
-    const auto* p = testcfg::config().apply( path.c_str() );
-    unique_segy ptr( segy_open( p, mode.c_str() ) );
+    const auto p = testcfg::config().apply( path.c_str() );
+    unique_segy ptr( segy_open( p.c_str(), mode.c_str() ) );
     REQUIRE( ptr );
 
     testcfg::config().apply( ptr.get() );
