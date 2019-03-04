@@ -314,10 +314,16 @@ PyObject* segyopen( segyiofd* self ) {
     switch( format ) {
         case SEGY_IBM_FLOAT_4_BYTE:             elemsize = 4; break;
         case SEGY_SIGNED_INTEGER_4_BYTE:        elemsize = 4; break;
+        case SEGY_SIGNED_INTEGER_8_BYTE:        elemsize = 8; break;
         case SEGY_SIGNED_SHORT_2_BYTE:          elemsize = 2; break;
         case SEGY_FIXED_POINT_WITH_GAIN_4_BYTE: elemsize = 4; break;
         case SEGY_IEEE_FLOAT_4_BYTE:            elemsize = 4; break;
+        case SEGY_IEEE_FLOAT_8_BYTE:            elemsize = 8; break;
         case SEGY_SIGNED_CHAR_1_BYTE:           elemsize = 1; break;
+        case SEGY_UNSIGNED_CHAR_1_BYTE:         elemsize = 1; break;
+        case SEGY_UNSIGNED_INTEGER_4_BYTE:      elemsize = 4; break;
+        case SEGY_UNSIGNED_SHORT_2_BYTE:        elemsize = 2; break;
+        case SEGY_UNSIGNED_INTEGER_8_BYTE:      elemsize = 8; break;
 
         case SEGY_NOT_IN_USE_1:
         case SEGY_NOT_IN_USE_2:
@@ -402,7 +408,15 @@ PyObject* segycreate( segyiofd* self, PyObject* args, PyObject* kwargs ) {
         case SEGY_SIGNED_SHORT_2_BYTE:
         case SEGY_FIXED_POINT_WITH_GAIN_4_BYTE:
         case SEGY_IEEE_FLOAT_4_BYTE:
+        case SEGY_IEEE_FLOAT_8_BYTE:
+        case SEGY_SIGNED_CHAR_3_BYTE:
         case SEGY_SIGNED_CHAR_1_BYTE:
+        case SEGY_SIGNED_INTEGER_8_BYTE:
+        case SEGY_UNSIGNED_INTEGER_4_BYTE:
+        case SEGY_UNSIGNED_SHORT_2_BYTE:
+        case SEGY_UNSIGNED_INTEGER_8_BYTE:
+        case SEGY_UNSIGNED_INTEGER_3_BYTE:
+        case SEGY_UNSIGNED_CHAR_1_BYTE:
             break;
 
         default:
@@ -412,18 +426,32 @@ PyObject* segycreate( segyiofd* self, PyObject* args, PyObject* kwargs ) {
 
     int elemsize = 4;
     switch( format ) {
-        case SEGY_IBM_FLOAT_4_BYTE:
+        case SEGY_SIGNED_INTEGER_8_BYTE:
+        case SEGY_IEEE_FLOAT_8_BYTE:
+        case SEGY_UNSIGNED_INTEGER_8_BYTE:
+            elemsize = 8;
+            break;
+
+         case SEGY_IBM_FLOAT_4_BYTE:
         case SEGY_SIGNED_INTEGER_4_BYTE:
         case SEGY_FIXED_POINT_WITH_GAIN_4_BYTE:
         case SEGY_IEEE_FLOAT_4_BYTE:
+        case SEGY_UNSIGNED_INTEGER_4_BYTE:
             elemsize = 4;
             break;
 
+        case SEGY_SIGNED_CHAR_3_BYTE:
+        case SEGY_UNSIGNED_INTEGER_3_BYTE:
+            elemsize = 3;
+            break;
+
         case SEGY_SIGNED_SHORT_2_BYTE:
+        case SEGY_UNSIGNED_SHORT_2_BYTE:
             elemsize = 2;
             break;
 
         case SEGY_SIGNED_CHAR_1_BYTE:
+        case SEGY_UNSIGNED_CHAR_1_BYTE:
             elemsize = 1;
             break;
 

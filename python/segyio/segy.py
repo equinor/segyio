@@ -59,7 +59,13 @@ class SegyFile(object):
                 2: np.int32,
                 3: np.int16,
                 5: np.float32,
+                6: np.float64,
                 8: np.int8,
+                9: np.int64,
+                10: np.uint32,
+                11: np.uint16,
+                12: np.uint64,
+                16: np.uint8,
             }[self._fmt])
         except KeyError:
             problem = 'Unknown trace value format {}'.format(self._fmt)
@@ -810,7 +816,15 @@ class SegyFile(object):
             3: "2-byte signed integer",
             4: "4-byte fixed point with gain",
             5: "4-byte IEEE float",
-            8: "1-byte signed char"
+            6: "8-byte IEEE float",
+            7: "3-byte signed integer",
+            8: "1-byte signed char",
+            9: "8-byte signed integer",
+            10: "4-byte unsigned integer",
+            11: "2-byte unsigned integer",
+            12: "8-byte unsigned integer",
+            15: "3-byte unsigned integer",
+            16: "1-byte unsigned char"
         }
 
         class fmt:

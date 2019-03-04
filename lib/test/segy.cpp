@@ -339,7 +339,7 @@ TEST_CASE_METHOD( smallfix,
 TEST_CASE_METHOD( smallfix,
                   "sample format fails on invalid format",
                   "[c.segy]" ) {
-    Err err = segy_set_format( fp, 10 );
+    Err err = segy_set_format( fp, 20 );
     CHECK( err == Err::args() );
 }
 
@@ -1378,6 +1378,110 @@ SCENARIO( "reading a large file", "[c.segy]" ) {
             }
         }
     }
+}
+
+/*
+ * open a copy of f3, but pre-converted to a different format, to check that
+ * other formats are read correctly
+ */
+template < typename T >
+void f3_in_format(int fmt) {
+    const auto name = "test-data/Format" + std::to_string(fmt);
+    unique_segy ufp{ openfile(name, "rb") };
+    auto* fp = ufp.get();
+    REQUIRE(fp);
+
+    char header[SEGY_BINARY_HEADER_SIZE];
+    REQUIRE(Err(segy_binheader(fp, header)) == Err::ok());
+
+    const int samples = segy_samples(header);
+    const long trace0 = segy_trace0(header);
+    const int format  = segy_format(header);
+    const int trsize  = segy_trsize(fmt, samples);
+
+    CHECK(samples == 75);
+    CHECK(trace0  == 3600);
+    CHECK(format  == fmt);
+    CHECK(trsize  == int(samples * sizeof(T)));
+
+    Err err = segy_set_format(fp, fmt);
+    REQUIRE(err == Err::ok());
+
+    /* read f3 from 2-byte, expand, and compare */
+    std::vector< T > fptrace(samples);
+    err = segy_readtrace(fp,
+            0,
+            fptrace.data(),
+            trace0,
+            segy_trsize(fmt, samples));
+    REQUIRE(err == Err::ok());
+
+    const auto f3fmt = SEGY_SIGNED_SHORT_2_BYTE;
+    unique_segy uf3{ openfile("test-data/f3.sgy", "rb") };
+    auto* f3 = uf3.get();
+    REQUIRE(f3);
+    segy_set_format(f3, f3fmt);
+
+    std::vector< std::int16_t > f3trace(samples);
+    err = segy_readtrace(f3,
+            0,
+            f3trace.data(),
+            trace0,
+            segy_trsize(f3fmt, samples));
+    REQUIRE(err == Err::ok());
+
+    segy_to_native(fmt, fptrace.size(), fptrace.data());
+    segy_to_native(f3fmt,  f3trace.size(), f3trace.data());
+
+    CHECK_THAT(fptrace, SimilarRange< T >::from(f3trace));
+}
+
+/*
+ * The Format family of files are all f3.sgy, but converted to the
+ * corresponding numeric format
+ */
+TEST_CASE("can open IBM float", "[c.segy][format]") {
+    f3_in_format< float >( SEGY_IBM_FLOAT_4_BYTE );
+}
+
+TEST_CASE("can open 4-byte signed integer", "[c.segy][format]") {
+    f3_in_format< std::int32_t >(SEGY_SIGNED_INTEGER_4_BYTE);
+}
+
+TEST_CASE("can open 2-byte signed integer", "[c.segy][format]") {
+    f3_in_format< std::int16_t >(SEGY_SIGNED_SHORT_2_BYTE);
+}
+
+TEST_CASE("can open IEEE float", "[c.segy][format]" ) {
+    f3_in_format< float >(SEGY_IEEE_FLOAT_4_BYTE);
+}
+
+TEST_CASE("can open IEEE double", "[c.segy][format]") {
+    f3_in_format< double >(SEGY_IEEE_FLOAT_8_BYTE);
+}
+
+TEST_CASE("can open 1-byte signed char", "[c.segy][format]") {
+    f3_in_format< std::int8_t >(SEGY_SIGNED_CHAR_1_BYTE);
+}
+
+TEST_CASE("can open 8-byte signed integer", "[c.segy][format]") {
+    f3_in_format< std::int64_t >(SEGY_SIGNED_INTEGER_8_BYTE);
+}
+
+TEST_CASE("can open 4-byte unsigned integer", "[c.segy][format]") {
+    f3_in_format< std::uint32_t >(SEGY_UNSIGNED_INTEGER_4_BYTE);
+}
+
+TEST_CASE("can open 2-byte unsigned short", "[c.segy][format]") {
+    f3_in_format< std::uint16_t >(SEGY_UNSIGNED_SHORT_2_BYTE);
+}
+
+TEST_CASE("can open 8-byte unsigned integer", "[c.segy][format]") {
+    f3_in_format< std::uint64_t >(SEGY_UNSIGNED_INTEGER_8_BYTE);
+}
+
+TEST_CASE("can open 1-byte unsigned char", "[c.segy][format]") {
+    f3_in_format< std::uint8_t >(SEGY_UNSIGNED_CHAR_1_BYTE);
 }
 
 SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {

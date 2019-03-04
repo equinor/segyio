@@ -6,9 +6,14 @@
 #include "test-config.hpp"
 
 std::string testcfg::apply( const char* path ) {
-    if( !this->lsbit ) return path;
+    std::string p(path);
 
-    std::string p( path );
+    if (p.find("test-data/Format") != std::string::npos) {
+        if (this->lsbit) return p + "lsb.sgy";
+        else             return p + "msb.sgy";
+    }
+
+    if( !this->lsbit ) return path;
 
     if( p == "test-data/small.sgy" )
         return "test-data/small-lsb.sgy";
