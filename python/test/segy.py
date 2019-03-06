@@ -1346,6 +1346,22 @@ def test_create_from_naught_unstructured(endian, tmpdir):
         assert f.header[10][TraceField.offset] == f.header[25][TraceField.offset]
         assert 1 == f.header[1][TraceField.offset]
 
+def test_create_non_4byte_file(tmpdir):
+    ref_trace = [2, 1, 4]
+
+    spec = segyio.spec()
+    spec.format = 8
+    spec.tracecount = 1
+    spec.samples = list(range(len(ref_trace)))
+
+    with segyio.create(tmpdir / 'non-4-byte.sgy', spec) as f:
+        f.text[0] = ''
+        f.bin = {}
+        f.header[0] = {}
+        f.trace[0] = ref_trace
+
+    with segyio.open(tmpdir / 'non-4-byte.sgy', ignore_geometry = True) as f:
+        np.testing.assert_almost_equal(f.trace[0], ref_trace)
 
 def test_create_write_lines(tmpdir):
     mklines(tmpdir / "mklines.sgy")

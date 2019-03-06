@@ -409,7 +409,7 @@ PyObject* segycreate( segyiofd* self, PyObject* args, PyObject* kwargs ) {
             return ValueError( "unknown format identifier" );
     }
 
-
+    segy_set_format(fp, format);
     int elemsize = 4;
     switch( format ) {
         case SEGY_IBM_FLOAT_4_BYTE:
