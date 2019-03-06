@@ -1416,7 +1416,11 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
     const int trace_bsize = samples * 2;
 
     WHEN( "reading data without setting format" ) {
-        std::int16_t val;
+        /*
+         * explicitly zero this buffer - if set_format is called then this
+         * function should read 2 bytes, but now 4 is read instead.
+         */
+        std::int16_t val[2] = { 0, 0 };
         Err err = segy_readsubtr( fp, 10,
                                       25, 26, 1,
                                       &val,
@@ -1425,11 +1429,12 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
 
         CHECK( err == Err::ok() );
 
-        err = segy_to_native( format, sizeof( val ), &val );
+        err = segy_to_native( format, 1, &val );
         CHECK( err == Err::ok() );
 
         THEN( "the value is incorrect" ) {
-            CHECK( val != -1170 );
+            CHECK( val[0] != -1170 );
+            CHECK( val[1] != 0 );
         }
     }
 
