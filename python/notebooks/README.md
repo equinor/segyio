@@ -1,3 +1,3 @@
 ## Index ##
 
-* [basic_tutorial](python/notebooks/basic_tutorial.ipynb)
+* [basic_tutorial](basic_tutorial.ipynb)
