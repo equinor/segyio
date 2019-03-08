@@ -87,9 +87,20 @@ static int encode( char* dst,
 #endif
 
 #if defined __GNUC__
+    #define bswap64(x) __builtin_bswap64((x))
     #define bswap32(x) __builtin_bswap32((x))
     #define bswap16(x) __builtin_bswap16((x))
 #else
+    #define bswap64(v) ( ((v & 0x00000000000000FFull) << 56) \
+                       | ((v & 0x000000000000FF00ull) << 40) \
+                       | ((v & 0x0000000000FF0000ull) << 24) \
+                       | ((v & 0x00000000FF000000ull) <<  8) \
+                       | ((v & 0x000000FF00000000ull) >>  8) \
+                       | ((v & 0x0000FF0000000000ull) >> 24) \
+                       | ((v & 0x00FF000000000000ull) >> 40) \
+                       | ((v & 0xFF00000000000000ull) >> 56) \
+                       )
+
     #define bswap32(v) ( (((v) & 0x000000FF) << 24) \
                        | (((v) & 0x0000FF00) <<  8) \
                        | (((v) & 0x00FF0000) >>  8) \
@@ -387,11 +398,19 @@ static int formatsize( int format ) {
     switch( format ) {
         case SEGY_IBM_FLOAT_4_BYTE:             return 4;
         case SEGY_SIGNED_INTEGER_4_BYTE:        return 4;
+        case SEGY_SIGNED_INTEGER_8_BYTE:        return 8;
         case SEGY_SIGNED_SHORT_2_BYTE:          return 2;
         case SEGY_FIXED_POINT_WITH_GAIN_4_BYTE: return 4;
         case SEGY_IEEE_FLOAT_4_BYTE:            return 4;
+        case SEGY_IEEE_FLOAT_8_BYTE:            return 8;
         case SEGY_SIGNED_CHAR_1_BYTE:           return 1;
-
+        case SEGY_UNSIGNED_CHAR_1_BYTE:         return 1;
+        case SEGY_UNSIGNED_INTEGER_4_BYTE:      return 4;
+        case SEGY_UNSIGNED_SHORT_2_BYTE:        return 2;
+        case SEGY_UNSIGNED_INTEGER_8_BYTE:      return 8;
+        /* 3-byte values are not supported yet, report as invalid-args */
+        case SEGY_SIGNED_CHAR_3_BYTE:           //return 3;
+        case SEGY_UNSIGNED_INTEGER_3_BYTE:      //return 3;
         case SEGY_NOT_IN_USE_1:
         case SEGY_NOT_IN_USE_2:
         default:
@@ -1680,6 +1699,20 @@ int segy_readtrace( segy_file* fp,
     return segy_readsubtr( fp, traceno, 0, stop, 1, buf, NULL, trace0, trace_bsize );
 }
 
+static int bswap64vec( void* vec, long long len ) {
+    char* begin = (char*) vec;
+    char* end = (char*) begin + len * sizeof(int64_t);
+
+    for (char* xs = begin; xs != end; xs += sizeof(int64_t)) {
+        uint64_t v;
+        memcpy(&v, xs, sizeof(int64_t));
+        v = bswap64(v);
+        memcpy(xs, &v, sizeof(int64_t));
+    }
+
+    return SEGY_OK;
+}
+
 static int bswap32vec( void* vec, long long len ) {
     char* begin = (char*) vec;
     char* end = (char*) begin + len * sizeof(int32_t);
@@ -1693,6 +1726,23 @@ static int bswap32vec( void* vec, long long len ) {
 
     return SEGY_OK;
 }
+
+static int bswap24vec( void* vec, long long len ) {
+    char* begin = (char*) vec;
+    char* end = (char*) begin + len * 24;
+
+    for (char* xs = begin; xs != end; xs += 24) {
+        uint8_t bits[3];
+        memcpy(bits, xs, sizeof(bits));
+        uint8_t tmp = bits[0];
+        bits[0] = bits[2];
+        bits[2] = tmp;
+        memcpy(xs, bits, sizeof(bits));
+    }
+
+    return SEGY_OK;
+}
+
 
 static int bswap16vec( void* vec, long long len ) {
     char* begin = (char*) vec;
@@ -1735,8 +1785,12 @@ int segy_readsubtr( segy_file* fp,
             if( readc != elems ) return SEGY_FREAD_ERROR;
         }
 
-        if( fp->lsb && fp->elemsize == 4 ) bswap32vec( buf, elems );
-        if( fp->lsb && fp->elemsize == 2 ) bswap16vec( buf, elems );
+        if (fp->lsb) {
+            if (fp->elemsize == 8) bswap64vec(buf, elems);
+            if (fp->elemsize == 4) bswap32vec(buf, elems);
+            if (fp->elemsize == 3) bswap24vec(buf, elems);
+            if (fp->elemsize == 2) bswap16vec(buf, elems);
+        }
 
         if( step == -1 ) reverse( buf, elems, elemsize );
 
@@ -1757,8 +1811,13 @@ int segy_readsubtr( segy_file* fp,
         for( int i = 0; i < slicelen; cur += step, dst += elemsize, ++i )
             memcpy( dst, cur, elemsize );
 
-        if( fp->lsb && fp->elemsize == 4 ) bswap32vec( buf, slicelen );
-        if( fp->lsb && fp->elemsize == 2 ) bswap16vec( buf, slicelen );
+        if (fp->lsb) {
+            if (fp->elemsize == 8) bswap64vec(buf, slicelen);
+            if (fp->elemsize == 4) bswap32vec(buf, slicelen);
+            if (fp->elemsize == 3) bswap24vec(buf, slicelen);
+            if (fp->elemsize == 2) bswap16vec(buf, slicelen);
+        }
+
         return SEGY_OK;
     }
 
@@ -1783,8 +1842,12 @@ int segy_readsubtr( segy_file* fp,
     for( int i = 0; i < slicelen; cur += step, ++i, dst += elemsize )
         memcpy( dst, cur, elemsize );
 
-    if( fp->lsb && fp->elemsize == 4 ) bswap32vec( buf, slicelen );
-    if( fp->lsb && fp->elemsize == 2 ) bswap16vec( buf, slicelen );
+    if (fp->lsb) {
+        if (fp->elemsize == 8) bswap64vec(buf, slicelen);
+        if (fp->elemsize == 4) bswap32vec(buf, slicelen);
+        if (fp->elemsize == 3) bswap24vec(buf, slicelen);
+        if (fp->elemsize == 2) bswap16vec(buf, slicelen);
+    }
 
     if( !rangebuf ) free( tracebuf );
     return SEGY_OK;
@@ -1798,6 +1861,20 @@ int segy_writetrace( segy_file* fp,
 
     const int stop = trace_bsize / fp->elemsize;
     return segy_writesubtr( fp, traceno, 0, stop, 1, buf, NULL, trace0, trace_bsize );
+}
+
+static int bswap64vec_strided( char* dst, const char* src, int step, int len ) {
+    const int elemsize = sizeof(int64_t);
+    step *= elemsize;
+
+    uint64_t v;
+    for (; len > 0; dst += step, src += elemsize, --len) {
+        memcpy(&v, src, elemsize);
+        v = bswap64(v);
+        memcpy(dst, &v, elemsize);
+    }
+
+    return SEGY_OK;
 }
 
 static int bswap32vec_strided( char* dst, const char* src, int step, int len ) {
@@ -1873,9 +1950,12 @@ int segy_writesubtr( segy_file* fp,
         void* tracebuf = rangebuf ? rangebuf : malloc( elems * elemsize );
         memcpy( tracebuf, buf, elemsize * elems );
 
-        if( step == -1 ) reverse( tracebuf, elems, elemsize );
-        if( fp->lsb && elemsize == 4 ) bswap32vec( tracebuf, elems );
-        if( fp->lsb && elemsize == 2 ) bswap16vec( tracebuf, elems );
+        if (step == -1) reverse(tracebuf, elems, elemsize);
+        if (fp->elemsize == 8) bswap64vec(tracebuf, elems);
+        if (fp->elemsize == 4) bswap32vec(tracebuf, elems);
+        if (fp->elemsize == 3) bswap24vec(tracebuf, elems);
+        if (fp->elemsize == 2) bswap16vec(tracebuf, elems);
+
 
         /*
          * only handle fstream path - the mmap is handled comfortably by the
@@ -1902,6 +1982,8 @@ int segy_writesubtr( segy_file* fp,
             step *= elemsize;
             for( ; slicelen > 0; cur += step, src += elemsize, --slicelen )
                 memcpy( cur, src, elemsize );
+        } else if( elemsize == 8 ) {
+            bswap64vec_strided( cur, src, step, slicelen );
         } else if( elemsize == 4 ) {
             bswap32vec_strided( cur, src, step, slicelen );
         } else if( elemsize == 2 ) {
@@ -1928,6 +2010,8 @@ int segy_writesubtr( segy_file* fp,
         step *= elemsize;
         for( ; slicelen > 0; cur += step, --slicelen, src += elemsize )
             memcpy( cur, src, elemsize );
+    } else if( elemsize == 8 ) {
+        bswap64vec_strided( cur, src, step, slicelen );
     } else if( elemsize == 4 ) {
         bswap32vec_strided( cur, src, step, slicelen );
     } else if( elemsize == 2 ) {
@@ -1964,18 +2048,18 @@ int segy_writesubtr( segy_file* fp,
  * FILE MSB |   bswap   |  no-op
  */
 
-static int segy_native_byteswap( int format,
-                                 long long size,
-                                 void* buf ) {
+static int segy_native_byteswap(int format, long long size, void* buf) {
 
-    const int elemsize = formatsize( format );
+    if (HOST_LSB) {
+        const int elemsize = formatsize( format );
 
-    if( elemsize == sizeof( uint32_t ) && HOST_LSB ) {
-        bswap32vec( buf, size );
-    }
-
-    if( elemsize == sizeof( uint16_t ) && HOST_LSB ) {
-        bswap16vec( buf, size );
+        switch (elemsize) {
+            case 8: bswap64vec(buf, size); break;
+            case 4: bswap32vec(buf, size); break;
+            case 3: bswap24vec(buf, size); break;
+            case 2: bswap16vec(buf, size); break;
+            default:                       break;
+        }
     }
 
     return SEGY_OK;
