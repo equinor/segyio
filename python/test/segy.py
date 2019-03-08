@@ -498,10 +498,23 @@ def test_gather_mode():
             assert (2, 10) == g.shape
             assert np.array_equal(line[2], g[0])
 
-        for g, line in zip(f.gather[1, 1:3, 1], f.xline[1:3]):
+        for g, line in zip(f.gather[:, 2, 1], f.iline[:]):
+            assert 10 == len(g)
+            assert (10,) == g.shape
+            assert np.array_equal(line[1], g)
+
+        for g, line in zip(f.gather[1, :, 1], f.xline[:]):
             assert 10 == len(g)
             assert (10,) == g.shape
             assert np.array_equal(line[0], g)
+
+        # overshoot the inlines, should still work
+        for g, line in zip(f.gather[3:10, 3, 1], f.iline[3:]):
+            assert 10 == len(g)
+            assert (10,) == g.shape
+            print(g)
+            print(line[0])
+            assert np.array_equal(line[2], g)
 
         for g, line in zip(f.gather[1, 1:3, :], f.xline[1:3]):
             assert 2 == len(g)
