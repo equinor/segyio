@@ -129,13 +129,32 @@ class Gather(object):
             il_slice = il if isslice(il) else slice(il, il+1)
             xl_slice = xl if isslice(xl) else slice(xl, xl+1)
 
+            # the slice could still be defaulted (:), in which case this starts
+            # at zero. the lookups are guarded by try-excepts so it won't fail,
+            # but it's unnecessary to chck all keys up until the first xline
+            # because that will never be a hit anyway
+            if il_slice.start is None:
+                start = self.iline.keys()[0]
+                il_slice = slice(start, il_slice.stop, il_slice.step)
+
+            if xl_slice.start is None:
+                start = self.xline.keys()[0]
+                xl_slice = slice(start, xl_slice.stop, xl_slice.step)
+
             il_range = range(*il_slice.indices(last_il))
             xl_range = range(*xl_slice.indices(last_xl))
 
+            # the try-except-else is essentially a filter on in/xl keys, but
+            # delegates the work (and decision) to the iline and xline modes
             if not isslice(off):
                 for iline in self.iline[il_slice, off]:
                     for xlno in xl_range:
-                        yield iline[xlinds[xlno]]
+                        try:
+                            xind = xlinds[xlno]
+                        except KeyError:
+                            pass
+                        else:
+                            yield iline[xind]
 
                 return
 
@@ -146,6 +165,11 @@ class Gather(object):
             for ilno in il_range:
                 iline = tools.collect(self.iline[ilno, off])
                 for x in xl_range:
-                    yield iline[:, xlinds[x]]
+                    try:
+                        xind = xlinds[x]
+                    except KeyError:
+                        pass
+                    else:
+                        yield iline[:, xind]
 
         return gen()
