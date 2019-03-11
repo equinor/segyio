@@ -52,7 +52,7 @@ To catch up on the latest development and features, see the
 
 When segyio is built and installed, you're ready to start programming! Check
 out the [tutorial](#tutorial), [examples](#examples), [example
-programs](python/examples), and [example notebooks](python/notebooks). For a technical reference with examples and small
+programs](python/examples), and [example notebooks](https://github.com/equinor/segyio-notebooks). For a technical reference with examples and small
 recipes, [read the docs](https://segyio.readthedocs.io/) or start your
 favourite Python interpreter and type `help(segyio)` to get started - it is
 written with pydoc and should integrate well with IDLE, pycharm and other
