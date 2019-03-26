@@ -1,8 +1,6 @@
 import numpy as np
 try: from future_builtins import zip
 except ImportError: pass
-
-from .tracesortingformat import TraceSortingFormat as Sorting
 from .trace import Sequence
 from .utils import castarray
 
