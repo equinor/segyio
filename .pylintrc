@@ -1,0 +1,38 @@
+
+
+# Disable the message, report, category or checker with the given id(s). You
+# can either give multiple identifiers separated by comma (,) or put this
+# option multiple times (only on the command line, not in the configuration
+# file where it should appear only once). You can also use "--disable=all" to
+# disable everything first and then reenable specific checks. For example, if
+# you want to run only the similarities checker, you can use "--disable=all
+# --enable=similarities". If you want to run only the classes checker, but have
+# no Warning level messages displayed, use "--disable=all --enable=classes
+# --disable=W".
+disable=Redefining built-in 'dir',
+        Redefining built-in 'type',
+        Redefining built-in 'open',
+        Redefining built-in 'format',
+        Redefining built-in 'zip',
+        Redefining built-in 'range',
+        Unused import small,
+        C0204 # Metaclass class method %s should have %s as first argument,
+        C0111 # Missing %s docstring,
+        C0301 # Line too long ,
+        C0304 # Final newline missing,
+        C0321 # More than one statement on a single line,
+        C0103 # Invalid name,
+        C0112 # Empty %s docstring,
+        C0326 # space,
+        W0231 # __init__ method from base class %r is not called,
+        W0312 # Found indentation with %ss instead of %ss,
+        W0212 # Access to a protected member %s of a client class,
+        W0223 # Method %r is abstract in class %r but is not overridden,
+        W0311 # Bad indentation. Found %s %s, expected %s,
+        W1111 # Assigning to function call which only returns None,
+        R0903 # Too few public methods,
+        W0201 # Attribute %r defined outside __init__,
+        R0914 # Too many local variables,
+        W0613 # Unused argument ,
+        W0211 # Static method with %r as first argument,
+        W0301 # Unnecessary semicolon

@@ -1,5 +1,4 @@
 import segyio
-from . import TraceField
 from . import TraceSortingFormat
 from . import SegySampleFormat
 
