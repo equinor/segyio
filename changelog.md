@@ -1,3 +1,16 @@
+# 1.8.4
+* The from_array function has been refactored, and speed is improved
+* create works for non-4-byte numeric formats
+* More numerical formats are accepted: 8-byte/64 bit double-precision IEEE
+  float, 1, 2, and 4-byte signed and unsigned integers
+* segyio no longer crashes on key misses in f.gather[int, :]
+* The intended TypeError is raised when traces are accessed with None, instead
+  of a misleading (and wrong) AttributeError
+* sample-interval has gotten some new tests
+* Minor behavorial improvements to C++ test-config
+* Some stack-related bug fixes in the test suite
+* The readme has seen some minor updates
+
 # 1.8.3
 * Check endianness variable properly
 
