@@ -1654,6 +1654,11 @@ def test_attributes_shortword_little_endian():
             lsba = lsb.attributes(word)
             npt.assert_array_equal(msba[:], lsba[:])
 
+def test_attributes_header_shortword_equal():
+    f3lsb = 'test-data/f3-lsb.sgy'
+    word = segyio.su.scalco
+    with segyio.open(f3lsb, endian = 'little') as f3:
+        assert f3.header[6][word] == f3.attributes(word)[6][0]
 
 @tmpfiles('test-data/f3.sgy')
 def test_writetrace_int16(tmpdir):
