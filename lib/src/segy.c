@@ -691,8 +691,29 @@ static int32_t bswap_header_word(int32_t f, int word_size) {
     if (word_size == 4)
         return bswap32(f);
 
-    int16_t shortf = f;
-    return bswap16(shortf);
+    /*
+     * The casts are here are necessary
+     *
+     * First, it must be converted to a *signed* short (to preserve negative
+     * numbers). The narrowing is safe because the source is 2 bytes anyway.
+     *
+     * The behaviour when this is implicitly wrong was discovered in [1].
+     *
+     * Then, it must be byteswapped with bswap16. When using the shifts is
+     * probably fine as the types are also cast in the macro and are
+     * compatible, but the builtins have this signature [2]:
+     *
+     *  uint16_t __builtin_bswap16 (uint16_t x)
+     *
+     * which means that if the value is *negative* it will be interpreted as
+     * unsigned and very much positive. When it is then implicitly converted
+     * in the return type it is widened, and int32 can fit uint16 maximum just
+     * fine.
+     *
+     * [1] https://github.com/equinor/segyio/issues/368
+     * [2] http://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html
+     */
+    return (int16_t) bswap16((int16_t) f);
 }
 
 int segy_field_forall( segy_file* fp,
@@ -744,7 +765,7 @@ int segy_field_forall( segy_file* fp,
      * offset is computed, not just the start of the header, and that's copied
      * into the correct offset in our local buffer. Note that byte offsets are
      * exposed 1-indexed (to stay consistent with the specification), but the
-     * buffers are 0-indexed.
+     * words in the buffer rely on 0-based offsets.
      *
      * Always read 4 bytes to be sure, there's no significant cost difference.
      */
@@ -752,10 +773,10 @@ int segy_field_forall( segy_file* fp,
     for( int i = start; slicelen > 0; i += step, ++buf, --slicelen ) {
         err = segy_seek( fp, i, trace0 + zfield, trace_bsize );
         if( err != 0 ) return SEGY_FSEEK_ERROR;
-        size_t readc = fread( header + zfield, sizeof( uint32_t ), 1, fp->fp );
+        size_t readc = fread( header + zfield, sizeof(uint32_t), 1, fp->fp );
         if( readc != 1 ) return SEGY_FREAD_ERROR;
 
-        segy_get_field( header, field, &f );
+        get_field( header, field_size, field, &f );
         if (lsb) f = bswap_header_word(f, word_size);
         *buf = f;
     }
