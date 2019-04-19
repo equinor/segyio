@@ -687,6 +687,14 @@ static int slicelength( int start, int stop, int step ) {
     return (stop - start - 1) / step + 1;
 }
 
+static int32_t bswap_header_word(int32_t f, int word_size) {
+    if (word_size == 4)
+        return bswap32(f);
+
+    int16_t shortf = f;
+    return bswap16(shortf);
+}
+
 int segy_field_forall( segy_file* fp,
                        int field,
                        int start,
@@ -701,6 +709,10 @@ int segy_field_forall( segy_file* fp,
     char header[ SEGY_TRACE_HEADER_SIZE ] = { 0 };
     err = segy_get_field( header, field, &f );
     if( err != SEGY_OK ) return SEGY_INVALID_ARGS;
+
+    // since segy_get_field didn't fail earlier, it is safe to look up the word
+    // size
+    const int word_size = field_size[field];
 
     int slicelen = slicelength( start, stop, step );
 
@@ -719,7 +731,7 @@ int segy_field_forall( segy_file* fp,
         for( int i = start; slicelen > 0; i += step, ++buf, --slicelen ) {
             segy_seek( fp, i, trace0, trace_bsize );
             get_field( fp->cur, field_size, field, &f );
-            if( lsb ) f = bswap32(f);
+            if (lsb) f = bswap_header_word(f, word_size);
             *buf = f;
         }
 
@@ -744,7 +756,7 @@ int segy_field_forall( segy_file* fp,
         if( readc != 1 ) return SEGY_FREAD_ERROR;
 
         segy_get_field( header, field, &f );
-        if( lsb ) f = bswap32(f);
+        if (lsb) f = bswap_header_word(f, word_size);
         *buf = f;
     }
 
