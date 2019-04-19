@@ -1643,6 +1643,17 @@ def test_readtrace_int16():
         assert list(tr[40:19:-5]) == [-888, -2213, 5198, -1170, 0]
         assert list(tr[53:50:-1]) == [-2609, -2625, 681]
 
+def test_attributes_shortword_little_endian():
+    f3msb = 'test-data/f3.sgy'
+    f3lsb = 'test-data/f3-lsb.sgy'
+    word = segyio.su.dt
+    # this test (in particular) is a pretty good candidate for fuzzing
+    with segyio.open(f3msb) as msb:
+        with segyio.open(f3lsb, endian = 'little') as lsb:
+            msba = msb.attributes(word)
+            lsba = lsb.attributes(word)
+            npt.assert_array_equal(msba[:], lsba[:])
+
 
 @tmpfiles('test-data/f3.sgy')
 def test_writetrace_int16(tmpdir):
