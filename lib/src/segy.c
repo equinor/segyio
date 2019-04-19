@@ -744,7 +744,7 @@ int segy_field_forall( segy_file* fp,
      * offset is computed, not just the start of the header, and that's copied
      * into the correct offset in our local buffer. Note that byte offsets are
      * exposed 1-indexed (to stay consistent with the specification), but the
-     * buffers are 0-indexed.
+     * words in the buffer rely on 0-based offsets.
      *
      * Always read 4 bytes to be sure, there's no significant cost difference.
      */
