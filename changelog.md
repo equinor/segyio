@@ -1,3 +1,6 @@
+# 1.8.6
+* Fixed a bug where negative short header words on gcc were read wrong
+
 # 1.8.5
 * segyio now reads short attributes from little-endian files correctly
 
