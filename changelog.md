@@ -1,3 +1,6 @@
+# 1.8.5
+* segyio now reads short attributes from little-endian files correctly
+
 # 1.8.4
 * The from_array function has been refactored, and speed is improved
 * create works for non-4-byte numeric formats
