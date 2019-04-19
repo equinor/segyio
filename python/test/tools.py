@@ -135,6 +135,20 @@ def test_rotation():
             assert right == approx(rotation(f, line='slow'), abs=1e-3)
             assert right == approx(rotation(f, line='xline'), abs=1e-3)
 
+def test_rotation_mmap():
+    angle = 0.000
+    from segyio.tools import rotation
+    with segyio.open('test-data/normal-small.sgy') as f:
+        f.mmap()
+        assert 0.000 == approx(rotation(f, line = 'fast')[0], abs = 1e-3)
+        assert 1.571 == approx(rotation(f, line = 'slow')[0], abs = 1e-3)
+
+def test_rotation_lsb():
+    from segyio.tools import rotation
+    with segyio.open('test-data/f3.sgy') as msb:
+        with segyio.open('test-data/f3-lsb.sgy', endian = 'little') as lsb:
+            assert rotation(msb, line = 'fast') == rotation(lsb, line = 'fast')
+            assert rotation(msb, line = 'slow') == rotation(lsb, line = 'slow')
 
 def test_metadata():
     spec = segyio.spec()
