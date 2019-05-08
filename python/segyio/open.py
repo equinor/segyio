@@ -131,7 +131,7 @@ def open(filename, mode="r", iline = 189,
 
     Open two files at once:
 
-    >>> with segyio.open(path) as src, segyio.open(path, "r+") as dst:
+    >>> with segyio.open(src_path) as src, segyio.open(dst_path, "r+") as dst:
     ...     dst.trace = src.trace # copy all traces from src to dst
 
     Open a file little-endian file:
