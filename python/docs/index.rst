@@ -14,6 +14,7 @@ API reference
    :maxdepth: 3
 
    segyio
+   tutorials/index.rst
 
 
 Indices and tables
@@ -22,4 +23,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
