@@ -199,7 +199,7 @@ If the file is opened *unstructured*, all the line properties will will be
 
 ### Modes ###
 
-In segyio, data is retrived and written through so-called *modes*. Modes are
+In segyio, data is retrieved and written through so-called *modes*. Modes are
 abstract arrays, or addressing schemes, and change what names and indices mean.
 All modes are properties on the file handle object, support the `len` function,
 and reads and writes are done through `f.mode[]`. Writes are done with
@@ -319,7 +319,7 @@ More examples and recipes can be found in the docstrings `help(segyio)` and the
 
 ## Project goals ##
 
-Segyio does necessarily attempt to be the end-all of SEG-Y interactions;
+Segyio does not necessarily attempt to be the end-all of SEG-Y interactions;
 rather, we aim to lower the barrier to interacting with SEG-Y files for
 embedding, new applications or free-standing programs.
 
