@@ -23,7 +23,12 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath("../"))
+import segyio
+
+import sphinx_gallery
+from sphinx_gallery.sorting import ExampleTitleSortKey
+
+sys.path.insert(0, os.path.abspath('..'))
 
 # -- General configuration ------------------------------------------------
 
@@ -41,6 +46,7 @@ extensions = [
     'sphinx.ext.doctest',
     'sphinx.ext.intersphinx',
     'sphinx.ext.imgmath',
+    'sphinx_gallery.gen_gallery',
 ]
 
 autosummary_generate = True
@@ -83,8 +89,6 @@ master_doc = 'index'
 project = u'segyio'
 copyright = u'2018, Equinor'
 author = u'Equinor'
-
-import segyio
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -163,6 +167,24 @@ pygments_style = 'sphinx'
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = False
 
+# -- Options for Sphinx Gallery output ----------------------------------------------
+sphinx_gallery_conf = {
+    # path to your examples scripts
+    'examples_dirs': ['../tutorials',],
+    # path where to save gallery generated examples
+    'gallery_dirs': ['tutorials'],
+    'filename_pattern': '\.py',
+    # Remove the "Download all examples" button from the top level gallery
+    'download_all_examples': False,
+    # Sort gallery example by file name instead of number of lines (default)
+    'within_subsection_order': ExampleTitleSortKey,
+    # directory where function granular galleries are stored
+    'backreferences_dir': 'api/generated/backreferences',
+    # Modules for which function level galleries are created.
+    'doc_module': 'segyio',
+    # Insert links to documentation of objects in the examples
+    'reference_url': {'segyio': None}
+}
 
 # -- Options for HTML output ----------------------------------------------
 

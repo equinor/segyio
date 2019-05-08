@@ -73,7 +73,8 @@ install:
         brew update && brew install cppcheck;
     fi
   - pip install -r requirements.txt
-  - pip install bandit setuptools setuptools-scm pytest pytest-runner sphinx
+  - pip install bandit setuptools setuptools-scm pytest pytest-runner
+  - pip install sphinx sphinx-gallery
 
 before_script:
   - enabled="-DBUILD_PYTHON=OFF -DBUILD_MEX=OFF"

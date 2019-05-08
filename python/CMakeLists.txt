@@ -148,6 +148,7 @@ if(BUILD_PYDOC AND sphinx)
                 docs/index.rst
                 docs/segyio.rst
         COMMENT "Building python documentation with sphinx"
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
     add_dependencies(doc pydoc)
 
