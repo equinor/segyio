@@ -84,6 +84,10 @@ class Trace(Sequence):
     >>> tr = tr - 100
     >>> avg = numpy.average(tr)
 
+    Perform some seismic processing on a trace. E.g resample from 2ms spacing to 4ms spacing (note there is no anti-alias filtering in this example):
+
+    >>> tr = scipy.signal.resample(tr, len(tr)/2)
+
     Double every trace value and write to disk. Since accessing a trace
     gives a numpy value, to write to the respective trace we need its index:
 
