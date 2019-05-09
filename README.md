@@ -227,7 +227,7 @@ are available:
 * `header`
 
     With addressing behaviour similar to `trace`, accessing items yield header
-    objects instead of numpy `ndarray`s. Headers are dict like objects, where
+    objects instead of numpy `ndarray`s. Headers are dict-like objects, where
     keys are integers, seismic unix-style keys (in segyio.su module) and segyio
     enums (segyio.TraceField).
 
