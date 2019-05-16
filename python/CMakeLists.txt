@@ -182,3 +182,4 @@ add_test(NAME python.example.subcube      COMMAND ${python} copy-sub-cube.py tes
 add_test(NAME python.example.rotate       COMMAND ${python} make-rotated-copies.py test-data/small.sgy ex-rotate.sgy)
 add_test(NAME python.example.scan_min_max COMMAND ${python} scan_min_max.py test-data/small.sgy)
 add_test(NAME python.example.multi-text   COMMAND ${python} make-multiple-text.py test-data/multi-text.sgy)
+add_test(NAME python.example.shot-gather  COMMAND ${python} make-shot-gather.py test-data/shot-gather.py)
