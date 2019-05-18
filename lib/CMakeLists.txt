@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.5)
 project(libsegyio C CXX)
 
+set(CMAKE_CXX_STANDARD 11)
+
 if(MSVC)
     set(DLL_EXPORT_FILES src/segy.def)
 endif()
@@ -109,7 +111,6 @@ target_include_directories(c.segy PRIVATE src experimental)
 target_link_libraries(c.segy catch2 segyio)
 target_compile_options(c.segy BEFORE
     PRIVATE
-        ${c++11}
         ${mmap}
         $<$<CONFIG:Debug>:${warnings-c}>
 )

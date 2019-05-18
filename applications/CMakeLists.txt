@@ -9,6 +9,8 @@ if( NOT HAVE_GETOPT_H OR NOT HAVE_GETOPT_LONG )
     return ()
 endif ()
 
+set(CMAKE_CXX_STANDARD 11)
+
 add_library(apputils STATIC apputils.c)
 target_link_libraries(apputils segyio)
 target_compile_options(apputils BEFORE
@@ -60,7 +62,6 @@ target_link_libraries(flip-endianness segyio)
 target_compile_options(flip-endianness BEFORE
     PRIVATE
         $<$<CONFIG:Debug>:${warnings-c}>
-        ${c++11}
 )
 
 install(TARGETS segyio-cath
