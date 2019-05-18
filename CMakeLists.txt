@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 2.8.12)
-project(segyio)
+cmake_minimum_required(VERSION 3.5)
+project(segyio LANGUAGES C CXX)
 
 include(CheckFunctionExists)
 include(CheckIncludeFile)
