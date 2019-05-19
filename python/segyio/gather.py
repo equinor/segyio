@@ -1,5 +1,9 @@
+import collections
 import itertools
 import numpy as np
+
+try: from future_builtins import zip
+except ImportError: pass
 
 import segyio.tools as tools
 
@@ -173,3 +177,255 @@ class Gather(object):
                         yield iline[:, xind]
 
         return gen()
+
+class Group(object):
+    """
+    The inner representation of the Groups abstraction provided by Group.
+
+    A collection of trace indices that have identical `key`.
+
+    Notes
+    -----
+    .. versionadded:: 1.9
+    """
+    def __init__(self, key, parent, index):
+        self.parent = parent
+        self.index = index
+        self.key = key
+
+    @property
+    def header(self):
+        """
+        A generator of the the read-only headers in this group
+
+        Returns
+        -------
+        headers : iterator of Header
+
+        Notes
+        -----
+        The generator respects the order of the index - to iterate over headers
+        in a different order, the index attribute can be re-organised.
+
+        .. versionadded:: 1.9
+        """
+        source = self.parent.header
+        for i in self.index:
+            yield source[i]
+
+    @property
+    def trace(self):
+        """
+        A generator of the the read-only traces in this group
+
+        Returns
+        -------
+        headers : iterator of Header
+
+        Notes
+        -----
+        The generator respects the order of the index - to iterate over headers
+        in a different order, the index attribute can be re-organised.
+
+        .. versionadded:: 1.9
+        """
+        source = self.parent.trace
+        for i in self.index:
+            yield source[i]
+
+    def sort(self, fields):
+        """
+        Sort the traces in the group, obeying the `fields` order of
+        most-to-least significant word.
+        """
+        # TODO: examples
+
+        headers = [dict(self.parent.header[i]) for i in self.index]
+        index = list(zip(headers, self.index))
+        # sorting is stable, so sort the whole set by field, applied in the
+        # reverse order:
+        for field in reversed(fields):
+            index.sort(key = lambda x: x[0][field])
+
+        # strip off all the headers
+        index = [i for _, i in index]
+        self.index = index
+
+class Groups(collections.Mapping):
+    """
+    The Groups implements the dict interface, grouping all traces that match a
+    given `fingerprint`. The fingerprint is a signature derived from a set of
+    trace header words, called a `key`.
+
+    Consider a file with five traces, and some selected header words:
+        0: {offset: 1, fldr: 1}
+        1: {offset: 1, fldr: 2}
+        2: {offset: 1, fldr: 1}
+        3: {offset: 2, fldr: 1}
+        4: {offset: 1, fldr: 2}
+
+    With key = (offset, fldr), there are 3 groups:
+        {offset: 1, fldr: 1 }: [0, 2]
+        {offset: 1, fldr: 2 }: [1, 4]
+        {offset: 2, fldr: 1 }: [3]
+
+    With a key = offset, there are 2 groups:
+        {offset: 1}: [0, 1, 2, 4]
+        {offset: 2}: [3]
+
+    The Groups class is intended to easily process files without the rigid
+    in/crossline structure of iline/xline/gather, but where there is sufficient
+    structure in the headers. This is common for some types of pre-stack data,
+    shot gather data etc.
+
+    Notes
+    -----
+    .. versionadded:: 1.9
+    """
+    # TODO: only group in range of traces?
+    # TODO: cache header dicts?
+    def __init__(self, trace, header, key):
+        bins = collections.OrderedDict()
+        for i, h in enumerate(header[:]):
+            k = self.fingerprint(h[key])
+            if k in bins:
+                bins[k].append(i)
+            else:
+                bins[k] = [i]
+
+        self.trace = trace
+        self.header = header
+        self.key = key
+        self.bins = bins
+
+    @staticmethod
+    def normalize_keys(items):
+        """
+        Normalize the key representation to integers, so that they're hashable,
+        even when a key is built with enumerators.
+
+        This function is intended for internal use, and provides the mapping
+        from accepted key representation to a canonical key.
+
+        Parameters
+        ----------
+        items : iterator of (int_like, array_like)
+
+        Returns
+        -------
+        items : generator of (int, array_like)
+
+        Warnings
+        --------
+        This function provides no guarantees for value and type compatibility,
+        even between minor versions.
+
+        Notes
+        -----
+        .. versionadded:: 1.9
+        """
+        return ((int(k), v) for k, v in items)
+
+    @staticmethod
+    def fingerprint(key):
+        """
+        Compute a hashable fingerprint for a key. This function is intended for
+        internal use. Relies on normalize_keys for transforming keys to
+        canonical form. The output of this function is used for the group ->
+        index mapping.
+
+        Parameters
+        ----------
+        key : int_like or dict of {int_like: int} or iterable of (int_like,int)
+
+        Returns
+        -------
+        key
+            A normalized canonical representation of key
+
+        Warnings
+        --------
+        This function provides no guarantees for value and type compatibility,
+        even between minor versions.
+
+        Notes
+        -----
+        .. versionadded:: 1.9
+        """
+        try:
+            return int(key)
+        except TypeError:
+            pass
+
+        try:
+            items = key.items()
+        except AttributeError:
+            items = iter(key)
+
+        # map k -> tracefield -> int
+        items = Groups.normalize_keys(items)
+        return tuple(sorted(items))
+
+    def __len__(self):
+        """x.__len__() <==> len(x)"""
+        return len(self.bins)
+
+    def __contains__(self, key):
+        """x.__len__() <==> len(x)"""
+        return self.fingerprint(key) in self.bins
+
+    def __getitem__(self, key):
+        """g[key]
+
+        Read the group associated with key.
+
+        Key can be any informal mapping between a header word (TraceField, su
+        header words, or raw integers) and a value.
+
+        Parameters
+        ----------
+        key
+
+        Returns
+        -------
+        group : Group
+
+        Notes
+        -----
+        .. versionadded:: 1.9
+
+        Examples
+        --------
+
+        Group on FieldRecord, and get the group FieldRecord == 5:
+
+        >>> fr = segyio.TraceField.FieldRecord
+        >>> records = f.group(fr)
+        >>> record5 = records[5]
+        """
+        key = self.fingerprint(key)
+        return Group(key, self, self.bins[key])
+
+    def values(self):
+        for key, index in self.bins.items():
+            yield Group(key, self, index)
+
+    def items(self):
+        for key, index in self.bins.items():
+            yield key, Group(key, self, index)
+
+    def __iter__(self):
+        return self.bins.keys()
+
+    def sort(self, fields):
+        """
+        Reorganise the indices in all groups by fields
+        """
+        bins = collections.OrderedDict()
+
+        for key, index in self.bins.items():
+            g = Group(key, self, index)
+            g.sort(fields)
+            bins[key] = g.index
+
+        self.bins = bins

@@ -1723,3 +1723,127 @@ def test_interpret_invalid_args():
             il = [1, 2, 3, 4, 4]
             xl = [20, 21, 22, 23, 24]
             f.interpret(il, xl, sorting=0)
+
+def test_group_single_key():
+    with segyio.open('test-data/shot-gather.sgy', ignore_geometry = True) as f:
+        group = f.group(segyio.su.fldr)
+        assert len(group) == 4
+
+        assert 2 in group
+        assert 4 not in group
+
+        expected_keys = [2, 3, 5, 8]
+
+        for key, shot in zip(expected_keys, group.values()):
+            assert key == shot.key
+
+            for header in shot.header:
+                assert key == header[segyio.su.fldr]
+
+            for trace in shot.trace:
+                assert key == trace[0]
+
+def test_group_key_variations():
+    with segyio.open('test-data/shot-gather.sgy', ignore_geometry = True) as f:
+        group = f.group((segyio.su.fldr, segyio.su.grnofr))
+        # both dict and iterator-of-pair accepted
+        assert { segyio.su.fldr: 2, segyio.su.grnofr: 1 } in group
+        assert ((segyio.su.fldr, 2), (segyio.su.grnofr, 1)) in group
+        # not order sensitive
+        assert ((segyio.su.grnofr, 1), (segyio.su.fldr, 2)) in group
+        assert { segyio.su.fldr: 4, segyio.su.grnofr: 1 } not in group
+
+
+def test_group_multi_key_corret_index():
+    with segyio.open('test-data/shot-gather.sgy', ignore_geometry = True) as f:
+        group = f.group((segyio.su.fldr, segyio.su.grnofr))
+        assert len(group) == 8
+
+        expected_keys = [
+            ((segyio.su.fldr, 2), (segyio.su.grnofr, 1)),
+            ((segyio.su.fldr, 2), (segyio.su.grnofr, 2)),
+            ((segyio.su.fldr, 3), (segyio.su.grnofr, 1)),
+            ((segyio.su.fldr, 3), (segyio.su.grnofr, 2)),
+            ((segyio.su.fldr, 5), (segyio.su.grnofr, 1)),
+            ((segyio.su.fldr, 5), (segyio.su.grnofr, 2)),
+            ((segyio.su.fldr, 8), (segyio.su.grnofr, 1)),
+            ((segyio.su.fldr, 8), (segyio.su.grnofr, 2)),
+        ]
+
+        indices = [
+            # fldr = 2, grnofr = 1
+            [0, 2, 4, 6, 8],
+            # fldr = 2, grnofr = 2
+            [1, 3, 5, 7, 9],
+
+            # fldr = 3, grnofr = 1
+            [10, 12, 14, 16, 18, 20],
+            # fldr = 3, grnofr = 2
+            [11, 13, 15, 17, 19, 21],
+
+            # fldr = 5, grnofr = 1
+            [22, 24, 26, 28, 30, 32, 34],
+            # fldr = 5, grnofr = 2
+            [23, 25, 27, 29, 31, 33],
+
+            # fldr = 8, grnofr = 1
+            [35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 55, 57, 59],
+            # fldr = 8, grnofr = 2
+            [36, 38, 40, 42, 44, 46, 48, 50, 52, 54, 56, 58, 60],
+        ]
+
+        # this test checks that every individual group maps to the known index
+        # it's supposed to model. it would be more elegant to represent the
+        # indices as a key -> index dict, but that makes verifying that every
+        # key/index pair is covered uglier
+        assert len(expected_keys) == len(indices)
+
+        for key, index, shot in zip(expected_keys, indices, group.values()):
+            assert index == shot.index
+            assert key == shot.key
+
+def test_specific_group_sort():
+    with segyio.open('test-data/shot-gather.sgy', ignore_geometry = True) as f:
+        group = f.group((segyio.su.fldr, segyio.su.grnofr))
+
+        left_key = ((segyio.su.fldr, 2), (segyio.su.grnofr, 1))
+        left_shot = group[left_key]
+        left_shot.sort([segyio.su.tracf, segyio.su.grnofr, segyio.su.fldr])
+        # tracf is descending, so sorting by it ascending should reverse order
+        assert left_shot.index == [8, 6, 4, 2, 0]
+
+        right_key = ((segyio.su.fldr, 2), (segyio.su.grnofr, 2))
+        right_shot = group[right_key]
+        # the next shot is untouched
+        assert right_shot.index == [1, 3, 5, 7, 9]
+
+def test_all_group_sort():
+    with segyio.open('test-data/shot-gather.sgy', ignore_geometry = True) as f:
+        group = f.group((segyio.su.fldr, segyio.su.grnofr))
+        group.sort([segyio.su.tracf, segyio.su.grnofr, segyio.su.fldr])
+
+        left_key = ((segyio.su.fldr, 2), (segyio.su.grnofr, 1))
+        left_shot = group[left_key]
+        assert left_shot.index == [8, 6, 4, 2, 0]
+
+        right_key = ((segyio.su.fldr, 2), (segyio.su.grnofr, 2))
+        right_shot = group[right_key]
+        assert right_shot.index == [9, 7, 5, 3, 1]
+
+def test_groups_gather_equivalence():
+    with segyio.open('test-data/small.sgy') as f:
+        groups = f.group((segyio.su.iline, segyio.su.xline))
+        key = ((segyio.su.iline, 1), (segyio.su.xline, 21))
+        group = groups[key]
+        assert len(group.index) == 1
+
+        # stack gathers in a list-of-traces, but there should only be 1 in this
+        # group
+        from_group = np.stack(groups[key].trace)
+        assert from_group.shape == (1, 50)
+
+        from_group = from_group[0]
+        from_gather = f.gather[1, 21]
+
+        # group[(il, xl)] == gather[il, xl]
+        npt.assert_array_equal(from_group, from_gather)

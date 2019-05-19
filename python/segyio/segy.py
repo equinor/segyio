@@ -964,6 +964,10 @@ class SegyFile(object):
 
         return self
 
+    def group(self, word):
+        from .gather import Groups
+        return Groups(self.trace, self.header, word)
+
 
 class spec(object):
     def __init__(self):
