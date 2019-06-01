@@ -220,7 +220,7 @@ class Group(object):
 
         Returns
         -------
-        headers : iterator of Header
+        headers : iterator of Trace
 
         Notes
         -----
