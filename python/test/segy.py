@@ -233,6 +233,20 @@ def test_traces_slicing(openfn, kwargs):
             assert np.array_equal(trace, traces[i])
 
 
+@pytest.mark.parametrize(('openfn', 'kwargs'), smallfiles)
+def test_traces_subslicing(openfn, kwargs):
+    with openfn(**kwargs) as f:
+        trace = np.copy(f.trace[0, 0:6])
+        # sub-slicing consistent with slicing full trace 
+        assert (trace == f.trace[0][0:6]).all()
+        # make sure values are not scrambled in the process
+        assert trace[1] == f.trace[0][1]
+
+        rev_trace = np.copy(f.trace[0, :-1])
+        # consistent length when reverse slicing
+        assert rev_trace.shape[0] == f.trace[0].shape[0] - 1
+
+
 def test_traces_offset():
     with segyio.open("test-data/small-ps.sgy") as f:
         assert 2 == len(f.offsets)
