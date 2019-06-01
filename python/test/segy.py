@@ -1839,7 +1839,7 @@ def test_groups_gather_equivalence():
 
         # stack gathers in a list-of-traces, but there should only be 1 in this
         # group
-        from_group = np.stack(groups[key].trace)
+        from_group = np.stack([tr.copy() for tr in groups[key].trace])
         assert from_group.shape == (1, 50)
 
         from_group = from_group[0]
