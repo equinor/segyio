@@ -106,16 +106,20 @@ class Trace(Sequence):
         self.readonly = readonly
 
     def __getitem__(self, i):
-        """trace[i]
+        """trace[i] or trace[i, j]
 
         ith trace of the file, starting at 0. trace[i] returns a numpy array,
         and changes to this array will *not* be reflected on disk.
+
+        When i is a tuple, the second index j (int or slice) is the depth index
+        or interval, respectively. j starts at 0.  
 
         When i is a slice, a generator of numpy arrays is returned.
 
         Parameters
         ----------
         i : int or slice
+        j : int or slice 
 
         Returns
         -------
@@ -159,12 +163,21 @@ class Trace(Sequence):
         1871.3
         >>> trace[-1][100]
         1562.0
+
+        Read only an interval in a trace:
+        >>> trace[0, 5:10]
         """
+
+        try: 
+            i, j = i
+        except TypeError: 
+            j = slice(None)
+            pass
 
         try:
             i = self.wrapindex(i)
             buf = np.zeros(self.shape, dtype = self.dtype)
-            return self.filehandle.gettr(buf, i, 1, 1)
+            return self.filehandle.gettr(buf, i, 1, 1)[j]
 
         except TypeError:
             # we assume this is a generator. extract the indices-tuple right
@@ -178,6 +191,12 @@ class Trace(Sequence):
                 msg = 'trace indices must be integers or slices, not {}'
                 raise TypeError(msg.format(type(i).__name__))
 
+            try:
+                indices = j.indices(len(self))
+            except AttributeError:
+                msg = 'trace sub-indices must be integers or slices, not {}'
+                raise TypeError(msg.format(type(j).__name__))
+
             def gen():
                 # double-buffer the trace. when iterating over a range, we want
                 # to make sure the visible change happens as late as possible,
@@ -189,7 +208,7 @@ class Trace(Sequence):
                 y = np.zeros(self.shape, dtype=self.dtype)
 
                 for j in range(*indices):
-                    self.filehandle.gettr(x, j, 1, 1)
+                    self.filehandle.gettr(x, j, 1, 1)[j]
                     x, y = y, x
                     yield y
 
