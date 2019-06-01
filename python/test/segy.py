@@ -1770,6 +1770,8 @@ def test_group_multi_key_corret_index():
             ((segyio.su.fldr, 8), (segyio.su.grnofr, 2)),
         ]
 
+        expected_keys = [frozenset(k) for k in expected_keys]
+
         indices = [
             # fldr = 2, grnofr = 1
             [0, 2, 4, 6, 8],

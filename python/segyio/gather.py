@@ -363,8 +363,7 @@ class Groups(collections.Mapping):
             items = iter(key)
 
         # map k -> tracefield -> int
-        items = Groups.normalize_keys(items)
-        return tuple(sorted(items))
+        return frozenset(Groups.normalize_keys(items))
 
     def __len__(self):
         """x.__len__() <==> len(x)"""
