@@ -191,12 +191,6 @@ class Trace(Sequence):
                 msg = 'trace indices must be integers or slices, not {}'
                 raise TypeError(msg.format(type(i).__name__))
 
-            try:
-                indices = j.indices(len(self))
-            except AttributeError:
-                msg = 'trace sub-indices must be integers or slices, not {}'
-                raise TypeError(msg.format(type(j).__name__))
-
             def gen():
                 # double-buffer the trace. when iterating over a range, we want
                 # to make sure the visible change happens as late as possible,
@@ -207,8 +201,8 @@ class Trace(Sequence):
                 x = np.zeros(self.shape, dtype=self.dtype)
                 y = np.zeros(self.shape, dtype=self.dtype)
 
-                for j in range(*indices):
-                    self.filehandle.gettr(x, j, 1, 1)[j]
+                for k in range(*indices):
+                    self.filehandle.gettr(x, k, 1, 1)[j]
                     x, y = y, x
                     yield y
 
