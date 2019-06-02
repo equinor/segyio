@@ -222,6 +222,23 @@ struct buffer_guard {
     Py_buffer buffer;
 };
 
+static int slicelength( int start, int stop, int step ) {
+    if( step == 0 ) return 0;
+
+    if( ( step < 0 && stop >= start ) ||
+        ( step > 0 && start >= stop ) ) return 0;
+
+    if( step < 0 ) return (stop - start + 1) / step + 1;
+
+    /*
+     * cppcheck 1.84 introduced a false-positive on this as a result of
+     * value-flow analysis not realising that step can *never* be zero here, as
+     * it would trigger the early return.
+     */
+    // cppcheck-suppress zerodivcond
+    return (stop - start - 1) / step + 1;
+}
+
 namespace fd {
 
 int init( segyiofd* self, PyObject* args, PyObject* kwargs ) {
@@ -991,7 +1008,8 @@ PyObject* gettr( segyiofd* self, PyObject* args ) {
     buffer_guard buffer( bufferobj, PyBUF_CONTIG );
     if( !buffer) return NULL;
 
-    const int samples = (tr_stop-tr_start)/tr_step;
+    const int samples = slicelength(tr_start, tr_stop, tr_step);
+    
     const int skip = samples * self->elemsize;
     const long long bufsize = (long long) length * samples;
     const long trace0 = self->trace0;

@@ -168,31 +168,26 @@ class Trace(Sequence):
         >>> trace[0, 5:10]
         """
 
-        # attempt to parse i as a tuple of indices i,j. if j is missing 
-        # we immediately fall back to setting the delimiters of the 
-        # trace to the full trace length.   
-        try: 
+        # attempt to parse i as a tuple of indices i,j. if j is missing
+        # we immediately fall back to setting the delimiters of the
+        # trace to the full trace length.
+        try:
             i, j = i
-            if type(j) is slice:
-                start = j.start or 0
-                stop = j.stop or self.shape
-                step = j.step or 1
-            else:
-                start = j
-                stop = j
-                step = j
-            if start < 0:
-                start += self.shape
-            if stop < 0:
-                stop += self.shape
+            j = int(j)
+            start = j
+            stop = j
+            step = j
+            n_elements = 1
 
-        except TypeError: 
-            start = 0
-            stop = self.shape
-            step = 1
-            pass
-
-        n_elements = int((stop-start)/step)
+        except TypeError:
+            try:
+                start, stop, step = j.indices(self.shape)
+                n_elements = len(range(*j.indices(self.shape)))
+            except:
+                start = 0
+                stop = self.shape
+                step = 1
+                n_elements = self.shape
 
         try:
             buf = np.zeros(n_elements, dtype = self.dtype)
