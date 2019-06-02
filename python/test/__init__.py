@@ -5,7 +5,7 @@ import pytest
 
 import py
 import os
-testdata = py.path.local(os.path.abspath('test-data/'))
+testdata = py.path.local(os.path.abspath('../test-data/'))
 
 def tmpfiles(*files):
     def tmpfiles_decorator(func):

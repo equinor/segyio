@@ -39,38 +39,40 @@ install:
     - IF DEFINED PYTHON (IF "%platform%" == "x64" SET PYTHON=%PYTHON%-x64)
     - IF DEFINED PYTHON SET PATH=%PYTHON%;%PYTHON%\Scripts;%PATH%
     - IF DEFINED PYTHON pip install -r requirements.txt
-    - IF DEFINED PYTHON pip install twine wheel pytest pytest-runner
+    - IF DEFINED PYTHON pip install
+        twine
+        wheel
+        setuptools
+        setuptools-scm
+        pytest
+        pytest-runner
+        scikit-build
 
 before_build:
     - IF DEFINED PYTHON SET LANG=%LANG% -DPYTHON_EXECUTABLE=%PYTHON%\python
+    - set generator="Visual Studio 14 2015"
+    - IF "%platform%" == "x64" set generator="Visual Studio 14 2015 Win64"
     - git fetch --tags
 
-# python extensions with setup.py typically requires building with the same
-# compiler as python itself, but it seems that the extern C does a reasonable
-# job of keeping it binary compatible. For python < 3.0, copy the shared lib
-# into the build directory (because otherwise visual c++ 9.0 is invoked, and it
-# supports no C99. For newer pythons, setup.py is capable of building segyio
 build_script:
-    - cmake --version
-    - IF "%platform%" == "x64" set W64="-GVisual Studio 14 2015 Win64"
     - mkdir build
     - ps: pushd build
     - cmake %APPVEYOR_BUILD_FOLDER%
-            %W64%
+            -G %generator%
             %MEX%
             %LANG%
             -DCMAKE_INSTALL_PREFIX=%INSTALL_DIR%
-            -DBUILD_SHARED_LIBS=ON
+            -DCMAKE_CXX_FLAGS="/D_CRT_SECURE_NO_WARNINGS /EHsc"
     - cmake --build . --config "%configuration%" --target install
     - ctest -C "%configuration%" --output-on-failure
     - ps: popd
-    - ps: pushd build/python
-    - IF DEFINED PYTHON python %APPVEYOR_BUILD_FOLDER%/setup.py bdist_wheel
+    - ps: pushd python
+    - IF DEFINED PYTHON python setup.py bdist_wheel -G %generator%
     - ps: popd
 
 test_script:
     - set PATH=%INSTALL_DIR%\bin;%PATH%
-    - ps: pushd build/python
+    - ps: pushd python
     - IF DEFINED PYTHON FOR /F "tokens=*" %%G IN ('dir /b dist\*.whl') DO
         pip install dist/%%G
     - ps: popd
@@ -79,7 +81,7 @@ test_script:
     - IF DEFINED PYTHON python python/examples/scan_min_max.py test-data/small.sgy
 
 before_deploy:
-    - ps: pushd build/python
+    - ps: pushd python
 
 after_deploy:
     - ps: popd

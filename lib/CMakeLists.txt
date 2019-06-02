@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.5)
 project(libsegyio C CXX)
 
+set(SEGYIO_LIB_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR} CACHE PATH "")
+
 set(CMAKE_CXX_STANDARD 11)
 
 add_library(segyio src/segy.c)
