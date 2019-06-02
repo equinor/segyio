@@ -168,16 +168,36 @@ class Trace(Sequence):
         >>> trace[0, 5:10]
         """
 
+        # attempt to parse i as a tuple of indices i,j. if j is missing 
+        # we immediately fall back to setting the delimiters of the 
+        # trace to the full trace length.   
         try: 
             i, j = i
+            if type(j) is slice:
+                start = j.start or 0
+                stop = j.stop or self.shape
+                step = j.step or 1
+            else:
+                start = j
+                stop = j
+                step = j
+            if start < 0:
+                start += self.shape
+            if stop < 0:
+                stop += self.shape
+
         except TypeError: 
-            j = slice(None)
+            start = 0
+            stop = self.shape
+            step = 1
             pass
 
+        n_elements = int((stop-start)/step)
+
         try:
+            buf = np.zeros(n_elements, dtype = self.dtype)
             i = self.wrapindex(i)
-            buf = np.zeros(self.shape, dtype = self.dtype)
-            return self.filehandle.gettr(buf, i, 1, 1)[j]
+            return self.filehandle.gettr(buf, i, 1, 1, start, stop, step)
 
         except TypeError:
             # we assume this is a generator. extract the indices-tuple right
@@ -198,11 +218,11 @@ class Trace(Sequence):
                 # untouched. this allows for some fancy control flow, and more
                 # importantly helps debugging because you can fully inspect and
                 # interact with the last good value.
-                x = np.zeros(self.shape, dtype=self.dtype)
-                y = np.zeros(self.shape, dtype=self.dtype)
+                x = np.zeros(n_elements, dtype=self.dtype)
+                y = np.zeros(n_elements, dtype=self.dtype)
 
                 for k in range(*indices):
-                    self.filehandle.gettr(x, k, 1, 1)[j]
+                    self.filehandle.gettr(x, k, 1, 1, start, stop, step)
                     x, y = y, x
                     yield y
 
@@ -355,7 +375,7 @@ class RawTrace(Trace):
         try:
             i = self.wrapindex(i)
             buf = np.zeros(self.shape, dtype = self.dtype)
-            return self.filehandle.gettr(buf, i, 1, 1)
+            return self.filehandle.gettr(buf, i, 1, 1, 0, self.shape, 1)
         except TypeError:
             try:
                 indices = i.indices(len(self))
@@ -365,7 +385,7 @@ class RawTrace(Trace):
             start, _, step = indices
             length = len(range(*indices))
             buf = np.empty((length, self.shape), dtype = self.dtype)
-            return self.filehandle.gettr(buf, start, step, length)
+            return self.filehandle.gettr(buf, start, step, length, 0, self.shape, 1)
 
 
 def fingerprint(x):
@@ -430,7 +450,7 @@ class RefTrace(Trace):
             buf = np.zeros(self.shape, dtype = self.dtype)
 
         try:
-            self.filehandle.gettr(buf, i, 1, 1)
+            self.filehandle.gettr(buf, i, 1, 1, 0, self.shape, 1)
         except IOError:
             if not self.readonly:
                 # if the file is opened read-only and this happens, there's no

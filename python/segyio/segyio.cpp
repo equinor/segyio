@@ -982,15 +982,16 @@ PyObject* gettr( segyiofd* self, PyObject* args ) {
     if( !fp ) return NULL;
 
     PyObject* bufferobj;
-    int start, length, step;
+    int start, length, step, tr_start, tr_stop, tr_step;
 
-    if( !PyArg_ParseTuple( args, "Oiii", &bufferobj, &start, &step, &length ) )
+    if( !PyArg_ParseTuple( args, "Oiiiiii", &bufferobj, &start, &step, &length,
+        &tr_start, &tr_stop, &tr_step ) )
         return NULL;
 
     buffer_guard buffer( bufferobj, PyBUF_CONTIG );
     if( !buffer) return NULL;
 
-    const int samples = self->samplecount;
+    const int samples = (tr_stop-tr_start)/tr_step;
     const int skip = samples * self->elemsize;
     const long long bufsize = (long long) length * samples;
     const long trace0 = self->trace0;
@@ -1005,8 +1006,12 @@ PyObject* gettr( segyiofd* self, PyObject* args ) {
     int i = 0;
     char* buf = buffer.buf();
     for( ; err == 0 && i < length; ++i, buf += skip ) {
-        err = segy_readtrace( fp, start + (i * step),
+        err = segy_readsubtr( fp, start + (i * step),
+                                  tr_start,
+                                  tr_stop,
+                                  tr_step,
                                   buf,
+                                  NULL,
                                   trace0,
                                   trace_bsize );
     }
