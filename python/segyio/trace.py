@@ -174,9 +174,11 @@ class Trace(Sequence):
         try:
             i, j = i
             j = int(j)
+            if j < 0:
+                j += self.shape
             start = j
-            stop = j
-            step = j
+            stop = j + 1
+            step = 1
             n_elements = 1
 
         except TypeError:

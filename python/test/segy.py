@@ -267,6 +267,9 @@ def test_traces_subslicing(openfn, kwargs):
         assert np.array_equal(f.trace[0, :-1], f.trace[0][:-1])
         assert np.array_equal(f.trace[0, ::-1], f.trace[0][::-1])
         assert np.array_equal(f.trace[0, ::2], f.trace[0][::2])
+        # test getting single element
+        assert f.trace[0, 1] == f.trace[0][1]
+        assert f.trace[0, -3] == f.trace[0][-3]
 
         # Combining trace and sub-trace slicing
         traces = list(map(np.copy, f.trace[0:6:2, 0:6]))
