@@ -3,11 +3,12 @@ project(libsegyio C CXX)
 
 set(CMAKE_CXX_STANDARD 11)
 
-if(MSVC)
-    set(DLL_EXPORT_FILES src/segy.def)
-endif()
+add_library(segyio src/segy.c)
 
-add_library(segyio src/segy.c ${DLL_EXPORT_FILES})
+if (MSVC)
+    target_sources(segyio PRIVATE src/segy.def)
+endif ()
+
 target_link_libraries(segyio ${m} ${ws2})
 target_compile_options(segyio BEFORE
     PRIVATE
