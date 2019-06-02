@@ -4,6 +4,7 @@ project(libsegyio C CXX)
 set(CMAKE_CXX_STANDARD 11)
 
 add_library(segyio src/segy.c)
+add_library(segyio::segyio ALIAS segyio)
 
 if (MSVC)
     target_sources(segyio PRIVATE src/segy.def)
@@ -40,15 +41,17 @@ target_include_directories(segyio
 # install & export
 #
 install(TARGETS segyio
-        EXPORT segyio
+        EXPORT segyio-export
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 install(DIRECTORY include/ DESTINATION include)
-install(EXPORT segyio
-        DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/segyio/cmake
-        FILE segyio-config.cmake
+install(
+    EXPORT segyio-export
+    NAMESPACE segyio::
+    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/segyio/cmake
+    FILE segyio-config.cmake
 )
 export(TARGETS segyio FILE segyio-config.cmake)
 
