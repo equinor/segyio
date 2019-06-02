@@ -246,6 +246,11 @@ def test_traces_subslicing(openfn, kwargs):
         # consistent length when reverse slicing
         assert rev_trace.shape[0] == f.trace[0].shape[0] - 1
 
+        # Combining trace and sub-trace slicing
+        traces = list(map(np.copy, f.trace[0:6:2, 0:6]))
+        assert len(traces) == 3
+        assert traces[0].shape[0] == 6
+
 
 def test_traces_offset():
     with segyio.open("test-data/small-ps.sgy") as f:
