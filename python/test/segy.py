@@ -236,15 +236,37 @@ def test_traces_slicing(openfn, kwargs):
 @pytest.mark.parametrize(('openfn', 'kwargs'), smallfiles)
 def test_traces_subslicing(openfn, kwargs):
     with openfn(**kwargs) as f:
-        trace = np.copy(f.trace[0, 0:6])
-        # sub-slicing consistent with slicing full trace 
-        assert (trace == f.trace[0][0:6]).all()
-        # make sure values are not scrambled in the process
-        assert trace[1] == f.trace[0][1]
-
-        rev_trace = np.copy(f.trace[0, :-1])
-        # consistent length when reverse slicing
-        assert rev_trace.shape[0] == f.trace[0].shape[0] - 1
+        # test all sign permutations using full slice  
+        assert np.array_equal(f.trace[0, 0:6:2], f.trace[0][0:6:2])
+        assert np.array_equal(f.trace[0, 0:-2:2], f.trace[0][0:-2:2])
+        assert np.array_equal(f.trace[0, 10:2:-3], f.trace[0][10:2:-3])
+        assert np.array_equal(f.trace[0, -10:50:1], f.trace[0][-10:50:1])
+        assert np.array_equal(f.trace[0, -4:-2:1], f.trace[0][-4:-2:1])
+        assert np.array_equal(f.trace[0, -4:0:-2], f.trace[0][-4:0:-2])
+        assert np.array_equal(f.trace[0, 50:-50:-3], f.trace[0][50:-50:-3])
+        # test all sign permutations using start:stop 
+        assert np.array_equal(f.trace[0, 0:6], f.trace[0][0:6])
+        assert np.array_equal(f.trace[0, 0:-3], f.trace[0][0:-3])
+        assert np.array_equal(f.trace[0, -4:-2], f.trace[0][-4:-2])
+        assert np.array_equal(f.trace[0, -4:50], f.trace[0][-4:50])
+        assert np.array_equal(f.trace[0, -4:-2], f.trace[0][-4:-2])
+        # test all sign permutations using start::step
+        assert np.array_equal(f.trace[0, 0::2], f.trace[0][0::2])
+        assert np.array_equal(f.trace[0, 10::-1], f.trace[0][10::-1])
+        assert np.array_equal(f.trace[0, -5::3], f.trace[0][-5::3])
+        assert np.array_equal(f.trace[0, -5::-1], f.trace[0][-5::-1])
+        # test all sign permutations using :stop:step
+        assert np.array_equal(f.trace[0, :6:2], f.trace[0][:6:2])
+        assert np.array_equal(f.trace[0, :6:-1], f.trace[0][:6:-1])
+        assert np.array_equal(f.trace[0, :-6:2], f.trace[0][:-6:2])
+        assert np.array_equal(f.trace[0, :-6:-2], f.trace[0][:-6:-2])
+        # test all sign permutations using start:, :stop, and ::step
+        assert np.array_equal(f.trace[0, 1:], f.trace[0][1:])
+        assert np.array_equal(f.trace[0, -3:], f.trace[0][-3:])
+        assert np.array_equal(f.trace[0, :3], f.trace[0][:3])
+        assert np.array_equal(f.trace[0, :-1], f.trace[0][:-1])
+        assert np.array_equal(f.trace[0, ::-1], f.trace[0][::-1])
+        assert np.array_equal(f.trace[0, ::2], f.trace[0][::2])
 
         # Combining trace and sub-trace slicing
         traces = list(map(np.copy, f.trace[0:6:2, 0:6]))
