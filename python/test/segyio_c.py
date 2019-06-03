@@ -7,6 +7,7 @@ import pytest
 from pytest import approx
 
 from . import tmpfiles
+from . import testdata
 
 import segyio
 import segyio._segyio as _segyio
@@ -31,12 +32,12 @@ def test_close_non_existing_file():
 
 
 def test_open_and_close_file():
-    f = _segyio.segyiofd("test-data/small.sgy", "r", 0)
+    f = _segyio.segyiofd(str(testdata / 'small.sgy'), "r", 0)
     f.close()
 
 
 def test_open_flush_and_close_file():
-    f = _segyio.segyiofd("test-data/small.sgy", "r", 0)
+    f = _segyio.segyiofd(str(testdata / 'small.sgy'), "r", 0)
     f.flush()
     f.close()
 
@@ -49,7 +50,7 @@ def test_read_text_header_mmap():
 
 
 def test_read_text_header(mmap=False):
-    f = _segyio.segyiofd("test-data/small.sgy", "r", 0)
+    f = _segyio.segyiofd(str(testdata / 'small.sgy'), "r", 0)
     if mmap:
         f.mmap()
 
@@ -76,13 +77,13 @@ def test_read_text_header(mmap=False):
     f.close()
 
 
-@tmpfiles("test-data/small.sgy")
+@tmpfiles(testdata / 'small.sgy')
 def test_write_text_header_mmap(tmpdir):
     f = get_instance_segyiofd(tmpdir)
     write_text_header(f, True)
 
 
-@tmpfiles("test-data/small.sgy")
+@tmpfiles(testdata / 'small.sgy')
 def test_write_text_header(tmpdir):
     f = get_instance_segyiofd(tmpdir)
     write_text_header(f, False)
@@ -122,13 +123,13 @@ def get_instance_segyiofd(tmpdir,
         return _segyio.segyiofd(f, mode, 0).segyopen()
 
 
-@tmpfiles("test-data/small.sgy")
+@tmpfiles(testdata / 'small.sgy')
 def test_read_and_write_binary_header(tmpdir):
     f = get_instance_segyiofd(tmpdir)
     read_and_write_binary_header(f, False)
 
 
-@tmpfiles("test-data/small.sgy")
+@tmpfiles(testdata / 'small.sgy')
 def test_read_and_write_binary_header_mmap(tmpdir):
     f = get_instance_segyiofd(tmpdir)
     read_and_write_binary_header(f, True)
@@ -152,7 +153,7 @@ def test_read_binary_header_fields_mmap():
 
 
 def test_read_binary_header_fields(mmap=False):
-    f = _segyio.segyiofd("test-data/small.sgy", "r", 0)
+    f = _segyio.segyiofd(str(testdata / 'small.sgy'), "r", 0)
     if mmap:
         f.mmap()
 
@@ -175,7 +176,7 @@ def test_line_metrics_mmap():
 
 
 def test_line_metrics(mmap=False):
-    f = _segyio.segyiofd("test-data/small.sgy", "r", 0).segyopen()
+    f = _segyio.segyiofd(str(testdata / 'small.sgy'), "r", 0).segyopen()
     if mmap:
         f.mmap()
 
@@ -219,7 +220,7 @@ def test_metrics_mmap():
 
 
 def test_metrics(mmap=False):
-    f = _segyio.segyiofd("test-data/small.sgy", "r", 0).segyopen()
+    f = _segyio.segyiofd(str(testdata / 'small.sgy'), "r", 0).segyopen()
     if mmap:
         f.mmap()
 
@@ -251,7 +252,7 @@ def test_indices_mmap():
 
 
 def test_indices(mmap=False):
-    f = _segyio.segyiofd("test-data/small.sgy", "r", 0).segyopen()
+    f = _segyio.segyiofd(str(testdata / 'small.sgy'), "r", 0).segyopen()
     if mmap:
         f.mmap()
 
@@ -305,7 +306,7 @@ def test_fread_trace0_mmap():
 
 
 def test_fread_trace0(mmap=False):
-    f = _segyio.segyiofd("test-data/small.sgy", "r", 0).segyopen()
+    f = _segyio.segyiofd(str(testdata / 'small.sgy'), "r", 0).segyopen()
     if mmap:
         f.mmap()
 
@@ -376,13 +377,13 @@ def test_get_and_putfield():
     assert _segyio.getfield(hdr, 9) == 19
 
 
-@tmpfiles("test-data/small.sgy")
+@tmpfiles(testdata / 'small.sgy')
 def test_read_and_write_traceheader_mmap(tmpdir):
     f = get_instance_segyiofd(tmpdir)
     read_and_write_traceheader(f, True)
 
 
-@tmpfiles("test-data/small.sgy")
+@tmpfiles(testdata / 'small.sgy')
 def test_read_and_write_traceheader(tmpdir):
     f = get_instance_segyiofd(tmpdir)
     read_and_write_traceheader(f, False)
@@ -428,7 +429,7 @@ def read_and_write_traceheader(f, mmap):
 
 
 def test_read_traceheaders():
-    f = _segyio.segyiofd("test-data/small.sgy", "r", 0).segyopen()
+    f = _segyio.segyiofd(str(testdata / 'small.sgy'), "r", 0).segyopen()
     read_traceheaders_forall(f, False)
     read_traceheaders_forall(f, True)
 
@@ -470,7 +471,7 @@ def read_traceheaders_foreach(f, mmap):
     assert buf_handle is attrs
 
 
-@tmpfiles("test-data/small.sgy")
+@tmpfiles(testdata / 'small.sgy')
 def test_read_and_write_trace_mmap(tmpdir):
     f = get_instance_segyiofd(tmpdir,
         "trace-wrt.sgy",
@@ -481,7 +482,7 @@ def test_read_and_write_trace_mmap(tmpdir):
     read_and_write_trace(f, True)
 
 
-@tmpfiles("test-data/small.sgy")
+@tmpfiles(testdata / 'small.sgy')
 def test_read_and_write_trace(tmpdir):
     f = get_instance_segyiofd(tmpdir,
             "trace-wrt.sgy",
@@ -549,7 +550,7 @@ def read_line(f, metrics, iline_idx, xline_idx):
 
 
 def read_small(mmap=False):
-    f = _segyio.segyiofd("test-data/small.sgy", "r", 0).segyopen()
+    f = _segyio.segyiofd(str(testdata / 'small.sgy'), "r", 0).segyopen()
 
     if mmap:
         f.mmap()

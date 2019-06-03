@@ -12,12 +12,14 @@ from types import GeneratorType
 import itertools
 import filecmp
 import shutil
+import os
 import numpy as np
 import numpy.testing as npt
 import pytest
 from pytest import approx
 
 from . import tmpfiles, small, smallps
+from . import testdata
 
 import segyio
 from segyio import TraceField, BinField, TraceSortingFormat
@@ -26,18 +28,18 @@ from segyio.line import Line, HeaderLine
 from segyio.trace import Trace, Header
 
 small_sus = [
-    (segyio.su.open, { 'filename': 'test-data/small.su',
+    (segyio.su.open, { 'filename': testdata / 'small.su',
                        'iline': 5,
                        'xline': 21 }),
-    (segyio.su.open, { 'filename': 'test-data/small-lsb.su',
+    (segyio.su.open, { 'filename': testdata / 'small-lsb.su',
                        'iline': 5,
                        'xline': 21,
                        'endian': 'lsb' }),
 ]
 
 small_segys = [
-    (segyio.open,    { 'filename': 'test-data/small.sgy' }),
-    (segyio.open,    { 'filename': 'test-data/small-lsb.sgy',
+    (segyio.open,    { 'filename': testdata / 'small.sgy' }),
+    (segyio.open,    { 'filename': testdata / 'small-lsb.sgy',
                        'endian': 'little' }),
 ]
 
@@ -76,7 +78,7 @@ def test_inline_4(openfn, kwargs):
         assert 4.24049 == approx(data[last_line, sample_count - 1], abs=1e-6)
 
 def test_inline_4_seismic_unix():
-    with segyio.su.open('test-data/small.su',
+    with segyio.su.open(testdata / 'small.su',
             iline = 5,
             xline = 21,
             endian = 'big',
@@ -179,7 +181,7 @@ def test_open_transposed_lines(openfn, kwargs):
         il = f.ilines
         xl = f.xlines
 
-    with segyio.open("test-data/small.sgy", "r", segyio.TraceField.CROSSLINE_3D, segyio.TraceField.INLINE_3D) as f:
+    with segyio.open(testdata / 'small.sgy', "r", segyio.TraceField.CROSSLINE_3D, segyio.TraceField.INLINE_3D) as f:
         assert list(il) == list(f.xlines)
         assert list(xl) == list(f.ilines)
 
@@ -204,12 +206,12 @@ def test_file_info(openfn, kwargs):
 
 
 def test_open_nostrict():
-    with segyio.open("test-data/small.sgy", strict=False):
+    with segyio.open(testdata / 'small.sgy', strict=False):
         pass
 
 
 def test_open_ignore_geometry():
-    with segyio.open("test-data/small.sgy", ignore_geometry=True) as f:
+    with segyio.open(testdata / 'small.sgy', ignore_geometry=True) as f:
         with pytest.raises(ValueError):
             _ = f.iline[0]
 
@@ -234,7 +236,7 @@ def test_traces_slicing(openfn, kwargs):
 
 
 def test_traces_offset():
-    with segyio.open("test-data/small-ps.sgy") as f:
+    with segyio.open(testdata / 'small-ps.sgy') as f:
         assert 2 == len(f.offsets)
         assert [1, 2] == list(f.offsets)
 
@@ -250,7 +252,7 @@ def test_traces_offset():
 
 
 def test_headers_offset():
-    with segyio.open("test-data/small-ps.sgy") as f:
+    with segyio.open(testdata / 'small-ps.sgy') as f:
         il, xl = TraceField.INLINE_3D, TraceField.CROSSLINE_3D
         assert f.header[0][il] == f.header[1][il]
         assert f.header[1][il] == f.header[2][il]
@@ -387,7 +389,7 @@ def test_attributes(openfn, kwargs):
 
 
 def test_iline_offset():
-    with segyio.open("test-data/small-ps.sgy") as f:
+    with segyio.open(testdata / 'small-ps.sgy') as f:
         line1 = f.iline[1, 1]
         assert 101.01 == approx(line1[0][0], abs=1e-4)
         assert 101.02 == approx(line1[1][0], abs=1e-4)
@@ -420,7 +422,7 @@ def test_iline_offset():
 
 
 def test_iline_slice_fixed_offset():
-    with segyio.open("test-data/small-ps.sgy") as f:
+    with segyio.open(testdata / 'small-ps.sgy') as f:
         for i, ln in enumerate(f.iline[:, 1], 1):
             assert i + 100.01 == approx(ln[0][0], abs=1e-4)
             assert i + 100.02 == approx(ln[1][0], abs=1e-4)
@@ -432,7 +434,7 @@ def test_iline_slice_fixed_offset():
 
 
 def test_iline_slice_fixed_line():
-    with segyio.open("test-data/small-ps.sgy") as f:
+    with segyio.open(testdata / 'small-ps.sgy') as f:
         for i, ln in enumerate(f.iline[1, :], 1):
             off = i * 100
             assert off + 1.01 == approx(ln[0][0], abs=1e-4)
@@ -445,7 +447,7 @@ def test_iline_slice_fixed_line():
 
 
 def test_iline_slice_all_offsets():
-    with segyio.open("test-data/small-ps.sgy") as f:
+    with segyio.open(testdata / 'small-ps.sgy') as f:
         offs, ils = len(f.offsets), len(f.ilines)
         assert offs * ils == sum(1 for _ in f.iline[:, :])
         assert offs * ils == sum(1 for _ in f.iline[:, ::-1])
@@ -466,7 +468,7 @@ def test_iline_slice_all_offsets():
 
 
 def test_gather_mode():
-    with segyio.open("test-data/small-ps.sgy") as f:
+    with segyio.open(testdata / 'small-ps.sgy') as f:
         empty = np.empty(0, dtype=np.single)
         # should raise
         with pytest.raises(KeyError):
@@ -526,7 +528,7 @@ def test_gather_mode():
 
 
 def test_line_generators():
-    with segyio.open("test-data/small.sgy") as f:
+    with segyio.open(testdata / 'small.sgy') as f:
         for _ in f.iline:
             pass
 
@@ -569,7 +571,7 @@ def test_traces_raw(openfn, kwargs):
 
 
 def test_read_text_sequence():
-    with segyio.open('test-data/multi-text.sgy', ignore_geometry = True) as f:
+    with segyio.open(testdata / 'multi-text.sgy', ignore_geometry = True) as f:
         for text in f.text[:]:
             assert text
 
@@ -578,14 +580,14 @@ def test_read_text_sequence():
             str(f.text)
 
 
-@tmpfiles('test-data/multi-text.sgy')
+@tmpfiles(testdata / 'multi-text.sgy')
 def test_put_text_sequence(tmpdir):
     lines = { 1: 'first line', 10: 'last line' }
     ref = segyio.tools.create_text_header(lines)
     fname = str(tmpdir / 'multi-text.sgy')
 
     with segyio.open(fname, mode = 'r+', ignore_geometry = True) as f, \
-            segyio.open("test-data/small.sgy") as g:
+            segyio.open(testdata / 'small.sgy') as g:
         f.text[0] = ref
         f.text[1] = f.text
         f.text[-1] = ref
@@ -635,7 +637,7 @@ def test_read_header(openfn, kwargs):
 
 def test_read_header_seismic_unix():
     il = 5
-    with segyio.su.open('test-data/small.su',
+    with segyio.su.open(testdata / 'small.su',
                         ignore_geometry = True,
                         endian = 'big') as f:
         assert 1 == f.header[0][il]
@@ -844,80 +846,80 @@ def test_fopen_error():
 
     # non-existant mode
     with pytest.raises(ValueError):
-        segyio.open("test-data/small.sgy", "foo")
+        segyio.open(testdata / 'small.sgy', "foo")
 
     with pytest.raises(ValueError):
-        segyio.open("test-data/small.sgy", "r+b+toolong")
+        segyio.open(testdata / 'small.sgy', "r+b+toolong")
 
 
 def test_getitem_None():
     with pytest.raises(TypeError):
-        with segyio.open('test-data/small.sgy') as f:
+        with segyio.open(testdata / 'small.sgy') as f:
             _ = f.trace[None]
 
     with pytest.raises(TypeError):
-        with segyio.open('test-data/small.sgy') as f:
+        with segyio.open(testdata / 'small.sgy') as f:
             _ = f.trace.raw[None]
 
     with pytest.raises(TypeError):
-        with segyio.open('test-data/small.sgy') as f:
+        with segyio.open(testdata / 'small.sgy') as f:
             _ = f.header[None]
 
     with pytest.raises(KeyError):
-        with segyio.open('test-data/small.sgy') as f:
+        with segyio.open(testdata / 'small.sgy') as f:
             _ = f.iline[None]
 
     with pytest.raises(KeyError):
-        with segyio.open('test-data/small.sgy') as f:
+        with segyio.open(testdata / 'small.sgy') as f:
             _ = f.xline[None]
 
     with pytest.raises(TypeError):
-        with segyio.open('test-data/small.sgy') as f:
+        with segyio.open(testdata / 'small.sgy') as f:
             _ = f.depth_slice[None]
 
     with pytest.raises(TypeError):
-        with segyio.open('test-data/small.sgy') as f:
+        with segyio.open(testdata / 'small.sgy') as f:
             _ = f.gather[None]
 
 def test_wrong_lineno():
     with pytest.raises(KeyError):
-        with segyio.open("test-data/small.sgy") as f:
+        with segyio.open(testdata / 'small.sgy') as f:
             _ = f.iline[3000]
 
     with pytest.raises(KeyError):
-        with segyio.open("test-data/small.sgy") as f:
+        with segyio.open(testdata / 'small.sgy') as f:
             _ = f.xline[2]
 
 
 def test_open_wrong_inline():
     with pytest.raises(IndexError):
-        with segyio.open("test-data/small.sgy", "r", 2):
+        with segyio.open(testdata / 'small.sgy', "r", 2):
             pass
 
-    with segyio.open("test-data/small.sgy", "r", 2, strict=False):
+    with segyio.open(testdata / 'small.sgy', "r", 2, strict=False):
         pass
 
 
 def test_open_wrong_crossline():
     with pytest.raises(IndexError):
-        with segyio.open("test-data/small.sgy", "r", 189, 2):
+        with segyio.open(testdata / 'small.sgy', 'r', 189, 2):
             pass
 
-    with segyio.open("test-data/small.sgy", "r", 189, 2, strict=False):
+    with segyio.open(testdata / 'small.sgy', 'r', 189, 2, strict=False):
         pass
 
 
 def test_wonky_dimensions():
-    with segyio.open("test-data/Mx1.sgy"):
+    with segyio.open(testdata / 'Mx1.sgy'):
         pass
-    with segyio.open("test-data/1xN.sgy"):
+    with segyio.open(testdata / '1xN.sgy'):
         pass
-    with segyio.open("test-data/1x1.sgy"):
+    with segyio.open(testdata / '1x1.sgy'):
         pass
 
 
 def test_open_fails_unstructured():
-    with segyio.open("test-data/small.sgy", "r", 37, strict=False) as f:
+    with segyio.open(testdata / 'small.sgy', 'r', 37, strict=False) as f:
         with pytest.raises(ValueError):
             _ = f.iline[10]
 
@@ -996,7 +998,7 @@ def test_traceaccess_from_array():
     b = np.arange(10, dtype=np.int32)
     c = np.arange(10, dtype=np.int64)
     d = np.arange(10, dtype=np.intc)
-    with segyio.open("test-data/small.sgy") as f:
+    with segyio.open(testdata / 'small.sgy') as f:
         _ = f.trace[a[0]]
         _ = f.trace[b[1]]
         _ = f.trace[c[2]]
@@ -1566,7 +1568,7 @@ def test_depth_slice_reading(openfn, kwargs):
 
 
 def test_depth_slice_array_shape():
-    with segyio.open("test-data/1xN.sgy") as f:
+    with segyio.open(testdata / '1xN.sgy') as f:
         shape = (len(f.fast), len(f.slow))
         assert f.depth_slice.shape == shape
 
@@ -1627,7 +1629,7 @@ def test_no_16bit_overflow_tracecount(endian, tmpdir):
         }
 
 def test_open_2byte_int_format():
-    with segyio.open('test-data/f3.sgy') as f:
+    with segyio.open(testdata / 'f3.sgy') as f:
         assert int(f.format)  == 3
         assert len(f.samples) == 75
         assert f.tracecount   == 414
@@ -1637,15 +1639,15 @@ def test_open_2byte_int_format():
 
 
 def test_readtrace_int16():
-    with segyio.open('test-data/f3.sgy') as f:
+    with segyio.open(testdata / 'f3.sgy') as f:
         tr = f.trace[10]
         assert list(tr[20:45: 5]) == [0, -1170, 5198, -2213, -888]
         assert list(tr[40:19:-5]) == [-888, -2213, 5198, -1170, 0]
         assert list(tr[53:50:-1]) == [-2609, -2625, 681]
 
 def test_attributes_shortword_little_endian():
-    f3msb = 'test-data/f3.sgy'
-    f3lsb = 'test-data/f3-lsb.sgy'
+    f3msb = testdata / 'f3.sgy'
+    f3lsb = testdata / 'f3-lsb.sgy'
     word = segyio.su.dt
     # this test (in particular) is a pretty good candidate for fuzzing
     with segyio.open(f3msb) as msb:
@@ -1655,12 +1657,12 @@ def test_attributes_shortword_little_endian():
             npt.assert_array_equal(msba[:], lsba[:])
 
 def test_attributes_header_shortword_equal():
-    f3lsb = 'test-data/f3-lsb.sgy'
+    f3lsb = testdata / 'f3-lsb.sgy'
     word = segyio.su.scalco
     with segyio.open(f3lsb, endian = 'little') as f3:
         assert f3.header[6][word] == f3.attributes(word)[6][0]
 
-@tmpfiles('test-data/f3.sgy')
+@tmpfiles(testdata / 'f3.sgy')
 def test_writetrace_int16(tmpdir):
     with segyio.open(tmpdir / 'f3.sgy', mode = 'r+') as f:
         tr = np.asarray(range(len(f.samples)), dtype = np.int16)
@@ -1675,7 +1677,7 @@ def test_writetrace_int16(tmpdir):
         assert np.array_equal(f.trace.raw[:2], [tr, tr+1])
 
 
-@tmpfiles('test-data/f3.sgy')
+@tmpfiles(testdata / 'f3.sgy')
 def test_write_iline_int16(tmpdir):
     with segyio.open(tmpdir / 'f3.sgy', mode = 'r+') as f:
         shape = f.iline[f.ilines[0]].shape
@@ -1697,18 +1699,18 @@ def test_missing_format_ibmfloat_fallback(small):
 
 
 def test_utf8_filename():
-    with segyio.open('test-data/小文件.sgy') as f:
+    with segyio.open(testdata / '小文件.sgy') as f:
         assert list(f.ilines) == [1, 2, 3, 4, 5]
 
 
-@tmpfiles(u'test-data/小文件.sgy')
+@tmpfiles(os.path.join(str(testdata), u'小文件.sgy'))
 def test_utf8_filename_pypath(tmpdir):
     with segyio.open(tmpdir / '小文件.sgy') as f:
         assert list(f.ilines) == [1, 2, 3, 4, 5]
 
 
 def test_interpret_invalid_args():
-    with segyio.open("test-data/small.sgy", ignore_geometry=True) as f:
+    with segyio.open(testdata / 'small.sgy', ignore_geometry=True) as f:
         with pytest.raises(ValueError):
             il = [1, 2, 3, 4]
             xl = [20, 21, 22, 23, 24]
@@ -1725,7 +1727,7 @@ def test_interpret_invalid_args():
             f.interpret(il, xl, sorting=0)
 
 def test_group_single_key():
-    with segyio.open('test-data/shot-gather.sgy', ignore_geometry = True) as f:
+    with segyio.open(testdata / 'shot-gather.sgy', ignore_geometry = True) as f:
         group = f.group(segyio.su.fldr)
         assert len(group) == 4
 
@@ -1744,7 +1746,7 @@ def test_group_single_key():
                 assert key == trace[0]
 
 def test_group_key_variations():
-    with segyio.open('test-data/shot-gather.sgy', ignore_geometry = True) as f:
+    with segyio.open(testdata / 'shot-gather.sgy', ignore_geometry = True) as f:
         group = f.group((segyio.su.fldr, segyio.su.grnofr))
         # both dict and iterator-of-pair accepted
         assert { segyio.su.fldr: 2, segyio.su.grnofr: 1 } in group
@@ -1755,7 +1757,7 @@ def test_group_key_variations():
 
 
 def test_group_multi_key_corret_index():
-    with segyio.open('test-data/shot-gather.sgy', ignore_geometry = True) as f:
+    with segyio.open(testdata / 'shot-gather.sgy', ignore_geometry = True) as f:
         group = f.group((segyio.su.fldr, segyio.su.grnofr))
         assert len(group) == 8
 
@@ -1805,7 +1807,7 @@ def test_group_multi_key_corret_index():
             assert key == shot.key
 
 def test_specific_group_sort():
-    with segyio.open('test-data/shot-gather.sgy', ignore_geometry = True) as f:
+    with segyio.open(testdata / 'shot-gather.sgy', ignore_geometry = True) as f:
         group = f.group((segyio.su.fldr, segyio.su.grnofr))
 
         left_key = ((segyio.su.fldr, 2), (segyio.su.grnofr, 1))
@@ -1820,7 +1822,7 @@ def test_specific_group_sort():
         assert right_shot.index == [1, 3, 5, 7, 9]
 
 def test_all_group_sort():
-    with segyio.open('test-data/shot-gather.sgy', ignore_geometry = True) as f:
+    with segyio.open(testdata / 'shot-gather.sgy', ignore_geometry = True) as f:
         group = f.group((segyio.su.fldr, segyio.su.grnofr))
         group.sort([segyio.su.tracf, segyio.su.grnofr, segyio.su.fldr])
 
@@ -1833,7 +1835,7 @@ def test_all_group_sort():
         assert right_shot.index == [9, 7, 5, 3, 1]
 
 def test_groups_gather_equivalence():
-    with segyio.open('test-data/small.sgy') as f:
+    with segyio.open(testdata / 'small.sgy') as f:
         groups = f.group((segyio.su.iline, segyio.su.xline))
         key = ((segyio.su.iline, 1), (segyio.su.xline, 21))
         group = groups[key]
