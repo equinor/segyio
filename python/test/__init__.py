@@ -11,7 +11,11 @@ def tmpfiles(*files):
     def tmpfiles_decorator(func):
         def func_wrapper(tmpdir):
             for f in files:
-                shutil.copy(str(f), str(tmpdir))
+                # Make sure that this is always py.path because then we can
+                # always strpath on it. Otherwise, calling str on it may give
+                # weird results on some systems
+                f = py.path.local(f)
+                shutil.copy(f.strpath, str(tmpdir))
             func(tmpdir)
         return func_wrapper
     return tmpfiles_decorator
