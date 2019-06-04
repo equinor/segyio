@@ -141,25 +141,15 @@ after_deploy:
   - popd
 
 deploy:
-    - provider: pypi # source distribution (done from linux python 3.6 only)
+    - provider: pypi # upload built wheels and source tarball
       skip_cleanup: true
       skip_upload_docs: true
+      skip_existing: true
       user: statoil-travis
+      distributions: --skip-cmake build sdist
       password:
         secure: BaPED+fUXxmk61N/RtrEWtlRKinc2d+VodwKxwlq/74n8Z6RfJKp/ZzlinbjtnpLB/1kPphxwCYLuG2N2nU2kttNJCQEw9AlPL1gnDxDVUz83KuxSsqLPj9VOdj9MI3xyUs+LC3PW2N4kw2dB+/n2pB7BIwvA+Ykx6+Z2eD2vyEV8WqndP6+vApracCbE8huNfsnbxMqr188qzXbTRnzR1pwVFYBTNJ5vfRf0z/NmHXFpRhKEUaaqazJaax1xp5FGVFg2Wy4GQVDvtn6bVpu/rV5wyWXXdXSqqAQmrwv10OZt5ROfb88yfx+ZilpYDeiHmH8YLj4BjcLpdNeNW0c/irgtejLpnd7+XTUKl2QJzDr2l2ShhuaT+ZN7W8iXXZ4xPPvgcudF9fELZXMy6sKXLPE9qhL1yo/1x2eQ662PgusyegoBcQxtJvc0I0ct7jpWUMU0YQhu6VQUDTaxluSw7kxmQ2WYIW0UJIMkn+AkPw8t/ZYa83RbteRM3I7bAthzNl0IF/t5rDUt8itb6f4eTxjP1+5QdlNkSTNG9KXIxP8wX843PtFKA1i8gcqCIppgoQAnEHHcTJ+nX/ilqXHBWIDiYX6k79B3Hflqj1IcBZjwbUdojLRsHuNb8JN0y8aNsrWyYKhV09+AmvFwo3pY543HOHq/Fuux9ZCUCTeLbo=
       on:
-        condition: $SOURCEDEPLOY
-        tags: true
-
-    - provider: pypi # upload built wheels
-      skip_cleanup: true
-      skip_upload_docs: true
-      user: statoil-travis
-      distributions: --skip-cmake build
-      password:
-        secure: BaPED+fUXxmk61N/RtrEWtlRKinc2d+VodwKxwlq/74n8Z6RfJKp/ZzlinbjtnpLB/1kPphxwCYLuG2N2nU2kttNJCQEw9AlPL1gnDxDVUz83KuxSsqLPj9VOdj9MI3xyUs+LC3PW2N4kw2dB+/n2pB7BIwvA+Ykx6+Z2eD2vyEV8WqndP6+vApracCbE8huNfsnbxMqr188qzXbTRnzR1pwVFYBTNJ5vfRf0z/NmHXFpRhKEUaaqazJaax1xp5FGVFg2Wy4GQVDvtn6bVpu/rV5wyWXXdXSqqAQmrwv10OZt5ROfb88yfx+ZilpYDeiHmH8YLj4BjcLpdNeNW0c/irgtejLpnd7+XTUKl2QJzDr2l2ShhuaT+ZN7W8iXXZ4xPPvgcudF9fELZXMy6sKXLPE9qhL1yo/1x2eQ662PgusyegoBcQxtJvc0I0ct7jpWUMU0YQhu6VQUDTaxluSw7kxmQ2WYIW0UJIMkn+AkPw8t/ZYa83RbteRM3I7bAthzNl0IF/t5rDUt8itb6f4eTxjP1+5QdlNkSTNG9KXIxP8wX843PtFKA1i8gcqCIppgoQAnEHHcTJ+nX/ilqXHBWIDiYX6k79B3Hflqj1IcBZjwbUdojLRsHuNb8JN0y8aNsrWyYKhV09+AmvFwo3pY543HOHq/Fuux9ZCUCTeLbo=
-      on:
-        condition: -z $SOURCEDEPLOY
         tags: true
 
     - provider: releases # upload tarball and zip with source code
