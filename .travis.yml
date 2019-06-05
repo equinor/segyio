@@ -73,7 +73,8 @@ install:
         brew update && brew install cppcheck;
     fi
   - pip install -r requirements.txt
-  - pip install bandit setuptools setuptools-scm pytest pytest-runner sphinx
+  - pip install setuptools setuptools-scm scikit-build
+  - pip install bandit pytest pytest-runner sphinx
 
 before_script:
   - enabled="-DBUILD_PYTHON=OFF -DBUILD_MEX=OFF"
@@ -111,9 +112,12 @@ script:
   - $SCAN make && ctest --output-on-failure
   - sudo make install
   - popd
-  - build_wheel . $PLAT
+  # install works, so remove the _skbuild because it having root permissions
+  # from make install breaks build_wheel
+  - sudo rm -rf python/_skbuild
+  - build_wheel python $PLAT
   - install_run $PLAT
-  - mv wheelhouse dist
+  - mv wheelhouse python/dist
 
 before_deploy:
   # OS X ships with a tar that doesn't support --exclude-vcs, which is
@@ -128,30 +132,24 @@ before_deploy:
       tar --exclude-vcs -C $TRAVIS_BUILD_DIR -czvf segyio-$VERSION.tar.gz segyio-$VERSION;
       zip --exclude *.git -r segyio-$VERSION.zip $TRAVIS_BUILD_DIR/segyio-$VERSION/*;
     fi
+  - pushd python
   - if [[ $SOURCEDEPLOY ]]; then
       rm -rf dist;
     fi
 
-deploy:
-    - provider: pypi # source distribution (done from linux python 3.6 only)
-      skip_cleanup: true
-      skip_upload_docs: true
-      user: statoil-travis
-      password:
-        secure: BaPED+fUXxmk61N/RtrEWtlRKinc2d+VodwKxwlq/74n8Z6RfJKp/ZzlinbjtnpLB/1kPphxwCYLuG2N2nU2kttNJCQEw9AlPL1gnDxDVUz83KuxSsqLPj9VOdj9MI3xyUs+LC3PW2N4kw2dB+/n2pB7BIwvA+Ykx6+Z2eD2vyEV8WqndP6+vApracCbE8huNfsnbxMqr188qzXbTRnzR1pwVFYBTNJ5vfRf0z/NmHXFpRhKEUaaqazJaax1xp5FGVFg2Wy4GQVDvtn6bVpu/rV5wyWXXdXSqqAQmrwv10OZt5ROfb88yfx+ZilpYDeiHmH8YLj4BjcLpdNeNW0c/irgtejLpnd7+XTUKl2QJzDr2l2ShhuaT+ZN7W8iXXZ4xPPvgcudF9fELZXMy6sKXLPE9qhL1yo/1x2eQ662PgusyegoBcQxtJvc0I0ct7jpWUMU0YQhu6VQUDTaxluSw7kxmQ2WYIW0UJIMkn+AkPw8t/ZYa83RbteRM3I7bAthzNl0IF/t5rDUt8itb6f4eTxjP1+5QdlNkSTNG9KXIxP8wX843PtFKA1i8gcqCIppgoQAnEHHcTJ+nX/ilqXHBWIDiYX6k79B3Hflqj1IcBZjwbUdojLRsHuNb8JN0y8aNsrWyYKhV09+AmvFwo3pY543HOHq/Fuux9ZCUCTeLbo=
-      on:
-        condition: $SOURCEDEPLOY
-        tags: true
+after_deploy:
+  - popd
 
-    - provider: pypi # upload built wheels
+deploy:
+    - provider: pypi # upload built wheels and source tarball
       skip_cleanup: true
       skip_upload_docs: true
+      skip_existing: true
       user: statoil-travis
-      distributions: build
+      distributions: --skip-cmake build sdist
       password:
         secure: BaPED+fUXxmk61N/RtrEWtlRKinc2d+VodwKxwlq/74n8Z6RfJKp/ZzlinbjtnpLB/1kPphxwCYLuG2N2nU2kttNJCQEw9AlPL1gnDxDVUz83KuxSsqLPj9VOdj9MI3xyUs+LC3PW2N4kw2dB+/n2pB7BIwvA+Ykx6+Z2eD2vyEV8WqndP6+vApracCbE8huNfsnbxMqr188qzXbTRnzR1pwVFYBTNJ5vfRf0z/NmHXFpRhKEUaaqazJaax1xp5FGVFg2Wy4GQVDvtn6bVpu/rV5wyWXXdXSqqAQmrwv10OZt5ROfb88yfx+ZilpYDeiHmH8YLj4BjcLpdNeNW0c/irgtejLpnd7+XTUKl2QJzDr2l2ShhuaT+ZN7W8iXXZ4xPPvgcudF9fELZXMy6sKXLPE9qhL1yo/1x2eQ662PgusyegoBcQxtJvc0I0ct7jpWUMU0YQhu6VQUDTaxluSw7kxmQ2WYIW0UJIMkn+AkPw8t/ZYa83RbteRM3I7bAthzNl0IF/t5rDUt8itb6f4eTxjP1+5QdlNkSTNG9KXIxP8wX843PtFKA1i8gcqCIppgoQAnEHHcTJ+nX/ilqXHBWIDiYX6k79B3Hflqj1IcBZjwbUdojLRsHuNb8JN0y8aNsrWyYKhV09+AmvFwo3pY543HOHq/Fuux9ZCUCTeLbo=
       on:
-        condition: -z $SOURCEDEPLOY
         tags: true
 
     - provider: releases # upload tarball and zip with source code

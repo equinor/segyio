@@ -1,8 +1,7 @@
-#!/usr/bin/env python
-
 import os
 import sys
-from setuptools import setup, Extension
+import skbuild
+import setuptools
 
 long_description = """
 =======
@@ -53,11 +52,6 @@ def src(x):
     root = os.path.dirname( __file__ )
     return os.path.abspath(os.path.join(root, x))
 
-if 'win' in sys.platform:
-    extra_libs = []
-else:
-    extra_libs = ['m']
-
 def getversion():
     # if this is a tarball distribution, the .git-directory won't be avilable
     # and setuptools_scm will crash hard. good tarballs are built with a
@@ -65,17 +59,18 @@ def getversion():
     #
     # set the SEGYIO_NO_GIT_VER environment variable to ignore a version from
     # git (useful when building for debian or other distributions)
+    pkgversion = { 'version': '0.0.0' }
+    versionfile = 'segyio/version.py'
+
     if not 'SEGYIO_NO_GIT_VER' in os.environ and os.path.isdir(src('.git')):
         return {
             'use_scm_version': {
-                'root': src(''),
-                'write_to': src('python/segyio/version.py')
+                'relative_to' : src(''),
+                # write to ./python
+                'write_to'    : os.path.join(src(''), versionfile),
             }
         }
 
-
-    pkgversion = { 'version': '0.0.0' }
-    versionfile = src('python/segyio/version.py')
 
     if not os.path.exists(versionfile):
         return pkgversion
@@ -91,40 +86,47 @@ def getversion():
 
     return pkgversion
 
-setup(name='segyio',
-      description='Simple & fast IO for SEG-Y files',
-      long_description=long_description,
-      author='Statoil ASA',
-      author_email='fg_gpl@statoil.com',
-      url='https://github.com/Statoil/segyio',
-      package_dir={'' : src('python')},
-      packages=['segyio', 'segyio.su'],
-      package_data={ 'segyio': ['segyio.dll'], },
-      license='LGPL-3.0',
-      ext_modules=[Extension('segyio._segyio',
-        sources=[src('python/segyio/segyio.cpp')],
-        include_dirs=[src('lib/include')],
-        libraries=['segyio'] + extra_libs
-        )],
-      platforms='any',
-      install_requires=['numpy >=1.10'],
-      setup_requires=['setuptools >=28', 'setuptools_scm', 'pytest-runner'],
-      tests_require=['pytest'],
-      classifiers=[
-          'Development Status :: 5 - Production/Stable',
-          'Environment :: Other Environment',
-          'Intended Audience :: Developers',
-          'Intended Audience :: Science/Research',
-          'License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)',
-          'Natural Language :: English',
-          'Programming Language :: Python',
-          'Programming Language :: Python :: 2.7',
-          'Programming Language :: Python :: 3.5',
-          'Programming Language :: Python :: 3.6',
-          'Topic :: Scientific/Engineering',
-          'Topic :: Scientific/Engineering :: Physics',
-          'Topic :: Software Development :: Libraries',
-          'Topic :: Utilities'
-      ],
-      **getversion()
-      )
+skbuild.setup(
+    name = 'segyio',
+    description = 'Simple & fast IO for SEG-Y files',
+    long_description = long_description,
+    author = 'Equinor ASA',
+    author_email = 'jokva@equinor.com',
+    url = 'https://github.com/equinor/segyio',
+    packages = ['segyio', 'segyio.su'],
+    package_data = { 'segyio': ['segyio.dll'], },
+    license = 'LGPL-3.0',
+    platforms = 'any',
+    install_requires = ['numpy >= 1.10'],
+    setup_requires = [
+        'setuptools >= 28',
+        'setuptools_scm',
+        'pytest-runner',
+        'scikit-build',
+    ],
+    tests_require = ['pytest'],
+    cmake_args = [
+        # we can safely pass OSX_DEPLOYMENT_TARGET as it's ignored on
+        # everything not OS X. We depend on C++11, which makes our minimum
+        # supported OS X release 10.9
+        '-DCMAKE_OSX_DEPLOYMENT_TARGET=10.9',
+    ],
+    cmdclass = { 'test': setuptools.command.test.test },
+    classifiers = [
+        'Development Status :: 5 - Production/Stable',
+        'Environment :: Other Environment',
+        'Intended Audience :: Developers',
+        'Intended Audience :: Science/Research',
+        'License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)',
+        'Natural Language :: English',
+        'Programming Language :: Python',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
+        'Topic :: Scientific/Engineering',
+        'Topic :: Scientific/Engineering :: Physics',
+        'Topic :: Software Development :: Libraries',
+        'Topic :: Utilities'
+    ],
+    **getversion()
+    )

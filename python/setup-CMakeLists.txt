@@ -1,0 +1,21 @@
+cmake_minimum_required(VERSION 3.5.0)
+project(segyio-python-extension LANGUAGES C CXX)
+
+set(CMAKE_CXX_STANDARD 11)
+
+find_package(PythonExtensions REQUIRED)
+find_package(segyio REQUIRED)
+
+add_library(_segyio MODULE segyio/segyio.cpp)
+python_extension_module(_segyio)
+target_link_libraries(_segyio segyio::segyio)
+
+if (MSVC)
+    target_compile_options(_segyio
+        BEFORE
+        PRIVATE
+            /EHsc
+    )
+endif ()
+
+install(TARGETS _segyio LIBRARY DESTINATION segyio)

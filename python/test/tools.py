@@ -3,6 +3,7 @@ import pytest
 from pytest import approx
 
 from . import tmpfiles
+from . import testdata
 
 import segyio
 from segyio import BinField
@@ -11,7 +12,7 @@ from segyio import TraceSortingFormat
 from segyio import SegySampleFormat
 
 
-@tmpfiles("test-data/small.sgy")
+@tmpfiles(testdata / 'small.sgy')
 def test_dt_fallback(tmpdir):
     with segyio.open(tmpdir / 'small.sgy', "r+") as f:
         # Both zero
@@ -29,7 +30,7 @@ def test_dt_fallback(tmpdir):
         assert segyio.dt(f, fallback_dt) == approx(fallback_dt)
 
 
-@tmpfiles("test-data/small.sgy")
+@tmpfiles(testdata / 'small.sgy')
 def test_dt_no_fallback(tmpdir):
     dt_us = 6000
     with segyio.open(tmpdir / 'small.sgy', "r+") as f:
@@ -40,7 +41,7 @@ def test_dt_no_fallback(tmpdir):
 
 
 def test_sample_indexes():
-    with segyio.open("test-data/small.sgy") as f:
+    with segyio.open(testdata / 'small.sgy') as f:
         indexes = segyio.sample_indexes(f)
         step = 4000.0
 
@@ -62,7 +63,7 @@ def test_empty_text_header_creation():
 
 
 def test_wrap():
-    with segyio.open("test-data/small.sgy") as f:
+    with segyio.open(testdata / 'small.sgy') as f:
         segyio.tools.wrap(f.text[0])
         segyio.tools.wrap(f.text[0], 90)
 
@@ -77,32 +78,33 @@ def test_values_text_header_creation():
 
 
 def test_native():
-    with open("test-data/small.sgy", 'rb') as f, segyio.open("test-data/small.sgy") as sgy:
-        f.read(3600 + 240)
-        filetr = f.read(4 * len(sgy.samples))
-        segytr = sgy.trace[0]
+    with open(str(testdata / 'small.sgy'), 'rb') as f:
+        with segyio.open(testdata / 'small.sgy') as sgy:
+            f.read(3600 + 240)
+            filetr = f.read(4 * len(sgy.samples))
+            segytr = sgy.trace[0]
 
-        filetr = np.frombuffer(filetr, dtype=np.single)
-        assert not np.array_equal(segytr, filetr)
-        assert np.array_equal(segytr, segyio.tools.native(filetr))
+            filetr = np.frombuffer(filetr, dtype=np.single)
+            assert not np.array_equal(segytr, filetr)
+            assert np.array_equal(segytr, segyio.tools.native(filetr))
 
 
 def test_cube_filename():
-    with segyio.open("test-data/small.sgy") as f:
+    with segyio.open(testdata / 'small.sgy') as f:
         c1 = segyio.tools.cube(f)
-        c2 = segyio.tools.cube("test-data/small.sgy")
+        c2 = segyio.tools.cube(testdata / 'small.sgy')
         assert np.all(c1 == c2)
 
 
 def test_cube_identity():
-    with segyio.open("test-data/small.sgy") as f:
+    with segyio.open(testdata / 'small.sgy') as f:
         x = segyio.tools.collect(f.trace[:])
         x = x.reshape((len(f.ilines), len(f.xlines), len(f.samples)))
         assert np.all(x == segyio.tools.cube(f))
 
 
 def test_cube_identity_prestack():
-    with segyio.open("test-data/small-ps.sgy") as f:
+    with segyio.open(testdata / 'small-ps.sgy') as f:
         dims = (len(f.ilines), len(f.xlines), len(f.offsets), len(f.samples))
         x = segyio.tools.collect(f.trace[:]).reshape(dims)
         assert np.all(x == segyio.tools.cube(f))
@@ -110,7 +112,7 @@ def test_cube_identity_prestack():
 
 def test_unstructured_rotation():
     with pytest.raises(ValueError):
-        with segyio.open("test-data/small.sgy", ignore_geometry=True) as f:
+        with segyio.open(testdata / 'small.sgy', ignore_geometry=True) as f:
             segyio.tools.rotation(f)
 
 
@@ -126,7 +128,8 @@ def test_rotation():
         return segyio.tools.rotation(x, **kwargs)[0]
 
     for name, angle, right in zip(names, angles, rights):
-        src = "test-data/small.sgy".replace('/', '/' + name + '-')
+        src = testdata / 'name-small.sgy'.replace('name', name)
+        print(src)
 
         with segyio.open(src) as f:
             assert angle == approx(rotation(f), abs=1e-3)
@@ -138,15 +141,15 @@ def test_rotation():
 def test_rotation_mmap():
     angle = 0.000
     from segyio.tools import rotation
-    with segyio.open('test-data/normal-small.sgy') as f:
+    with segyio.open(testdata / 'normal-small.sgy') as f:
         f.mmap()
         assert 0.000 == approx(rotation(f, line = 'fast')[0], abs = 1e-3)
         assert 1.571 == approx(rotation(f, line = 'slow')[0], abs = 1e-3)
 
 def test_rotation_lsb():
     from segyio.tools import rotation
-    with segyio.open('test-data/f3.sgy') as msb:
-        with segyio.open('test-data/f3-lsb.sgy', endian = 'little') as lsb:
+    with segyio.open(testdata / 'f3.sgy') as msb:
+        with segyio.open(testdata / 'f3-lsb.sgy', endian = 'little') as lsb:
             assert rotation(msb, line = 'fast') == rotation(lsb, line = 'fast')
             assert rotation(msb, line = 'slow') == rotation(lsb, line = 'slow')
 
@@ -158,7 +161,7 @@ def test_metadata():
     spec.sorting = 2
     spec.format = 1
 
-    smallspec = segyio.tools.metadata("test-data/small.sgy")
+    smallspec = segyio.tools.metadata(testdata / 'small.sgy')
 
     assert np.array_equal(spec.ilines, smallspec.ilines)
     assert np.array_equal(spec.xlines, smallspec.xlines)
@@ -168,7 +171,7 @@ def test_metadata():
     assert spec.format == int(smallspec.format)
 
 
-@tmpfiles("test-data/small.sgy")
+@tmpfiles(testdata / 'small.sgy')
 def test_resample_none(tmpdir):
     old = list(range(0, 200, 4))
 
@@ -181,7 +184,7 @@ def test_resample_none(tmpdir):
         assert np.array_equal(old, f.samples)
 
 
-@tmpfiles("test-data/small.sgy")
+@tmpfiles(testdata / 'small.sgy')
 def test_resample_all(tmpdir):
     old = list(range(0, 200, 4))
     new = list(range(12, 112, 2))
@@ -195,7 +198,7 @@ def test_resample_all(tmpdir):
         assert np.array_equal(new, f.samples)
 
 
-@tmpfiles("test-data/small.sgy")
+@tmpfiles(testdata / 'small.sgy')
 def test_resample_rate(tmpdir):
     old = list(range(0, 200, 4))
     new = list(range(12, 212, 4))
@@ -209,7 +212,7 @@ def test_resample_rate(tmpdir):
         assert np.array_equal(new, f.samples)
 
 
-@tmpfiles("test-data/small.sgy")
+@tmpfiles(testdata / 'small.sgy')
 def test_resample_delay(tmpdir):
     old = list(range(0, 200, 4))
     new = list(range(0, 100, 2))
@@ -280,7 +283,7 @@ def testfrom_array_2D(tmpdir, create):
 def test_from_array3D(tmpdir, create):
     fresh = str(tmpdir / 'fresh.sgy')
 
-    with segyio.open("test-data/small.sgy") as f:
+    with segyio.open( testdata / 'small.sgy') as f:
         cube = segyio.cube(f)
         dt, delrt = 4000, 0
         create(fresh, cube, dt=dt, delrt=delrt)

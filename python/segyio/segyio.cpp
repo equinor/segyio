@@ -9,7 +9,7 @@
 #  include <bytesobject.h>
 #endif
 
-#include "segyio/segy.h"
+#include <segyio/segy.h>
 
 #include <algorithm>
 #include <cstring>

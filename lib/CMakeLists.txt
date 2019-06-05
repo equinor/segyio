@@ -1,10 +1,17 @@
+cmake_minimum_required(VERSION 3.5)
 project(libsegyio C CXX)
 
-if(MSVC)
-    set(DLL_EXPORT_FILES src/segy.def)
-endif()
+set(SEGYIO_LIB_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR} CACHE PATH "")
 
-add_library(segyio src/segy.c ${DLL_EXPORT_FILES})
+set(CMAKE_CXX_STANDARD 11)
+
+add_library(segyio src/segy.c)
+add_library(segyio::segyio ALIAS segyio)
+
+if (MSVC)
+    target_sources(segyio PRIVATE src/segy.def)
+endif ()
+
 target_link_libraries(segyio ${m} ${ws2})
 target_compile_options(segyio BEFORE
     PRIVATE
@@ -36,17 +43,23 @@ target_include_directories(segyio
 # install & export
 #
 install(TARGETS segyio
-        EXPORT segyio
+        EXPORT segyio-export
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 install(DIRECTORY include/ DESTINATION include)
-install(EXPORT segyio
-        DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/segyio/cmake
-        FILE segyio-config.cmake
+install(
+    EXPORT segyio-export
+    NAMESPACE segyio::
+    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/segyio/cmake
+    FILE segyio-config.cmake
 )
-export(TARGETS segyio FILE segyio-config.cmake)
+export(
+    TARGETS segyio
+    NAMESPACE segyio::
+    FILE segyio-config.cmake
+)
 
 if(EXPERIMENTAL)
     install(DIRECTORY experimental/ DESTINATION include)
@@ -108,7 +121,6 @@ target_include_directories(c.segy PRIVATE src experimental)
 target_link_libraries(c.segy catch2 segyio)
 target_compile_options(c.segy BEFORE
     PRIVATE
-        ${c++11}
         ${mmap}
         $<$<CONFIG:Debug>:${warnings-c}>
 )

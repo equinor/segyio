@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 2.8.12)
-project(segyio)
+cmake_minimum_required(VERSION 3.5)
+project(segyio LANGUAGES C CXX)
 
 include(CheckFunctionExists)
 include(CheckIncludeFile)
@@ -103,7 +103,6 @@ endif()
 if (NOT MSVC)
     # assuming gcc-style options
     set(c99 -std=c99)
-    set(c++11 -std=c++11)
     # add warnings in debug mode
     list(APPEND warnings-c -Wall -Wextra -pedantic -Wformat-nonliteral
                            -Wcast-align -Wpointer-arith -Wmissing-declarations
