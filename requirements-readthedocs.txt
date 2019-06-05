@@ -1,0 +1,2 @@
+segyio
+sphinx-gallery
