@@ -103,20 +103,13 @@ if(BUILD_DOC)
 endif()
 
 if(BUILD_PYDOC)
-    find_program(sphinx sphinx-build)
-
-    if(NOT sphinx)
-        message(WARNING "Could not find sphinx, skipping python documentation")
-        set(BUILD_PYDOC OFF)
-    endif()
-
-endif()
-
-if(BUILD_PYDOC AND sphinx)
-    # use the -d argument to avoid putting cache dir in docs/, because that
-    # directory will be install'd
     add_custom_target(pydoc
-        COMMAND ${sphinx}
+            # run sphinx as the same python version that was just built
+            # otherwise, the it will search for the wrong segyio extension and
+            # fail
+        COMMAND ${PYTHON_EXECUTABLE} -m sphinx
+            # use the -d argument to avoid putting cache dir in docs/, because
+            # that directory will be install'd
             -d ${CMAKE_CURRENT_BINARY_DIR}/.doctrees
             ${SPHINX_ARGS}
             ${CMAKE_CURRENT_SOURCE_DIR}/docs
@@ -125,8 +118,10 @@ if(BUILD_PYDOC AND sphinx)
                 docs/index.rst
                 docs/segyio.rst
         COMMENT "Building python documentation with sphinx"
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
     add_dependencies(doc pydoc)
+    add_dependencies(pydoc segyio-python)
 
     install(
         DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/docs/
