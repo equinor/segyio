@@ -112,14 +112,14 @@ class Trace(Sequence):
         and changes to this array will *not* be reflected on disk.
 
         When i is a tuple, the second index j (int or slice) is the depth index
-        or interval, respectively. j starts at 0.  
+        or interval, respectively. j starts at 0.
 
         When i is a slice, a generator of numpy arrays is returned.
 
         Parameters
         ----------
         i : int or slice
-        j : int or slice 
+        j : int or slice
 
         Returns
         -------
@@ -238,7 +238,7 @@ class Trace(Sequence):
                 except AttributeError:
                     msg = 'trace indices must be integers or slices, not {}'
                     raise TypeError(msg.format(type(i).__name__))
-                   
+
 
     def __setitem__(self, i, val):
         """trace[i] = val

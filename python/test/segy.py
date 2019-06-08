@@ -236,7 +236,7 @@ def test_traces_slicing(openfn, kwargs):
 @pytest.mark.parametrize(('openfn', 'kwargs'), smallfiles)
 def test_traces_subslicing(openfn, kwargs):
     with openfn(**kwargs) as f:
-        # test all sign permutations using full slice  
+        # test all sign permutations using full slice
         assert np.array_equal(f.trace[0, 0:6:2], f.trace[0][0:6:2])
         assert np.array_equal(f.trace[0, 0:-2:2], f.trace[0][0:-2:2])
         assert np.array_equal(f.trace[0, 10:2:-3], f.trace[0][10:2:-3])
@@ -244,7 +244,7 @@ def test_traces_subslicing(openfn, kwargs):
         assert np.array_equal(f.trace[0, -4:-2:1], f.trace[0][-4:-2:1])
         assert np.array_equal(f.trace[0, -4:0:-2], f.trace[0][-4:0:-2])
         assert np.array_equal(f.trace[0, 50:-50:-3], f.trace[0][50:-50:-3])
-        # test all sign permutations using start:stop 
+        # test all sign permutations using start:stop
         assert np.array_equal(f.trace[0, 0:6], f.trace[0][0:6])
         assert np.array_equal(f.trace[0, 0:-3], f.trace[0][0:-3])
         assert np.array_equal(f.trace[0, -4:-2], f.trace[0][-4:-2])
