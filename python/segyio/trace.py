@@ -168,62 +168,77 @@ class Trace(Sequence):
         >>> trace[0, 5:10]
         """
 
-        # attempt to parse i as a tuple of indices i,j. if j is missing
-        # we immediately fall back to setting the delimiters of the
-        # trace to the full trace length.
         try:
-            i, j = i
-            j = int(j)
-            if j < 0:
-                j += self.shape
-            start = j
-            stop = j + 1
-            step = 1
-            n_elements = 1
-
-        except TypeError:
-            try:
-                start, stop, step = j.indices(self.shape)
-                n_elements = len(range(*j.indices(self.shape)))
-            except:
-                start = 0
-                stop = self.shape
-                step = 1
-                n_elements = self.shape
-
-        try:
-            buf = np.zeros(n_elements, dtype = self.dtype)
+            # optimize for the default case when i is a single trace index
             i = self.wrapindex(i)
-            return self.filehandle.gettr(buf, i, 1, 1, start, stop, step)
+            buf = np.zeros(self.shape, dtype = self.dtype)
+            return self.filehandle.gettr(buf, i, 1, 1, 0, self.shape, 1)
 
         except TypeError:
-            # we assume this is a generator. extract the indices-tuple right
-            # away, because if this is NOT a slice we want to fail with a type
-            # error right away. If this is done inside gen() then the call will
-            # succeed with a generator, which fails on first next() with an
-            # attribute error
+            # i is not a single index. assume it is a slice
             try:
                 indices = i.indices(len(self))
+                def gen():
+                    # double-buffer the trace. when iterating over a range, we want
+                    # to make sure the visible change happens as late as possible,
+                    # and that in the case of exception the last valid trace was
+                    # untouched. this allows for some fancy control flow, and more
+                    # importantly helps debugging because you can fully inspect and
+                    # interact with the last good value.
+                    x = np.zeros(self.shape, dtype=self.dtype)
+                    y = np.zeros(self.shape, dtype=self.dtype)
+
+                    for k in range(*indices):
+                        self.filehandle.gettr(x, k, 1, 1, 0, self.shape, 1)
+                        x, y = y, x
+                        yield y
+                return gen()
+
             except AttributeError:
-                msg = 'trace indices must be integers or slices, not {}'
-                raise TypeError(msg.format(type(i).__name__))
+                try:
+                    # if i is neither as single index or a slice, try unpacking it
+                    # as a tuple i, j. if even this fails, the type of the index given
+                    # is incorrect and we raise an error
+                    i, j = i
+                    try:
+                        # a trace sub-slice j is given. we assume it is a proper slice
+                        # and fall back to treating it as a single index if this fails.
+                        start, stop, step = j.indices(self.shape)
+                        n_elements = len(range(*j.indices(self.shape)))
+                    except AttributeError:
+                        # j is not a slice but a single index
+                        j = int(j)
+                        j = np.mod(j, self.shape)
+                        start = j
+                        stop = j + 1
+                        step = 1
+                        n_elements = 1
+                    try:
+                        # assume i can be unpacked as i,j where i is a single index
+                        i = self.wrapindex(i)
+                        buf = np.zeros(n_elements, dtype = self.dtype)
+                        return self.filehandle.gettr(buf, i, 1, 1, start, stop, step)
+                    except TypeError:
+                        indices = i.indices(len(self))
+                        def gen():
+                            # double-buffer the trace. when iterating over a range, we want
+                            # to make sure the visible change happens as late as possible,
+                            # and that in the case of exception the last valid trace was
+                            # untouched. this allows for some fancy control flow, and more
+                            # importantly helps debugging because you can fully inspect and
+                            # interact with the last good value.
+                            x = np.zeros(n_elements, dtype=self.dtype)
+                            y = np.zeros(n_elements, dtype=self.dtype)
 
-            def gen():
-                # double-buffer the trace. when iterating over a range, we want
-                # to make sure the visible change happens as late as possible,
-                # and that in the case of exception the last valid trace was
-                # untouched. this allows for some fancy control flow, and more
-                # importantly helps debugging because you can fully inspect and
-                # interact with the last good value.
-                x = np.zeros(n_elements, dtype=self.dtype)
-                y = np.zeros(n_elements, dtype=self.dtype)
-
-                for k in range(*indices):
-                    self.filehandle.gettr(x, k, 1, 1, start, stop, step)
-                    x, y = y, x
-                    yield y
-
-            return gen()
+                            for k in range(*indices):
+                                self.filehandle.gettr(x, k, 1, 1, start, stop, step)
+                                x, y = y, x
+                                yield y
+                        return gen()
+                except AttributeError:
+                    msg = 'trace indices must be integers or slices, not {}'
+                    raise TypeError(msg.format(type(i).__name__))
+                   
 
     def __setitem__(self, i, val):
         """trace[i] = val
