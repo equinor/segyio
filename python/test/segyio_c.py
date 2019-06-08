@@ -506,12 +506,12 @@ def read_and_write_trace(f, mmap):
 
     buf = numpy.zeros(25, dtype=numpy.single)
 
-    f.gettr(buf, 0, 1, 1, 0, 25, 1)
+    f.gettr(buf, 0, 1, 1, 0, 25, 1, 25)
 
     assert buf[10] == approx(1.0, abs=1e-4)
     assert buf[11] == approx(3.1415, abs=1e-4)
 
-    f.gettr(buf, 1, 1, 1, 0, 25, 1)
+    f.gettr(buf, 1, 1, 1, 0, 25, 1, 25)
 
     assert sum(buf) == approx(42.0 * 25, abs=1e-4)
 

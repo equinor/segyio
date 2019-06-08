@@ -172,7 +172,7 @@ class Trace(Sequence):
             # optimize for the default case when i is a single trace index
             i = self.wrapindex(i)
             buf = np.zeros(self.shape, dtype = self.dtype)
-            return self.filehandle.gettr(buf, i, 1, 1, 0, self.shape, 1)
+            return self.filehandle.gettr(buf, i, 1, 1, 0, self.shape, 1, self.shape)
 
         except TypeError:
             # i is not a single index. assume it is a slice
@@ -189,7 +189,7 @@ class Trace(Sequence):
                     y = np.zeros(self.shape, dtype=self.dtype)
 
                     for k in range(*indices):
-                        self.filehandle.gettr(x, k, 1, 1, 0, self.shape, 1)
+                        self.filehandle.gettr(x, k, 1, 1, 0, self.shape, 1, self.shape)
                         x, y = y, x
                         yield y
                 return gen()
@@ -217,7 +217,7 @@ class Trace(Sequence):
                         # assume i can be unpacked as i,j where i is a single index
                         i = self.wrapindex(i)
                         buf = np.zeros(n_elements, dtype = self.dtype)
-                        return self.filehandle.gettr(buf, i, 1, 1, start, stop, step)
+                        return self.filehandle.gettr(buf, i, 1, 1, start, stop, step, n_elements)
                     except TypeError:
                         indices = i.indices(len(self))
                         def gen():
@@ -231,7 +231,7 @@ class Trace(Sequence):
                             y = np.zeros(n_elements, dtype=self.dtype)
 
                             for k in range(*indices):
-                                self.filehandle.gettr(x, k, 1, 1, start, stop, step)
+                                self.filehandle.gettr(x, k, 1, 1, start, stop, step, n_elements)
                                 x, y = y, x
                                 yield y
                         return gen()
@@ -387,7 +387,7 @@ class RawTrace(Trace):
         try:
             i = self.wrapindex(i)
             buf = np.zeros(self.shape, dtype = self.dtype)
-            return self.filehandle.gettr(buf, i, 1, 1, 0, self.shape, 1)
+            return self.filehandle.gettr(buf, i, 1, 1, 0, self.shape, 1, self.shape)
         except TypeError:
             try:
                 indices = i.indices(len(self))
@@ -397,7 +397,7 @@ class RawTrace(Trace):
             start, _, step = indices
             length = len(range(*indices))
             buf = np.empty((length, self.shape), dtype = self.dtype)
-            return self.filehandle.gettr(buf, start, step, length, 0, self.shape, 1)
+            return self.filehandle.gettr(buf, start, step, length, 0, self.shape, 1, self.shape)
 
 
 def fingerprint(x):
@@ -462,7 +462,7 @@ class RefTrace(Trace):
             buf = np.zeros(self.shape, dtype = self.dtype)
 
         try:
-            self.filehandle.gettr(buf, i, 1, 1, 0, self.shape, 1)
+            self.filehandle.gettr(buf, i, 1, 1, 0, self.shape, 1, self.shape)
         except IOError:
             if not self.readonly:
                 # if the file is opened read-only and this happens, there's no
