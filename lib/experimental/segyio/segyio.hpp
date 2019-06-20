@@ -1590,6 +1590,11 @@ void volume_meta_fromfile< Derived >::operator()( segy_file* fp,
             throw unknown_error( err );
     }
 
+    if( (ils * xls) != self->tracecount() )
+        throw std::invalid_argument( "Inconsistent volume properties: "
+                                     "Inlinecount * crosslinecount "
+                                     "!= tracecount" );
+
     this->sort   = srt;
     this->ilines = ils;
     this->xlines = xls;
