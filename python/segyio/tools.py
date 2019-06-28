@@ -192,10 +192,10 @@ def collect(itr):
 
     collect-cube identity:
 
-    >>> f = segyio.open('post-stack.sgy')
-    >>> x = segyio.tools.collect(f.trace[:])
-    >>> x = x.reshape((len(f.ilines), len(f.xlines), f.samples))
-    >>> numpy.all(x == segyio.tools.cube(f))
+    >>> with segyio.open('post-stack.sgy') as f:
+    >>>     x = segyio.tools.collect(f.trace[:])
+    >>>     x = x.reshape((len(f.ilines), len(f.xlines), f.samples))
+    >>>     numpy.all(x == segyio.tools.cube(f))
 
     """
     return np.stack([np.copy(x) for x in itr])
