@@ -423,6 +423,7 @@ public:
      * The optimiser should go ham on this and simply elide everything, while
      * still providing the correct static guarantees.
      */
+    explicit
     basic_file( const segyio::path& path,
                 const segyio::config& cfg = config() ) noexcept(false)
     : Traits< basic_file >( {} ) ... {
