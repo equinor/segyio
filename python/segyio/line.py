@@ -487,19 +487,15 @@ class HeaderLine(Line):
 
         try: start = self.heads[index] + self.offsets[offset]
         except TypeError: pass
-
         else:
-            try:
-                if hasattr(val, 'keys'):
-                    val = itertools.repeat(val)
-            except TypeError:
-                # already an iterable
-                pass
-
             step = self.stride * len(self.offsets)
             stop  = start + step * self.length
             self.header[start:stop:step] = val
             return
+
+        # if this is a dict-like, just repeat it
+        if hasattr(val, 'keys'):
+            val = itertools.repeat(val)
 
         irange, orange = self.ranges(index, offset)
         val = iter(val)

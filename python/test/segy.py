@@ -381,6 +381,26 @@ def test_headers_line_offset(smallps):
         assert f.header[1][xl] == 13
         assert f.header[2][xl] == 2
 
+def test_write_headers_line_slice_offset_int(smallps):
+    il, xl = TraceField.INLINE_3D, TraceField.CROSSLINE_3D
+    with segyio.open(smallps, "r+") as f:
+        f.header.iline[1:3, 2] = {xl: 13}
+
+    with segyio.open(smallps, strict=False) as f:
+        assert f.header[0][xl] == 1
+        assert f.header[1][xl] == 13
+        assert f.header[2][xl] == 2
+        assert f.header[3][xl] == 13
+
+def test_write_headers_line_int_offset_slice(smallps):
+    il, xl = TraceField.INLINE_3D, TraceField.CROSSLINE_3D
+    with segyio.open(smallps, "r+") as f:
+        f.header.iline[1, :] = {xl: 13}
+
+    with segyio.open(smallps, strict=False) as f:
+        assert f.header[0][xl] == 13
+        assert f.header[1][xl] == 13
+        assert f.header[2][xl] == 13
 
 @pytest.mark.parametrize(('openfn', 'kwargs'), smallfiles)
 def test_attributes(openfn, kwargs):
