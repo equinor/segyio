@@ -173,71 +173,57 @@ class Trace(Sequence):
             i = self.wrapindex(i)
             buf = np.zeros(self.shape, dtype = self.dtype)
             return self.filehandle.gettr(buf, i, 1, 1, 0, self.shape, 1, self.shape)
-
         except TypeError:
-            # i is not a single index. assume it is a slice
-            try:
-                indices = i.indices(len(self))
-                def gen():
-                    # double-buffer the trace. when iterating over a range, we want
-                    # to make sure the visible change happens as late as possible,
-                    # and that in the case of exception the last valid trace was
-                    # untouched. this allows for some fancy control flow, and more
-                    # importantly helps debugging because you can fully inspect and
-                    # interact with the last good value.
-                    x = np.zeros(self.shape, dtype=self.dtype)
-                    y = np.zeros(self.shape, dtype=self.dtype)
+            pass
 
-                    for k in range(*indices):
-                        self.filehandle.gettr(x, k, 1, 1, 0, self.shape, 1, self.shape)
-                        x, y = y, x
-                        yield y
-                return gen()
+        try:
+            i, j = i
+        except TypeError:
+            # index is not a tuple. Set j to be a slice that causes the entire
+            # trace to be loaded.
+            j = slice(0, self.shape, 1)
 
-            except AttributeError:
-                try:
-                    # if i is neither as single index or a slice, try unpacking it
-                    # as a tuple i, j. if even this fails, the type of the index given
-                    # is incorrect and we raise an error
-                    i, j = i
-                    try:
-                        # a trace sub-slice j is given. we assume it is a proper slice
-                        # and fall back to treating it as a single index if this fails.
-                        start, stop, step = j.indices(self.shape)
-                        n_elements = len(range(*j.indices(self.shape)))
-                    except AttributeError:
-                        # j is not a slice but a single index
-                        j = int(j)
-                        j = np.mod(j, self.shape)
-                        start = j
-                        stop = j + 1
-                        step = 1
-                        n_elements = 1
-                    try:
-                        # assume i can be unpacked as i,j where i is a single index
-                        i = self.wrapindex(i)
-                        buf = np.zeros(n_elements, dtype = self.dtype)
-                        return self.filehandle.gettr(buf, i, 1, 1, start, stop, step, n_elements)
-                    except TypeError:
-                        indices = i.indices(len(self))
-                        def gen():
-                            # double-buffer the trace. when iterating over a range, we want
-                            # to make sure the visible change happens as late as possible,
-                            # and that in the case of exception the last valid trace was
-                            # untouched. this allows for some fancy control flow, and more
-                            # importantly helps debugging because you can fully inspect and
-                            # interact with the last good value.
-                            x = np.zeros(n_elements, dtype=self.dtype)
-                            y = np.zeros(n_elements, dtype=self.dtype)
+        try:
+            start, stop, step = j.indices(self.shape)
+        except AttributeError:
+            # j is not a slice, set start stop and step so that a single sample
+            # at position j is loaded.
+            start = int(j) % self.shape
+            stop = start + 1
+            step = 1
 
-                            for k in range(*indices):
-                                self.filehandle.gettr(x, k, 1, 1, start, stop, step, n_elements)
-                                x, y = y, x
-                                yield y
-                        return gen()
-                except AttributeError:
-                    msg = 'trace indices must be integers or slices, not {}'
-                    raise TypeError(msg.format(type(i).__name__))
+        n_elements = len(range(start, stop, step))
+
+        try:
+            i = self.wrapindex(i)
+            buf = np.zeros(n_elements, dtype = self.dtype)
+            return self.filehandle.gettr(buf, i, 1, 1, start, stop, step, n_elements)
+        except TypeError:
+            pass
+
+        try:
+            indices = i.indices(len(self))
+            def gen():
+                # double-buffer the trace. when iterating over a range, we want
+                # to make sure the visible change happens as late as possible,
+                # and that in the case of exception the last valid trace was
+                # untouched. this allows for some fancy control flow, and more
+                # importantly helps debugging because you can fully inspect and
+                # interact with the last good value.
+                x = np.zeros(n_elements, dtype=self.dtype)
+                y = np.zeros(n_elements, dtype=self.dtype)
+
+                for k in range(*indices):
+                    self.filehandle.gettr(x, k, 1, 1, start, stop, step, n_elements)
+                    x, y = y, x
+                    yield y
+
+            return gen()
+        except AttributeError:
+            # At this point we have tried to unpack index as a single int, a
+            # slice and a pair with either element being an int or slice.
+            msg = 'trace indices must be integers or slices, not {}'
+            raise TypeError(msg.format(type(i).__name__))
 
 
     def __setitem__(self, i, val):
