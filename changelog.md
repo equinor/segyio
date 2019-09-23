@@ -1,3 +1,16 @@
+# 1.8.7
+* A new feature, group, has been added with experimental support (hence no
+  minor release). This is intended for pre-stack files, and is useful for
+  grouping up traces by shot gathers and similar
+* Segyio has learned how to read subtraces, f.trace[trno, first:last]
+* Source water depth is now correctly a 4-byte word
+* Fixed a bug with header-assignments in pre-stack files
+* A gallery has been added to the docs, for rich examples
+* Various documentation improvements, examples, and spelling corrections
+* The python build system is rewritten to use scikit-build
+* The exported cmake targets are namespaced with segyio::
+* segyio now requires CMake >= 3.5 (from 2.8.12) to build
+
 # 1.8.6
 * Fixed a bug where negative short header words on gcc were read wrong
 
