@@ -186,7 +186,8 @@ TEST_CASE_METHOD( Openable,
 
 TEST_CASE( "file can be opened as write_always", "[c++]" ) {
     using F = basic_unstructured< write_always >;
-    F f( "test-data/small.sgy"_path );
+    auto f = F("test-data/small.sgy"_path);
+    CHECK(f.escape());
 }
 
 TEST_CASE( "default constructibility can be disabled", "[c++]" ) {
