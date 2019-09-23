@@ -62,7 +62,7 @@ def getversion():
     pkgversion = { 'version': '0.0.0' }
     versionfile = 'segyio/version.py'
 
-    if not 'SEGYIO_NO_GIT_VER' in os.environ and os.path.isdir(src('.git')):
+    if not 'SEGYIO_NO_GIT_VER' in os.environ and os.path.isdir(src('../.git')):
         return {
             'use_scm_version': {
                 'relative_to' : src(''),
