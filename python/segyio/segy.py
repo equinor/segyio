@@ -6,7 +6,7 @@ except (NameError, ImportError): pass
 
 import numpy as np
 
-from .gather import Gather
+from .gather import Gather, Groups
 from .line import Line
 from .trace import Trace, Header, Attributes, Text
 from .field import Field
@@ -965,7 +965,34 @@ class SegyFile(object):
         return self
 
     def group(self, word):
-        from .gather import Groups
+        """Get groups of traces matching a key
+
+        This feature is **experimental**, and there are no guarantees code
+        using this will work in the future.
+
+        Walks the headers and groups traces into buckets, where all traces in a
+        bucket have the same value for the given set of words. It is
+        particularly useful for pre-stack files, gathering traces belonging to
+        the same gather or shot.
+
+        Parameters
+        ----------
+        word : segyio.TraceField or iterable of segyio.TraceField
+            The set of words belonging to the same bucket
+
+        Returns
+        -------
+        groups : segyio.gather.Groups
+
+        Notes
+        -----
+        This feature is **experimental**, but you are encouraged to try it out.
+        Bug reports and suggestions for improvement are welcomed, but no
+        guarantees are made that the interface will remain as it is in the
+        future.
+        """
+        msg = 'group is experimental and may change in the future'
+        warnings.warn(msg, FutureWarning)
         return Groups(self.trace, self.header, word)
 
 
