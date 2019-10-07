@@ -1,4 +1,8 @@
-import collections
+try:
+    from collections.abc import Sequence # noqa
+except ImportError:
+    from collections import Sequence # noqa
+
 import contextlib
 import itertools
 import warnings
@@ -12,7 +16,7 @@ from .line import HeaderLine
 from .field import Field
 from .utils import castarray
 
-class Sequence(collections.Sequence):
+class Sequence(Sequence):
 
     # unify the common optimisations and boilerplate of Trace, RawTrace, and
     # Header, which all obey the same index-oriented interface, and all share
@@ -30,8 +34,8 @@ class Sequence(collections.Sequence):
 
     def __iter__(self):
         """x.__iter__() <==> iter(x)"""
-        # __iter__ has a reasonable default implementation from
-        # collections.Sequence. It's essentially this loop:
+        # __iter__ has a reasonable default implementation from Sequence. It's
+        # essentially this loop:
         # for i in range(len(self)): yield self[i]
         # However, in segyio that means the double-buffering, buffer reuse does
         # not happen, which is *much* slower (the allocation of otherwised
@@ -69,7 +73,7 @@ class Trace(Sequence):
     .. versionadded:: 1.1
 
     .. versionchanged:: 1.6
-        common list operations (collections.Sequence)
+        common list operations (Sequence)
 
     Examples
     --------
@@ -580,7 +584,7 @@ class Header(Sequence):
     .. versionadded:: 1.1
 
     .. versionchanged:: 1.6
-        common list operations (collections.Sequence)
+        common list operations (Sequence)
 
     """
     def __init__(self, segy):
@@ -852,7 +856,7 @@ class Text(Sequence):
     Notes
     -----
     .. versionchanged:: 1.7
-        common list operations (collections.Sequence)
+        common list operations (Sequence)
 
     """
 

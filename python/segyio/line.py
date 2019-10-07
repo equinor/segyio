@@ -1,4 +1,8 @@
-import collections
+try:
+    from collections.abc import Mapping # noqa
+except ImportError:
+    from collections import Mapping # noqa
+
 import itertools
 try: from future_builtins import zip
 except ImportError: pass
@@ -25,7 +29,7 @@ def sanitize_slice(s, source):
 
     return slice(start, stop, step)
 
-class Line(collections.Mapping):
+class Line(Mapping):
     """
     The Line implements the dict interface, with a fixed set of int_like keys,
     the line numbers/labels. Data is read lazily from disk, so iteration does
@@ -54,7 +58,7 @@ class Line(collections.Mapping):
     .. versionadded:: 1.1
 
     .. versionchanged:: 1.6
-        common dict operations (collections.Mapping)
+        common dict operations (Mapping)
     """
 
     def __init__(self, filehandle, labels, length, stride, offsets, name):
@@ -311,7 +315,7 @@ class Line(collections.Mapping):
                                            )
                 except StopIteration: return
 
-    # can't rely on most collections.Mapping default implementations of
+    # can't rely on most Mapping default implementations of
     # dict-like, because iter() does not yield keys for this class, it gives
     # the lines themselves. that violates some assumptions (but segyio's always
     # worked that way), and it's the more natural behaviour for segyio, so it's
@@ -352,7 +356,7 @@ class HeaderLine(Line):
     .. versionadded:: 1.1
 
     .. versionchanged:: 1.6
-        common dict operations (collections.Mapping)
+        common dict operations (Mapping)
     """
     # a lot of implementation details are shared between reading data traces
     # line-by-line and trace headers line-by-line, so (ab)use inheritance for

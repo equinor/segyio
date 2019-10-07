@@ -1,3 +1,8 @@
+try:
+    from collections.abc import Sequence # noqa
+except ImportError:
+    from collections import Sequence # noqa
+
 import numpy as np
 try: from future_builtins import zip
 except ImportError: pass
@@ -21,7 +26,7 @@ class Depth(Sequence):
     .. versionadded:: 1.1
 
     .. versionchanged:: 1.6
-        common list operations (collections.Sequence)
+        common list operations (Sequence)
 
     .. versionchanged:: 1.7.1
        enabled for unstructured files

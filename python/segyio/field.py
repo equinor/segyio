@@ -1,10 +1,15 @@
-import collections
+try:
+    from collections.abc import Mapping # noqa
+    from collections.abc import MutableMapping # noqa
+except ImportError:
+    from collections import Mapping # noqa
+    from collections import MutableMapping # noqa
 
 import segyio
 from .binfield import BinField
 from .tracefield import TraceField
 
-class Field(collections.MutableMapping):
+class Field(MutableMapping):
     """
     The Field implements the dict interface, with a fixed set of keys. It's
     used for both binary- and trace headers. Any modifications to this
@@ -22,7 +27,7 @@ class Field(collections.MutableMapping):
         common dict operations (update, keys, values)
 
     .. versionchanged:: 1.6
-        more common dict operations (collections.MutableMapping)
+        more common dict operations (MutableMapping)
     """
     _bin_keys = [x for x in BinField.enums()
                  if  x != BinField.Unassigned1
@@ -438,7 +443,7 @@ class Field(collections.MutableMapping):
     def __eq__(self, other):
         """x.__eq__(y) <==> x == y"""
 
-        if not isinstance(other, collections.Mapping):
+        if not isinstance(other, Mapping):
             return NotImplemented
 
         if len(self) != len(other):
@@ -492,13 +497,13 @@ class Field(collections.MutableMapping):
 
         buf = bytearray(self.buf)
 
-        # Implementation largely borrowed from collections.mapping
+        # Implementation largely borrowed from Mapping
         # If E present and has a .keys() method: for k in E: D[k] = E[k]
         # If E present and lacks .keys() method: for (k, v) in E: D[k] = v
         # In either case, this is followed by: for k, v in F.items(): D[k] = v
         if len(args) == 1:
             other = args[0]
-            if isinstance(other, collections.Mapping):
+            if isinstance(other, Mapping):
                 for key in other:
                     self.putfield(buf, int(key), other[key])
             elif hasattr(other, "keys"):
