@@ -1500,11 +1500,16 @@ def test_create_uint16_samples(tmpdir):
 
     with segyio.create(tmpdir / '65k.sgy', spec) as f:
         assert len(f.samples) == 65535
+        assert f.bin[segyio.su.hns] == len(f.samples)
         f.trace[0] = spec.samples
-        f.header[0] = {}
+        f.header[0] = {
+            segyio.su.ns: len(f.samples),
+        }
 
     with segyio.open(tmpdir / '65k.sgy', ignore_geometry = True) as f:
         assert len(f.samples) == 65535
+        assert f.bin[segyio.su.hns] == len(f.samples)
+        assert f.header[0][segyio.su.ns] == len(f.samples)
 
 def mklines(fname):
     spec = segyio.spec()

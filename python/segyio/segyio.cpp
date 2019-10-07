@@ -1443,6 +1443,18 @@ PyObject* getfield( PyObject*, PyObject *args ) {
             : segy_get_field(  buffer.buf< const char >(), field, &value )
             ;
 
+    /*
+     * Some fields be negative, and SEG-Y rev2 considers them unsigned. When
+     * reading them, widen to unsigned.
+     */
+    switch (field) {
+        case SEGY_TR_SAMPLE_COUNT:
+        case SEGY_BIN_SAMPLES:
+        case SEGY_BIN_SAMPLES_ORIG:
+            value = int(std::uint16_t(value));
+            break;
+    }
+
     switch( err ) {
         case SEGY_OK:            return PyLong_FromLong( value );
         case SEGY_INVALID_FIELD: return KeyError( "No such field %d", field );
