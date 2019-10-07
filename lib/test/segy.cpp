@@ -1355,6 +1355,28 @@ SCENARIO( "reading text header", "[c.segy]" ) {
         CHECK( ascii == expected );
 }
 
+TEST_CASE("open file with >32k traces", "[c.segy]") {
+    const char* file = "test-data/long.sgy";
+    unique_segy ufp(segy_open(file, "rb"));
+    auto fp = ufp.get();
+
+    char bin[SEGY_BINARY_HEADER_SIZE];
+    Err err = segy_binheader(fp, bin);
+    REQUIRE(err == Err::ok());
+
+    /*
+     * This file was created with 60000 samples and three traces. Before SEG-Y
+     * rev2 this had a max-size of 2^15 - 1 because it was 2s complement
+     * 16-bit. However, rev2 allows this to be unsigned 16-bit as a negative
+     * sample-size is non-sensical.
+     *
+     * segy_samples is aware of this, but the get_bfield function returns
+     * signed/unsigned faithfully
+     */
+    const auto samples = segy_samples(bin);
+    CHECK(samples == 60000);
+}
+
 SCENARIO( "reading a large file", "[c.segy]" ) {
     GIVEN( "a large file" ) {
         const char* file = "4G-file.sgy";
