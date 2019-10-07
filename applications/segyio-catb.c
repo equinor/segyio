@@ -26,6 +26,17 @@ static int printhelp(){
 static int get_binary_value( char* binheader, int bfield ){
     int32_t f;
     segy_get_bfield( binheader, bfield, &f );
+
+    /*
+     * convert cannot-be-negative values to unsigned int, as mandated by SEGY-Y
+     * rev2
+     */
+    switch (bfield) {
+        case SEGY_BIN_SAMPLES:
+        case SEGY_BIN_SAMPLES_ORIG:
+            f = (int32_t)((uint16_t)(f));
+            break;
+    }
     return f;
 }
 
