@@ -49,7 +49,9 @@ int segy_binheader( segy_file*, char* buf );
 int segy_write_binheader( segy_file*, const char* buf );
 /*
  * exception: the int returned is the number of samples (the segy standard only
- * allocates 2 octets for this, so it comfortably sits inside an int
+ * allocates 2 octets for this, so it comfortably sits inside an int. If the
+ * value is negative, it is converted to an unsigned 16-bit integer, allowing
+ * up to 65536 samples per trace.
  */
 int segy_samples( const char* binheader );
 /*

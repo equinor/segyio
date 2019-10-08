@@ -968,6 +968,7 @@ int segy_set_format( segy_file* fp, int format ) {
 int segy_samples( const char* binheader ) {
     int32_t samples = 0;
     segy_get_bfield( binheader, SEGY_BIN_SAMPLES, &samples );
+    samples = (int32_t)((uint16_t)samples);
     return samples;
 }
 

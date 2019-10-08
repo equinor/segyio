@@ -696,6 +696,17 @@ int main( int argc, char** argv ) {
                 int f;
                 segy_get_field( trheader, fields[j], &f );
                 if( opts.nonzero && !f ) continue;
+
+                /*
+                 * convert cannot-be-negative values to unsigned int, as mandated by SEGY-Y
+                 * rev2
+                 */
+                switch (f) {
+                    case SEGY_TR_SAMPLE_COUNT:
+                        f = (int)((uint16_t)f);
+                        break;
+                }
+
                 if( opts.description ) {
                     printf( "%s\t%d\t%d\t%s\n",
                             labels[j],

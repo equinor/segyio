@@ -70,6 +70,7 @@ if (NOT BUILD_TESTING)
 endif ()
 
 configure_file(${testdata}/small.sgy                          test-data/small.sgy                            COPYONLY)
+configure_file(${testdata}/long.sgy                           test-data/long.sgy                             COPYONLY)
 configure_file(${testdata}/small-ps-dec-il-xl-off.sgy         test-data/small-ps-dec-il-xl-off.sgy           COPYONLY)
 configure_file(${testdata}/small-ps-dec-il-inc-xl-off.sgy     test-data/small-ps-dec-il-inc-xl-off.sgy       COPYONLY)
 configure_file(${testdata}/small-ps-dec-xl-inc-il-off.sgy     test-data/small-ps-dec-xl-inc-il-off.sgy       COPYONLY)

@@ -75,6 +75,7 @@ if (NOT BUILD_TESTING)
 endif ()
 
 set(small ${testdata}/small.sgy)
+set(long  ${testdata}/long.sgy)
 set(test ${CMAKE_CURRENT_SOURCE_DIR}/test)
 add_test(NAME catr.arg.t1       COMMAND segyio-catr -t 0 ${small})
 add_test(NAME catr.arg.t2       COMMAND segyio-catr -t 5 ${small})
@@ -122,6 +123,7 @@ add_custom_command(
     COMMAND segyio-catb ${small} > catb.out
     COMMAND segyio-catb ${small} -n -d > catbnd.out
     COMMAND segyio-cath ${small} > cath.out
+    COMMAND segyio-catb ${long} > catb-long.out
     COMMAND segyio-catr -r 4 9 -t 12 ${small} > catr.out
     COMMAND segyio-catr -t 1 ${small} -n -d > catrnd.out
 )
@@ -140,6 +142,10 @@ add_test(NAME catb.output
 add_test(NAME catb.output.nd
          COMMAND ${CMAKE_COMMAND} -E compare_files ${test}/catbnd.output
                                                    catbnd.out
+)
+add_test(NAME catb-long.output
+         COMMAND ${CMAKE_COMMAND} -E compare_files ${test}/catb-long.output
+                                                   catb-long.out
 )
 add_test(NAME cath.output
          COMMAND ${CMAKE_COMMAND} -E compare_files ${test}/cath.output cath.out

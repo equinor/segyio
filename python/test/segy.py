@@ -1483,6 +1483,33 @@ def test_create_sgy_skip_lines(tmpdir):
         assert 3.014 == approx(f.iline[3][1][4], abs=1e-4)
         assert 7.023 == approx(f.iline[7][2][3], abs=1e-4)
 
+def test_create_overflowing_samples_fail(tmpdir):
+    spec = segyio.spec()
+    spec.tracecount = 1
+    spec.samples = list(range(np.power(2, 16)))
+    spec.format = 1
+    with pytest.raises(ValueError):
+        with segyio.create(tmpdir / '65k.sgy', spec) as _:
+            pass
+
+def test_create_uint16_samples(tmpdir):
+    spec = segyio.spec()
+    spec.tracecount = 1
+    spec.samples = list(range(np.power(2, 16) - 1))
+    spec.format = 1
+
+    with segyio.create(tmpdir / '65k.sgy', spec) as f:
+        assert len(f.samples) == 65535
+        assert f.bin[segyio.su.hns] == len(f.samples)
+        f.trace[0] = spec.samples
+        f.header[0] = {
+            segyio.su.ns: len(f.samples),
+        }
+
+    with segyio.open(tmpdir / '65k.sgy', ignore_geometry = True) as f:
+        assert len(f.samples) == 65535
+        assert f.bin[segyio.su.hns] == len(f.samples)
+        assert f.header[0][segyio.su.ns] == len(f.samples)
 
 def mklines(fname):
     spec = segyio.spec()
