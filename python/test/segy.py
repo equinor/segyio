@@ -1426,7 +1426,7 @@ def test_create_from_naught_unstructured(endian, tmpdir):
         assert 1 == f.header[1][TraceField.offset]
 
 def test_create_non_4byte_file(tmpdir):
-    ref_trace = [2, 1, 4]
+    ref_trace = np.array([2, 1, 4], np.int8)
 
     spec = segyio.spec()
     spec.format = 8
