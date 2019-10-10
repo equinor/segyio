@@ -5,7 +5,9 @@
 [![PyPI Updates](https://pyup.io/repos/github/equinor/segyio/shield.svg)](https://pyup.io/repos/github/equinor/segyio/)
 [![Python 3](https://pyup.io/repos/github/equinor/segyio/python-3-shield.svg)](https://pyup.io/repos/github/equinor/segyio/)
 
-[readthedocs](https://segyio.readthedocs.io/)
+## Documentation ##
+
+The official documentation is hosted on [readthedocs](https://segyio.readthedocs.io/).
 
 ## Index ##
 
