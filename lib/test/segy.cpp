@@ -1,9 +1,11 @@
 #include <fstream>
 #include <numeric>
 #include <cmath>
+#include <iomanip>
 #include <memory>
 #include <limits>
 #include <vector>
+#include <array>
 
 #include <catch/catch.hpp>
 #include "matchers.hpp"
@@ -499,6 +501,129 @@ TEST_CASE_METHOD( smallsize,
 
     CHECK( success( err ) );
     CHECK( offsets == 1 );
+}
+
+namespace {
+
+int field_read_size(const int field) {
+    constexpr auto size = SEGY_TRACE_HEADER_SIZE
+                        + SEGY_TEXT_HEADER_SIZE
+                        + SEGY_BINARY_HEADER_SIZE
+                        ;
+    std::array< char, size > header;
+    header.fill(0x01);
+
+    int output;
+    segy_get_field(header.data(), field, &output);
+
+    if (output == 0x0101)     return 2;
+    if (output == 0x01010101) return 4;
+
+    FAIL("unexpected pattern: 0x"
+         << std::setfill('0')
+         << std::setw(8)
+         << std::hex
+         << output
+     );
+}
+
+}
+
+TEST_CASE("testing size", "[c.segy]") {
+    /* Test to verify all header words in source are of correct size.
+        Linked to issue #406
+    */
+    auto size = [](int x) { return field_read_size(x); };
+
+    CHECK( 4 == size( SEGY_TR_CDP_X ));
+    CHECK( 4 == size( SEGY_TR_CDP_Y ));
+    CHECK( 4 == size( SEGY_TR_CROSSLINE ));
+    CHECK( 4 == size( SEGY_TR_ENERGY_SOURCE_POINT ));
+    CHECK( 4 == size( SEGY_TR_ENSEMBLE ));
+    CHECK( 4 == size( SEGY_TR_FIELD_RECORD ));
+    CHECK( 4 == size( SEGY_TR_GROUP_WATER_DEPTH ));
+    CHECK( 4 == size( SEGY_TR_GROUP_X ));
+    CHECK( 4 == size( SEGY_TR_GROUP_Y ));
+    CHECK( 4 == size( SEGY_TR_INLINE ));
+    CHECK( 4 == size( SEGY_TR_NUMBER_ORIG_FIELD ));
+    CHECK( 4 == size( SEGY_TR_NUM_IN_ENSEMBLE ));
+    CHECK( 4 == size( SEGY_TR_OFFSET ));
+    CHECK( 4 == size( SEGY_TR_RECV_DATUM_ELEV ));
+    CHECK( 4 == size( SEGY_TR_RECV_GROUP_ELEV ));
+    CHECK( 4 == size( SEGY_TR_SEQ_FILE ));
+    CHECK( 4 == size( SEGY_TR_SEQ_LINE ));
+    CHECK( 4 == size( SEGY_TR_SHOT_POINT ));
+    CHECK( 4 == size( SEGY_TR_SOURCE_DATUM_ELEV ));
+    CHECK( 4 == size( SEGY_TR_SOURCE_DEPTH ));
+    CHECK( 4 == size( SEGY_TR_SOURCE_ENERGY_DIR_MANT ));
+    CHECK( 4 == size( SEGY_TR_SOURCE_SURF_ELEV ));
+    CHECK( 4 == size( SEGY_TR_SOURCE_X ));
+    CHECK( 4 == size( SEGY_TR_SOURCE_Y ));
+    CHECK( 4 == size( SEGY_TR_TRANSDUCTION_MANT ));
+    CHECK( 4 == size( SEGY_TR_UNASSIGNED1 )) ;
+    CHECK( 4 == size( SEGY_TR_UNASSIGNED2 ));
+
+    CHECK( 2 == size( SEGY_TR_ALIAS_FILT_FREQ ));
+    CHECK( 2 == size( SEGY_TR_ALIAS_FILT_SLOPE ));
+    CHECK( 2 == size( SEGY_TR_COORD_UNITS ));
+    CHECK( 2 == size( SEGY_TR_CORRELATED ));
+    CHECK( 2 == size( SEGY_TR_DATA_USE ));
+    CHECK( 2 == size( SEGY_TR_DAY_OF_YEAR ));
+    CHECK( 2 == size( SEGY_TR_DELAY_REC_TIME ));
+    CHECK( 2 == size( SEGY_TR_DEVICE_ID ));
+    CHECK( 2 == size( SEGY_TR_ELEV_SCALAR ));
+    CHECK( 2 == size( SEGY_TR_GAIN_TYPE ));
+    CHECK( 2 == size( SEGY_TR_GAP_SIZE ));
+    CHECK( 2 == size( SEGY_TR_GEOPHONE_GROUP_FIRST ));
+    CHECK( 2 == size( SEGY_TR_GEOPHONE_GROUP_LAST ));
+    CHECK( 2 == size( SEGY_TR_GEOPHONE_GROUP_ROLL1 ));
+    CHECK( 2 == size( SEGY_TR_GROUP_STATIC_CORR ));
+    CHECK( 2 == size( SEGY_TR_GROUP_UPHOLE_TIME ));
+    CHECK( 2 == size( SEGY_TR_HIGH_CUT_FREQ ));
+    CHECK( 2 == size( SEGY_TR_HIGH_CUT_SLOPE ));
+    CHECK( 2 == size( SEGY_TR_HOUR_OF_DAY ));
+    CHECK( 2 == size( SEGY_TR_INSTR_GAIN_CONST ));
+    CHECK( 2 == size( SEGY_TR_INSTR_INIT_GAIN ));
+    CHECK( 2 == size( SEGY_TR_LAG_A ));
+    CHECK( 2 == size( SEGY_TR_LAG_B ));
+    CHECK( 2 == size( SEGY_TR_LOW_CUT_FREQ ));
+    CHECK( 2 == size( SEGY_TR_LOW_CUT_SLOPE ));
+    CHECK( 2 == size( SEGY_TR_MEASURE_UNIT ));
+    CHECK( 2 == size( SEGY_TR_MIN_OF_HOUR ));
+    CHECK( 2 == size( SEGY_TR_MUTE_TIME_END ));
+    CHECK( 2 == size( SEGY_TR_MUTE_TIME_START ));
+    CHECK( 2 == size( SEGY_TR_NOTCH_FILT_FREQ ));
+    CHECK( 2 == size( SEGY_TR_NOTCH_FILT_SLOPE ));
+    CHECK( 2 == size( SEGY_TR_OVER_TRAVEL ));
+    CHECK( 2 == size( SEGY_TR_SAMPLE_COUNT ));
+    CHECK( 2 == size( SEGY_TR_SAMPLE_INTER ));
+    CHECK( 2 == size( SEGY_TR_SCALAR_TRACE_HEADER ));
+    CHECK( 2 == size( SEGY_TR_SEC_OF_MIN ));
+    CHECK( 2 == size( SEGY_TR_SHOT_POINT_SCALAR ));
+    CHECK( 2 == size( SEGY_TR_SOURCE_ENERGY_DIR_EXP ));
+    CHECK( 2 == size( SEGY_TR_SOURCE_MEASURE_EXP ));
+    CHECK( 2 == size( SEGY_TR_SOURCE_MEASURE_UNIT ));
+    CHECK( 2 == size( SEGY_TR_SOURCE_STATIC_CORR ));
+    CHECK( 2 == size( SEGY_TR_SOURCE_TYPE ));
+    CHECK( 2 == size( SEGY_TR_SOURCE_UPHOLE_TIME ));
+    CHECK( 2 == size( SEGY_TR_SUBWEATHERING_VELO ));
+    CHECK( 2 == size( SEGY_TR_SUMMED_TRACES ));
+    CHECK( 2 == size( SEGY_TR_SWEEP_FREQ_END ));
+    CHECK( 2 == size( SEGY_TR_SWEEP_FREQ_START ));
+    CHECK( 2 == size( SEGY_TR_SWEEP_LENGTH ));
+    CHECK( 2 == size( SEGY_TR_SWEEP_TAPERLEN_END ));
+    CHECK( 2 == size( SEGY_TR_SWEEP_TAPERLEN_START ));
+    CHECK( 2 == size( SEGY_TR_SWEEP_TYPE ));
+    CHECK( 2 == size( SEGY_TR_TAPER_TYPE ));
+    CHECK( 2 == size( SEGY_TR_TIME_BASE_CODE ));
+    CHECK( 2 == size( SEGY_TR_TOT_STATIC_APPLIED ));
+    CHECK( 2 == size( SEGY_TR_TRACE_ID ));
+    CHECK( 2 == size( SEGY_TR_TRANSDUCTION_EXP ));
+    CHECK( 2 == size( SEGY_TR_TRANSDUCTION_UNIT ));
+    CHECK( 2 == size( SEGY_TR_WEATHERING_VELO ));
+    CHECK( 2 == size( SEGY_TR_WEIGHTING_FAC ));
+    CHECK( 2 == size( SEGY_TR_YEAR_DATA_REC ));
+
 }
 
 TEST_CASE_METHOD( smallshape,
