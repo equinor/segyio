@@ -30,6 +30,9 @@ environment:
         - PYTHON: C:\Python37
           LANG: -DBUILD_PYTHON=ON
           PYTHON_VERSION: 37
+        - PYTHON: C:\Python38
+          LANG: -DBUILD_PYTHON=ON
+          PYTHON_VERSION: 38
 
 matrix:
     fast_finish: true
