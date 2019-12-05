@@ -1,7 +1,6 @@
 language: python
 python:
   - 2.7
-  - 3.4
   - 3.5
   - 3.6
 
@@ -23,6 +22,10 @@ matrix:
         - python: 3.7
           dist: xenial
           sudo: true
+        - python: 3.8
+          dist: xenial
+          sudo: true
+          env: MB_ML_VER=2010
         - compiler: clang
           python: 3.7
           dist: xenial
@@ -36,10 +39,6 @@ matrix:
           python: 2.7
         - os: osx
           language: generic
-          env: MB_PYTHON_VERSION=3.4
-          python: 3.4
-        - os: osx
-          language: generic
           env: MB_PYTHON_VERSION=3.5
           python: 3.5
         - os: osx
@@ -50,6 +49,10 @@ matrix:
           language: generic
           env: MB_PYTHON_VERSION=3.7
           python: 3.7
+        - os: osx
+          language: generic
+          env: MB_PYTHON_VERSION=3.8
+          python: 3.8
 
 addons:
     apt:
