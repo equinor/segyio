@@ -1,3 +1,12 @@
+# 1.9.0
+* segyio has learned to work with with >32k samples per trace
+* collections.abc is imported a future-proof way
+* Support for python 3.4 has been dropped, as it is end-of-life
+* Python 3.8 support
+
+# 1.8.8
+* Build and packaging fixes
+
 # 1.8.7
 * A new feature, group, has been added with experimental support (hence no
   minor release). This is intended for pre-stack files, and is useful for
