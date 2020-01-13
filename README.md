@@ -543,6 +543,42 @@ Segy.put_traces(output_file, data1);
 
 ## Common issues ##
 
+### Creating a new file is very slow, or copying headers is slow ###
+
+Quite often issues show up where someone struggle with the performance of
+segyio, in particular when creating new files. The culprit is often this code:
+
+```
+with segyio.create('new.sgy', spec) as dst:
+    dst.header = headers
+```
+
+The code itself is perfectly ok, but it has subtle behaviour on some systems
+when the file is newly created: it is performing many scattered writes to a
+[sparse file](https://en.wikipedia.org/wiki/Sparse_file). This can be fast or
+slow, largely depending on the [file
+system](https://github.com/equinor/segyio/issues/423).
+
+#### Possible solutions
+
+Rewrite the loop to write to the file contiguously:
+```
+with segyio.create('new.sgy', spec) as dst:
+    for i in range(spec.tracecount):
+        dst.header[i] = headers[i]
+        dst.trace[i] = traces[i]
+```
+
+If the file is modified copy of another file, without changing the trace
+lengths, it's often faster (and easier!) to first copy the file without segyio,
+and then use segyio to modify the copy in-place:
+
+```
+shutil.copyfile(srcfile, dstfile)
+with segyio.open(dstfile) as f:
+    f.header = headers
+```
+
 ### ImportError: libsegyio.so.1: cannot open shared object file
 
 This error shows up when the loader cannot find the core segyio library. If

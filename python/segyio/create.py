@@ -146,6 +146,8 @@ def create(filename, spec):
     ...     with segyio.create(dstpath, spec) as dst:
     ...         dst.text[0] = src.text[0]
     ...         dst.bin = src.bin
+    ...         # this is writing a sparse file, which might be slow on some
+    ...         # systems
     ...         dst.header = src.header
     ...         dst.trace = src.trace
 
