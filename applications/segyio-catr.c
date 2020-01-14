@@ -517,7 +517,7 @@ static struct options parse_options( int argc, char** argv ){
                      break;
 
            case 'r': // intentional fallthrough
-           case 't':
+           case 't': {
                 if( opts.rsize == rallocsize ) {
                     rallocsize *= 2;
                     range* re = realloc( opts.r, rallocsize*sizeof( range ) );
@@ -583,6 +583,7 @@ static struct options parse_options( int argc, char** argv ){
                 }
 
                 done: ++opts.rsize; break;
+            }
 
            default: opts.help = 1; opts.errmsg = ""; return opts;
        }
