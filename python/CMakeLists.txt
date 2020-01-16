@@ -81,6 +81,10 @@ install(CODE "
         set(root_destdir --root \${abs-destdir})
     endif()
 
+    if (CMAKE_INSTALL_PREFIX)
+        set(prefix --prefix \"${CMAKE_INSTALL_PREFIX}\")
+    endif ()
+
     execute_process(
         COMMAND ${PYTHON_EXECUTABLE} ${setup.py}
             install
@@ -89,6 +93,7 @@ install(CODE "
                 --record record.txt
                 --cmake-executable \"${CMAKE_COMMAND}\"
                 --generator \"${CMAKE_GENERATOR}\"
+                \${prefix}
                 ${SEGYIO_PYTHON_BUILD_TYPE}
             --
                 -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF
