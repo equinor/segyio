@@ -89,8 +89,6 @@ install(CODE "
         COMMAND ${PYTHON_EXECUTABLE} ${setup.py}
             install
                 \${root_destdir}
-                --single-version-externally-managed
-                --record record.txt
                 --cmake-executable \"${CMAKE_COMMAND}\"
                 --generator \"${CMAKE_GENERATOR}\"
                 \${prefix}
