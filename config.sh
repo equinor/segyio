@@ -13,8 +13,12 @@ function pre_build {
     if [ -d build-centos5 ]; then return; fi
 
     # the cmakes available in yum for centos5 are too old (latest 2.11.x), so
-    # fetch a newer version pypi
-    python -m pip install cmake scikit-build
+    # fetch a newer version pypi. Files newer than 3.13.3 are not available
+    # for manylinux1, so pin that. However, cmake < 3.14 is not packaged for python 3.8
+    python -m pip install \
+        "cmake < 3.14; python_version < '3.8'" \
+        "cmake; python_version >= '3.8'" \
+        scikit-build
 
     mkdir build-centos5
     pushd build-centos5
