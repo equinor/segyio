@@ -525,6 +525,12 @@ int field_read_size(const int field) {
          << std::hex
          << output
      );
+
+    /*
+     * fallthrough to stop warning - negative should never give a succesful
+     * test, and FAIL() should already have aborted
+     */
+    return -1;
 }
 
 }
