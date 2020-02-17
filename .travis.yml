@@ -65,6 +65,7 @@ addons:
         - cmake-data
 
 before_install:
+    - git clone https://github.com/matthew-brett/multibuild
     - unset -f pushd
     - unset -f popd
     - source multibuild/common_utils.sh
