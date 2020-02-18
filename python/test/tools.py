@@ -67,6 +67,22 @@ def test_wrap():
         segyio.tools.wrap(f.text[0])
         segyio.tools.wrap(f.text[0], 90)
 
+def test_wrap_only_stringifies_content():
+    """
+    in python2, str(text) gives the content of the text header as a byte array,
+    as a string really is a bytearray, whereas in python3 str(bytearray) gives
+    the string "bytearray(b'C 1...')".
+
+    https://github.com/equinor/segyio/issues/444
+    """
+    with segyio.open(testdata / 'small.sgy') as f:
+        s = segyio.tools.wrap(f.text[0])
+        assert s.startswith('C 1')
+
+    with segyio.open(testdata / 'small.sgy') as f:
+        s = segyio.tools.wrap(f.text[0].decode(errors = 'ignore'))
+        assert s.startswith('C 1')
+
 
 def test_values_text_header_creation():
     lines = {i + 1: chr(64 + i) * 76 for i in range(40)}

@@ -100,26 +100,32 @@ def create_text_header(lines):
 def wrap(s, width=80):
     """
     Formats the text input with newlines given the user specified width for
-    each line.
+    each line. `wrap` will attempt to decode the input as ascii, ignoring any
+    errors, which occurs with many headers in ebcdic. To consider encoding
+    errors, decode the textual header before passing it to wrap.
 
     Parameters
     ----------
-
-    s : str
+    s : text or bytearray or str
     width : int
 
     Returns
     -------
-
     text : str
 
     Notes
     -----
-
     .. versionadded:: 1.1
 
     """
-    return '\n'.join(textwrap.wrap(str(s), width=width))
+    try:
+        s = s.decode(errors = 'ignore')
+    except AttributeError:
+        # Already str-like enough, e.g. wrap(f.text[0].decode()), so just try
+        # to wrap-join
+        pass
+
+    return '\n'.join(textwrap.wrap(s, width=width))
 
 
 def native(data,
