@@ -1,4 +1,9 @@
 import collections
+try:
+    from collections.abc import Mapping
+except ImportError:
+    from collections import Mapping # noqa
+
 import itertools
 import numpy as np
 
@@ -251,7 +256,7 @@ class Group(object):
         index = [i for _, i in index]
         self.index = index
 
-class Groups(collections.Mapping):
+class Groups(Mapping):
     """
     The Groups implements the dict interface, grouping all traces that match a
     given `fingerprint`. The fingerprint is a signature derived from a set of
