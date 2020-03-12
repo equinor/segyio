@@ -135,6 +135,10 @@ int segy_sample_indices( segy_file*,
  * assumed input is ebcdic encoded.
  */
 int segy_read_textheader( segy_file*, char *buf);
+/*
+ * segy_textheader_size() returns is a size hint for C-string style buffers,
+ * and includes space for a terminating null byte.
+ */
 int segy_textheader_size( void );
 /*
  * read the extended textual headers. `pos = 0` gives the first *extended*
