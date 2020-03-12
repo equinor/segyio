@@ -633,6 +633,10 @@ def test_traces_raw(openfn, kwargs):
         for raw, gen in zip(f.trace.raw[::-1], f.trace[::-1]):
             assert np.array_equal(raw, gen)
 
+def test_read_header_embedded_null():
+    with segyio.open(testdata / 'text-embed-null.sgy', ignore_geometry = True) as f:
+        text = f.text[0]
+        assert len(text) == 3200
 
 def test_read_text_sequence():
     with segyio.open(testdata / 'multi-text.sgy', ignore_geometry = True) as f:

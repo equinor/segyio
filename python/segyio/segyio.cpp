@@ -613,9 +613,11 @@ PyObject* gettext( segyiofd* self, PyObject* args ) {
               : segy_read_ext_textheader( fp, index - 1, buffer );
 
     if( err ) return Error( err );
-
-    const size_t len = std::strlen( buffer );
-    return PyByteArray_FromStringAndSize( buffer, len );
+    /*
+     * segy-textheader-size returns sizeof(header)+1 to have space for
+     * string-terminating null-byte, but here just the raw buffer is returned
+     */
+    return PyByteArray_FromStringAndSize(buffer, segy_textheader_size() - 1);
 }
 
 PyObject* puttext( segyiofd* self, PyObject* args ) {

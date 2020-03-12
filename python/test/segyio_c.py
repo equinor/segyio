@@ -96,8 +96,7 @@ def write_text_header(f, mmap):
     f.puttext(0, "")
 
     textheader = f.gettext(0)
-    textheader = textheader.decode('ascii')
-    assert textheader == "" * 3200
+    assert textheader == bytearray(3200)
 
     f.puttext(0, "yolo" * 800)
 
