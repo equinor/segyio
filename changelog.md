@@ -2,8 +2,6 @@
 * Text headers with null-bytes are no longer truncated
 * Slowness on sparse writes is pointed out in documentation
 * The python package now respects CMAKE_INSTALL_PREFIX
-* The python package is cmake-installed without --record and
-  --single-version-externally-managed
 * Multibuild is now cloned on travis, not a submodule
 * tools.wrap now works in python3, by decoding the string
 * A few C compiler warnings addressed
