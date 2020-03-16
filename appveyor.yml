@@ -64,7 +64,6 @@ build_script:
             -G %generator%
             %MEX%
             %LANG%
-            -DCMAKE_INSTALL_PREFIX=%INSTALL_DIR%
             -DCMAKE_CXX_FLAGS="/D_CRT_SECURE_NO_WARNINGS /EHsc"
     - cmake --build . --config "%configuration%" --target install
     - ctest -C "%configuration%" --output-on-failure
