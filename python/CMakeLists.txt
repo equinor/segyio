@@ -54,7 +54,15 @@ add_custom_target(
     VERBATIM
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 
-    COMMAND ${PYTHON_EXECUTABLE} ${setup.py}
+    # if DESTDIR is used, either for build and install, and make (or similar)
+    # is the generator, the scikit-build's internal install command will
+    # respect it and install the build-dir shared object there. The cmake
+    # driven install already respects DESTDIR by translating into --root, so
+    # simply remove it from then environment when doing python commands
+    #
+    # This is probably something that should be addressed upstream
+    COMMAND ${CMAKE_COMMAND} -E env --unset=DESTDIR
+            ${PYTHON_EXECUTABLE} ${setup.py}
         # build the extension inplace (really, once its built, copy it to the
         # source tree) so that post-build, the directory can be used to run
         # tests against
@@ -86,7 +94,8 @@ install(CODE "
     endif ()
 
     execute_process(
-        COMMAND ${PYTHON_EXECUTABLE} ${setup.py}
+        COMMAND ${CMAKE_COMMAND} -E env --unset=DESTDIR
+                ${PYTHON_EXECUTABLE} ${setup.py}
             install
                 \${root_destdir}
                 --single-version-externally-managed
