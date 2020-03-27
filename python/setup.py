@@ -86,6 +86,25 @@ def getversion():
 
     return pkgversion
 
+if 'MAKEFLAGS' in os.environ:
+    # if setup.py is called from cmake, it reads and uses the MAKEFLAGS
+    # environment variable, which in turn gets picked up on by scikit-build.
+    # However, scikit-build uses make install to move the built .so to the
+    # right object, still in the build tree. This make invocation honours
+    # DESTDIR, which leads to unwanted items in the destination tree.
+    #
+    # If the MAKEFLAGS env var is set, remove DESTDIR from it.
+    #
+    # Without this: make install DESTDIR=/tmp
+    # /tmp/src/segyio/python/_skbuild/linux-x86_64-3.5/cmake-install/segyio/_segyio.so
+    # /tmp/usr/local/lib/python2.7/site-packages/segyio/_segyio.so
+    #
+    # with this the _skbuild install is gone
+    makeflags = os.environ['MAKEFLAGS']
+    flags = makeflags.split(' ')
+    flags = [flag for flag in flags if not flag.startswith('DESTDIR=')]
+    os.environ['MAKEFLAGS'] = ' '.join(flags)
+
 skbuild.setup(
     name = 'segyio',
     description = 'Simple & fast IO for SEG-Y files',
