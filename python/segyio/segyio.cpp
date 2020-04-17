@@ -841,7 +841,10 @@ struct metrics_errmsg {
                                    "or offset (%i) field", il, xl, of );
 
             case SEGY_INVALID_SORTING:
-                return RuntimeError( "unable to find sorting." );
+                return RuntimeError( "unable to find sorting." 
+                                    "Check iline, (%i) and xline (%i) "
+                                    "in case you are sure the file is "
+                                    "a 3D sorted volume", il, xl);
 
             default:
                 return Error( err );
