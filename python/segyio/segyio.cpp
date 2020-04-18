@@ -93,6 +93,11 @@ PyObject* RuntimeError( int err ) {
     return RuntimeError( msg.c_str() );
 }
 
+template< typename T1, typename T2 >
+PyObject* RuntimeError( const char* msg, T1 t1, T2 t2 ) {
+    return PyErr_Format( PyExc_RuntimeError, msg, t1, t2 );
+}    
+    
 PyObject* IOErrno() {
     return PyErr_SetFromErrno( PyExc_IOError );
 }
