@@ -604,6 +604,7 @@ just a collection of traces in arbitrary order, this would fail.
 
 #### Possible solutions
 
+Check if segyio.open `iline` and `xline` input parameters are correct for current file.
 Segyio supports files that are just a collection of traces too, but has to be
 told that it's ok to do so. Pass `strict = False` or `ignore_geometry = True`
 to `segyio.open` to allow or force unstructured mode respectively. Please note

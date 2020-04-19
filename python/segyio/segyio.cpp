@@ -93,6 +93,11 @@ PyObject* RuntimeError( int err ) {
     return RuntimeError( msg.c_str() );
 }
 
+template< typename T1, typename T2 >
+PyObject* RuntimeError( const char* msg, T1 t1, T2 t2 ) {
+    return PyErr_Format( PyExc_RuntimeError, msg, t1, t2 );
+}    
+    
 PyObject* IOErrno() {
     return PyErr_SetFromErrno( PyExc_IOError );
 }
@@ -841,7 +846,10 @@ struct metrics_errmsg {
                                    "or offset (%i) field", il, xl, of );
 
             case SEGY_INVALID_SORTING:
-                return RuntimeError( "unable to find sorting." );
+                return RuntimeError( "unable to find sorting." 
+                                    "Check iline, (%i) and xline (%i) "
+                                    "in case you are sure the file is "
+                                    "a 3D sorted volume", il, xl);
 
             default:
                 return Error( err );
