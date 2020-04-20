@@ -1,0 +1,7 @@
+sphinx
+sphinx-gallery
+# manually grab pillow, since sphinx-gallery does not want
+# to specify their dependencies
+# https://github.com/sphinx-gallery/sphinx-gallery/issues/192
+pillow
+matplotlib
