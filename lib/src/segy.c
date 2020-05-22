@@ -988,6 +988,29 @@ int segy_samples( const char* binheader ) {
     int32_t samples = 0;
     segy_get_bfield( binheader, SEGY_BIN_SAMPLES, &samples );
     samples = (int32_t)((uint16_t)samples);
+
+    int32_t ext_samples = 0;
+    segy_get_bfield(binheader, SEGY_BIN_EXT_SAMPLES, &ext_samples);
+
+    if (samples == 0 && ext_samples > 0)
+        return ext_samples;
+
+    /*
+     * SEG-Y rev2 says that if this field is non-zero, the value in
+     * SEGY_BIN_SAMPLES should be ignored, and this used instead. This seems
+     * unreliable as the header words are not specified to be zero'd in the
+     * unassigned section, so valid pre-rev2 files can have non-zero values
+     * here.
+     *
+     * This means heuristics are necessary. Assume that if the extended word is
+     * used, the revision flag is also appropriately set to >= 2. Negative
+     * values are ignored, as it's likely just noise.
+     */
+    int revision = 0;
+    segy_get_bfield(binheader, SEGY_BIN_SEGY_REVISION, &revision);
+    if (revision >= 2 && ext_samples > 0)
+        return ext_samples;
+
     return samples;
 }
 

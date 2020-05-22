@@ -1933,3 +1933,23 @@ TEST_CASE("1-byte header words are correctly read", "[c.segy]") {
     CHECK(err == Err::ok());
     CHECK(two == 0x02);
 }
+
+TEST_CASE("segy_samples uses ext-samples word", "[c.segy]") {
+    std::array< char, 400 > header {};
+
+    static constexpr auto ext_samples = 68;
+
+    SECTION("when samples word is zero") {
+        /* ext-samples lowest byte */
+        header[ext_samples + 3] = 0x01;
+        const auto samples = segy_samples(header.data());
+        CHECK(samples == 1);
+    }
+
+    SECTION("when the rev2 word is set") {
+        header[300] = 0x02;
+        header[ext_samples + 3] = 0x01;
+        const auto samples = segy_samples(header.data());
+        CHECK(samples == 1);
+    }
+}
