@@ -597,6 +597,7 @@ static int get_field( const char* header,
     const int bsize = table[ field ];
     uint32_t buf32 = 0;
     uint16_t buf16 = 0;
+    uint8_t  buf8  = 0;
 
     switch( bsize ) {
         case 4:
@@ -607,6 +608,11 @@ static int get_field( const char* header,
         case 2:
             memcpy( &buf16, header + (field - 1), 2 );
             *f = (int16_t)be16toh( buf16 );
+            return SEGY_OK;
+
+        case 1:
+            memcpy(&buf8, header + (field - 1), 1);
+            *f = buf8;
             return SEGY_OK;
 
         case 0:
@@ -636,6 +642,7 @@ static int set_field( char* header, const int* table, int field, int32_t val ) {
 
     uint32_t buf32;
     uint16_t buf16;
+    uint8_t  buf8;
 
     switch( bsize ) {
         case 4:
@@ -646,6 +653,11 @@ static int set_field( char* header, const int* table, int field, int32_t val ) {
         case 2:
             buf16 = htobe16( (uint16_t)val );
             memcpy( header + (field - 1), &buf16, sizeof( buf16 ) );
+            return SEGY_OK;
+
+        case 1:
+            buf8 = (uint8_t)val;
+            memcpy(header + (field - 1), &buf8, sizeof(buf8));
             return SEGY_OK;
 
         case 0:
