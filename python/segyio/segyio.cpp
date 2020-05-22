@@ -401,9 +401,6 @@ PyObject* segycreate( segyiofd* self, PyObject* args, PyObject* kwargs ) {
     if( samples <= 0 )
         return ValueError( "expected samples > 0" );
 
-    if (samples > std::numeric_limits< std::uint16_t >::max())
-        return ValueError("samples must fit in an uint16");
-
     if( tracecount <= 0 )
         return ValueError( "expected tracecount > 0" );
 
