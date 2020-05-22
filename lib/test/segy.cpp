@@ -1916,3 +1916,20 @@ SCENARIO( "checking sorting for wonky files", "[c.segy]" ) {
         CHECK( sorting == SEGY_INLINE_SORTING );
     }
 }
+
+TEST_CASE("1-byte header words are correctly read", "[c.segy]") {
+    std::array< char, 400 > header {};
+    header[300] = 0x01;
+    header[301] = 0x02;
+
+    std::int32_t one;
+    std::int32_t two;
+
+    Err err = segy_get_bfield(header.data(), SEGY_BIN_SEGY_REVISION, &one);
+    CHECK(err == Err::ok());
+    CHECK(one == 0x01);
+
+    err = segy_get_bfield(header.data(), SEGY_BIN_SEGY_REVISION_MINOR, &two);
+    CHECK(err == Err::ok());
+    CHECK(two == 0x02);
+}

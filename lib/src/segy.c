@@ -328,6 +328,11 @@ static int bfield_size[] = {
     [- HEADER_SIZE + SEGY_BIN_JOB_ID                ] = 4,
     [- HEADER_SIZE + SEGY_BIN_LINE_NUMBER           ] = 4,
     [- HEADER_SIZE + SEGY_BIN_REEL_NUMBER           ] = 4,
+    [- HEADER_SIZE + SEGY_BIN_EXT_TRACES            ] = 4,
+    [- HEADER_SIZE + SEGY_BIN_EXT_AUX_TRACES        ] = 4,
+    [- HEADER_SIZE + SEGY_BIN_EXT_SAMPLES           ] = 4,
+    [- HEADER_SIZE + SEGY_BIN_EXT_SAMPLES_ORIG      ] = 4,
+    [- HEADER_SIZE + SEGY_BIN_EXT_ENSEMBLE_FOLD     ] = 4,
 
     [- HEADER_SIZE + SEGY_BIN_TRACES                ] = 2,
     [- HEADER_SIZE + SEGY_BIN_AUX_TRACES            ] = 2,
@@ -353,9 +358,11 @@ static int bfield_size[] = {
     [- HEADER_SIZE + SEGY_BIN_MEASUREMENT_SYSTEM    ] = 2,
     [- HEADER_SIZE + SEGY_BIN_IMPULSE_POLARITY      ] = 2,
     [- HEADER_SIZE + SEGY_BIN_VIBRATORY_POLARITY    ] = 2,
-    [- HEADER_SIZE + SEGY_BIN_SEGY_REVISION         ] = 2,
     [- HEADER_SIZE + SEGY_BIN_TRACE_FLAG            ] = 2,
     [- HEADER_SIZE + SEGY_BIN_EXT_HEADERS           ] = 2,
+
+    [- HEADER_SIZE + SEGY_BIN_SEGY_REVISION         ] = 1,
+    [- HEADER_SIZE + SEGY_BIN_SEGY_REVISION_MINOR   ] = 1,
 
     [- HEADER_SIZE + SEGY_BIN_UNASSIGNED1           ] = 0,
     [- HEADER_SIZE + SEGY_BIN_UNASSIGNED2           ] = 0,

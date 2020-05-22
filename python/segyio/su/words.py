@@ -263,7 +263,19 @@ vpol   = bf.VibratoryPolarity
 #:
 unas1  = bf.Unassigned1
 #:
+extntrpr  = bf.ExtTraces
+#:
+extnart   = bf.ExtAuxTraces
+#:
+exthns    = bf.ExtSamples
+#:
+extnso    = bf.ExtSamplesOriginal
+#:
+extfold   = bf.ExtEnsembleFold
+#:
 rev    = bf.SEGYRevision
+#:
+revmin = bf.SEGYRevisionMinor
 #:
 trflag = bf.TraceFlag
 #:
