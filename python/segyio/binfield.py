@@ -35,8 +35,14 @@ class BinField(Enum):
     MeasurementSystem = 3255
     ImpulseSignalPolarity = 3257
     VibratoryPolarity = 3259
+    ExtTraces = 3261
+    ExtAuxTraces = 3265
+    ExtSamples = 3269
+    ExtSamplesOriginal = 3289
+    ExtEnsembleFold = 3293
     Unassigned1 = 3261
     SEGYRevision = 3501
+    SEGYRevisionMinor = 3502
     TraceFlag = 3503
     ExtendedHeaders = 3505
     Unassigned2 = 3507
@@ -69,8 +75,14 @@ keys = {
     'MeasurementSystem'     : 3255,
     'ImpulseSignalPolarity' : 3257,
     'VibratoryPolarity'     : 3259,
-    'Unassigned1'           : 3261,
+    'ExtTraces'             : 3261,
+    'ExtAuxTraces'          : 3265,
+    'ExtSamples'            : 3269,
+    'ExtSamplesOriginal'    : 3289,
+    'ExtEnsembleFold'       : 3293,
+    'Unassigned1'           : 3301,
     'SEGYRevision'          : 3501,
+    'SEGYRevisionMinor'     : 3502,
     'TraceFlag'             : 3503,
     'ExtendedHeaders'       : 3505,
     'Unassigned2'           : 3507,

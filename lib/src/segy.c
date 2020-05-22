@@ -328,6 +328,11 @@ static int bfield_size[] = {
     [- HEADER_SIZE + SEGY_BIN_JOB_ID                ] = 4,
     [- HEADER_SIZE + SEGY_BIN_LINE_NUMBER           ] = 4,
     [- HEADER_SIZE + SEGY_BIN_REEL_NUMBER           ] = 4,
+    [- HEADER_SIZE + SEGY_BIN_EXT_TRACES            ] = 4,
+    [- HEADER_SIZE + SEGY_BIN_EXT_AUX_TRACES        ] = 4,
+    [- HEADER_SIZE + SEGY_BIN_EXT_SAMPLES           ] = 4,
+    [- HEADER_SIZE + SEGY_BIN_EXT_SAMPLES_ORIG      ] = 4,
+    [- HEADER_SIZE + SEGY_BIN_EXT_ENSEMBLE_FOLD     ] = 4,
 
     [- HEADER_SIZE + SEGY_BIN_TRACES                ] = 2,
     [- HEADER_SIZE + SEGY_BIN_AUX_TRACES            ] = 2,
@@ -353,9 +358,11 @@ static int bfield_size[] = {
     [- HEADER_SIZE + SEGY_BIN_MEASUREMENT_SYSTEM    ] = 2,
     [- HEADER_SIZE + SEGY_BIN_IMPULSE_POLARITY      ] = 2,
     [- HEADER_SIZE + SEGY_BIN_VIBRATORY_POLARITY    ] = 2,
-    [- HEADER_SIZE + SEGY_BIN_SEGY_REVISION         ] = 2,
     [- HEADER_SIZE + SEGY_BIN_TRACE_FLAG            ] = 2,
     [- HEADER_SIZE + SEGY_BIN_EXT_HEADERS           ] = 2,
+
+    [- HEADER_SIZE + SEGY_BIN_SEGY_REVISION         ] = 1,
+    [- HEADER_SIZE + SEGY_BIN_SEGY_REVISION_MINOR   ] = 1,
 
     [- HEADER_SIZE + SEGY_BIN_UNASSIGNED1           ] = 0,
     [- HEADER_SIZE + SEGY_BIN_UNASSIGNED2           ] = 0,
@@ -597,6 +604,7 @@ static int get_field( const char* header,
     const int bsize = table[ field ];
     uint32_t buf32 = 0;
     uint16_t buf16 = 0;
+    uint8_t  buf8  = 0;
 
     switch( bsize ) {
         case 4:
@@ -607,6 +615,11 @@ static int get_field( const char* header,
         case 2:
             memcpy( &buf16, header + (field - 1), 2 );
             *f = (int16_t)be16toh( buf16 );
+            return SEGY_OK;
+
+        case 1:
+            memcpy(&buf8, header + (field - 1), 1);
+            *f = buf8;
             return SEGY_OK;
 
         case 0:
@@ -636,6 +649,7 @@ static int set_field( char* header, const int* table, int field, int32_t val ) {
 
     uint32_t buf32;
     uint16_t buf16;
+    uint8_t  buf8;
 
     switch( bsize ) {
         case 4:
@@ -646,6 +660,11 @@ static int set_field( char* header, const int* table, int field, int32_t val ) {
         case 2:
             buf16 = htobe16( (uint16_t)val );
             memcpy( header + (field - 1), &buf16, sizeof( buf16 ) );
+            return SEGY_OK;
+
+        case 1:
+            buf8 = (uint8_t)val;
+            memcpy(header + (field - 1), &buf8, sizeof(buf8));
             return SEGY_OK;
 
         case 0:
@@ -969,6 +988,29 @@ int segy_samples( const char* binheader ) {
     int32_t samples = 0;
     segy_get_bfield( binheader, SEGY_BIN_SAMPLES, &samples );
     samples = (int32_t)((uint16_t)samples);
+
+    int32_t ext_samples = 0;
+    segy_get_bfield(binheader, SEGY_BIN_EXT_SAMPLES, &ext_samples);
+
+    if (samples == 0 && ext_samples > 0)
+        return ext_samples;
+
+    /*
+     * SEG-Y rev2 says that if this field is non-zero, the value in
+     * SEGY_BIN_SAMPLES should be ignored, and this used instead. This seems
+     * unreliable as the header words are not specified to be zero'd in the
+     * unassigned section, so valid pre-rev2 files can have non-zero values
+     * here.
+     *
+     * This means heuristics are necessary. Assume that if the extended word is
+     * used, the revision flag is also appropriately set to >= 2. Negative
+     * values are ignored, as it's likely just noise.
+     */
+    int revision = 0;
+    segy_get_bfield(binheader, SEGY_BIN_SEGY_REVISION, &revision);
+    if (revision >= 2 && ext_samples > 0)
+        return ext_samples;
+
     return samples;
 }
 

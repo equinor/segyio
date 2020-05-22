@@ -245,4 +245,13 @@ def create(filename, spec):
         exth     = ext_headers,
     )
 
+    if len(samples) > 2**16 - 1:
+        # when using the ext-samples field, also set rev2, even though it's a
+        # soft lie and files aren't really compliant
+        f.bin.update(
+            exthns = len(samples),
+            extnso = len(samples),
+            rev    = 2
+        )
+
     return f
