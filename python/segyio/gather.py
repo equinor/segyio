@@ -225,7 +225,7 @@ class Group(object):
 
         Returns
         -------
-        headers : iterator of Trace
+        traces : iterator of Trace
 
         Notes
         -----
