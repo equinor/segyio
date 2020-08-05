@@ -1534,6 +1534,53 @@ SCENARIO( "reading a large file", "[c.segy]" ) {
 }
 
 /*
+ * There is no native 3-byte integral type in C++, so hack a minimal one
+ * together. We don't need arithmetic, only conversion to int32 and from int16
+ * (which is what the source file is in).
+ *
+ * It's quite incomplete in the sense that it's really unaware of signed
+ * integers, but what's important is its size and its individual bytes, and how
+ * it is created from int16. The test file was created by just adding a single,
+ * zero byte at the most-significant byte position, and otherwise memcpy'd.
+ */
+struct int24 {
+    char bytes[3];
+
+    int24() = default;
+    // cppcheck-suppress noExplicitConstructor
+    int24(const int16_t& x) {
+        this->bytes[0] = ((const char*)&x)[0];
+        this->bytes[1] = ((const char*)&x)[1];
+        this->bytes[2] = 0;
+    }
+
+    operator std::int32_t () const noexcept (true) {
+        return (this->bytes[0] << 0)
+             | (this->bytes[1] << 8)
+             | (this->bytes[2] << 16)
+        ;
+    }
+
+    bool operator == (int24 rhs) const noexcept (true) {
+        return std::int32_t(*this) == std::int32_t(rhs);
+    }
+
+    bool operator != (int24 rhs) const noexcept (true) {
+        return !(*this == rhs);
+    }
+};
+
+static_assert(
+    sizeof(int24) == 3,
+    "int24 type is padded, but is expected to be 3 bytes"
+);
+
+static_assert(
+    std::is_standard_layout< int24 >::value,
+    "int24 must be standard layout"
+);
+
+/*
  * open a copy of f3, but pre-converted to a different format, to check that
  * other formats are read correctly
  */
@@ -1617,6 +1664,10 @@ TEST_CASE("can open 1-byte signed char", "[c.segy][format]") {
     f3_in_format< std::int8_t >(SEGY_SIGNED_CHAR_1_BYTE);
 }
 
+TEST_CASE("can open 3-byte signed char", "[c.segy][format][uniq]") {
+    f3_in_format< int24 >(SEGY_SIGNED_CHAR_3_BYTE);
+}
+
 TEST_CASE("can open 8-byte signed integer", "[c.segy][format]") {
     f3_in_format< std::int64_t >(SEGY_SIGNED_INTEGER_8_BYTE);
 }
@@ -1631,6 +1682,10 @@ TEST_CASE("can open 2-byte unsigned short", "[c.segy][format]") {
 
 TEST_CASE("can open 8-byte unsigned integer", "[c.segy][format]") {
     f3_in_format< std::uint64_t >(SEGY_UNSIGNED_INTEGER_8_BYTE);
+}
+
+TEST_CASE("can open 3-byte unsigned integer", "[c.segy][format]") {
+    f3_in_format< int24 >(SEGY_UNSIGNED_INTEGER_3_BYTE);
 }
 
 TEST_CASE("can open 1-byte unsigned char", "[c.segy][format]") {

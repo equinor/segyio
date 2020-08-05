@@ -415,9 +415,8 @@ static int formatsize( int format ) {
         case SEGY_UNSIGNED_INTEGER_4_BYTE:      return 4;
         case SEGY_UNSIGNED_SHORT_2_BYTE:        return 2;
         case SEGY_UNSIGNED_INTEGER_8_BYTE:      return 8;
-        /* 3-byte values are not supported yet, report as invalid-args */
-        case SEGY_SIGNED_CHAR_3_BYTE:           //return 3;
-        case SEGY_UNSIGNED_INTEGER_3_BYTE:      //return 3;
+        case SEGY_SIGNED_CHAR_3_BYTE:           return 3;
+        case SEGY_UNSIGNED_INTEGER_3_BYTE:      return 3;
         case SEGY_NOT_IN_USE_1:
         case SEGY_NOT_IN_USE_2:
         default:
@@ -1805,9 +1804,9 @@ static int bswap32vec( void* vec, long long len ) {
 
 static int bswap24vec( void* vec, long long len ) {
     char* begin = (char*) vec;
-    char* end = (char*) begin + len * 24;
+    char* end = (char*) begin + len * 3;
 
-    for (char* xs = begin; xs != end; xs += 24) {
+    for (char* xs = begin; xs != end; xs += 3) {
         uint8_t bits[3];
         memcpy(bits, xs, sizeof(bits));
         uint8_t tmp = bits[0];
