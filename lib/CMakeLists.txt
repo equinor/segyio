@@ -101,6 +101,8 @@ configure_file(${testdata}/multiformats/Format5lsb.sgy  test-data/Format5lsb.sgy
 configure_file(${testdata}/multiformats/Format5msb.sgy  test-data/Format5msb.sgy  COPYONLY)
 configure_file(${testdata}/multiformats/Format6lsb.sgy  test-data/Format6lsb.sgy  COPYONLY)
 configure_file(${testdata}/multiformats/Format6msb.sgy  test-data/Format6msb.sgy  COPYONLY)
+configure_file(${testdata}/multiformats/Format7lsb.sgy  test-data/Format7lsb.sgy  COPYONLY)
+configure_file(${testdata}/multiformats/Format7msb.sgy  test-data/Format7msb.sgy  COPYONLY)
 configure_file(${testdata}/multiformats/Format8lsb.sgy  test-data/Format8lsb.sgy  COPYONLY)
 configure_file(${testdata}/multiformats/Format8msb.sgy  test-data/Format8msb.sgy  COPYONLY)
 configure_file(${testdata}/multiformats/Format9lsb.sgy  test-data/Format9lsb.sgy  COPYONLY)
@@ -111,6 +113,8 @@ configure_file(${testdata}/multiformats/Format11lsb.sgy test-data/Format11lsb.sg
 configure_file(${testdata}/multiformats/Format11msb.sgy test-data/Format11msb.sgy COPYONLY)
 configure_file(${testdata}/multiformats/Format12lsb.sgy test-data/Format12lsb.sgy COPYONLY)
 configure_file(${testdata}/multiformats/Format12msb.sgy test-data/Format12msb.sgy COPYONLY)
+configure_file(${testdata}/multiformats/Format15lsb.sgy test-data/Format15lsb.sgy COPYONLY)
+configure_file(${testdata}/multiformats/Format15msb.sgy test-data/Format15msb.sgy COPYONLY)
 configure_file(${testdata}/multiformats/Format16lsb.sgy test-data/Format16lsb.sgy COPYONLY)
 configure_file(${testdata}/multiformats/Format16msb.sgy test-data/Format16msb.sgy COPYONLY)
 
