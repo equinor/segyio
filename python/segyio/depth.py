@@ -95,7 +95,7 @@ class Depth(Sequence):
 
         Copy every depth slice into a list:
 
-        >>> l = [numpy.copy(x) for x in depth[:]
+        >>> l = [numpy.copy(x) for x in depth[:]]
 
         Every third depth:
 
