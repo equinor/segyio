@@ -270,6 +270,16 @@ def test_traces_subslicing(openfn, kwargs):
         assert np.array_equal(f.trace[0, ::-1], f.trace[0][::-1])
         assert np.array_equal(f.trace[0, ::2], f.trace[0][::2])
         # test getting single element
+
+        # should be single a single float, not an array in the case of int(i),
+        # int(j)
+        with pytest.raises(TypeError):
+            len(f.trace[0, 1])
+
+        # even length-of-one slices should give arrays
+        assert len(f.trace[0, 1:2]) == 1
+        npt.assert_array_equal(f.trace[0, 1:2], f.trace[0][1:2])
+
         assert f.trace[0, 1] == f.trace[0][1]
         assert f.trace[0, -3] == f.trace[0][-3]
 
