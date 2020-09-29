@@ -1,3 +1,13 @@
+# 1.9.2
+* segyio has learned to understand rev2 1-byte header words
+* segyio now understand rev2 wide header word replacements
+* segyio now detects sample sizes >65k
+* Support for int24 formats
+* Fixed a bug where f.trace[i,j] returned an array even when i,j are ints
+* SEGY_INVALID_SORTING message has been improved
+* SEGY_SIGNED_INTEGER_3_BYTE enum alias for symmetry with signed counterpart
+* Minor build system and CI improvements
+
 # 1.9.1
 * Text headers with null-bytes are no longer truncated
 * Slowness on sparse writes is pointed out in documentation
