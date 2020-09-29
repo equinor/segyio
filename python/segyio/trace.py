@@ -187,6 +187,7 @@ class Trace(Sequence):
             # trace to be loaded.
             j = slice(0, self.shape, 1)
 
+        single = False
         try:
             start, stop, step = j.indices(self.shape)
         except AttributeError:
@@ -195,13 +196,15 @@ class Trace(Sequence):
             start = int(j) % self.shape
             stop = start + 1
             step = 1
+            single = True
 
         n_elements = len(range(start, stop, step))
 
         try:
             i = self.wrapindex(i)
             buf = np.zeros(n_elements, dtype = self.dtype)
-            return self.filehandle.gettr(buf, i, 1, 1, start, stop, step, n_elements)
+            tr = self.filehandle.gettr(buf, i, 1, 1, start, stop, step, n_elements)
+            return tr[0] if single else tr
         except TypeError:
             pass
 
