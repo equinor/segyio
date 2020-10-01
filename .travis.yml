@@ -63,6 +63,10 @@ addons:
         - cppcheck
         - cmake
         - cmake-data
+    homebrew:
+      update: true
+      packages:
+        - cppcheck
 
 before_install:
     - git clone https://github.com/matthew-brett/multibuild
@@ -73,9 +77,6 @@ before_install:
     - before_install
 
 install:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-        brew update && brew install cppcheck;
-    fi
   - pip install -r requirements.txt
   - pip install -r requirements-doc.txt
   - pip install setuptools setuptools-scm scikit-build
