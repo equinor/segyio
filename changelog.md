@@ -1,7 +1,11 @@
+# 1.9.3
+* The group feature has been added to docs
+* Some infrastructure and CI improvements
+
 # 1.9.2
 * segyio has learned to understand rev2 1-byte header words
 * segyio now understand rev2 wide header word replacements
-* segyio now detects sample sizes >65k
+* segyio now detects traces with >65k samples
 * Support for int24 formats
 * Fixed a bug where f.trace[i,j] returned an array even when i,j are ints
 * SEGY_INVALID_SORTING message has been improved
