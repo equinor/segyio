@@ -50,6 +50,13 @@ Gather
 .. autoclass:: segyio.gather.Gather()
     :special-members: __getitem__
 
+Group
+-----
+.. autoclass:: segyio.gather.Group()
+
+.. autoclass:: segyio.gather.Groups()
+    :special-members: __getitem__, __len__, __contains__, __iter__
+
 Depth
 -----
 .. autoclass:: segyio.depth.Depth()

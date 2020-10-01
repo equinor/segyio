@@ -262,19 +262,22 @@ class Groups(Mapping):
     given `fingerprint`. The fingerprint is a signature derived from a set of
     trace header words, called a `key`.
 
-    Consider a file with five traces, and some selected header words:
+    Consider a file with five traces, and some selected header words::
+
         0: {offset: 1, fldr: 1}
         1: {offset: 1, fldr: 2}
         2: {offset: 1, fldr: 1}
         3: {offset: 2, fldr: 1}
         4: {offset: 1, fldr: 2}
 
-    With key = (offset, fldr), there are 3 groups:
+    With key = (offset, fldr), there are 3 groups::
+
         {offset: 1, fldr: 1 }: [0, 2]
         {offset: 1, fldr: 2 }: [1, 4]
         {offset: 2, fldr: 1 }: [3]
 
-    With a key = offset, there are 2 groups:
+    With a key = offset, there are 2 groups::
+
         {offset: 1}: [0, 1, 2, 4]
         {offset: 2}: [3]
 
