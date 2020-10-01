@@ -16,3 +16,15 @@ unusedStructMember:*lib/test/segy.cpp
 // and syntax errors are not that interesting from a cppcheck point of view,
 // since the compiler handles them nicely
 syntaxError:*lib/experimental/segyio/segyio.hpp
+
+// cppcheck 2.1 (at least) does not recognize exit() properly as program
+// termination, and considers the null pointer checks redundant, or considers
+// most arrays and buffers possible null pointer dereferences. By replacing
+// exit() with return, these go away, but cppcheck starts complaining about
+// resource leaks (which are nonsensical as the return is in main).
+// At some point it should probably be rewritten to a style cppcheck accepts,
+// or cppcheck should be replaced.
+//
+// The style of code that makes these warnings happen are all application
+// oriented though, so suppressing the check there should not be too bad.
+nullPointerRedundantCheck:*applications/*.c
