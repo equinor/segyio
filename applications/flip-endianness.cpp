@@ -154,7 +154,11 @@ int main( int argc, char** argv ) {
         std::exit( EXIT_FAILURE );
     }
 
+    // style: Argument 'std::max(3200,trsize)' to function buffer is always
+    // 3200 [knownArgument]
+    // this is just wrong, so suppress it
     std::vector< char > buffer(
+        // cppcheck-suppress knownArgument
         std::max( SEGY_TEXT_HEADER_SIZE, trsize )
     );
 
