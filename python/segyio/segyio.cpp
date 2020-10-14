@@ -1,3 +1,4 @@
+#define PY_SSIZE_T_CLEAN
 #if defined(_DEBUG) && defined(_MSC_VER)
 #  define _CRT_NOFORCE_MAINFEST 1
 #  undef _DEBUG
@@ -1042,7 +1043,7 @@ PyObject* puttr( segyiofd* self, PyObject* args ) {
 
     int traceno;
     char* buffer;
-    int buflen;
+    Py_ssize_t buflen;
 
     if( !PyArg_ParseTuple( args, "is#", &traceno, &buffer, &buflen ) )
         return NULL;
@@ -1537,7 +1538,7 @@ PyObject* fread_trace0( PyObject* , PyObject* args ) {
     int stride;
     int offsets;
     int* indices;
-    int indiceslen;
+    Py_ssize_t indiceslen;
     char* linetype;
 
     if( !PyArg_ParseTuple( args, "iiiis#s", &lineno,
