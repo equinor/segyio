@@ -1,6 +1,5 @@
 language: python
 python:
-  - 2.7
   - 3.5
   - 3.6
 
@@ -33,10 +32,6 @@ matrix:
             - SCAN="scan-build --status-bugs"
             - SOURCEDEPLOY=1
             - MKDOC="-DBUILD_DOC=ON -DSPHINX_ARGS=-WT"
-        - os: osx
-          language: generic
-          env: MB_PYTHON_VERSION=2.7
-          python: 2.7
         - os: osx
           language: generic
           env: MB_PYTHON_VERSION=3.5
