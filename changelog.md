@@ -1,3 +1,6 @@
+# 1.9.4
+* Use Py_ssize_t for type-length arguments
+
 # 1.9.3
 * The group feature has been added to docs
 * Some infrastructure and CI improvements
