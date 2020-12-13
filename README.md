@@ -91,7 +91,7 @@ To build segyio you need:
  * A C99 compatible C compiler (tested mostly on gcc and clang)
  * A C++ compiler for the Python extension, and C++11 for the tests
  * [CMake](https://cmake.org/) version 2.8.12 or greater
- * [Python](https://www.python.org/) 2.7 or 3.x.
+ * [Python](https://www.python.org/) 3.6 or greater
  * [numpy](http://www.numpy.org/) version 1.10 or greater
  * [setuptools](https://pypi.python.org/pypi/setuptools) version 28 or greater
  * [setuptools-scm](https://pypi.python.org/pypi/setuptools_scm)

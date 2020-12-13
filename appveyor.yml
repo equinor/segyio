@@ -18,9 +18,6 @@ environment:
     TWINE_PASSWORD:
         secure: kTga6+rLL1fNpKqFNcX0QZNyqiYaHsEfSS4k6wvUoTE=
     matrix:
-        - PYTHON: C:\Python27
-          LANG: -DBUILD_PYTHON=ON
-          PYTHON_VERSION: 27
         - PYTHON: C:\Python35
           LANG: -DBUILD_PYTHON=ON
           PYTHON_VERSION: 35
