@@ -12,6 +12,9 @@ except ImportError: pass
 
 import segyio.tools as tools
 
+from .line import sanitize_slice
+
+
 class Gather(object):
     """
     A gather is in this context the intersection of lines in a cube, i.e. all
@@ -110,7 +113,10 @@ class Gather(object):
             i = o + self.iline.heads[il] + self.xline.heads[xl]
             return self.trace[i]
 
-        offs = off if isslice(off) else slice(off, off+1, 1)
+        if isslice(off):
+            offs = sanitize_slice(off, self.offsets)
+        else:
+            offs = slice(off, off + 1, 1)
 
         xs = list(filter(self.offsets.__contains__,
                     range(*offs.indices(self.offsets[-1]+1))))
