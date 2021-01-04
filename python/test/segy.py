@@ -563,6 +563,9 @@ def test_gather_mode():
         assert np.array_equal(traces, f.gather[2, 3])
         assert np.array_equal(empty, f.gather[2, 3, 1:0])
         assert np.array_equal(empty, f.gather[2, 3, 3:4])
+        # selects the first offset, not the second;
+        # see https://github.com/equinor/segyio/issues/499
+        assert np.array_equal(traces[:1], f.gather[2, 3, ::2])
 
         for g, line in zip(f.gather[1:3, 3, 1], f.iline[1:3]):
             assert 10 == len(g)
