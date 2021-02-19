@@ -1,3 +1,7 @@
+# 1.9.6
+* gather[] selects the right offsets
+* Add python3.9 packages
+
 # 1.9.5
 * The 1.9.5 release drops pre-built packages for Python 2.7.
   It will probably still build fine, but no official wheels
