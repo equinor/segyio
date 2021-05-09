@@ -166,8 +166,9 @@ static int valid_trfield( int x ) {
         case SEGY_TR_DEVICE_ID:
         case SEGY_TR_SCALAR_TRACE_HEADER:
         case SEGY_TR_SOURCE_TYPE:
-        case SEGY_TR_SOURCE_ENERGY_DIR_MANT:
-        case SEGY_TR_SOURCE_ENERGY_DIR_EXP:
+        case SEGY_TR_SOURCE_ENERGY_DIR_VERT:
+        case SEGY_TR_SOURCE_ENERGY_DIR_XLINE:
+        case SEGY_TR_SOURCE_ENERGY_DIR_ILINE:
         case SEGY_TR_SOURCE_MEASURE_MANT:
         case SEGY_TR_SOURCE_MEASURE_EXP:
         case SEGY_TR_SOURCE_MEASURE_UNIT:

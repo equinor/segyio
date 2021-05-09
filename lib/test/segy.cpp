@@ -561,7 +561,6 @@ TEST_CASE("testing size", "[c.segy]") {
     CHECK( 4 == size( SEGY_TR_SHOT_POINT ));
     CHECK( 4 == size( SEGY_TR_SOURCE_DATUM_ELEV ));
     CHECK( 4 == size( SEGY_TR_SOURCE_DEPTH ));
-    CHECK( 4 == size( SEGY_TR_SOURCE_ENERGY_DIR_MANT ));
     CHECK( 4 == size( SEGY_TR_SOURCE_SURF_ELEV ));
     CHECK( 4 == size( SEGY_TR_SOURCE_X ));
     CHECK( 4 == size( SEGY_TR_SOURCE_Y ));
@@ -606,7 +605,9 @@ TEST_CASE("testing size", "[c.segy]") {
     CHECK( 2 == size( SEGY_TR_SCALAR_TRACE_HEADER ));
     CHECK( 2 == size( SEGY_TR_SEC_OF_MIN ));
     CHECK( 2 == size( SEGY_TR_SHOT_POINT_SCALAR ));
-    CHECK( 2 == size( SEGY_TR_SOURCE_ENERGY_DIR_EXP ));
+    CHECK( 2 == size( SEGY_TR_SOURCE_ENERGY_DIR_VERT ));
+    CHECK( 2 == size( SEGY_TR_SOURCE_ENERGY_DIR_XLINE ));
+    CHECK( 2 == size( SEGY_TR_SOURCE_ENERGY_DIR_ILINE ));
     CHECK( 2 == size( SEGY_TR_SOURCE_MEASURE_EXP ));
     CHECK( 2 == size( SEGY_TR_SOURCE_MEASURE_UNIT ));
     CHECK( 2 == size( SEGY_TR_SOURCE_STATIC_CORR ));

@@ -744,8 +744,9 @@ struct trace_header {
     int device_id               = 0;
     int scalar_trace_header     = 0;
     int source_type             = 0;
-    int source_energy_dir_mant  = 0;
-    int source_energy_dir_exp   = 0;
+    int source_energy_dir_vert  = 0;
+    int source_energy_dir_xline = 0;
+    int source_energy_dir_iline = 0;
     int source_measure_mant     = 0;
     int source_measure_exp      = 0;
     int source_measure_unit     = 0;
@@ -1471,8 +1472,9 @@ trace_header trace_header_reader< Derived >::get_th( int i ) noexcept(false) {
     h.device_id              = getf( SEGY_TR_DEVICE_ID );
     h.scalar_trace_header    = getf( SEGY_TR_SCALAR_TRACE_HEADER );
     h.source_type            = getf( SEGY_TR_SOURCE_TYPE );
-    h.source_energy_dir_mant = getf( SEGY_TR_SOURCE_ENERGY_DIR_MANT );
-    h.source_energy_dir_exp  = getf( SEGY_TR_SOURCE_ENERGY_DIR_EXP );
+    h.source_energy_dir_vert = getf( SEGY_TR_SOURCE_ENERGY_DIR_VERT );
+    h.source_energy_dir_xline= getf( SEGY_TR_SOURCE_ENERGY_DIR_XLINE );
+    h.source_energy_dir_iline= getf( SEGY_TR_SOURCE_ENERGY_DIR_ILINE );
     h.source_measure_mant    = getf( SEGY_TR_SOURCE_MEASURE_MANT );
     h.source_measure_exp     = getf( SEGY_TR_SOURCE_MEASURE_EXP );
     h.source_measure_unit    = getf( SEGY_TR_SOURCE_MEASURE_UNIT );
