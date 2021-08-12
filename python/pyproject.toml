@@ -1,0 +1,29 @@
+[build-system]
+requires = [
+    "setuptools >= 40",
+    "scikit-build",
+    "wheel",
+    "pybind11",
+]
+
+[tool.cibuildwheel]
+before-build = [
+    """cmake \
+        -S . \
+        -B cibw-$(python -c 'import platform;print(platform.machine())')/ \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+        -DBUILD_TESTING=OFF \
+        -DBUILD_PYTHON=OFF \
+        -DBUILD_BIN=OFF \
+    """,
+    """cmake \
+        --build cibw-$(python -c 'import platform;print(platform.machine())')/ \
+        --parallel \
+        --target install \
+        --config Release \
+    """,
+]
+
+[tool.cibuildwheel.macos]
+environment = { CXXFLAGS="-L/usr/local/lib" }

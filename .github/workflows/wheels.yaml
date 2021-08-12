@@ -1,0 +1,39 @@
+name: Wheels
+
+on: [push, pull_request]
+
+jobs:
+  wheels:
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, macOS-10.15]
+        include:
+          - os: windows-2016
+            cibw-arch: AMD64
+            cmake-generator: "Visual Studio 15 2017 Win64"
+          - os: windows-2016
+            cibw-arch: x86
+            cmake-generator: "Visual Studio 15 2017"
+
+    steps:
+      - uses: actions/checkout@v2
+
+      # Used to host cibuildwheel
+      - uses: actions/setup-python@v2
+
+      - name: Install cibuildwheel
+        run: python -m pip install cibuildwheel
+
+      - name: Build wheels
+        env:
+          CIBW_ENVIRONMENT_WINDOWS: CMAKE_GENERATOR="${{ matrix.cmake-generator }}"
+          CIBW_ARCHS_WINDOWS: ${{ matrix.cibw-arch }}
+        run: |
+            python -m cibuildwheel --output-dir wheelhouse python/
+
+      - uses: actions/upload-artifact@v2
+        with:
+          path: ./wheelhouse/*.whl
+
