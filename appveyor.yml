@@ -40,7 +40,6 @@ install:
     - IF DEFINED PYTHON SET PATH=%PYTHON%;%PYTHON%\Scripts;%PATH%
     - IF DEFINED PYTHON pip install -r requirements.txt
     - IF DEFINED PYTHON pip install --upgrade
-        twine
         wheel
         setuptools
         setuptools-scm
@@ -78,18 +77,3 @@ test_script:
     - IF DEFINED PYTHON python -c
         "import segyio;f=segyio.open('test-data/small.sgy');print(f.ilines)"
     - IF DEFINED PYTHON python python/examples/scan_min_max.py test-data/small.sgy
-
-before_deploy:
-    - ps: pushd python
-
-after_deploy:
-    - ps: popd
-
-deploy_script:
-    - ps: |
-          Write-Host "TAG: $env:APPVEYOR_REPO_TAG"
-          If ($env:APPVEYOR_REPO_TAG -eq "false") { return }
-
-          Write-Host "Uploading wheels to pypi"
-          Invoke-Expression "twine upload -u statoil-travis --skip-existing dist/*"
-          If ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode) }
