@@ -30,6 +30,7 @@ jobs:
         env:
           CIBW_ENVIRONMENT_WINDOWS: CMAKE_GENERATOR="${{ matrix.cmake-generator }}"
           CIBW_ARCHS_WINDOWS: ${{ matrix.cibw-arch }}
+          CIBW_SKIP: pp*
           COMSPEC: C:\Program Files\PowerShell\7\pwsh.EXE
         run: |
             python -m cibuildwheel --output-dir wheelhouse python/
