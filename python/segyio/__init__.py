@@ -94,11 +94,6 @@ from .segy import SegyFile, spec
 from .tools import dt, sample_indexes, create_text_header, native
 from .tools import collect, cube
 
-try:
-    from .version import version as __version__
-except ImportError:
-    __version__ = '0.0.0'
-
 __copyright__  = 'Copyright 2016, Statoil ASA'
 __license__    = 'GNU Lesser General Public License version 3'
 __status__     = 'Production'

@@ -52,41 +52,6 @@ def src(x):
     root = os.path.dirname( __file__ )
     return os.path.abspath(os.path.join(root, x))
 
-def getversion():
-    # if this is a tarball distribution, the .git-directory won't be avilable
-    # and setuptools_scm will crash hard. good tarballs are built with a
-    # pre-generated version.py, so parse that and extract version from it
-    #
-    # set the SEGYIO_NO_GIT_VER environment variable to ignore a version from
-    # git (useful when building for debian or other distributions)
-    pkgversion = { 'version': '0.0.0' }
-    versionfile = 'segyio/version.py'
-
-    if not 'SEGYIO_NO_GIT_VER' in os.environ and os.path.isdir(src('../.git')):
-        return {
-            'use_scm_version': {
-                'root': '..',
-                'relative_to' : __file__,
-                # write to ./python
-                'write_to'    : os.path.join(src(''), versionfile),
-            }
-        }
-
-
-    if not os.path.exists(versionfile):
-        return pkgversion
-
-    import ast
-    with open(versionfile) as f:
-        root = ast.parse(f.read())
-
-    for node in ast.walk(root):
-        if not isinstance(node, ast.Assign): continue
-        if len(node.targets) == 1 and node.targets[0].id == 'version':
-            pkgversion['version'] = node.value.s
-
-    return pkgversion
-
 if 'MAKEFLAGS' in os.environ:
     # if setup.py is called from cmake, it reads and uses the MAKEFLAGS
     # environment variable, which in turn gets picked up on by scikit-build.
@@ -120,7 +85,6 @@ skbuild.setup(
     install_requires = ['numpy >= 1.10'],
     setup_requires = [
         'setuptools >= 28',
-        'setuptools_scm',
         'pytest-runner',
         'scikit-build',
     ],
@@ -148,5 +112,4 @@ skbuild.setup(
         'Topic :: Software Development :: Libraries',
         'Topic :: Utilities'
     ],
-    **getversion()
-    )
+)
