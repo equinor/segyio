@@ -1,3 +1,6 @@
+# 1.9.7
+* Packaging updates
+
 # 1.9.6
 * gather[] selects the right offsets
 * Add python3.9 packages
