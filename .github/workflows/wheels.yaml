@@ -9,6 +9,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-20.04, macOS-10.15]
+        arch: [auto]
         include:
           - os: windows-2016
             cibw-arch: AMD64
@@ -16,12 +17,18 @@ jobs:
           - os: windows-2016
             cibw-arch: x86
             cmake-generator: "Visual Studio 15 2017"
+          - os: ubuntu-20.04
+            arch: aarch64
 
     steps:
       - uses: actions/checkout@v2
 
       # Used to host cibuildwheel
       - uses: actions/setup-python@v2
+
+      - uses: docker/setup-qemu-action@v1
+        if: ${{ matrix.arch == 'aarch64' }}
+        name: Set up QEMU
 
       - name: Install cibuildwheel
         run: python -m pip install cibuildwheel
@@ -30,6 +37,7 @@ jobs:
         env:
           CIBW_ENVIRONMENT_WINDOWS: CMAKE_GENERATOR="${{ matrix.cmake-generator }}"
           CIBW_ARCHS_WINDOWS: ${{ matrix.cibw-arch }}
+          CIBW_ARCHS_LINUX: ${{ matrix.arch }}
           CIBW_SKIP: pp*
           COMSPEC: C:\Program Files\PowerShell\7\pwsh.EXE
         run: |
