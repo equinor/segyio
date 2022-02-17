@@ -45,7 +45,7 @@ install:
         setuptools-scm
         pytest
         pytest-runner
-        scikit-build
+        scikit-build==0.11.0
 
 before_build:
     - IF DEFINED PYTHON SET LANG=%LANG% -DPYTHON_EXECUTABLE=%PYTHON%\python
