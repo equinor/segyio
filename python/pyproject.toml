@@ -38,5 +38,8 @@ before-build = [
     """,
 ]
 
+[tool.cibuildwheel.linux]
+manylinux-x86_64-image = "manylinux2010"
+
 [tool.cibuildwheel.macos]
 environment = { CXXFLAGS="-L/usr/local/lib" }

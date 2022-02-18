@@ -38,7 +38,7 @@ jobs:
           CIBW_ENVIRONMENT_WINDOWS: CMAKE_GENERATOR="${{ matrix.cmake-generator }}"
           CIBW_ARCHS_WINDOWS: ${{ matrix.cibw-arch }}
           CIBW_ARCHS_LINUX: ${{ matrix.arch }}
-          CIBW_SKIP: pp*
+          CIBW_SKIP: pp* *-musllinux_*
           COMSPEC: C:\Program Files\PowerShell\7\pwsh.EXE
         run: |
             python -m cibuildwheel --output-dir wheelhouse python/
@@ -46,3 +46,21 @@ jobs:
       - uses: actions/upload-artifact@v2
         with:
           path: ./wheelhouse/*.whl
+
+  publish:
+    needs: wheels
+    name: Publish wheels to PyPI
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/download-artifact@v2
+
+      - name: Publish wheels to PyPI
+
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          packages_dir: artifact
