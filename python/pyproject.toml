@@ -38,6 +38,34 @@ before-build = [
     """,
 ]
 
+test-requires = "pytest"
+
+# Copy out test folder to make sure that tests are runned against the wheel and
+# not the source. Test assumes a relative path to the test-data directory, so
+# copy that too. segyio's python test-suite doesn't follow common naming
+# convensions for filenames. Hence pytest doesn't pick them up by default.
+# If not for powershell on windows we could simply run 'pytest test/*.py'.
+# Instead we copy setup.cfg which embeds the same pattern but doesn't rely on
+# the shell.
+test-command = [
+    """python {project}/.github/utils.py copy -r \
+        --src {package}/test                     \
+        --dst tmptest/python/test                \
+    """,
+    """python {project}/.github/utils.py copy -r \
+        --src {project}/test-data                \
+        --dst tmptest/test-data                  \
+    """,
+    """python {project}/.github/utils.py copy \
+        --src {package}/setup.cfg             \
+        --dst tmptest/python/setup.cfg        \
+    """,
+    """cd tmptest/python""",
+    """pytest test""",
+    """cd ../../""",
+    """python {project}/.github/utils.py remove --paths tmptest""",
+]
+
 [tool.cibuildwheel.linux]
 manylinux-x86_64-image = "manylinux2010"
 
