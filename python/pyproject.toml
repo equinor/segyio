@@ -57,5 +57,9 @@ test-command = [
 [tool.cibuildwheel.linux]
 manylinux-x86_64-image = "manylinux2010"
 
+[[tool.cibuildwheel.overrides]]
+select = "cp311*"
+manylinux-x86_64-image = "manylinux2014"
+
 [tool.cibuildwheel.macos]
 environment = { CXXFLAGS="-L/usr/local/lib" }
