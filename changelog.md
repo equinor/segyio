@@ -1,3 +1,6 @@
+# 1.9.10
+* Distribute wheels for Python 3.11
+
 # 1.9.9
 * Packaging updates
 
