@@ -1075,7 +1075,7 @@ def test_assign_all_traces(small):
 
 
 def test_traceaccess_from_array():
-    a = np.arange(10, dtype=np.int)
+    a = np.arange(10, dtype=int)
     b = np.arange(10, dtype=np.int32)
     c = np.arange(10, dtype=np.int64)
     d = np.arange(10, dtype=np.intc)

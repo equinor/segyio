@@ -8,22 +8,10 @@ requires = [
 ]
 
 [tool.cibuildwheel]
-# To make sure that the library is built for the right arch (i686, amd64 etc)
-# then the host arch is added onto the build dir. This *must* be expanded by
-# cibuildwheel since the build host (runner) might be different than the target
-# emulated by the docker image. Ideally there would be a variable that holds
-# what's currently being compiled, but I've yet to find it.
-#
-# Since the command is issued through subprocess.run() then it runs on the
-# system native shell, which means all sorts of problems if that shell is
-# cmd.exe, since it doesn't understand substitution $(). On windows you change
-# the default shell by setting COMSPEC to either bash or powershell (or
-# something else that understands $()), but there is little to gain from
-# running cibuildwheel on a non-CI windows.
 before-build = [
     """cmake \
         -S . \
-        -B "cibw-$(python -c 'import platform;print(platform.machine())')/" \
+        -B build \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
         -DBUILD_TESTING=OFF \
@@ -31,7 +19,7 @@ before-build = [
         -DBUILD_BIN=OFF \
     """,
     """cmake \
-        --build "cibw-$(python -c 'import platform;print(platform.machine())')/" \
+        --build build \
         --parallel \
         --target install \
         --config Release \
@@ -68,6 +56,10 @@ test-command = [
 
 [tool.cibuildwheel.linux]
 manylinux-x86_64-image = "manylinux2010"
+
+[[tool.cibuildwheel.overrides]]
+select = "cp311*"
+manylinux-x86_64-image = "manylinux2014"
 
 [tool.cibuildwheel.macos]
 environment = { CXXFLAGS="-L/usr/local/lib" }
