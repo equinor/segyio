@@ -282,9 +282,9 @@ are available:
     standard-mandated textual header, and `1..n` are the optional extended
     headers.
 
-    The text headers are returned as 3200-byte string-like blobs (bytes in
-    Python 3, str in Python 2), as it is in the file. The `segyio.tools.wrap`
-    function can create a line-oriented version of this string.
+    The text headers are returned as 3200-byte byte-like blobs as it is in the
+    file. The `segyio.tools.wrap` function can create a line-oriented version
+    of this string.
 
 * `bin`
 
@@ -311,7 +311,7 @@ are available:
 
 >>> text = f.text[0]
 >>> type(text)
-<type 'bytes'> # 'str' in Python 2
+<type 'bytes'>
 
 >>> f.trace[10] = np.zeros(len(f.samples))
 ```
