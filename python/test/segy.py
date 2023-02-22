@@ -1968,3 +1968,7 @@ def test_groups_gather_equivalence():
 
         # group[(il, xl)] == gather[il, xl]
         npt.assert_array_equal(from_group, from_gather)
+
+def test_delay_scalar_applied():
+    with segyio.open(testdata / 'delay-scalar.sgy') as f:
+        assert f.samples[0] == 1000

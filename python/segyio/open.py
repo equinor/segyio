@@ -172,8 +172,13 @@ def open(filename, mode="r", iline = 189,
     )
 
     try:
+        delay_scalar = f.header[0][segyio.TraceField.ScalarTraceHeader]
+        if delay_scalar == 0:
+            delay_scalar = 1
+        elif delay_scalar < 0:
+            delay_scalar = 1.0 / delay_scalar
         dt = segyio.tools.dt(f, fallback_dt = 4000.0) / 1000.0
-        t0 = f.header[0][segyio.TraceField.DelayRecordingTime]
+        t0 = f.header[0][segyio.TraceField.DelayRecordingTime] * abs(delay_scalar)
         samples = metrics['samplecount']
         f._samples = (numpy.arange(samples) * dt) + t0
 
