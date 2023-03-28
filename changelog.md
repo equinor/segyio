@@ -1,3 +1,7 @@
+# 1.9.11
+* Fixed a bug where segyio used the Delay Recording Time without it's scaling
+  factor when setting up the sample offsets on open.
+
 # 1.9.10
 * Distribute wheels for Python 3.11
 
