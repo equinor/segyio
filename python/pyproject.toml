@@ -62,4 +62,21 @@ select = "cp3{9,10,11,12}*"
 manylinux-x86_64-image = "manylinux2014"
 
 [tool.cibuildwheel.macos]
+before-build = [
+    """sudo cmake \
+        -S . \
+        -B build \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+        -DBUILD_TESTING=OFF \
+        -DBUILD_PYTHON=OFF \
+        -DBUILD_BIN=OFF \
+    """,
+    """sudo cmake \
+        --build build \
+        --parallel \
+        --target install \
+        --config Release \
+    """,
+]
 environment = { CXXFLAGS="-L/usr/local/lib" }
