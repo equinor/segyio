@@ -58,7 +58,7 @@ test-command = [
 manylinux-x86_64-image = "manylinux2010"
 
 [[tool.cibuildwheel.overrides]]
-select = "cp311*"
+select = "cp3{9,10,11,12}*"
 manylinux-x86_64-image = "manylinux2014"
 
 [tool.cibuildwheel.macos]
