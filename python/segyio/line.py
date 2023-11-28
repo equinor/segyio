@@ -196,13 +196,8 @@ class Line(Mapping):
         except TypeError: pass
 
         # prioritise the code path that's potentially in loops externally
-        try:
+        if not isinstance(index, slice) and not isinstance(offset, slice):
             head = self.heads[index] + self.offsets[offset]
-        except TypeError:
-            # index is either unhashable (because it's a slice), or offset is a
-            # slice.
-            pass
-        else:
             return self.filehandle.getline(head,
                                            self.length,
                                            self.stride,
@@ -287,9 +282,8 @@ class Line(Mapping):
         try: index, offset = index
         except TypeError: pass
 
-        try: head = self.heads[index] + self.offsets[offset]
-        except TypeError: pass
-        else:
+        if not isinstance(index, slice) and not isinstance(offset, slice):
+            head = self.heads[index] + self.offsets[offset]
             return self.filehandle.putline(head,
                                            self.length,
                                            self.stride,
@@ -422,14 +416,8 @@ class HeaderLine(Line):
         try: index, offset = index
         except TypeError: pass
 
-        try:
+        if not isinstance(index, slice) and not isinstance(offset, slice):
             start = self.heads[index] + self.offsets[offset]
-        except TypeError:
-            # index is either unhashable (because it's a slice), or offset is a
-            # slice.
-            pass
-
-        else:
             step = self.stride * len(self.offsets)
             stop = start + step * self.length
             return self.header[start:stop:step]
@@ -489,9 +477,8 @@ class HeaderLine(Line):
         try: index, offset = index
         except TypeError: pass
 
-        try: start = self.heads[index] + self.offsets[offset]
-        except TypeError: pass
-        else:
+        if not isinstance(index, slice) and not isinstance(offset, slice):
+            start = self.heads[index] + self.offsets[offset]
             step = self.stride * len(self.offsets)
             stop  = start + step * self.length
             self.header[start:stop:step] = val
