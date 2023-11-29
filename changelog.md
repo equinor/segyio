@@ -1,3 +1,7 @@
+# 1.9.12
+* Distribute wheels for Python 3.12
+* Distribute wheels for Apple ARM
+
 # 1.9.11
 * Fixed a bug where segyio used the Delay Recording Time without it's scaling
   factor when setting up the sample offsets on open.
