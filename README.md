@@ -361,13 +361,9 @@ publications by SEG:
 
 ## Contributing ##
 
-We welcome all kinds of contributions, including code, bug reports, issues,
-feature requests, and documentation. The preferred way of submitting a
-contribution is to either make an
-[issue](https://github.com/equinor/segyio/issues) on github or by forking the
-project on github and making a pull request.
+We welcome all kinds of contributions; please see [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## xarray integration ##
+## `xarray` integration ##
 
 [Alan Richardson](https://github.com/ar4) has written a great little tool for
 using [xarray](http://xarray.pydata.org/en/stable/) with segy files, which he
