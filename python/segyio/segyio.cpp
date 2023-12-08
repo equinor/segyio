@@ -16,6 +16,7 @@
 #include <cstring>
 #include <sstream>
 #include <stdexcept>
+#include <cstdint>
 
 #if PY_MAJOR_VERSION >= 3
 #define IS_PY3K
