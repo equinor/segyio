@@ -603,8 +603,9 @@ classdef Segy
             tr_heads.TraceIdentifier                        = segy_get_field_mex( header, 213 );
             tr_heads.ScalarTraceHeader                      = segy_get_field_mex( header, 215 );
             tr_heads.SourceType                             = segy_get_field_mex( header, 217 );
-            tr_heads.SourceEnergyDirectionMantissa          = segy_get_field_mex( header, 219 );
-            tr_heads.SourceEnergyDirectionExponent          = segy_get_field_mex( header, 223 );
+            tr_heads.SourceEnergyDirectionVert              = segy_get_field_mex( header, 219 );
+            tr_heads.SourceEnergyDirectionXline             = segy_get_field_mex( header, 221 );
+            tr_heads.SourceEnergyDirectionIline             = segy_get_field_mex( header, 223 );
             tr_heads.SourceMeasurementMantissa              = segy_get_field_mex( header, 225 );
             tr_heads.SourceMeasurementExponent              = segy_get_field_mex( header, 229 );
             tr_heads.SourceMeasurementUnit                  = segy_get_field_mex( header, 231 );
