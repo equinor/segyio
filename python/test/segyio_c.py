@@ -540,10 +540,10 @@ def read_line(f, metrics, iline_idx, xline_idx):
     buf = numpy.zeros((len(iline_idx), samples), dtype=numpy.single)
 
     f.getline(xline_trace0, len(iline_idx), xline_stride, offsets, buf)
-    assert sum(sum(buf)) == approx(800.061169624, abs=1e-6)
+    assert sum(sum(buf), numpy.double(0)) == approx(800.061169624, abs=1e-6)
 
     f.getline(iline_trace0, len(xline_idx), iline_stride, offsets, buf)
-    assert sum(sum(buf)) == approx(305.061146736, abs=1e-6)
+    assert sum(sum(buf), numpy.double(0)) == approx(305.061146736, abs=1e-6)
 
     f.close()
 
