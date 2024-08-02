@@ -917,7 +917,17 @@ class SegyFile(object):
             offsets = np.arange(1)
 
         ilines  = np.copy(np.asarray(ilines,  dtype=np.intc))
+        print("Inlines:")
+        print(ilines)
+        print("Number of unique inlines: {}".format(np.unique(ilines).size))
+        print("Number of inlines: {}".format(ilines.size))
         xlines  = np.copy(np.asarray(xlines,  dtype=np.intc))
+        print("Xlines:")
+        print(xlines)
+        print("Unique xlines:")
+        print(np.unique(xlines))
+        print("Number of unique xnlines: {}".format(np.unique(xlines).size))
+        print("Number of xnlines: {}".format(xlines.size))
         offsets = np.copy(np.asarray(offsets, dtype=np.intc))
 
         if np.unique(ilines).size != ilines.size:
