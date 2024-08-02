@@ -23,7 +23,7 @@ jobs:
             analyzers: "cppcheck"
             scan: "scan-build --status-bugs"
             mkdoc: "-DBUILD_DOC=ON -DSPHINX_ARGS=-WT"
-          - os: macos-13-xlarge
+          - os: macos-latest
             privledges: "sudo"
             arch: arm64
 

@@ -166,8 +166,8 @@ def open(filename, mode="r", iline = 189,
     f = segyio.SegyFile(fd,
             filename = str(filename),
             mode = mode,
-            iline = iline,
-            xline = xline,
+            iline = int(iline),
+            xline = int(xline),
             endian = endian,
     )
 
@@ -189,4 +189,4 @@ def open(filename, mode="r", iline = 189,
     if ignore_geometry:
         return f
 
-    return infer_geometry(f, metrics, iline, xline, strict)
+    return infer_geometry(f, metrics, int(iline), int(xline), strict)
