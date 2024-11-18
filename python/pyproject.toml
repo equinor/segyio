@@ -1,6 +1,6 @@
 [build-system]
 requires = [
-    "setuptools >= 40",
+    "setuptools >= 40, < 42",
     "scikit-build",
     "wheel",
     "pybind11",
