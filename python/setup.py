@@ -88,7 +88,6 @@ skbuild.setup(
         'pytest-runner',
         'scikit-build',
     ],
-    tests_require = ['pytest'],
     cmake_args = [
         # we can safely pass OSX_DEPLOYMENT_TARGET as it's ignored on
         # everything not OS X. We depend on C++11, which makes our minimum
