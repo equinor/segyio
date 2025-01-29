@@ -23,9 +23,11 @@ jobs:
             arch: aarch64
           - os: ubuntu-20.04
             arch: i686
-          - os: macos-latest
+          # macos-latest runs on arm64 architecture and cibuildwheel cross
+          # compiling for x86_64 fails
+          - os: macos-13
             arch: x86_64
-          - os: macos-13-xlarge
+          - os: macos-latest
             arch: arm64
 
     steps:
@@ -46,13 +48,14 @@ jobs:
           CIBW_ENVIRONMENT_WINDOWS: >
             CMAKE_GENERATOR="${{ matrix.cmake_generator }}"
             CMAKE_GENERATOR_PLATFORM="${{ matrix.cmake_generator_platform }}"
-          CIBW_SKIP: pp* *-musllinux_*
+          CIBW_SKIP: pp* *-musllinux_* cp313-* cp39-*
           CIBW_ARCHS: ${{ matrix.arch }}
         run: |
             python -m cibuildwheel --output-dir wheelhouse python/
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v4
         with:
+          name: wheel-${{ matrix.os }}-${{ matrix.arch }}
           path: ./wheelhouse/*.whl
 
   publish:
@@ -63,7 +66,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v4
 
       - name: Publish wheels to PyPI
 
