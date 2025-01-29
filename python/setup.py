@@ -85,7 +85,6 @@ skbuild.setup(
     install_requires = ['numpy >= 1.10'],
     setup_requires = [
         'setuptools >= 28',
-        'pytest-runner',
         'scikit-build',
     ],
     cmake_args = [

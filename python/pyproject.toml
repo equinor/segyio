@@ -4,7 +4,6 @@ requires = [
     "scikit-build",
     "wheel",
     "pybind11",
-    "pytest-runner",
 ]
 
 [tool.cibuildwheel]
