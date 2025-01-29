@@ -76,8 +76,8 @@ class Enum(object):
     @classmethod
     def enums(cls):
         result = []
-        for v in cls.__dict__.values():
-            if isinstance(v, int):
+        for k, v in cls.__dict__.items():
+            if isinstance(v, int) and not str.startswith(k, "_"):
                 result.append(cls(v))
 
         return sorted(result, key=int)
