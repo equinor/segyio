@@ -85,10 +85,8 @@ skbuild.setup(
     install_requires = ['numpy >= 1.10'],
     setup_requires = [
         'setuptools >= 28',
-        'pytest-runner',
         'scikit-build',
     ],
-    tests_require = ['pytest'],
     cmake_args = [
         # we can safely pass OSX_DEPLOYMENT_TARGET as it's ignored on
         # everything not OS X. We depend on C++11, which makes our minimum
@@ -103,13 +101,11 @@ skbuild.setup(
         'License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)',
         'Natural Language :: English',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3.11',
         'Programming Language :: Python :: 3.12',
+        'Programming Language :: Python :: 3.13',
         'Topic :: Scientific/Engineering',
         'Topic :: Scientific/Engineering :: Physics',
         'Topic :: Software Development :: Libraries',

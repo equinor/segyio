@@ -1,6 +1,11 @@
 name: Build and Test
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
 
 jobs:
   test:
@@ -28,7 +33,7 @@ jobs:
             arch: arm64
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Install clang toolchain
         if: ${{ matrix.compiler == 'clang' }}

@@ -13,6 +13,7 @@
 #include <segyio/segy.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <cstring>
 #include <sstream>
 #include <stdexcept>

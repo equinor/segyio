@@ -1,12 +1,20 @@
 name: Wheels
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [master]
+    tags:
+      - '*'
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
 
 jobs:
   wheels:
     name: Build wheels on ${{ matrix.os }} ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: windows-2019
@@ -19,7 +27,7 @@ jobs:
             arch: x86
           - os: ubuntu-20.04
             arch: x86_64
-          - os: ubuntu-20.04
+          - os: ubuntu-24.04-arm
             arch: aarch64
           - os: ubuntu-20.04
             arch: i686
@@ -31,14 +39,12 @@ jobs:
             arch: arm64
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       # Used to host cibuildwheel
-      - uses: actions/setup-python@v2
-
-      - uses: docker/setup-qemu-action@v1
-        if: ${{ matrix.arch == 'aarch64' }}
-        name: Set up QEMU
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
 
       - name: Install cibuildwheel
         run: python -m pip install cibuildwheel
@@ -48,7 +54,7 @@ jobs:
           CIBW_ENVIRONMENT_WINDOWS: >
             CMAKE_GENERATOR="${{ matrix.cmake_generator }}"
             CMAKE_GENERATOR_PLATFORM="${{ matrix.cmake_generator_platform }}"
-          CIBW_SKIP: pp* *-musllinux_* cp313-* cp39-*
+          CIBW_SKIP: pp* *-musllinux_* cp36-* cp37-* cp38-*
           CIBW_ARCHS: ${{ matrix.arch }}
         run: |
             python -m cibuildwheel --output-dir wheelhouse python/
@@ -64,9 +70,13 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - uses: actions/download-artifact@v4
+        with:
+          pattern: wheel-*
+          merge-multiple: true
+          path: ./wheelhouse/
 
       - name: Publish wheels to PyPI
 
@@ -74,4 +84,4 @@ jobs:
         with:
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}
-          packages_dir: artifact
+          packages-dir: ./wheelhouse/
