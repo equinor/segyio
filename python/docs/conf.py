@@ -98,22 +98,7 @@ author = u'Equinor'
 # built documents.
 #
 # The short X.Y version.
-version = segyio.__version__
-
-# if the docs are built without actually building segyio (what readthedocs
-# does), the version string will fall back to '0.0.0'. but since readthedocs
-# (and maybe other jobs that builds doc) often fetch from git, they can fall
-# back to also trying git-describe themselves.
-if version == '0.0.0':
-    try:
-        # static analysis flags the subproces module as a potential security
-        # problem, but this takes no user input and should be safe
-        from subprocess import check_output # nosec
-        version = str(check_output(['git', 'describe']).strip()) # nosec
-    finally:
-        # couldn't run git-describe - fall back to 0.0.0 and accept that we
-        # won't get reasonable version numbers automatically
-        pass
+version = "1.19.12"
 
 # The full version, including alpha/beta/rc tags.
 release = version
@@ -415,6 +400,6 @@ texinfo_documents = [
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {
-        'https://docs.python.org/': None,
-        'https://docs.scipy.org/doc/numpy/': None,
+    "python": ("https://docs.python.org/", None),
+    "numpy": ("https://docs.scipy.org/doc/numpy/", None),
 }
