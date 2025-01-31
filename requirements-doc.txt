@@ -3,5 +3,12 @@ sphinx-gallery
 # manually grab pillow, since sphinx-gallery does not want
 # to specify their dependencies
 # https://github.com/sphinx-gallery/sphinx-gallery/issues/192
-pillow
+pillow==10.3.0
 matplotlib
+
+# Additional version pinning recommended by Snyk
+zipp==3.19.1
+numpy==1.22.2
+fonttools==4.43.0
+requests==2.32.2
+urllib3==2.2.2

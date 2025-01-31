@@ -1,3 +1,11 @@
 segyio
 sphinx-gallery
 matplotlib
+
+# Additional version pinning recommended by Snyk
+zipp==3.19.1
+numpy==1.22.2
+pillow==10.3.0
+fonttools==4.43.0
+requests==2.32.2
+urllib3==2.2.2
