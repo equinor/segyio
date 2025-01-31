@@ -1,3 +1,4 @@
 segyio
 sphinx-gallery
 matplotlib
+sphinx-rtd-theme
