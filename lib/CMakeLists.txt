@@ -133,8 +133,8 @@ target_compile_definitions(c.segy
     PRIVATE
         ${mmap}
 )
-add_test(NAME c.segy          COMMAND c.segy)
-add_test(NAME c.segy.mmap     COMMAND c.segy --test-mmap)
-add_test(NAME c.segy.lsb      COMMAND c.segy --test-lsb)
-add_test(NAME c.segy.mmap.lsb COMMAND c.segy --test-mmap --test-lsb)
+add_test(NAME c.segy          COMMAND c.segy [c.segy])
+add_test(NAME c.segy.mmap     COMMAND c.segy [c.segy] --test-mmap)
+add_test(NAME c.segy.lsb      COMMAND c.segy [c.segy] --test-lsb)
+add_test(NAME c.segy.mmap.lsb COMMAND c.segy [c.segy] --test-mmap --test-lsb)
 add_test(NAME cpp.segy        COMMAND c.segy [c++])
