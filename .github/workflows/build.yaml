@@ -80,7 +80,7 @@ jobs:
         shell: bash
         run: |
             cd build
-            ctest -C Release --output-on-failure
+            ctest -C Release --output-on-failure -V
 
 
   matlab:
