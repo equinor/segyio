@@ -19,7 +19,7 @@ configure_file(SegySampleFormat.m SegySampleFormat.m)
 configure_file(TraceSortingFormat.m TraceSortingFormat.m)
 configure_file(TraceField.m TraceField.m)
 
-get_property(dirs TARGET segyio-shared PROPERTY INCLUDE_DIRECTORIES)
+get_property(dirs TARGET segyio PROPERTY INCLUDE_DIRECTORIES)
 include_directories(${dirs})
 
 mexo(segyutil)
