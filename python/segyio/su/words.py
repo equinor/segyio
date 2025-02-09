@@ -191,9 +191,11 @@ sctrh  = tf.ScalarTraceHeader
 #:
 stype  = tf.SourceType
 #:
-sedm   = tf.SourceEnergyDirectionMantissa
+sedv   = tf.SourceEnergyDirectionVert
 #:
-sede   = tf.SourceEnergyDirectionExponent
+sedxl  = tf.SourceEnergyDirectionXline
+#:
+sedil  = tf.SourceEnergyDirectionIline
 #:
 smm    = tf.SourceMeasurementMantissa
 #:
