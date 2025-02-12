@@ -1,0 +1,82 @@
+name: Benchmark
+description: benchmark execution
+
+inputs:
+  ref:
+    description: ref to checkout
+  compare:
+    description: results comparison string
+    default: --benchmark-compare=0001 --benchmark-compare-fail=min:25% --benchmark-group-by=fullname --color=yes
+
+runs:
+  using: "composite"
+  steps:
+    - name: Print available disk space
+      shell: bash
+      run: df -h
+
+    - name: Checkout commit which performance should be measured
+      shell: bash
+      run: |
+        git fetch origin ${{ inputs.ref }} --depth 1
+        git checkout ${{ inputs.ref }}
+
+    - name: Configure
+      shell: bash
+      run: |
+        cmake -S . -B build \
+          -DBUILD_PYTHON=ON \
+          -DBUILD_SHARED_LIBS=ON \
+          -DCMAKE_BUILD_TYPE=Release \
+
+    - name: Build
+      shell: bash
+      run: |
+        cmake \
+          --build build \
+          --config Release \
+
+    - name: Set PYTHONPATH
+      shell: bash
+      run: echo "PYTHONPATH=$(pwd)/python" >> $GITHUB_ENV
+
+    - name: Checkout current commit which contains all tests to run
+      shell: bash
+      run: git checkout ${{ github.sha }}
+
+    - name: Make segy file
+      shell: bash
+      working-directory: python
+      run: |
+        if [ ! -f file.sgy ]; then
+          time python -m examples.make-file file.sgy 1400 1 1000 1 600
+        else
+          echo "file.sgy already exists"
+        fi
+
+    - name: Make segy pre-stack file
+      shell: bash
+      working-directory: python
+      run: |
+        if [ ! -f file-ps.sgy ]; then
+          time python -m examples.make-ps-file file-ps.sgy 1400 1 500 1 600 1 3
+        else
+          echo "file-ps.sgy already exists"
+        fi
+
+    - name: Print filesize
+      shell: bash
+      working-directory: python
+      run: |
+        ls -lh file.sgy
+        ls -lh file-ps.sgy
+
+    - name: Run benchmark tests
+      shell: bash
+      working-directory: python
+      run: |
+        pytest test/benchmarks.py --benchmark-sort=name --benchmark-autosave ${{ inputs.compare }}
+
+    - name: Remove build artifacts
+      shell: bash
+      run: git clean -df --exclude=.benchmarks

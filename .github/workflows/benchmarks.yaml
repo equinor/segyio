@@ -1,0 +1,44 @@
+name: Benchmarks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      commit_ref:
+        description: "optional: compare to specific ref"
+        required: false
+
+jobs:
+  benchmarks:
+    name: Benchmark scripts
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build/test dependencies
+        shell: bash
+        working-directory: python
+        run: |
+          python3 -m pip install -r requirements-dev.txt
+
+      - name: Set default benchmark reference
+        run: echo "BENCHMARK_REF=142e45a2b941a1b603723c38882b193db1c1d968" >> $GITHUB_ENV
+
+      - name: Set benchmark reference if defined by workflow_dispatch
+        if: github.event.inputs.commit_ref != ''
+        run: echo "BENCHMARK_REF=${{ github.event.inputs.commit_ref }}" >> $GITHUB_ENV
+
+      - name: Benchmark old commit
+        uses: "./.github/actions/benchmark"
+        with:
+          ref: ${{ env.BENCHMARK_REF }}
+          compare: ""
+
+      - name: Benchmark current commit and compare
+        uses: "./.github/actions/benchmark"
+        with:
+          ref: ${{ github.sha }}
