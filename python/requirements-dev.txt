@@ -1,0 +1,4 @@
+numpy
+scikit-build
+pytest
+pytest-benchmark
