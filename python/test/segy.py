@@ -329,10 +329,10 @@ def test_disabled_methods_seismic_unix(openfn, kwargs):
 @pytest.mark.parametrize(('openfn', 'kwargs'), small_segys)
 def test_header_dict_methods(openfn, kwargs):
     with openfn(**kwargs) as f:
-        assert 89 == len(list(f.header[0].keys()))
-        assert 89 == len(list(f.header[1].values()))
-        assert 89 == len(list(f.header[2].items()))
-        assert 89 == len(list(f.header[3]))
+        assert 90 == len(list(f.header[0].keys()))
+        assert 90 == len(list(f.header[1].values()))
+        assert 90 == len(list(f.header[2].items()))
+        assert 90 == len(list(f.header[3]))
         assert 0 not in f.header[0]
         assert 1 in f.header[0]
         assert segyio.su.cdpx in f.header[0]

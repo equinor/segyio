@@ -92,8 +92,9 @@ class TraceField(Enum):
     TraceIdentifier = 213
     ScalarTraceHeader = 215
     SourceType = 217
-    SourceEnergyDirectionMantissa = 219
-    SourceEnergyDirectionExponent = 223
+    SourceEnergyDirectionVert = 219
+    SourceEnergyDirectionXline = 221
+    SourceEnergyDirectionIline = 223
     SourceMeasurementMantissa = 225
     SourceMeasurementExponent = 229
     SourceMeasurementUnit = 231
@@ -185,8 +186,9 @@ keys = {
     'TraceIdentifier'                       : 213,
     'ScalarTraceHeader'                     : 215,
     'SourceType'                            : 217,
-    'SourceEnergyDirectionMantissa'         : 219,
-    'SourceEnergyDirectionExponent'         : 223,
+    'SourceEnergyDirectionVert'             : 219,
+    'SourceEnergyDirectionXline'            : 221,
+    'SourceEnergyDirectionIline'            : 223,
     'SourceMeasurementMantissa'             : 225,
     'SourceMeasurementExponent'             : 229,
     'SourceMeasurementUnit'                 : 231,

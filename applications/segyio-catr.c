@@ -97,8 +97,9 @@ static const int fields[] = {
     SEGY_TR_DEVICE_ID               ,
     SEGY_TR_SCALAR_TRACE_HEADER     ,
     SEGY_TR_SOURCE_TYPE             ,
-    SEGY_TR_SOURCE_ENERGY_DIR_MANT  ,
-    SEGY_TR_SOURCE_ENERGY_DIR_EXP   ,
+    SEGY_TR_SOURCE_ENERGY_DIR_VERT  ,
+    SEGY_TR_SOURCE_ENERGY_DIR_XLINE ,
+    SEGY_TR_SOURCE_ENERGY_DIR_ILINE ,
     SEGY_TR_SOURCE_MEASURE_MANT     ,
     SEGY_TR_SOURCE_MEASURE_EXP      ,
     SEGY_TR_SOURCE_MEASURE_UNIT     ,
@@ -106,7 +107,7 @@ static const int fields[] = {
     SEGY_TR_UNASSIGNED2
 };
 
-static const char* su[91] = {
+static const char* su[92] = {
     "tracl"   ,
     "tracr"   ,
     "fldr"    ,
@@ -191,8 +192,9 @@ static const char* su[91] = {
     "triden"  ,
     "sctrh"   ,
     "stype"   ,
-    "sedm"    ,
-    "sede"    ,
+    "sedv"    ,
+    "sedxl"   ,
+    "sedil"   ,
     "smm"     ,
     "sme"     ,
     "smunit"  ,
@@ -200,7 +202,7 @@ static const char* su[91] = {
     "uint2"
 };
 
-static const char* segynames[91] = {
+static const char* segynames[92] = {
    "SEQ_LINE"            ,
    "SEQ_FILE"            ,
    "FIELD_RECORD"        ,
@@ -285,8 +287,9 @@ static const char* segynames[91] = {
    "DEVICE_ID"           ,
    "SCALAR_TRACE_HEADER" ,
    "SOURCE_TYPE"         ,
-   "SOURCE_ENERGY_DIR_MA",
-   "SOURCE_ENERGY_DIR_EX",
+   "SOURCE_ENERGY_DIR_V" ,
+   "SOURCE_ENERGY_DIR_XL",
+   "SOURCE_ENERGY_DIR_IL",
    "SOURCE_MEASURE_MANT" ,
    "SOURCE_MEASURE_EXP"  ,
    "SOURCE_MEASURE_UNIT" ,
@@ -294,7 +297,7 @@ static const char* segynames[91] = {
    "UNASSIGNED2"
 };
 
-static const char* desc[91] = {
+static const char* desc[92] = {
     "Trace sequence number within line"                                     ,
     "Trace sequence number within SEG Y file"                               ,
     "Original field record number"                                          ,
@@ -385,7 +388,9 @@ static const char* desc[91] = {
     "to give the true time value in milliseconds"                           ,
     "Source Type/Orientation"                                               ,
     "Source Energy Direction with respect to the source orientation "
-    "(vertical and crossline)"                                              ,
+    "(vertical)"                                                            ,
+    "Source Energy Direction with respect to the source orientation "
+    "(crossline)"                                                           ,
     "Source Energy Direction with respect to the source orientation "
     "(inline)"                                                              ,
     "Source Measurement (mantissa)"                                         ,
@@ -693,7 +698,7 @@ int main( int argc, char** argv ) {
             if( err )
                 exit( errmsg( errno, "Unable to read trace header" ) );
 
-            for( int j = 0; j < 91; j++ ) {
+            for( int j = 0; j < 92; j++ ) {
                 int f;
                 segy_get_field( trheader, fields[j], &f );
                 if( opts.nonzero && !f ) continue;
