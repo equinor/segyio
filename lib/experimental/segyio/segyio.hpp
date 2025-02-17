@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <segyio/segy.h>
+#include <cstdint>
 
 /*
  * KNOWN ISSUES AND TODOs:
