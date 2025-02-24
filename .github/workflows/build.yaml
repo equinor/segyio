@@ -20,9 +20,9 @@ jobs:
             cmake_generator: "-G \"Visual Studio 16 2019\" -A Win32"
           - os: macos-latest
             privledges: "sudo"
-          - os: ubuntu-20.04
+          - os: ubuntu-latest
             privledges: "sudo"
-          - os: ubuntu-20.04
+          - os: ubuntu-latest
             privledges: "sudo"
             compiler: "clang"
             analyzers: "cppcheck"
