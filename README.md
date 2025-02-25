@@ -5,6 +5,13 @@
 [![PyPI Updates](https://pyup.io/repos/github/equinor/segyio/shield.svg)](https://pyup.io/repos/github/equinor/segyio/)
 [![Python 3](https://pyup.io/repos/github/equinor/segyio/python-3-shield.svg)](https://pyup.io/repos/github/equinor/segyio/)
 
+> [!NOTE]
+> 🚧 *segyio 2.0* is under construction in the `main` branch. 🚧
+>
+> New major release is intended to have better support for SEG-Y 2.1 revision.
+>
+> ⚠️ Users should be prepared for possible breaking changes.
+
 ## Documentation ##
 
 The official documentation is hosted on [readthedocs](https://segyio.readthedocs.io/).
