@@ -12,7 +12,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
 
     const char* bin = mxGetData( prhs[ 0 ] );
     const int field = mxGetScalar( prhs[ 1 ] );
-    int f;
+    int64_t f;
 
     int err = segy_get_field( bin, field, &f );
 

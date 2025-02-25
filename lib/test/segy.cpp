@@ -258,7 +258,7 @@ TEST_CASE_METHOD( smallbin,
                   "use bin-interval when trace-interval is zero",
                   "[c.segy]" ) {
 
-    std::int32_t hdt = arbitrary_int();
+    std::int64_t hdt = arbitrary_int();
     segy_get_bfield( bin, SEGY_BIN_INTERVAL, &hdt );
     REQUIRE( hdt == 4000 );
 
@@ -389,7 +389,7 @@ TEST_CASE_METHOD( smallheader,
                   "valid trace-header fields can be read",
                   "[c.segy]" ) {
 
-    int32_t ilno;
+    int64_t ilno;
     Err err = segy_get_field( header, SEGY_TR_INLINE, &ilno );
     CHECK( success( err ) );
     CHECK( ilno == 1 );
@@ -398,7 +398,7 @@ TEST_CASE_METHOD( smallheader,
 TEST_CASE_METHOD( smallheader,
                   "zero header field is an argument error",
                   "[c.segy]" ) {
-    const int32_t input_value = arbitrary_int();
+    const int64_t input_value = arbitrary_int();
     auto value = input_value;
     Err err = segy_get_field( header, 0, &value );
 
@@ -409,7 +409,7 @@ TEST_CASE_METHOD( smallheader,
 TEST_CASE_METHOD( smallheader,
                   "negative header field is an argument error",
                   "[c.segy]" ) {
-    const int32_t input_value = arbitrary_int();
+    const int64_t input_value = arbitrary_int();
     auto value = input_value;
     Err err = segy_get_field( header, -1, &value );
 
@@ -420,7 +420,7 @@ TEST_CASE_METHOD( smallheader,
 TEST_CASE_METHOD( smallheader,
                   "unaligned header field is an argument error",
                   "[c.segy]" ) {
-    const int32_t input_value = arbitrary_int();
+    const int64_t input_value = arbitrary_int();
     auto value = input_value;
     Err err = segy_get_field( header, SEGY_TR_INLINE + 1, &value );
 
@@ -431,7 +431,7 @@ TEST_CASE_METHOD( smallheader,
 TEST_CASE_METHOD( smallheader,
                   "too large header field is an argument error",
                   "[c.segy]" ) {
-    const int32_t input_value = arbitrary_int();
+    const int64_t input_value = arbitrary_int();
     auto value = input_value;
     Err err = segy_get_field( header, SEGY_TRACE_HEADER_SIZE + 10, &value );
 
@@ -513,7 +513,7 @@ int field_read_size(const int field) {
     std::array< char, size > header;
     header.fill(0x01);
 
-    int output;
+    int64_t output;
     segy_get_field(header.data(), field, &output);
 
     if (output == 0x0101)     return 2;
@@ -1300,7 +1300,7 @@ TEST_CASE( "setting correct header fields succeeds",
     CHECK( success( err ) );
 
 
-    int32_t output;
+    int64_t output;
     err = segy_get_field( header, field, &output );
     CHECK( success( err ) );
 
@@ -1325,8 +1325,8 @@ SCENARIO( "modifying trace header", "[c.segy]" ) {
         CHECK( err == Err::ok() );
 
         THEN( "the header buffer is updated") {
-            int ilno = 0;
-            int scale = 0;
+            int64_t ilno = 0;
+            int64_t scale = 0;
             err = segy_get_field( header, SEGY_TR_INLINE, &ilno );
             CHECK( err == Err::ok() );
             err = segy_get_field( header, SEGY_TR_SOURCE_GROUP_SCALAR, &scale );
@@ -1355,8 +1355,8 @@ SCENARIO( "modifying trace header", "[c.segy]" ) {
 
         THEN( "changes are observable on disk" ) {
             char fresh[ SEGY_TRACE_HEADER_SIZE ] = {};
-            int ilno = 0;
-            int scale = 0;
+            int64_t ilno = 0;
+            int64_t scale = 0;
             err = segy_traceheader( fp, 5, fresh, trace0, trace_bsize );
             CHECK( err == Err::ok() );
             err = segy_get_field( fresh, SEGY_TR_INLINE, &ilno );
@@ -1824,14 +1824,14 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
             err = segy_traceheader( fp, 0, buf, trace0, trace_bsize );
             CHECK( err == Err::ok() );
 
-            int ilno = 0;
+            int64_t ilno = 0;
             err = segy_get_field( buf, SEGY_TR_INLINE, &ilno );
             CHECK( err == Err::ok() );
             CHECK( ilno == 111 );
         }
 
         GIVEN( "an invalid field" ) {
-            int x = -1;
+            int64_t x = -1;
             err = segy_get_field( buf, SEGY_TRACE_HEADER_SIZE + 10, &x );
             CHECK( err == Err::field() );
             CHECK( x == -1 );
@@ -1977,8 +1977,8 @@ TEST_CASE("1-byte header words are correctly read", "[c.segy]") {
     header[300] = 0x01;
     header[301] = 0x02;
 
-    std::int32_t one;
-    std::int32_t two;
+    std::int64_t one;
+    std::int64_t two;
 
     Err err = segy_get_bfield(header.data(), SEGY_BIN_SEGY_REVISION, &one);
     CHECK(err == Err::ok());

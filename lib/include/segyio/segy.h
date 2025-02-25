@@ -87,10 +87,10 @@ int segy_format( const char* binheader );
  */
 int segy_set_format( segy_file*, int format );
 
-int segy_get_field( const char* traceheader, int field, int32_t* f );
-int segy_get_bfield( const char* binheader, int field, int32_t* f );
-int segy_set_field( char* traceheader, int field, int32_t val );
-int segy_set_bfield( char* binheader, int field, int32_t val );
+int segy_get_field( const char* traceheader, int field, int64_t* f );
+int segy_get_bfield( const char* binheader, int field, int64_t* f );
+int segy_set_field( char* traceheader, int field, int64_t val );
+int segy_set_bfield( char* binheader, int field, int64_t val );
 
 int segy_field_forall( segy_file*,
                        int field,
