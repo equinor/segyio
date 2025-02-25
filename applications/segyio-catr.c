@@ -395,7 +395,7 @@ static const char* desc[91] = {
     "Unassigned 2"
 };
 
-static int help() {
+static int help(void) {
     puts(
 "Usage: segyio-catr [OPTION]... FILE\n"
 "Print specific trace headers from FILE\n"
