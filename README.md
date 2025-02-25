@@ -5,6 +5,13 @@
 [![PyPI Updates](https://pyup.io/repos/github/equinor/segyio/shield.svg)](https://pyup.io/repos/github/equinor/segyio/)
 [![Python 3](https://pyup.io/repos/github/equinor/segyio/python-3-shield.svg)](https://pyup.io/repos/github/equinor/segyio/)
 
+> [!NOTE]
+> 🚧 *segyio 2.0* is under construction in the `main` branch. 🚧
+>
+> New major release is intended to have better support for SEG-Y 2.1 revision.
+>
+> ⚠️ Users should be prepared for possible breaking changes.
+
 ## Documentation ##
 
 The official documentation is hosted on [readthedocs](https://segyio.readthedocs.io/).
@@ -355,9 +362,10 @@ discriminate between the revisions, but instead tries to use information
 available in the file. For an *actual* standard's reference, please see the
 publications by SEG:
 
-- [SEG-Y 0 (1975)](https://seg.org/Portals/0/SEG/News%20and%20Resources/Technical%20Standards/seg_y_rev0.pdf)
-- [SEG-Y 1 (2002)](https://seg.org/Portals/0/SEG/News%20and%20Resources/Technical%20Standards/seg_y_rev1.pdf)
-- [SEG-Y 2 (2017)](https://seg.org/Portals/0/SEG/News%20and%20Resources/Technical%20Standards/seg_y_rev2_0-mar2017.pdf)
+- [SEG-Y 0 (1975)](https://library.seg.org/pb-assets/technical-standards/seg_y_rev0-1686080980707.pdf)
+- [SEG-Y 1 (2002)](https://library.seg.org/pb-assets/technical-standards/seg_y_rev1-1686080991247.pdf)
+- [SEG-Y 2 (2017)](https://library.seg.org/pb-assets/technical-standards/seg_y_rev2_0-mar2017-1686080998003.pdf)
+- [SEG-Y 2.1 (2023)](https://library.seg.org/pb-assets/technical-standards/seg_y_rev2_1-oct2023-1701361639333.pdf)
 
 ## Contributing ##
 
