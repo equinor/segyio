@@ -168,9 +168,9 @@ void ascii2ebcdic( const char* ascii, char* ebcdic ) {
 #define IEMINIB 0x21200000
 
 static inline void ibm_native( void* buf ) {
-    static int it[8] = { 0x21800000, 0x21400000, 0x21000000, 0x21000000,
-                         0x20c00000, 0x20c00000, 0x20c00000, 0x20c00000 };
-    static int mt[8] = { 8, 4, 2, 2, 1, 1, 1, 1 };
+    static const int it[8] = { 0x21800000, 0x21400000, 0x21000000, 0x21000000,
+                               0x20c00000, 0x20c00000, 0x20c00000, 0x20c00000 };
+    static const int mt[8] = { 8, 4, 2, 2, 1, 1, 1, 1 };
     unsigned int manthi, iexp, inabs;
     int ix;
     uint32_t u;
@@ -189,8 +189,8 @@ static inline void ibm_native( void* buf ) {
 }
 
 static inline void native_ibm( void* buf ) {
-    static int it[4] = { 0x21200000, 0x21400000, 0x21800000, 0x22100000 };
-    static int mt[4] = { 2, 4, 8, 1 };
+    static const int it[4] = { 0x21200000, 0x21400000, 0x21800000, 0x22100000 };
+    static const int mt[4] = { 2, 4, 8, 1 };
     unsigned int manthi, iexp, ix;
     uint32_t u;
 
@@ -223,7 +223,7 @@ void ieee2ibm( void* to, const void* from ) {
 }
 
 /* Lookup table for field sizes. All values not explicitly set are 0 */
-static int field_size[] = {
+static int field_size[SEGY_TRACE_HEADER_SIZE] = {
     [SEGY_TR_CDP_X                  ] = 4,
     [SEGY_TR_CDP_Y                  ] = 4,
     [SEGY_TR_CROSSLINE              ] = 4,
@@ -900,7 +900,7 @@ int segy_binheader( segy_file* fp, char* buf ) {
 
 #ifdef HAVE_MMAP
     if( fp->addr ) {
-        char* src = (char*)fp->addr + SEGY_TEXT_HEADER_SIZE;
+        const char* src = (char*)fp->addr + SEGY_TEXT_HEADER_SIZE;
         const int len = SEGY_BINARY_HEADER_SIZE;
         const int err = memread( buf, fp, src, len );
         if( err ) return err;
@@ -1778,7 +1778,7 @@ int segy_readtrace( segy_file* fp,
 
 static int bswap64vec( void* vec, long long len ) {
     char* begin = (char*) vec;
-    char* end = (char*) begin + len * sizeof(int64_t);
+    const char* end = (char*) begin + len * sizeof(int64_t);
 
     for (char* xs = begin; xs != end; xs += sizeof(int64_t)) {
         uint64_t v;
@@ -1792,7 +1792,7 @@ static int bswap64vec( void* vec, long long len ) {
 
 static int bswap32vec( void* vec, long long len ) {
     char* begin = (char*) vec;
-    char* end = (char*) begin + len * sizeof(int32_t);
+    const char* end = (char*) begin + len * sizeof(int32_t);
 
     for( char* xs = begin; xs != end; xs += sizeof(int32_t) ) {
         uint32_t v;
@@ -1806,7 +1806,7 @@ static int bswap32vec( void* vec, long long len ) {
 
 static int bswap24vec( void* vec, long long len ) {
     char* begin = (char*) vec;
-    char* end = (char*) begin + len * 3;
+    const char* end = (char*) begin + len * 3;
 
     for (char* xs = begin; xs != end; xs += 3) {
         uint8_t bits[3];
@@ -1823,7 +1823,7 @@ static int bswap24vec( void* vec, long long len ) {
 
 static int bswap16vec( void* vec, long long len ) {
     char* begin = (char*) vec;
-    char* end = (char*) begin + len * sizeof(int16_t);
+    const char* end = (char*) begin + len * sizeof(int16_t);
 
     for( char* xs = begin; xs != end; xs += sizeof(int16_t) ) {
         uint16_t v;
@@ -2347,8 +2347,7 @@ int segy_write_textheader( segy_file* fp, int pos, const char* buf ) {
 
     if( pos < 0 ) return SEGY_INVALID_ARGS;
 
-    err = encode( mbuf, buf, a2e, SEGY_TEXT_HEADER_SIZE );
-    if( err != 0 ) return err;
+    encode( mbuf, buf, a2e, SEGY_TEXT_HEADER_SIZE );
 
     const long offset = pos == 0
                       ? 0
