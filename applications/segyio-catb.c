@@ -23,7 +23,7 @@ static int printhelp(void){
     return 0;
 }
 
-static int get_binary_value( char* binheader, int bfield ){
+static int get_binary_value( const char* binheader, int bfield ){
     int32_t f;
     segy_get_bfield( binheader, bfield, &f );
 
@@ -156,7 +156,7 @@ int main( int argc, char** argv ){
         "Number of 3200-byte, Extended Textual File Headers"
     };
 
-    static int bfield_value[ 30 ] = {
+    static const int bfield_value[ 30 ] = {
         SEGY_BIN_JOB_ID,
         SEGY_BIN_LINE_NUMBER,
         SEGY_BIN_REEL_NUMBER,
