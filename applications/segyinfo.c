@@ -7,16 +7,16 @@
 #include <segyio/segy.h>
 
 static void printSegyTraceInfo( const char* buf ) {
-    int cdp, tsf, xl, il;
+    int64_t cdp, tsf, xl, il;
     segy_get_field( buf, SEGY_TR_ENSEMBLE, &cdp );
     segy_get_field( buf, SEGY_TR_SEQ_FILE, &tsf );
     segy_get_field( buf, SEGY_TR_CROSSLINE, &xl );
     segy_get_field( buf, SEGY_TR_INLINE, &il );
 
-    printf("cdp:               %d\n", cdp );
-    printf("TraceSequenceFile: %d\n", tsf );
-    printf("Crossline3D:       %d\n", xl );
-    printf("Inline3D:          %d\n", il );
+    printf("cdp:               %lld\n", cdp );
+    printf("TraceSequenceFile: %lld\n", tsf );
+    printf("Crossline3D:       %lld\n", xl );
+    printf("Inline3D:          %lld\n", il );
 }
 
 #define minimum(x,y) ((x) < (y) ? (x) : (y))
@@ -55,7 +55,7 @@ int main(int argc, char* argv[]) {
     const int samples = segy_samples( header );
     const long trace0 = segy_trace0( header );
     const int trace_bsize = segy_trace_bsize( samples );
-    int extended_headers;
+    int64_t extended_headers;
     err = segy_get_bfield( header, SEGY_BIN_EXT_HEADERS, &extended_headers );
 
     if( err != 0 ) {
@@ -74,7 +74,7 @@ int main(int argc, char* argv[]) {
     printf( "Sample format: %d\n", format );
     printf( "Samples per trace: %d\n", samples );
     printf( "Traces: %d\n", traces );
-    printf("Extended text header count: %d\n", extended_headers );
+    printf("Extended text header count: %lld\n", extended_headers );
     puts("");
 
 
@@ -113,7 +113,7 @@ int main(int argc, char* argv[]) {
             exit( err );
         }
 
-        int sample_count;
+        int64_t sample_count;
         err = segy_get_field( traceh, SEGY_TR_SAMPLE_COUNT, &sample_count );
 
         if( err != 0 ) {

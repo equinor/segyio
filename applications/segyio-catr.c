@@ -694,7 +694,7 @@ int main( int argc, char** argv ) {
                 exit( errmsg( errno, "Unable to read trace header" ) );
 
             for( int j = 0; j < 91; j++ ) {
-                int f;
+                int64_t f;
                 segy_get_field( trheader, fields[j], &f );
                 if( opts.nonzero && !f ) continue;
 
@@ -709,14 +709,14 @@ int main( int argc, char** argv ) {
                 }
 
                 if( opts.description ) {
-                    printf( "%s\t%d\t%d\t%s\n",
+                    printf( "%s\t%lld\t%d\t%s\n",
                             labels[j],
                             f,
                             fields[ j ],
                             desc[ j ] );
                 }
                 else
-                    printf( "%s\t%d\n", labels[j], f );
+                    printf( "%s\t%lld\n", labels[j], f );
             }
         }
     }

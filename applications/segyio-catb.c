@@ -24,7 +24,7 @@ static int printhelp(){
 }
 
 static int get_binary_value( char* binheader, int bfield ){
-    int32_t f;
+    int64_t f;
     segy_get_bfield( binheader, bfield, &f );
 
     /*
@@ -34,7 +34,7 @@ static int get_binary_value( char* binheader, int bfield ){
     switch (bfield) {
         case SEGY_BIN_SAMPLES:
         case SEGY_BIN_SAMPLES_ORIG:
-            f = (int32_t)((uint16_t)(f));
+            f = (int64_t)((int32_t)((uint16_t)(f)));
             break;
     }
     return f;
@@ -211,19 +211,19 @@ int main( int argc, char** argv ){
         if( err ) return errmsg(opterr, "Unable to read binary header"); 
 
         for( int c = 0; c < 30; ++c ){
-            int field = get_binary_value( binheader, bfield_value[ c ] );
+            uint64_t field = get_binary_value( binheader, bfield_value[ c ] );
             if( opts.nonzero && !field) continue;
 
             if( opts.description ) {
                 int byte_offset = (bfield_value[ c ] - SEGY_TEXT_HEADER_SIZE);
-                printf( "%s\t%d\t%d\t%s\n",
+                printf( "%s\t%llu\t%d\t%s\n",
                     su[ c ],
                     field,
                     byte_offset,
                     su_desc[ c ] );
             }
             else
-                printf( "%s\t%d\n", su[ c ], field );
+                printf( "%s\t%lld\n", su[ c ], field );
         }
         segy_close( fp );
     }
