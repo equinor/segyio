@@ -18,17 +18,16 @@ jobs:
             cmake_generator: "-G \"Visual Studio 16 2019\" -A x64"
           - os: windows-2019
             cmake_generator: "-G \"Visual Studio 16 2019\" -A Win32"
-          - os: macos-latest
-            privledges: "sudo"
           - os: ubuntu-latest
             privledges: "sudo"
           - os: ubuntu-latest
             privledges: "sudo"
             compiler: "clang"
             mkdoc: "-DBUILD_DOC=ON -DSPHINX_ARGS=-WT"
+          - os: macos-13
+            privledges: "sudo"
           - os: macos-latest
             privledges: "sudo"
-            arch: arm64
 
     steps:
       - uses: actions/checkout@v4
