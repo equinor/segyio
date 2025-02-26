@@ -7,8 +7,20 @@
 #include <vector>
 #include <array>
 
+// disable conversion from 'const _Elem' to '_Objty' MSC warnings.
+// warnings reason is unknown, should be caused by Catch2 though, thus ignored
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4244)
+#endif
+
 #include <catch/catch.hpp>
 #include "matchers.hpp"
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+
 
 #include <segyio/segy.h>
 #include <segyio/util.h>
@@ -251,6 +263,9 @@ int arbitrary_int() {
      */
     return -1;
 }
+float arbitrary_float() {
+    return -1.0f;
+}
 
 }
 
@@ -262,7 +277,7 @@ TEST_CASE_METHOD( smallbin,
     segy_get_bfield( bin, SEGY_BIN_INTERVAL, &hdt );
     REQUIRE( hdt == 4000 );
 
-    float dt = arbitrary_int();
+    float dt = arbitrary_float();
     const Err err = segy_sample_interval( fp, 100.0, &dt );
 
     CHECK( err == Err::ok() );
@@ -278,7 +293,7 @@ TEST_CASE( "use fallback interval when both trace and bin is negative",
 
     const float fallback = 100.0;
 
-    float dt = arbitrary_int();
+    float dt = arbitrary_float();
     const Err err = segy_sample_interval( fp, fallback, &dt );
 
     CHECK( err == Err::ok() );
@@ -295,7 +310,7 @@ TEST_CASE( "use trace interval when bin is negative",
     const float fallback = 100.0;
     const float expected = 4000.0;
 
-    float dt = arbitrary_int();
+    float dt = arbitrary_float();
     const Err err = segy_sample_interval( fp, fallback, &dt );
 
     CHECK( err == Err::ok() );
@@ -312,7 +327,7 @@ TEST_CASE( "use bin interval when trace is negative",
     const float fallback = 100.0;
     const float expected = 2000.0;
 
-    float dt = arbitrary_int();
+    float dt = arbitrary_float();
     const Err err = segy_sample_interval( fp, fallback, &dt );
 
     CHECK( err == Err::ok() );
@@ -767,7 +782,7 @@ TEST_CASE_METHOD( smallcube,
                                 stride,
                                 offsets,
                                 inlines.data(),
-                                inlines.size(),
+                                (int) inlines.size(),
                                 &line_trace0 );
     CHECK( success( err ) );
     CHECK( line_trace0 == 15 );
@@ -783,7 +798,7 @@ TEST_CASE_METHOD( smallcube,
                                 stride,
                                 offsets,
                                 inlines.data(),
-                                inlines.size(),
+                                (int) inlines.size(),
                                 &line_trace0 );
     CHECK( err == SEGY_MISSING_LINE_INDEX );
 }
@@ -817,7 +832,7 @@ TEST_CASE_METHOD( smallcube,
                                 stride,
                                 offsets,
                                 crosslines.data(),
-                                crosslines.size(),
+                                (int) crosslines.size(),
                                 &line_trace0 );
     CHECK( success( err ) );
     CHECK( line_trace0 == 2 );
@@ -834,7 +849,7 @@ TEST_CASE_METHOD( smallcube,
                                 stride,
                                 offsets,
                                 inlines.data(),
-                                inlines.size(),
+                                (int) inlines.size(),
                                 &line_trace0 );
     CHECK( err == SEGY_MISSING_LINE_INDEX );
 }
@@ -974,7 +989,7 @@ TEST_CASE_METHOD( smallcube,
     std::vector< float > line( expected.size() );
     Err err = segy_read_line( fp,
                               line_trace0,
-                              crosslines.size(),
+                              (int) crosslines.size(),
                               stride,
                               offsets,
                               line.data(),
@@ -1011,7 +1026,7 @@ TEST_CASE_METHOD( smallcube,
     std::vector< float > line( expected.size() );
     Err err = segy_read_line( fp,
                               line_trace0,
-                              inlines.size(),
+                              (int) inlines.size(),
                               stride,
                               offsets,
                               line.data(),
