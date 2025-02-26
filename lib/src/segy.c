@@ -390,7 +390,7 @@ static int file_size( FILE* fp, long long* size ) {
     // this means we're on windows where fstat is unreliable for filesizes >2G
     // because long is only 4 bytes
     struct _stati64 st;
-    const int err = _fstati64( fileno( fp ), &st );
+    const int err = _fstati64( _fileno( fp ), &st );
 #else
     struct stat st;
     const int err = fstat( fileno( fp ), &st );
@@ -1281,7 +1281,7 @@ int segy_traces( segy_file* fp,
 
     assert( size / trace_bsize <= (long long)INT_MAX );
 
-    *traces = size / trace_bsize;
+    *traces = (int) (size / trace_bsize);
     return SEGY_OK;
 }
 
@@ -1310,8 +1310,8 @@ int segy_sample_interval( segy_file* fp, float fallback, float* dt ) {
     segy_get_bfield( bin_header, SEGY_BIN_INTERVAL, &bindt );
     segy_get_field( trace_header, SEGY_TR_SAMPLE_INTER, &trdt );
 
-    float binary_header_dt = bindt;
-    float trace_header_dt = trdt;
+    float binary_header_dt = (float) bindt;
+    float trace_header_dt = (float) trdt;
 
     /*
      * 3 cases:
@@ -1858,7 +1858,7 @@ int segy_readsubtr( segy_file* fp,
             err = memread( buf, fp, fp->cur, elemsize * elems );
             if( err != SEGY_OK ) return err;
         } else {
-            const int readc = fread( buf, elemsize, elems, fp->fp );
+            const int readc = (int) fread( buf, elemsize, elems, fp->fp );
             if( readc != elems ) return SEGY_FREAD_ERROR;
         }
 
@@ -1909,7 +1909,7 @@ int segy_readsubtr( segy_file* fp,
      */
     void* tracebuf = rangebuf ? rangebuf : malloc( elems * elemsize );
 
-    const int readc = fread( tracebuf, elemsize, elems, fp->fp );
+    const int readc = (int) fread( tracebuf, elemsize, elems, fp->fp );
     if( readc != elems ) {
         if( !rangebuf ) free( tracebuf );
         return SEGY_FREAD_ERROR;
@@ -2012,7 +2012,7 @@ int segy_writesubtr( segy_file* fp,
             err = memwrite( fp, fp->cur, buf, elemsize * elems );
             if( err ) return err;
         } else {
-            const int writec = fwrite( buf, elemsize, elems, fp->fp );
+            const int writec = (int) fwrite( buf, elemsize, elems, fp->fp );
             if( writec != elems ) return SEGY_FWRITE_ERROR;
         }
 
@@ -2038,7 +2038,7 @@ int segy_writesubtr( segy_file* fp,
          * only handle fstream path - the mmap is handled comfortably by the
          * stride-aware code path
          */
-        const int writec = fwrite( tracebuf, elemsize, elems, fp->fp );
+        const int writec = (int) fwrite( tracebuf, elemsize, elems, fp->fp );
         if( !rangebuf ) free( tracebuf );
         if( writec != elems ) return SEGY_FWRITE_ERROR;
         return SEGY_OK;
@@ -2073,7 +2073,7 @@ int segy_writesubtr( segy_file* fp,
     void* tracebuf = rangebuf ? rangebuf : malloc( elems * elemsize );
 
     // like in readsubtr, read a larger chunk and then step through that
-    const int readc = fread( tracebuf, elemsize, elems, fp->fp );
+    const int readc = (int) fread( tracebuf, elemsize, elems, fp->fp );
     if( readc != elems ) { free( tracebuf ); return SEGY_FREAD_ERROR; }
     /* rewind, because fread advances the file pointer */
     err = fseek( fp->fp, -(elems * elemsize), SEEK_CUR );
@@ -2095,7 +2095,7 @@ int segy_writesubtr( segy_file* fp,
         bswap16vec_strided( cur, src, step, slicelen );
     }
 
-    const int writec = fwrite( tracebuf, elemsize, elems, fp->fp );
+    const int writec = (int) fwrite( tracebuf, elemsize, elems, fp->fp );
     if( !rangebuf ) free( tracebuf );
 
     if( writec != elems ) return SEGY_FWRITE_ERROR;
@@ -2400,9 +2400,9 @@ static int scaled_cdp( segy_file* fp,
     err = segy_get_field( trheader, SEGY_TR_SOURCE_GROUP_SCALAR, &scalar );
     if( err != 0 ) return err;
 
-    float scale = scalar;
+    float scale = (float) scalar;
     if( scalar == 0 ) scale = 1.0;
-    if( scalar < 0 )  scale = -1.0 / scale;
+    if( scalar < 0 )  scale = -1.0f / scale;
 
     *cdpx = x * scale;
     *cdpy = y * scale;
@@ -2442,9 +2442,9 @@ int segy_rotation_cw( segy_file* fp,
 
     float x = nw.x - sw.x;
     float y = nw.y - sw.y;
-    float radians = x || y ? atan2( x, y ) : 0;
+    double radians = x || y ? atan2( x, y ) : 0;
     if( radians < 0 ) radians += 2 * acos(-1);
 
-    *rotation = radians;
+    *rotation = (float) radians;
     return SEGY_OK;
 }
