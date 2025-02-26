@@ -10,7 +10,7 @@
 #include "apputils.c"
 #include <segyio/segy.h>
 
-static int help() {
+static int help(void) {
     puts( "Usage: segyio-crop [OPTION]... SRC DST\n"
           "Copy a sub cube from SRC to DST\n"
           "\n"

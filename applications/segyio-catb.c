@@ -9,7 +9,7 @@
 #include "apputils.h"
 #include <segyio/segy.h>
 
-static int printhelp(){
+static int printhelp(void){
     puts( "Usage: segyio-catb [OPTION]... [FILE]...\n"
           "Concatenate the binary header from FILE(s) to seismic unix "
           "output.\n"
