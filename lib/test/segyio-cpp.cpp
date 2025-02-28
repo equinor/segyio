@@ -1,7 +1,19 @@
 #include <catch/catch.hpp>
 #include "matchers.hpp"
 
+// MSC conversion warnings in segyio.hpp are ignored as
+// it is unclear how to fix them in segyio.hpp template code
+// pragmas could be removed if proper fix is found
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4244)
+#endif
+
 #include <segyio/segyio.hpp>
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 using namespace segyio;
 using namespace segyio::literals;
@@ -223,7 +235,7 @@ TEST_CASE_METHOD( Writable,
                   "[c++]" ) {
 
     std::vector< float > in( 50 );
-    for( std::size_t i = 0; i < in.size(); ++i ) in[i] = i;
+    for( std::size_t i = 0; i < in.size(); ++i ) in[i] = (float) i;
     f.put( 0, in.begin() );
 
     std::vector< float > out;
