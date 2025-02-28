@@ -33,7 +33,7 @@ jobs:
           - os: ubuntu-latest
             privledges: "sudo"
             build_type: "Debug"
-            compiler_flags: "-Wextra -Wall"
+            compiler_flags: "-Wextra -Wall -pedantic"
           - os: ubuntu-latest
             privledges: "sudo"
             compiler: "clang"
@@ -43,7 +43,7 @@ jobs:
             privledges: "sudo"
             compiler: "clang"
             build_type: "Debug"
-            compiler_flags: "-Wextra -Wall"
+            compiler_flags: "-Wextra -Wall -pedantic"
           - os: macos-13
             privledges: "sudo"
             build_type: "Release"
