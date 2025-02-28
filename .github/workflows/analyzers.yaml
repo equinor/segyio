@@ -48,18 +48,19 @@ jobs:
 
       - name: Configure segyio
         run: |
-          sudo scan-build --status-bugs cmake \
-            -S .                              \
-            -B build                          \
-            -DCMAKE_BUILD_TYPE=Release        \
-            -DBUILD_PYTHON=OFF                \
+          scan-build --status-bugs   \
+            cmake                    \
+            -S .                     \
+            -B build                 \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DBUILD_PYTHON=OFF       \
             -DBUILD_TESTING=OFF
 
       - name: Run scan-build
         run: |
-          sudo scan-build --status-bugs cmake  \
-            --build build                      \
-            --target install
+          scan-build --status-bugs \
+            cmake                  \
+            --build build
 
   valgrind:
     runs-on: ubuntu-latest
@@ -73,11 +74,13 @@ jobs:
 
       - name: Build segyio
         run: |
-          cmake -S . -B build           \
-            -DCMAKE_BUILD_TYPE=Release  \
-            -DBUILD_SHARED_LIBS=ON      \
+            cmake -S . -B build           \
+            -DCMAKE_BUILD_TYPE=Debug      \
+            -DCMAKE_C_FLAGS_DEBUG="-O0"   \
+            -DCMAKE_CXX_FLAGS_DEBUG="-O0" \
+            -DBUILD_SHARED_LIBS=ON        \
             -DBUILD_PYTHON=OFF
-          cmake --build build
+            cmake --build build
 
       - name: Run valgrind on C tests, file
         working-directory: build/lib
