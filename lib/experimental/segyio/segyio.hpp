@@ -1013,8 +1013,14 @@ simple_handle< T >::simple_handle( const segyio::path& path,
     }
 
     auto p = std::string(path);
-    std::unique_ptr< std::FILE, decltype( &std::fclose ) >
-        file( std::fopen( p.c_str(), m.c_str() ), std::fclose );
+
+    struct file_deleter {
+        void operator()(std::FILE* fp) const {
+            std::fclose(fp);
+        }
+    };
+    std::unique_ptr< std::FILE, file_deleter >
+        file( std::fopen( p.c_str(), m.c_str() ));
 
     if( file ) {
         /* mode isn't garbage, and path apparently is ok too */

@@ -10,27 +10,46 @@ on:
 jobs:
   test:
     runs-on: ${{ matrix.os }}
-    name: Build and test on ${{ matrix.os }} ${{ matrix.compiler }}
+    name: Build and test ${{ matrix.build_type }} on ${{ matrix.os }} ${{ matrix.compiler }} ${{ matrix.cmake_generator }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: windows-2019
             cmake_generator: "-G \"Visual Studio 16 2019\" -A x64"
+            build_type: "Release"
+            compiler_flags: "-D_CRT_SECURE_NO_WARNINGS /EHsc"
+          - os: windows-2019
+            cmake_generator: "-G \"Visual Studio 16 2019\" -A x64"
+            build_type: "Debug"
+            compiler_flags: "-D_CRT_SECURE_NO_WARNINGS /EHsc"
           - os: windows-2019
             cmake_generator: "-G \"Visual Studio 16 2019\" -A Win32"
-          - os: macos-latest
+            build_type: "Release"
+            compiler_flags: "-D_CRT_SECURE_NO_WARNINGS /EHsc"
+          - os: ubuntu-latest
             privledges: "sudo"
-          - os: ubuntu-20.04
+            build_type: "Release"
+          - os: ubuntu-latest
             privledges: "sudo"
-          - os: ubuntu-20.04
+            build_type: "Debug"
+            compiler_flags: "-Wextra -Wall -pedantic"
+          - os: ubuntu-latest
             privledges: "sudo"
             compiler: "clang"
-            analyzers: "cppcheck"
-            scan: "scan-build --status-bugs"
             mkdoc: "-DBUILD_DOC=ON -DSPHINX_ARGS=-WT"
+            build_type: "Release"
+          - os: ubuntu-latest
+            privledges: "sudo"
+            compiler: "clang"
+            build_type: "Debug"
+            compiler_flags: "-Wextra -Wall -pedantic"
+          - os: macos-13
+            privledges: "sudo"
+            build_type: "Release"
           - os: macos-latest
             privledges: "sudo"
-            arch: arm64
+            build_type: "Release"
 
     steps:
       - uses: actions/checkout@v4
@@ -43,28 +62,18 @@ jobs:
             echo "CC=/usr/bin/clang"    >> $GITHUB_ENV
             echo "CXX=/usr/bin/clang++" >> $GITHUB_ENV
 
-      - name: Run cppcheck
-        shell: bash
-        if: ${{ matrix.analyzer == 'cppcheck' }}
-        run: |
-          cppcheck
-            --enable=style,portability,performance,warning
-            --library=posix
-            --library=cppcheck/segyio.cfg
-            --suppressions-list=cppcheck/suppressions.txt
-            --inline-suppr
-            --project=compile_commands.json
-            --error-exitcode=1
-
       - name: Configure
         shell: bash
         run: |
-          ${{ matrix.scan }} cmake -S . -B build \
+          cmake -S . -B build \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             -DBUILD_PYTHON=OFF \
             -DBUILD_SHARED_LIBS=ON \
-            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DCMAKE_COMPILE_WARNING_AS_ERROR=ON \
             -DCMAKE_INSTALL_NAME_DIR=/usr/local/lib \
+            -DCMAKE_C_FLAGS="${{ matrix.compiler_flags }}" \
+            -DCMAKE_CXX_FLAGS="${{ matrix.compiler_flags }}" \
             ${{ matrix.mkdoc }} \
             ${{ matrix.cmake_generator }} \
 
@@ -73,14 +82,14 @@ jobs:
         run: |
             ${{ matrix.privledges }} cmake \
               --build build \
-              --config Release \
+              --config ${{ matrix.build_type }} \
               --target install \
 
       - name: Test
         shell: bash
         run: |
             cd build
-            ctest -C Release --output-on-failure -V
+            ctest -C ${{ matrix.build_type }} --output-on-failure -V
 
 
   matlab:

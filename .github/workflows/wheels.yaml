@@ -25,11 +25,11 @@ jobs:
             cmake_generator: "Visual Studio 16 2019"
             cmake_generator_platform: "Win32"
             arch: x86
-          - os: ubuntu-20.04
+          - os: ubuntu-latest
             arch: x86_64
           - os: ubuntu-24.04-arm
             arch: aarch64
-          - os: ubuntu-20.04
+          - os: ubuntu-latest
             arch: i686
           # macos-latest runs on arm64 architecture and cibuildwheel cross
           # compiling for x86_64 fails
