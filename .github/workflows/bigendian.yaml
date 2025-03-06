@@ -1,0 +1,30 @@
+name: Test bigendian
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  bigendian:
+    name: Run tests on bigendian s390x system
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build
+        uses: docker/build-push-action@v6
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: .
+          file: .github/images/bigendian.Dockerfile
+          platforms: linux/s390x
