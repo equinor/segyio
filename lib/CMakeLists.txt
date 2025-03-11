@@ -132,6 +132,7 @@ target_compile_options(c.segy BEFORE
 target_compile_definitions(c.segy
     PRIVATE
         ${mmap}
+        $<${HOST_BIG_ENDIAN}:HOST_BIG_ENDIAN>
 )
 add_test(NAME c.segy          COMMAND c.segy [c.segy])
 add_test(NAME c.segy.mmap     COMMAND c.segy [c.segy] --test-mmap)

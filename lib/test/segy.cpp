@@ -1548,6 +1548,14 @@ SCENARIO( "reading a large file", "[c.segy]" ) {
     }
 }
 
+#ifdef HOST_BIG_ENDIAN
+    #define HOST_LSB 0
+    #define HOST_MSB 1
+#else
+    #define HOST_LSB 1
+    #define HOST_MSB 0
+#endif
+
 /*
  * There is no native 3-byte integral type in C++, so hack a minimal one
  * together. We don't need arithmetic, only conversion to int32 and from int16
@@ -1564,9 +1572,15 @@ struct int24 {
     int24() = default;
     // cppcheck-suppress noExplicitConstructor
     int24(const int16_t& x) {
+#if HOST_LSB
         this->bytes[0] = ((const char*)&x)[0];
         this->bytes[1] = ((const char*)&x)[1];
         this->bytes[2] = 0;
+#else
+        this->bytes[0] = 0;
+        this->bytes[1] = ((const char*)&x)[0];
+        this->bytes[2] = ((const char*)&x)[1];
+#endif
     }
 
     operator std::int32_t () const noexcept (true) {
