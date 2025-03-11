@@ -11,6 +11,7 @@ segy_samples
 segy_sample_interval
 segy_format
 segy_set_format
+segy_set_endianness
 segy_get_field
 segy_get_bfield
 segy_set_field
