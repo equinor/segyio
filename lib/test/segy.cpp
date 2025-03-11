@@ -347,16 +347,22 @@ TEST_CASE_METHOD( smallbin,
 }
 
 TEST_CASE_METHOD( smallfix,
-                  "sample format can be overriden",
+                  "sample format/endianness can be overriden",
                   "[c.segy]" ) {
     Err err = segy_set_format( fp, SEGY_IEEE_FLOAT_4_BYTE );
+    CHECK( err == Err::ok() );
+
+    err = segy_set_endianness( fp, SEGY_LSB );
     CHECK( err == Err::ok() );
 }
 
 TEST_CASE_METHOD( smallfix,
-                  "sample format fails on invalid format",
+                  "sample format/endianness fails on invalid format",
                   "[c.segy]" ) {
     Err err = segy_set_format( fp, 20 );
+    CHECK( err == Err::args() );
+
+    err = segy_set_endianness( fp, 20 );
     CHECK( err == Err::args() );
 }
 

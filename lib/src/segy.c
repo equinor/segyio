@@ -952,35 +952,23 @@ int segy_format( const char* binheader ) {
 }
 
 int segy_set_format( segy_file* fp, int format ) {
-    /* extract the low byte to figure out elemsize */
-    const int fmt = format & 0xFF;
+    const int elemsize = formatsize( format );
+    if( elemsize <= 0 ) return SEGY_INVALID_ARGS;
+    fp->elemsize = elemsize;
 
-    const int elemsize = formatsize( fmt );
-    if( fmt && elemsize <= 0 ) return SEGY_INVALID_ARGS;
+    return SEGY_OK;
+}
 
-    /* extract the high byte to figure out endianness */
-    switch( format & 0xFF00 ) {
-        case 0:
-            break;
-
+int segy_set_endianness( segy_file* fp, int endianness) {
+    switch( endianness ) {
         case SEGY_LSB:
-            fp->lsb = 1;
-            break;
-
         case SEGY_MSB:
-            fp->lsb = 0;
             break;
-
         default:
             return SEGY_INVALID_ARGS;
     }
 
-    /*
-     * for exception safety, only update state once it's certain nothing
-     * failed
-     */
-    if( elemsize > 0 ) fp->elemsize = elemsize;
-
+    fp->lsb = endianness;
     return SEGY_OK;
 }
 
