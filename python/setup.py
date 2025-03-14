@@ -1,6 +1,6 @@
 import os
 import sys
-import skbuild
+import skbuild  # pip install scikit-build
 import setuptools
 
 long_description = """
