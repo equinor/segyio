@@ -1,6 +1,7 @@
 from ..open import infer_geometry
 from ..segy import SegyFile
 from . import words
+from ..utils import c_endianness
 
 import numpy
 
@@ -80,20 +81,8 @@ def open(filename, mode = 'r', iline = 189,
         solution = 'use r+ to open in read-write'
         raise ValueError(', '.join((problem, solution)))
 
-    endians = {
-        'little': 256, # (1 << 8)
-        'lsb': 256,
-        'big': 0,
-        'msb': 0,
-    }
-
-    if endian not in endians:
-        problem = 'unknown endianness, must be one of: '
-        candidates = ' '.join(endians.keys())
-        raise ValueError(problem + candidates)
-
     from .. import _segyio
-    fd = _segyio.segyiofd(str(filename), mode, endians[endian])
+    fd = _segyio.segyiofd(str(filename), mode, c_endianness(endian))
     fd.suopen()
     metrics = fd.metrics()
 
