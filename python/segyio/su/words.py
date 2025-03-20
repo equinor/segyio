@@ -215,9 +215,9 @@ lino   = bf.LineNumber
 #:
 reno   = bf.ReelNumber
 #:
-ntrpr  = bf.Traces
+ntrpr  = bf.EnsembleTraces
 #:
-nart   = bf.AuxTraces
+nart   = bf.AuxEnsembleTraces
 #:
 hdt    = bf.Interval
 #:
@@ -265,9 +265,9 @@ vpol   = bf.VibratoryPolarity
 #:
 unas1  = bf.Unassigned1
 #:
-extntrpr  = bf.ExtTraces
+extntrpr  = bf.ExtEnsembleTraces
 #:
-extnart   = bf.ExtAuxTraces
+extnart   = bf.ExtAuxEnsembleTraces
 #:
 exthns    = bf.ExtSamples
 #:

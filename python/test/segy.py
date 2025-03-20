@@ -828,6 +828,23 @@ def test_write_header(small):
         # i.e. don't access buf of treat it as a list
         # assertEqual(list(f.header[2].buf), list(f.header[1].buf))
 
+def test_depricated_fields(small):
+    with segyio.open(small, "r") as f:
+        assert f.bin[BinField.EnsembleTraces] == 25
+        with pytest.warns(DeprecationWarning, match="Traces is deprecated and will be removed in a future version."):
+            assert f.bin[BinField.Traces] == 25
+
+        assert f.bin[BinField.AuxEnsembleTraces] == 0
+        with pytest.warns(DeprecationWarning, match="AuxTraces is deprecated and will be removed in a future version."):
+            assert f.bin[BinField.AuxTraces] == 0
+
+        assert f.bin[BinField.ExtEnsembleTraces] == 0
+        with pytest.warns(DeprecationWarning, match="ExtTraces is deprecated and will be removed in a future version."):
+            assert f.bin[BinField.ExtTraces] == 0
+
+        assert f.bin[BinField.ExtAuxEnsembleTraces] == 0
+        with pytest.warns(DeprecationWarning, match="ExtAuxTraces is deprecated and will be removed in a future version."):
+            assert f.bin[BinField.ExtAuxTraces] == 0
 
 def test_write_binary(small):
     with segyio.open(small, "r+") as f:
@@ -846,7 +863,7 @@ def test_write_binary(small):
         with pytest.raises(KeyError):
             _ = f.bin[3214]
 
-        d = {BinField.Traces: 43,
+        d = {BinField.EnsembleTraces: 43,
              BinField.SweepFrequencyStart: 11}
 
         # assign multiple fields at once by using a dict
@@ -856,7 +873,7 @@ def test_write_binary(small):
         assert 43 == f.bin[segyio.su.ntrpr]
         assert 11 == f.bin[segyio.su.hsfs]
 
-        d = {BinField.Traces: 45,
+        d = {BinField.EnsembleTraces: 45,
              BinField.SweepFrequencyStart: 10}
 
         # assign multiple values using alternative syntax
@@ -876,7 +893,7 @@ def test_write_binary(small):
         assert 7 == f.bin[segyio.su.hdt]
 
         # looking up multiple values at once returns a { TraceField: value } dict
-        assert d == f.bin[BinField.Traces, BinField.SweepFrequencyStart]
+        assert d == f.bin[BinField.EnsembleTraces, BinField.SweepFrequencyStart]
 
         # copy a header
         f.bin = f.bin

@@ -27,7 +27,7 @@ def main():
             # the new shape
             dst.bin = src.bin
             dst.bin = { segyio.BinField.Samples: 50,
-                        segyio.BinField.Traces: 5 * 5
+                        segyio.BinField.EnsembleTraces: 5 * 5
                       }
 
             # Copy all headers in the new inlines. Since we know we're copying
