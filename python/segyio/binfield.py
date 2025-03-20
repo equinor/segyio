@@ -11,8 +11,8 @@ class BinField(Enum):
     JobID = 3201
     LineNumber = 3205
     ReelNumber = 3209
-    Traces = 3213
-    AuxTraces = 3215
+    EnsembleTraces = 3213
+    AuxEnsembleTraces = 3215
     Interval = 3217
     IntervalOriginal = 3219
     Samples = 3221
@@ -35,8 +35,8 @@ class BinField(Enum):
     MeasurementSystem = 3255
     ImpulseSignalPolarity = 3257
     VibratoryPolarity = 3259
-    ExtTraces = 3261
-    ExtAuxTraces = 3265
+    ExtEnsembleTraces = 3261
+    ExtAuxEnsembleTraces = 3265
     ExtSamples = 3269
     ExtSamplesOriginal = 3289
     ExtEnsembleFold = 3293
@@ -51,8 +51,8 @@ keys = {
     'JobID'                 : 3201,
     'LineNumber'            : 3205,
     'ReelNumber'            : 3209,
-    'Traces'                : 3213,
-    'AuxTraces'             : 3215,
+    'EnsembleTraces'        : 3213,
+    'AuxEnsembleTraces'     : 3215,
     'Interval'              : 3217,
     'IntervalOriginal'      : 3219,
     'Samples'               : 3221,
@@ -75,8 +75,8 @@ keys = {
     'MeasurementSystem'     : 3255,
     'ImpulseSignalPolarity' : 3257,
     'VibratoryPolarity'     : 3259,
-    'ExtTraces'             : 3261,
-    'ExtAuxTraces'          : 3265,
+    'ExtEnsembleTraces'     : 3261,
+    'ExtAuxEnsembleTraces'  : 3265,
     'ExtSamples'            : 3269,
     'ExtSamplesOriginal'    : 3289,
     'ExtEnsembleFold'       : 3293,

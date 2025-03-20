@@ -846,7 +846,7 @@ def test_write_binary(small):
         with pytest.raises(KeyError):
             _ = f.bin[3214]
 
-        d = {BinField.Traces: 43,
+        d = {BinField.EnsembleTraces: 43,
              BinField.SweepFrequencyStart: 11}
 
         # assign multiple fields at once by using a dict
@@ -856,7 +856,7 @@ def test_write_binary(small):
         assert 43 == f.bin[segyio.su.ntrpr]
         assert 11 == f.bin[segyio.su.hsfs]
 
-        d = {BinField.Traces: 45,
+        d = {BinField.EnsembleTraces: 45,
              BinField.SweepFrequencyStart: 10}
 
         # assign multiple values using alternative syntax
@@ -876,7 +876,7 @@ def test_write_binary(small):
         assert 7 == f.bin[segyio.su.hdt]
 
         # looking up multiple values at once returns a { TraceField: value } dict
-        assert d == f.bin[BinField.Traces, BinField.SweepFrequencyStart]
+        assert d == f.bin[BinField.EnsembleTraces, BinField.SweepFrequencyStart]
 
         # copy a header
         f.bin = f.bin
