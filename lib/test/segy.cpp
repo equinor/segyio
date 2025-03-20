@@ -2033,3 +2033,21 @@ TEST_CASE("segy_samples uses ext-samples word", "[c.segy]") {
         CHECK(samples == 1);
     }
 }
+
+TEST_CASE("segy_get_field reads values correctly",  "[c.segy]" ) {
+
+    char header[ SEGY_TRACE_HEADER_SIZE ] = { 0 };
+
+    SECTION("test edge cases int16") {
+        int16_t value = GENERATE(0, 1, -1, 0x0102, 0x0201, -32767, -32766);
+        uint8_t b0 = 0xFF & ((uint16_t)value >> 0);
+        uint8_t b1 = 0xFF & ((uint16_t)value >> 8);
+        header[SEGY_TR_TRACE_ID-1] = b1;
+        header[SEGY_TR_TRACE_ID-0] = b0;
+
+        int32_t read_value;
+        Err err = segy_get_field( header, SEGY_TR_TRACE_ID, &read_value );
+        CHECK( success( err ) );
+        CHECK( read_value == value );
+    }
+}
