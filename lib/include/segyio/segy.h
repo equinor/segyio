@@ -34,6 +34,11 @@ extern "C" {
 struct segy_file_handle;
 typedef struct segy_file_handle segy_file;
 
+typedef struct {
+    uint64_t buffer;
+    uint8_t type;
+} FieldData;
+
 segy_file* segy_open( const char* path, const char* mode );
 int segy_mmap( segy_file* );
 int segy_flush( segy_file*, bool async );

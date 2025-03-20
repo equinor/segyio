@@ -319,7 +319,148 @@ static int field_size[SEGY_TRACE_HEADER_SIZE] = {
     [SEGY_TR_YEAR_DATA_REC          ] = 2,
 };
 
+/* Lookup table for field data type. All values not explicitly set are 0 */
+static uint8_t tr_field_type[SEGY_TRACE_HEADER_SIZE] = {
+    [SEGY_TR_SEQ_LINE               ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [SEGY_TR_SEQ_FILE               ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [SEGY_TR_FIELD_RECORD           ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [SEGY_TR_NUMBER_ORIG_FIELD      ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [SEGY_TR_ENERGY_SOURCE_POINT    ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [SEGY_TR_ENSEMBLE               ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [SEGY_TR_NUM_IN_ENSEMBLE        ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [SEGY_TR_TRACE_ID               ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_SUMMED_TRACES          ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_STACKED_TRACES         ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_DATA_USE               ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_OFFSET                 ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [SEGY_TR_RECV_GROUP_ELEV        ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [SEGY_TR_SOURCE_SURF_ELEV       ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [SEGY_TR_SOURCE_DEPTH           ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [SEGY_TR_RECV_DATUM_ELEV        ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [SEGY_TR_SOURCE_DATUM_ELEV      ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [SEGY_TR_SOURCE_WATER_DEPTH     ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [SEGY_TR_GROUP_WATER_DEPTH      ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [SEGY_TR_ELEV_SCALAR            ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_SOURCE_GROUP_SCALAR    ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_SOURCE_X               ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [SEGY_TR_SOURCE_Y               ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [SEGY_TR_GROUP_X                ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [SEGY_TR_GROUP_Y                ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [SEGY_TR_COORD_UNITS            ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_WEATHERING_VELO        ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_SUBWEATHERING_VELO     ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_SOURCE_UPHOLE_TIME     ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_GROUP_UPHOLE_TIME      ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_SOURCE_STATIC_CORR     ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_GROUP_STATIC_CORR      ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_TOT_STATIC_APPLIED     ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_LAG_A                  ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_LAG_B                  ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_DELAY_REC_TIME         ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_MUTE_TIME_START        ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_MUTE_TIME_END          ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_SAMPLE_COUNT           ] = SEGY_UNSIGNED_SHORT_2_BYTE,
+    [SEGY_TR_SAMPLE_INTER           ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_GAIN_TYPE              ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_INSTR_GAIN_CONST       ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_INSTR_INIT_GAIN        ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_CORRELATED             ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_SWEEP_FREQ_START       ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_SWEEP_FREQ_END         ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_SWEEP_LENGTH           ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_SWEEP_TYPE             ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_SWEEP_TAPERLEN_START   ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_SWEEP_TAPERLEN_END     ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_TAPER_TYPE             ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_ALIAS_FILT_FREQ        ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_ALIAS_FILT_SLOPE       ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_NOTCH_FILT_FREQ        ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_NOTCH_FILT_SLOPE       ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_LOW_CUT_FREQ           ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_HIGH_CUT_FREQ          ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_LOW_CUT_SLOPE          ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_HIGH_CUT_SLOPE         ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_YEAR_DATA_REC          ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_DAY_OF_YEAR            ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_HOUR_OF_DAY            ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_MIN_OF_HOUR            ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_SEC_OF_MIN             ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_TIME_BASE_CODE         ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_WEIGHTING_FAC          ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_GEOPHONE_GROUP_ROLL1   ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_GEOPHONE_GROUP_FIRST   ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_GEOPHONE_GROUP_LAST    ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_GAP_SIZE               ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_OVER_TRAVEL            ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_CDP_X                  ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [SEGY_TR_CDP_Y                  ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [SEGY_TR_INLINE                 ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [SEGY_TR_CROSSLINE              ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [SEGY_TR_SHOT_POINT             ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [SEGY_TR_SHOT_POINT_SCALAR      ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_MEASURE_UNIT           ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_TRANSDUCTION_MANT      ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [SEGY_TR_TRANSDUCTION_EXP       ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_TRANSDUCTION_UNIT      ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_DEVICE_ID              ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_SCALAR_TRACE_HEADER    ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_SOURCE_TYPE            ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_SOURCE_ENERGY_DIR_VERT ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_SOURCE_ENERGY_DIR_XLINE] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_SOURCE_ENERGY_DIR_ILINE] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_SOURCE_MEASURE_MANT    ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [SEGY_TR_SOURCE_MEASURE_EXP     ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_SOURCE_MEASURE_UNIT    ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [SEGY_TR_UNASSIGNED1            ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [SEGY_TR_UNASSIGNED2            ] = SEGY_SIGNED_INTEGER_4_BYTE,
+};
+
+
 #define HEADER_SIZE SEGY_TEXT_HEADER_SIZE
+
+
+/* Lookup table for binary header data type. All values not explicitly set are 0 */
+static uint8_t b_field_type[SEGY_BINARY_HEADER_SIZE] = {
+    [- HEADER_SIZE + SEGY_BIN_JOB_ID                ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_LINE_NUMBER           ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_REEL_NUMBER           ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_TRACES                ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_AUX_TRACES            ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_INTERVAL              ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_INTERVAL_ORIG         ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_SAMPLES               ] = SEGY_UNSIGNED_SHORT_2_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_SAMPLES_ORIG          ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_FORMAT                ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_ENSEMBLE_FOLD         ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_SORTING_CODE          ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_VERTICAL_SUM          ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_SWEEP_FREQ_START      ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_SWEEP_FREQ_END        ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_SWEEP_LENGTH          ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_SWEEP                 ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_SWEEP_CHANNEL         ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_SWEEP_TAPER_START     ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_SWEEP_TAPER_END       ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_TAPER                 ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_CORRELATED_TRACES     ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_BIN_GAIN_RECOVERY     ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_AMPLITUDE_RECOVERY    ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_MEASUREMENT_SYSTEM    ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_IMPULSE_POLARITY      ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_VIBRATORY_POLARITY    ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_EXT_TRACES            ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_EXT_AUX_TRACES        ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_EXT_SAMPLES           ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_EXT_SAMPLES_ORIG      ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_EXT_ENSEMBLE_FOLD     ] = SEGY_SIGNED_INTEGER_4_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_UNASSIGNED1           ] = SEGY_NOT_IN_USE_1,
+    [- HEADER_SIZE + SEGY_BIN_SEGY_REVISION         ] = SEGY_UNSIGNED_CHAR_1_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_SEGY_REVISION_MINOR   ] = SEGY_UNSIGNED_CHAR_1_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_TRACE_FLAG            ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_EXT_HEADERS           ] = SEGY_SIGNED_SHORT_2_BYTE,
+    [- HEADER_SIZE + SEGY_BIN_UNASSIGNED2           ] = SEGY_NOT_IN_USE_1,
+};
+
 
 /*
  * Supporting same byte offsets as in the segy specification, i.e. from the
@@ -597,32 +738,34 @@ no_mmap:
 }
 
 static int get_field( const char* header,
-                      const int* table,
+                      const uint8_t* table,
                       int field,
-                      int32_t* f ) {
+                      FieldData* fd) {
+    fd->type = table[ field ];
 
-    const int bsize = table[ field ];
-    uint32_t buf32 = 0;
-    uint16_t buf16 = 0;
-    uint8_t  buf8  = 0;
+    fd->buffer = 0;
 
-    switch( bsize ) {
-        case 4:
-            memcpy( &buf32, header + (field - 1), 4 );
-            *f = (int32_t)be32toh( buf32 );
+    switch ( fd->type ) {
+
+    case SEGY_SIGNED_INTEGER_4_BYTE:
+        memcpy( &(fd->buffer), header + (field - 1), formatsize( fd->type ));
+        fd->buffer = (int32_t)be32toh( (int32_t)fd->buffer);
             return SEGY_OK;
 
-        case 2:
-            memcpy( &buf16, header + (field - 1), 2 );
-            *f = (int16_t)be16toh( buf16 );
+    case SEGY_SIGNED_SHORT_2_BYTE:
+        memcpy( &(fd->buffer), header + (field - 1), formatsize( fd->type ));
+        fd->buffer = (int16_t)be16toh( (int16_t)fd->buffer);
             return SEGY_OK;
 
-        case 1:
-            memcpy(&buf8, header + (field - 1), 1);
-            *f = buf8;
+    case SEGY_UNSIGNED_SHORT_2_BYTE:
+        memcpy( &(fd->buffer), header + (field - 1), formatsize( fd->type ));
+        fd->buffer = (uint16_t)be16toh( (uint16_t)fd->buffer);
             return SEGY_OK;
 
-        case 0:
+    case SEGY_UNSIGNED_CHAR_1_BYTE:
+        memcpy( &(fd->buffer), header + (field - 1), formatsize( fd->type ));
+        fd->buffer = (uint8_t) fd->buffer;
+        return SEGY_OK;
         default:
             return SEGY_INVALID_FIELD;
     }
@@ -632,7 +775,11 @@ int segy_get_field( const char* traceheader, int field, int* f ) {
     if( field < 0 || field >= SEGY_TRACE_HEADER_SIZE )
         return SEGY_INVALID_FIELD;
 
-    return get_field( traceheader, field_size, field, f );
+    FieldData fd;
+    int err = get_field( traceheader, tr_field_type, field, &fd );
+    if ( err != SEGY_OK ) return err;
+    *f = (int)fd.buffer;
+    return err;
 }
 
 int segy_get_bfield( const char* binheader, int field, int32_t* f ) {
@@ -641,7 +788,11 @@ int segy_get_bfield( const char* binheader, int field, int32_t* f ) {
     if( field < 0 || field >= SEGY_BINARY_HEADER_SIZE )
         return SEGY_INVALID_FIELD;
 
-    return get_field( binheader, bfield_size, field, f );
+    FieldData fd;
+    int err = get_field( binheader, b_field_type, field, &fd );
+    if ( err != SEGY_OK ) return err;
+    *f = (int32_t)fd.buffer;
+    return err;
 }
 
 static int set_field( char* header, const int* table, int field, int32_t val ) {
@@ -750,10 +901,6 @@ int segy_field_forall( segy_file* fp,
     err = segy_get_field( header, field, &f );
     if( err != SEGY_OK ) return SEGY_INVALID_ARGS;
 
-    // since segy_get_field didn't fail earlier, it is safe to look up the word
-    // size
-    const int word_size = field_size[field];
-
     int slicelen = slicelength( start, stop, step );
 
     // check *once* that we don't look past the end-of-file
@@ -770,9 +917,12 @@ int segy_field_forall( segy_file* fp,
     if( fp->addr ) {
         for( int i = start; slicelen > 0; i += step, ++buf, --slicelen ) {
             segy_seek( fp, i, trace0, trace_bsize );
-            get_field( fp->cur, field_size, field, &f );
-            if (lsb) f = bswap_header_word(f, word_size);
-            *buf = f;
+
+            FieldData fd;
+            err = get_field( fp->cur, tr_field_type, field, &fd );
+            if( err != 0 ) return SEGY_FSEEK_ERROR;
+            if (lsb) fd.buffer = bswap_header_word(fd.buffer, formatsize( fd.type ));
+            *buf = fd.buffer;
         }
 
         return SEGY_OK;
@@ -795,9 +945,11 @@ int segy_field_forall( segy_file* fp,
         size_t readc = fread( header + zfield, sizeof(uint32_t), 1, fp->fp );
         if( readc != 1 ) return SEGY_FREAD_ERROR;
 
-        get_field( header, field_size, field, &f );
-        if (lsb) f = bswap_header_word(f, word_size);
-        *buf = f;
+        FieldData fd;
+        err = get_field( header, tr_field_type, field, &fd );
+        if( err != 0 ) return SEGY_FSEEK_ERROR;
+        if (lsb) fd.buffer = bswap_header_word((int32_t)fd.buffer, formatsize( fd.type ));
+        *buf = (int)fd.buffer;
     }
 
     return SEGY_OK;
