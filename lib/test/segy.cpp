@@ -1762,7 +1762,7 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
             CHECK( trace_bsize == 75 * 2 );
         }
 
-        WHEN( "the format is valid" ) THEN( "setting format succeeds" ) {
+        WHEN( "the format is valid" ) THEN( "setting format succeeds" ) { // cppcheck-suppress unknownMacro
                 Err err = segy_set_format( fp, format );
                 CHECK( err == Err::ok() );
         }
