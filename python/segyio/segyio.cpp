@@ -266,18 +266,7 @@ int init( segyiofd* self, PyObject* args, PyObject* kwargs ) {
         return -1;
     }
 
-    switch( endian ) {
-        case 0:
-        case SEGY_LSB:
-        case SEGY_MSB:
-            break;
-
-        default:
-            ValueError( "internal: unexpected endianness, was %d", endian );
-            return -1;
-    }
-
-    int err = segy_set_format( fd, endian );
+    int err = segy_set_endianness( fd, endian );
     if( err ) {
         ValueError( "internal: error setting endianness, was %d", endian );
         return -1;

@@ -26,3 +26,18 @@ def castarray(x, dtype):
         # the appropriate dtype. it won't copy unless it has to, so it's
         # reasonably fast.
         return np.require(x, dtype = dtype, requirements = 'CAW')
+
+def c_endianness(endian):
+    endians = {
+        'little': 1,
+        'lsb': 1,
+        'big': 0,
+        'msb': 0,
+    }
+
+    if endian not in endians:
+        problem = 'unknown endianness {}, expected one of: '
+        opts = ' '.join(endians.keys())
+        raise ValueError(problem.format(endian) + opts)
+
+    return endians[endian]

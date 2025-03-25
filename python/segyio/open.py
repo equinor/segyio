@@ -2,6 +2,8 @@ import numpy
 
 import segyio
 
+from .utils import c_endianness
+
 def infer_geometry(f, metrics, iline, xline, strict):
     try:
         cube_metrics = f.xfd.cube_metrics(iline, xline)
@@ -146,20 +148,8 @@ def open(filename, mode="r", iline = 189,
         solution = 'use r+ to open in read-write'
         raise ValueError(', '.join((problem, solution)))
 
-    endians = {
-        'little': 256, # (1 << 8)
-        'lsb': 256,
-        'big': 0,
-        'msb': 0,
-    }
-
-    if endian not in endians:
-        problem = 'unknown endianness {}, expected one of: '
-        opts = ' '.join(endians.keys())
-        raise ValueError(problem.format(endian) + opts)
-
     from . import _segyio
-    fd = _segyio.segyiofd(str(filename), mode, endians[endian])
+    fd = _segyio.segyiofd(str(filename), mode, c_endianness(endian))
     fd.segyopen()
     metrics = fd.metrics()
 

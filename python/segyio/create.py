@@ -3,6 +3,7 @@ import numpy
 import segyio
 
 from . import TraceSortingFormat
+from .utils import c_endianness
 
 def default_text_header(iline, xline, offset):
     lines = {
@@ -188,22 +189,12 @@ def create(filename, spec):
     ext_headers = spec.ext_headers if hasattr(spec, 'ext_headers') else 0
     samples = numpy.asarray(spec.samples)
 
-    endians = {
-        'lsb': 256, # (1 << 8)
-        'little': 256,
-        'msb': 0,
-        'big': 0,
-    }
     endian = spec.endian if hasattr(spec, 'endian') else 'big'
     if endian is None:
         endian = 'big'
 
-    if endian not in endians:
-        problem = 'unknown endianness {}, expected one of: '
-        opts = ' '.join(endians.keys())
-        raise ValueError(problem.format(endian) + opts)
 
-    fd = _segyio.segyiofd(str(filename), 'w+', endians[endian])
+    fd = _segyio.segyiofd(str(filename), 'w+', c_endianness(endian))
     fd.segymake(
         samples = len(samples),
         tracecount = tracecount,
