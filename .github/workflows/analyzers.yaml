@@ -34,7 +34,36 @@ jobs:
             --suppressions-list=cppcheck/suppressions.txt   \
             --inline-suppr                                  \
             --project=build/compile_commands.json           \
-            --error-exitcode=1
+            --error-exitcode=1                              \
+            --check-level=exhaustive
+
+  cppcheck_mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          brew install cppcheck
+
+      - name: Configure
+        run: |
+          cmake -S . -B build                     \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON    \
+            -DBUILD_PYTHON=OFF                    \
+            -DBUILD_TESTING=OFF
+
+      - name: Run cppcheck
+        run: |
+          cppcheck                                          \
+            --enable=style,portability,performance,warning  \
+            --library=posix                                 \
+            --library=cppcheck/segyio.cfg                   \
+            --suppressions-list=cppcheck/suppressions.txt   \
+            --inline-suppr                                  \
+            --project=build/compile_commands.json           \
+            --error-exitcode=1                              \
+            --check-level=exhaustive
 
   scan_build:
     runs-on: ubuntu-latest
