@@ -23,7 +23,7 @@ static void printSegyTraceInfo( const char* buf ) {
 #define maximum(x,y) ((x) > (y) ? (x) : (y))
 
 int main(int argc, char* argv[]) {
-    
+
     if( argc < 2 ) {
         puts("Missing argument, expected run signature:");
         printf("  %s <segy_file> [mmap]\n", argv[0]);

@@ -9,21 +9,21 @@
 static const char* getSampleFormatName( int format ) {
     switch( format ) {
         case SEGY_IBM_FLOAT_4_BYTE:
-            return "IBM Float";         
+            return "IBM Float";
         case SEGY_SIGNED_INTEGER_4_BYTE:
-            return "Int 32";         
+            return "Int 32";
         case SEGY_SIGNED_SHORT_2_BYTE:
-            return "Int 16";         
+            return "Int 16";
         case SEGY_FIXED_POINT_WITH_GAIN_4_BYTE:
-            return "Fixed Point with gain (Obsolete)";         
+            return "Fixed Point with gain (Obsolete)";
         case SEGY_IEEE_FLOAT_4_BYTE:
-            return "IEEE Float";         
+            return "IEEE Float";
         case SEGY_NOT_IN_USE_1:
-            return "Not in Use 1";         
+            return "Not in Use 1";
         case SEGY_NOT_IN_USE_2:
-            return "Not in Use 2";         
+            return "Not in Use 2";
         case SEGY_SIGNED_CHAR_1_BYTE:
-            return "Int 8";         
+            return "Int 8";
         default:
             return "Unknown";
     }
