@@ -18,31 +18,35 @@ runs:
     - name: Checkout commit which performance should be measured
       shell: bash
       run: |
+        git restore .
         git fetch origin ${{ inputs.ref }} --depth 1
         git checkout ${{ inputs.ref }}
 
-    - name: Configure
+    - name: Build wheel
+      shell: bash
+      env:
+        CIBW_BUILD_VERBOSITY: 1
+      run: |
+        python -m cibuildwheel --only cp312-manylinux_x86_64 --output-dir ./wheelhouse python/
+
+    - name: Install local wheel
       shell: bash
       run: |
-        cmake -S . -B build \
-          -DBUILD_PYTHON=ON \
-          -DBUILD_SHARED_LIBS=ON \
-          -DCMAKE_BUILD_TYPE=Release \
-
-    - name: Build
-      shell: bash
-      run: |
-        cmake \
-          --build build \
-          --config Release \
-
-    - name: Set PYTHONPATH
-      shell: bash
-      run: echo "PYTHONPATH=$(pwd)/python" >> $GITHUB_ENV
+        pip install ./wheelhouse/*.whl
+        rm -f ./wheelhouse/*.whl
 
     - name: Checkout current commit which contains all tests to run
       shell: bash
       run: git checkout ${{ github.sha }}
+
+    # assure that local segyio doesn't take priority (one installed to pip is used)
+    - name: Remove local segyio
+      shell: bash
+      working-directory: python
+      run: |
+        python -c "import segyio; import inspect; print('before: segyio loaded from ' + inspect.getfile(segyio))"
+        rm -rf $(pwd)/segyio
+        python -c "import segyio; import inspect; print('after: segyio loaded from ' + inspect.getfile(segyio))"
 
     - name: Make segy file
       shell: bash
@@ -79,4 +83,6 @@ runs:
 
     - name: Remove build artifacts
       shell: bash
-      run: git clean -df --exclude=.benchmarks
+      run: |
+        git clean -df --exclude=.benchmarks
+        pip uninstall -y segyio
