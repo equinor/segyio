@@ -7,10 +7,6 @@ repos:
         exclude: '^(test-data)|^python/tutorials/viking_small\.segy$'
     -   id: trailing-whitespace
         exclude: '^(test-data|applications/test)|^python/tutorials/viking_small\.segy$'
--   repo: https://github.com/psf/black
-    rev: 25.1.0
-    hooks:
-    -   id: black
 -   repo: https://github.com/gitleaks/gitleaks
     rev: v8.16.1
     hooks:
