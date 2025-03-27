@@ -1,7 +1,7 @@
 disp('segyspec.m test suite: start');
 % test segyspec
 
-% preconditions 
+% preconditions
 filename = 'test-data/small.sgy';
 assert(exist(filename,'file')==2);
 t0 = 1111.0;
