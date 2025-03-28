@@ -426,6 +426,7 @@ public:
     explicit
     basic_file( const segyio::path& path,
                 const segyio::config& cfg = config() ) noexcept(false)
+    // cppcheck-suppress internalAstError
     : Traits< basic_file >( {} ) ... {
 
         this->consider( path );

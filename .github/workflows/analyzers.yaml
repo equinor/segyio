@@ -9,14 +9,22 @@ on:
 
 jobs:
   cppcheck:
-    runs-on: ubuntu-latest
+    name: cppcheck on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            cppcheck_install_command: sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get -y install cppcheck
+          - os: macos-latest
+            cppcheck_install_command: brew install cppcheck
     steps:
       - uses: actions/checkout@v4
 
       - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get -y install cppcheck
+          ${{ matrix.cppcheck_install_command }}
 
       - name: Configure
         run: |
@@ -34,8 +42,9 @@ jobs:
             --suppressions-list=cppcheck/suppressions.txt   \
             --inline-suppr                                  \
             --project=build/compile_commands.json           \
-            --error-exitcode=1
-
+            --error-exitcode=1                              \
+            --check-level=exhaustive
+  
   scan_build:
     runs-on: ubuntu-latest
     steps:
