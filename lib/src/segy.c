@@ -686,31 +686,32 @@ int segy_get_bfield( const char* binheader, int field, int32_t* f ) {
 }
 
 static int set_field( char* header,
-    const uint8_t* table,
-    int field,
-    FieldData* fd) {
-    fd->type = table[ field ];
+                      const uint8_t* table,
+                      int field,
+                      const field_data* fd ) {
 
-    switch ( fd->type ) {
+    field_data w_fd = {.buffer = fd->buffer, .type = table[ field ]};
+
+    switch ( w_fd.type ) {
 
         case SEGY_SIGNED_INTEGER_4_BYTE:
-            fd->buffer = htobe32( (int32_t)fd->buffer );
-            memcpy( header + (field - 1), &(fd->buffer), formatsize( fd->type ));
+            w_fd.buffer = htobe32( (int32_t)w_fd.buffer );
+            memcpy( header + (field - 1), &(w_fd.buffer), formatsize( w_fd.type ));
             return SEGY_OK;
 
         case SEGY_SIGNED_SHORT_2_BYTE:
-            fd->buffer = htobe16( (int16_t)fd->buffer );
-            memcpy( header + (field - 1), &(fd->buffer), formatsize( fd->type ));
+            w_fd.buffer = htobe16( (int16_t)w_fd.buffer );
+            memcpy( header + (field - 1), &(w_fd.buffer), formatsize( w_fd.type ));
             return SEGY_OK;
 
         case SEGY_UNSIGNED_SHORT_2_BYTE:
-            fd->buffer = htobe16( (uint16_t)fd->buffer );
-            memcpy( header + (field - 1), &(fd->buffer), formatsize( fd->type ));
+            w_fd.buffer = htobe16( (uint16_t)w_fd.buffer );
+            memcpy( header + (field - 1), &(w_fd.buffer), formatsize( w_fd.type ));
             return SEGY_OK;
 
         case SEGY_UNSIGNED_CHAR_1_BYTE:
-            fd->buffer = (uint8_t) fd->buffer;
-            memcpy( header + (field - 1), &(fd->buffer), formatsize( fd->type ));
+            w_fd.buffer = (uint8_t) w_fd.buffer;
+            memcpy( header + (field - 1), &(w_fd.buffer), formatsize( w_fd.type ));
             return SEGY_OK;
 
         default:
@@ -722,7 +723,7 @@ int segy_set_field( char* traceheader, int field, int val ) {
     if( field < 0 || field >= SEGY_TRACE_HEADER_SIZE )
         return SEGY_INVALID_FIELD;
 
-    FieldData fd = {.buffer = val};
+    field_data fd = {.buffer = val};
     return set_field( traceheader, tr_field_type, field, &fd );
 }
 
@@ -732,8 +733,8 @@ int segy_set_bfield( char* binheader, int field, int val ) {
     if( field < 0 || field >= SEGY_BINARY_HEADER_SIZE )
         return SEGY_INVALID_FIELD;
 
-    FieldData fd = {.buffer = val};
-    return set_field( binheader, b_field_type, field, &fd );
+    field_data fd = {.buffer = val};
+    return set_field( binheader, bin_field_type, field, &fd );
 }
 
 static int slicelength( int start, int stop, int step ) {
