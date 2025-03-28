@@ -1,0 +1,9 @@
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+    -   id: check-yaml
+    -   id: end-of-file-fixer
+        exclude: '^(test-data)|^python/tutorials/viking_small\.segy$'
+    -   id: trailing-whitespace
+        exclude: '^(test-data|applications/test)|^python/tutorials/viking_small\.segy$'

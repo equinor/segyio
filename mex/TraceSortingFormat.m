@@ -6,4 +6,3 @@ classdef TraceSortingFormat < int32
         iline (2)
     end
 end
-
