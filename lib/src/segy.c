@@ -602,7 +602,7 @@ no_mmap:
 static int get_field( const char* header,
                       const uint8_t* table,
                       int field,
-                      FieldData* fd) {
+                      FieldData* fd ) {
     fd->type = table[ field ];
 
     fd->buffer = 0;
@@ -658,31 +658,32 @@ int segy_get_bfield( const char* binheader, int field, int32_t* f ) {
 }
 
 static int set_field( char* header,
-    const uint8_t* table,
-    int field,
-    FieldData* fd) {
-    fd->type = table[ field ];
+                      const uint8_t* table,
+                      int field,
+                      const FieldData* fd ) {
 
-    switch ( fd->type ) {
+    FieldData w_fd = {.buffer = fd->buffer, .type = table[ field ]};
+
+    switch ( w_fd.type ) {
 
         case SEGY_SIGNED_INTEGER_4_BYTE:
-            fd->buffer = htobe32( (int32_t)fd->buffer );
-            memcpy( header + (field - 1), &(fd->buffer), formatsize( fd->type ));
+            w_fd.buffer = htobe32( (int32_t)w_fd.buffer );
+            memcpy( header + (field - 1), &(w_fd.buffer), formatsize( w_fd.type ));
             return SEGY_OK;
 
         case SEGY_SIGNED_SHORT_2_BYTE:
-            fd->buffer = htobe16( (int16_t)fd->buffer );
-            memcpy( header + (field - 1), &(fd->buffer), formatsize( fd->type ));
+            w_fd.buffer = htobe16( (int16_t)w_fd.buffer );
+            memcpy( header + (field - 1), &(w_fd.buffer), formatsize( w_fd.type ));
             return SEGY_OK;
 
         case SEGY_UNSIGNED_SHORT_2_BYTE:
-            fd->buffer = htobe16( (uint16_t)fd->buffer );
-            memcpy( header + (field - 1), &(fd->buffer), formatsize( fd->type ));
+            w_fd.buffer = htobe16( (uint16_t)w_fd.buffer );
+            memcpy( header + (field - 1), &(w_fd.buffer), formatsize( w_fd.type ));
             return SEGY_OK;
 
         case SEGY_UNSIGNED_CHAR_1_BYTE:
-            fd->buffer = (uint8_t) fd->buffer;
-            memcpy( header + (field - 1), &(fd->buffer), formatsize( fd->type ));
+            w_fd.buffer = (uint8_t) w_fd.buffer;
+            memcpy( header + (field - 1), &(w_fd.buffer), formatsize( w_fd.type ));
             return SEGY_OK;
 
         default:
