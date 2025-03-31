@@ -751,28 +751,56 @@ static int get_field( const char* header,
     fd->type = table[ field ];
 
     fd->buffer = 0;
+    uint8_t * buf8 = (uint8_t*)&fd->buffer;
+    uint16_t* buf16 = (uint16_t*)&fd->buffer;
+    uint32_t* buf32 = (uint32_t*)&fd->buffer;
 
     switch ( fd->type ) {
 
     case SEGY_SIGNED_INTEGER_4_BYTE:
-        memcpy( &(fd->buffer), header + (field - 1), formatsize( fd->type ) );
-        fd->buffer = (int32_t)be32toh( (int32_t)fd->buffer );
-            return SEGY_OK;
+    case SEGY_UNSIGNED_INTEGER_4_BYTE:
+        memcpy( buf32, header + (field - 1), formatsize( fd->type ) );
+        *buf32 = be32toh( *buf32 );
+        return SEGY_OK;
 
     case SEGY_SIGNED_SHORT_2_BYTE:
-        memcpy( &(fd->buffer), header + (field - 1), formatsize( fd->type ) );
-        fd->buffer = (int16_t)be16toh( (int16_t)fd->buffer );
-            return SEGY_OK;
+    case SEGY_UNSIGNED_SHORT_2_BYTE:
+        memcpy( buf16, header + (field - 1), formatsize( fd->type ) );
+        *buf16 = be16toh( *buf16 );
+        return SEGY_OK;
+
+    case SEGY_SIGNED_CHAR_1_BYTE:
+    case SEGY_UNSIGNED_CHAR_1_BYTE:
+        memcpy( buf8, header + (field - 1), formatsize( fd->type ) );
+        return SEGY_OK;
+
+    default:
+        return SEGY_INVALID_FIELD;
+    }
+}
+
+int fd_get_int( const field_data* fd, int* val ) {
+    switch( fd->type ) {
+    case SEGY_SIGNED_INTEGER_4_BYTE:
+        *val = *(const int32_t*)&fd->buffer;
+        return SEGY_OK;
+
+    case SEGY_SIGNED_SHORT_2_BYTE:
+        *val = (int16_t)*(const int16_t*)&fd->buffer;
+        return SEGY_OK;
+
+    case SEGY_SIGNED_CHAR_1_BYTE:
+        *val = (int8_t)*(const int8_t*)&fd->buffer;
+        return SEGY_OK;
 
     case SEGY_UNSIGNED_SHORT_2_BYTE:
-        memcpy( &(fd->buffer), header + (field - 1), formatsize( fd->type ) );
-        fd->buffer = be16toh( (uint16_t)fd->buffer );
-            return SEGY_OK;
+        *val = (uint16_t)*(const uint16_t*)&fd->buffer;
+        return SEGY_OK;
 
     case SEGY_UNSIGNED_CHAR_1_BYTE:
-        memcpy( &(fd->buffer), header + (field - 1), formatsize( fd->type ) );
-        fd->buffer = (uint8_t) fd->buffer;
+        *val = (uint8_t)*(const uint8_t*)&fd->buffer;
         return SEGY_OK;
+
     default:
         return SEGY_INVALID_FIELD;
     }
@@ -785,7 +813,7 @@ int segy_get_field( const char* traceheader, int field, int* f ) {
     field_data fd;
     int err = get_field( traceheader, tr_field_type, field, &fd );
     if ( err != SEGY_OK ) return err;
-    *f = (int)fd.buffer;
+    err = fd_get_int( &fd, f );
     return err;
 }
 
@@ -798,7 +826,7 @@ int segy_get_bfield( const char* binheader, int field, int32_t* f ) {
     field_data fd;
     int err = get_field( binheader, bin_field_type, field, &fd );
     if ( err != SEGY_OK ) return err;
-    *f = (int32_t)fd.buffer;
+    err = fd_get_int( &fd, f );
     return err;
 }
 
