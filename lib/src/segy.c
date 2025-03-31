@@ -319,7 +319,11 @@ static int field_size[SEGY_TRACE_HEADER_SIZE] = {
     [SEGY_TR_YEAR_DATA_REC          ] = 2,
 };
 
-/* Lookup table for field data type. All values not explicitly set are 0 */
+/*
+    Lookup table for field data type. All values not explicitly set are 0.
+    Datatype enumeration is defined incrementally with 1 as the base.
+    Thus, fields with undefined type will be assigned datatype 0.
+*/
 static uint8_t tr_field_type[SEGY_TRACE_HEADER_SIZE] = {
     [SEGY_TR_SEQ_LINE               ] = SEGY_SIGNED_INTEGER_4_BYTE,
     [SEGY_TR_SEQ_FILE               ] = SEGY_SIGNED_INTEGER_4_BYTE,
@@ -418,9 +422,12 @@ static uint8_t tr_field_type[SEGY_TRACE_HEADER_SIZE] = {
 
 #define HEADER_SIZE SEGY_TEXT_HEADER_SIZE
 
-
-/* Lookup table for binary header data type. All values not explicitly set are 0 */
-static uint8_t b_field_type[SEGY_BINARY_HEADER_SIZE] = {
+/*
+    Lookup table for binary header data type. All values not explicitly set are 0.
+    Datatype enumeration is defined incrementally with 1 as the base.
+    Thus, fields with undefined type will be assigned datatype 0.
+*/
+static uint8_t bin_field_type[SEGY_BINARY_HEADER_SIZE] = {
     [- HEADER_SIZE + SEGY_BIN_JOB_ID                ] = SEGY_SIGNED_INTEGER_4_BYTE,
     [- HEADER_SIZE + SEGY_BIN_LINE_NUMBER           ] = SEGY_SIGNED_INTEGER_4_BYTE,
     [- HEADER_SIZE + SEGY_BIN_REEL_NUMBER           ] = SEGY_SIGNED_INTEGER_4_BYTE,
@@ -748,26 +755,26 @@ static int get_field( const char* header,
     switch ( fd->type ) {
 
     case SEGY_SIGNED_INTEGER_4_BYTE:
-        memcpy( &(fd->buffer), header + (field - 1), formatsize( fd->type ));
-        fd->buffer = (int32_t)be32toh( (int32_t)fd->buffer);
+        memcpy( &(fd->buffer), header + (field - 1), formatsize( fd->type ) );
+        fd->buffer = (int32_t)be32toh( (int32_t)fd->buffer );
             return SEGY_OK;
 
     case SEGY_SIGNED_SHORT_2_BYTE:
-        memcpy( &(fd->buffer), header + (field - 1), formatsize( fd->type ));
-        fd->buffer = (int16_t)be16toh( (int16_t)fd->buffer);
+        memcpy( &(fd->buffer), header + (field - 1), formatsize( fd->type ) );
+        fd->buffer = (int16_t)be16toh( (int16_t)fd->buffer );
             return SEGY_OK;
 
     case SEGY_UNSIGNED_SHORT_2_BYTE:
-        memcpy( &(fd->buffer), header + (field - 1), formatsize( fd->type ));
-        fd->buffer = (uint16_t)be16toh( (uint16_t)fd->buffer);
+        memcpy( &(fd->buffer), header + (field - 1), formatsize( fd->type ) );
+        fd->buffer = be16toh( (uint16_t)fd->buffer );
             return SEGY_OK;
 
     case SEGY_UNSIGNED_CHAR_1_BYTE:
-        memcpy( &(fd->buffer), header + (field - 1), formatsize( fd->type ));
+        memcpy( &(fd->buffer), header + (field - 1), formatsize( fd->type ) );
         fd->buffer = (uint8_t) fd->buffer;
         return SEGY_OK;
-        default:
-            return SEGY_INVALID_FIELD;
+    default:
+        return SEGY_INVALID_FIELD;
     }
 }
 
@@ -789,7 +796,7 @@ int segy_get_bfield( const char* binheader, int field, int32_t* f ) {
         return SEGY_INVALID_FIELD;
 
     FieldData fd;
-    int err = get_field( binheader, b_field_type, field, &fd );
+    int err = get_field( binheader, bin_field_type, field, &fd );
     if ( err != SEGY_OK ) return err;
     *f = (int32_t)fd.buffer;
     return err;
@@ -920,9 +927,9 @@ int segy_field_forall( segy_file* fp,
 
             FieldData fd;
             err = get_field( fp->cur, tr_field_type, field, &fd );
-            if( err != 0 ) return SEGY_FSEEK_ERROR;
+            if( err != 0 ) return err;
             if (lsb) fd.buffer = bswap_header_word(fd.buffer, formatsize( fd.type ));
-            *buf = fd.buffer;
+            *buf = (int)fd.buffer;
         }
 
         return SEGY_OK;
@@ -941,13 +948,13 @@ int segy_field_forall( segy_file* fp,
     const int zfield = field - 1;
     for( int i = start; slicelen > 0; i += step, ++buf, --slicelen ) {
         err = segy_seek( fp, i, trace0 + zfield, trace_bsize );
-        if( err != 0 ) return SEGY_FSEEK_ERROR;
+        if( err != 0 ) return err;
         size_t readc = fread( header + zfield, sizeof(uint32_t), 1, fp->fp );
         if( readc != 1 ) return SEGY_FREAD_ERROR;
 
         FieldData fd;
         err = get_field( header, tr_field_type, field, &fd );
-        if( err != 0 ) return SEGY_FSEEK_ERROR;
+        if( err != 0 ) return err;
         if (lsb) fd.buffer = bswap_header_word((int32_t)fd.buffer, formatsize( fd.type ));
         *buf = (int)fd.buffer;
     }
