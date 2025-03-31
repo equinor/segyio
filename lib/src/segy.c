@@ -747,7 +747,7 @@ no_mmap:
 static int get_field( const char* header,
                       const uint8_t* table,
                       int field,
-                      FieldData* fd) {
+                      field_data* fd) {
     fd->type = table[ field ];
 
     fd->buffer = 0;
@@ -782,7 +782,7 @@ int segy_get_field( const char* traceheader, int field, int* f ) {
     if( field < 0 || field >= SEGY_TRACE_HEADER_SIZE )
         return SEGY_INVALID_FIELD;
 
-    FieldData fd;
+    field_data fd;
     int err = get_field( traceheader, tr_field_type, field, &fd );
     if ( err != SEGY_OK ) return err;
     *f = (int)fd.buffer;
@@ -795,7 +795,7 @@ int segy_get_bfield( const char* binheader, int field, int32_t* f ) {
     if( field < 0 || field >= SEGY_BINARY_HEADER_SIZE )
         return SEGY_INVALID_FIELD;
 
-    FieldData fd;
+    field_data fd;
     int err = get_field( binheader, bin_field_type, field, &fd );
     if ( err != SEGY_OK ) return err;
     *f = (int32_t)fd.buffer;
@@ -925,7 +925,7 @@ int segy_field_forall( segy_file* fp,
         for( int i = start; slicelen > 0; i += step, ++buf, --slicelen ) {
             segy_seek( fp, i, trace0, trace_bsize );
 
-            FieldData fd;
+            field_data fd;
             err = get_field( fp->cur, tr_field_type, field, &fd );
             if( err != 0 ) return err;
             if (lsb) fd.buffer = bswap_header_word(fd.buffer, formatsize( fd.type ));
@@ -952,7 +952,7 @@ int segy_field_forall( segy_file* fp,
         size_t readc = fread( header + zfield, sizeof(uint32_t), 1, fp->fp );
         if( readc != 1 ) return SEGY_FREAD_ERROR;
 
-        FieldData fd;
+        field_data fd;
         err = get_field( header, tr_field_type, field, &fd );
         if( err != 0 ) return err;
         if (lsb) fd.buffer = bswap_header_word((int32_t)fd.buffer, formatsize( fd.type ));
