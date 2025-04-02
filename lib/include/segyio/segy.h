@@ -2,6 +2,7 @@
 #define SEGYIO_SEGY_H
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #define SEGY_BINARY_HEADER_SIZE 400
@@ -30,6 +31,80 @@ extern "C" {
  * header such as segy_trace0, that should be used in consecutive segy function
  * calls that use the same name for one of its parameters.
  */
+
+/*
+ * Represents an abstract data source which supports common file operations,
+ * described by function pointers and `writable` attribute.
+ *
+ * `void* stream` points to a concrete data object and segy_datasource is just a
+ * library-adjusted wrapper over it. Function implementations can cast it to the
+ * actual type and perform required operations on it. All functions implementing
+ * function pointers are expected to return 0 on success and non-0 value on
+ * error. Unless specified, they should not change stream position.
+ *
+ * `elemsize` and `lsb` describe format of the data in the datasource and are
+ * required to interpret trace/header data correctly. `minimize_requests_number`
+ * is an algorithm parameter.
+ */
+struct segy_datasource {
+    /* Pointer to the actual finite stream of data. */
+    void* stream;
+
+    /* Reads `size` number of bytes from the `self` stream into the `buffer`.
+     * Advances the stream position by read number of bytes. If requested number
+     * of bytes can not be read, implementation must return non-0 error code.
+     */
+    int ( *read )( struct segy_datasource* self, void* buffer, size_t size );
+
+    /* Writes `size` number of bytes from the `buffer` into the `self` stream.
+     * Advances the stream position by read number of bytes. If requested number
+     * of bytes can not be written, implementation must return non-0 error code.
+     */
+    int ( *write )( struct segy_datasource* self, const void* buffer, size_t size );
+
+    /* Sets `self` stream position. Position is relative according to the
+     * `whence` parameter, where 0 is "`offset` is relative to the stream
+     * start", 1 is "`offset` is relative to the current position" and 2 is
+     * "`offset` is relative to the stream end".
+     */
+    int ( *seek )( struct segy_datasource* self, long long offset, int whence );
+
+    /* Gets current `self` stream position and stores result in `out`.*/
+    int ( *tell )( struct segy_datasource* self, long long* out );
+
+    /* Gets `self` stream size and stores result in `out`.*/
+    int ( *size )( struct segy_datasource* self, long long* out );
+
+    /* Flushes `self` stream contents. */
+    int ( *flush )( struct segy_datasource* self );
+
+    /* Closes `self` stream. */
+    int ( *close )( struct segy_datasource* self );
+
+    /* Is datasource writable */
+    bool writable;
+
+    /* Size of each element in trace */
+    int elemsize;
+
+    /* True if stream uses little-endian byte order, false if big-endian
+     * (SEG-Y_r2.1 section "3.3. Number Formats"). Pairwise byte-swapped
+     * ordering is not supported.
+     */
+    bool lsb;
+
+    /* Setting for trace algorithms.
+     *
+     * If true, unnecessary data would be read into memory/written to the
+     * destination in order to avoid many requests to datasource.
+     *
+     * If false, algorithms would prioritize reading/writing minimal possible
+     * amount of data at the cost of many requests.
+     */
+    bool minimize_requests_number;
+};
+
+typedef struct segy_datasource segy_datasource;
 
 struct segy_file_handle;
 typedef struct segy_file_handle segy_file;
