@@ -2060,3 +2060,38 @@ TEST_CASE("segy_samples uses ext-samples word", "[c.segy]") {
         CHECK(samples == 1);
     }
 }
+
+TEST_CASE(
+    "segy_get_field reads values correctly",
+    "[c.segy]" ) {
+
+    char header[ SEGY_TRACE_HEADER_SIZE ] = { 0 };
+
+    SECTION("test negative odd near-min int16") {
+        int16_t write_v = -32767;
+        const uint8_t *p = (uint8_t*)&write_v;
+
+        header[SEGY_TR_TRACE_ID-1] = (unsigned char)p[1];
+        header[SEGY_TR_TRACE_ID-0] = (unsigned char)p[0];
+
+        int32_t read_v;
+        Err err = segy_get_field( header, SEGY_TR_TRACE_ID, &read_v );
+        CHECK( success( err ) );
+        CHECK( read_v == write_v );
+    }
+
+    SECTION("test negative even near-min int16") {
+        int16_t write_v = -32766;
+        const uint8_t *p = (uint8_t*)&write_v;
+
+        header[SEGY_TR_TRACE_ID-1] = (unsigned char)p[1];
+        header[SEGY_TR_TRACE_ID-0] = (unsigned char)p[0];
+
+        int32_t read_v;
+        Err err = segy_get_field( header, SEGY_TR_TRACE_ID, &read_v );
+        CHECK( success( err ) );
+        CHECK( read_v == write_v );
+    }
+
+    // keep on
+}
