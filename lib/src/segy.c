@@ -411,6 +411,173 @@ static int file_size( FILE* fp, long long* size ) {
 }
 #endif //HAVE_SYS_STAT_H
 
+static int fileread( segy_datasource* self, void* buffer, size_t size ) {
+    FILE* file = (FILE*)self->stream;
+    size_t readc = fread( buffer, size, 1, file );
+    if ( readc != 1 ) return SEGY_FREAD_ERROR;
+    return SEGY_OK;
+}
+
+static int filewrite( segy_datasource* self, const void* buffer, size_t size ) {
+    if ( !self->writable ) return SEGY_READONLY;
+    FILE* file = (FILE*)self->stream;
+    size_t writec = fwrite( buffer, size, 1, file );
+    if ( writec != 1 ) return SEGY_FWRITE_ERROR;
+    return SEGY_OK;
+}
+
+static int fileseek( segy_datasource* self, long long pos, int whence ) {
+    FILE* file = (FILE*)self->stream;
+    int err;
+#if LONG_MAX == LLONG_MAX
+    err = fseek( file, (long)pos, whence );
+#elif HAVE_FSEEKO
+    err = fseeko( file, pos, whence );
+#elif HAVE_FSEEKI64
+    err = _fseeki64( file, pos, whence );
+#else
+    error "no 64-bit alternative to fseek() found, and long is too small"
+#endif
+    if( err != 0 ) return SEGY_FSEEK_ERROR;
+    return SEGY_OK;
+}
+
+static int filetell( segy_datasource* self, long long* pos ) {
+    FILE* file = (FILE*)self->stream;
+#if LONG_MAX == LLONG_MAX
+    *pos = ftell( file );
+#elif HAVE_FTELLO
+    *pos = ftello( file );
+#elif HAVE_FTELLI64
+    *pos = _ftelli64( file );
+#else
+    error "no 64-bit alternative to ftell() found, and long is too small"
+#endif
+    return SEGY_OK;
+}
+
+static int filesize( segy_datasource* self, long long* out ) {
+    FILE* file = (FILE*)self->stream;
+    int err = file_size( file, out );
+    return err;
+}
+
+static int fileflush( segy_datasource* self ) {
+    // flush is a no-op for read-only files
+    if ( !self->writable ) return SEGY_OK;
+    FILE* file = (FILE*)self->stream;
+
+    int flusherr = fflush( file );
+    if ( flusherr != 0 ) return SEGY_FWRITE_ERROR;
+
+    return SEGY_OK;
+}
+
+static int fileclose( segy_datasource* self ) {
+    int err = fileflush( self );
+    if ( err != SEGY_OK ) return err;
+
+    FILE* file = (FILE*)self->stream;
+    err = fclose( file );
+    if ( err != 0 ) return SEGY_FWRITE_ERROR;
+    return err;
+}
+
+/* Describes a file loaded into memory. */
+struct memfile {
+    unsigned char* addr;
+    unsigned char* cur;
+    size_t size;
+};
+typedef struct memfile memfile;
+
+static int memread( segy_datasource* self, void* buffer, size_t size ) {
+    memfile* mp = (memfile*)self->stream;
+    const unsigned char* begin = mp->addr;
+    const unsigned char* end = mp->addr + mp->size;
+    const unsigned char* src = mp->cur;
+    const unsigned char* srcend = src + size;
+
+    if ( src < begin || src > end || srcend > end )
+        return SEGY_FREAD_ERROR;
+
+    memcpy( buffer, src, size );
+    mp->cur = mp->cur + size;
+    return SEGY_OK;
+}
+
+/* Writes to the memfile. Overwrites memory, does not shrink/extend fsize. */
+static int memwrite( segy_datasource* self, const void* buffer, size_t size ) {
+    memfile* mp = (memfile*)self->stream;
+    const unsigned char* begin = mp->addr;
+    const unsigned char* end = mp->addr + mp->size;
+    unsigned char* dest = mp->cur;
+    const unsigned char* destend = dest + size;
+
+    if ( dest < begin || dest > end || destend > end )
+        return SEGY_FWRITE_ERROR;
+
+    memcpy( dest, buffer, size );
+    mp->cur = mp->cur + size;
+    return SEGY_OK;
+}
+
+static int memseek( segy_datasource* self, long long pos, int whence ) {
+    memfile* mp = (memfile*)self->stream;
+    /*
+     * mmap fseek doesn't fail (it's just a pointer readjustment) and won't
+     * set errno, in order to keep its behaviour consistent with fseek,
+     * which can easily reposition itself past the end-of-file
+     */
+    switch ( whence ) {
+        case SEEK_SET:
+            mp->cur = mp->addr + pos;
+            return SEGY_OK;
+        case SEEK_CUR:
+            mp->cur = mp->cur + pos;
+            return SEGY_OK;
+        case SEEK_END:
+            mp->cur = mp->addr + mp->size + pos;
+            return SEGY_OK;
+        default:
+            return SEGY_FSEEK_ERROR;
+    }
+}
+
+static int memtell( segy_datasource* self, long long* pos ) {
+    const memfile* mp = (memfile*)self->stream;
+    *pos = mp->cur - mp->addr;
+    return SEGY_OK;
+}
+
+static int memsize( segy_datasource* self, long long* out ) {
+    const memfile* mp = (memfile*)self->stream;
+    *out = mp->size;
+    return SEGY_OK;
+}
+
+static int mmapflush( segy_datasource* self ) {
+#ifdef HAVE_MMAP
+    const memfile* mp = (memfile*)self->stream;
+    int syncerr = msync( mp->addr, mp->size, MS_SYNC );
+    if( syncerr != 0 ) return SEGY_MMAP_ERROR;
+#endif // HAVE_MMAP
+    return SEGY_OK;
+}
+
+static int mmapclose( segy_datasource* self ) {
+#ifdef HAVE_MMAP
+    int err = mmapflush( self );
+    if ( err != SEGY_OK ) return err;
+
+    memfile* mp = (memfile*)self->stream;
+    err = munmap( mp->addr, mp->size );
+    free( mp );
+    if ( err != 0 ) return SEGY_MMAP_ERROR;
+#endif // HAVE_MMAP
+    return SEGY_OK;
+}
+
 static int formatsize( int format ) {
     switch( format ) {
         case SEGY_IBM_FLOAT_4_BYTE:             return 4;
@@ -601,23 +768,6 @@ static int segy_seek( segy_file* fp,
     if( err != 0 ) return SEGY_FSEEK_ERROR;
     return SEGY_OK;
 }
-
-// code would be reused at the later date
-/*
-long long segy_ftell( segy_file* fp ) {
-#ifdef HAVE_FTELLO
-    off_t pos = ftello( fp->fp );
-    assert( pos != -1 );
-    return pos;
-#elif HAVE_FTELLI64
-    // assuming we're on windows. This function is a little rough, but only
-    // meant for testing - it's not a part of the public interface.
-    return _ftelli64( fp->fp );
-#else
-    assert( false );
-#endif
-}
-*/
 
 int segy_close( segy_file* fp ) {
     int err = segy_flush( fp );
