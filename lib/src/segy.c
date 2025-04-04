@@ -816,8 +816,10 @@ int segy_field_forall( segy_file* fp,
             field_data fd;
             err = get_field( fp->cur, tr_field_type, field, &fd );
             if( err != 0 ) return err;
-            if (lsb) fd.buffer = bswap_header_word(fd.buffer, formatsize( fd.type ));
-            *buf = (int)fd.buffer;
+            err = fd_get_int( &fd, &f );
+            if( err != 0 ) return err;
+            if (lsb) f = bswap_header_word(f, formatsize( fd.type ));
+            *buf = f;
         }
 
         return SEGY_OK;
@@ -843,8 +845,10 @@ int segy_field_forall( segy_file* fp,
         field_data fd;
         err = get_field( header, tr_field_type, field, &fd );
         if( err != 0 ) return err;
-        if (lsb) fd.buffer = bswap_header_word((int32_t)fd.buffer, formatsize( fd.type ));
-        *buf = (int)fd.buffer;
+        err = fd_get_int( &fd, &f );
+        if( err != 0 ) return err;
+        if (lsb) f = bswap_header_word(f, formatsize( fd.type ));
+        *buf = f;
     }
 
     return SEGY_OK;
