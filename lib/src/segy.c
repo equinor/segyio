@@ -689,27 +689,28 @@ static int set_field( char* header,
                       const field_data* fd ) {
 
     field_data w_fd = {.buffer = fd->buffer, .type = table[ field ]};
+    uint8_t * buf8 = (uint8_t*)&w_fd.buffer;
+    uint16_t* buf16 = (uint16_t*)&w_fd.buffer;
+    uint32_t* buf32 = (uint32_t*)&w_fd.buffer;
 
     switch ( w_fd.type ) {
 
         case SEGY_SIGNED_INTEGER_4_BYTE:
-            w_fd.buffer = htobe32( (int32_t)w_fd.buffer );
-            memcpy( header + (field - 1), &(w_fd.buffer), formatsize( w_fd.type ));
+        case SEGY_UNSIGNED_INTEGER_4_BYTE:
+            *buf32 = htobe32( *buf32 );
+            memcpy( header + (field - 1), buf32, formatsize( w_fd.type ));
             return SEGY_OK;
 
         case SEGY_SIGNED_SHORT_2_BYTE:
-            w_fd.buffer = htobe16( (int16_t)w_fd.buffer );
-            memcpy( header + (field - 1), &(w_fd.buffer), formatsize( w_fd.type ));
-            return SEGY_OK;
-
         case SEGY_UNSIGNED_SHORT_2_BYTE:
-            w_fd.buffer = htobe16( (uint16_t)w_fd.buffer );
-            memcpy( header + (field - 1), &(w_fd.buffer), formatsize( w_fd.type ));
+            *buf16 = htobe16( *buf16 );
+            memcpy( header + (field - 1), buf16, formatsize( w_fd.type ));
             return SEGY_OK;
 
         case SEGY_UNSIGNED_CHAR_1_BYTE:
-            w_fd.buffer = (uint8_t) w_fd.buffer;
-            memcpy( header + (field - 1), &(w_fd.buffer), formatsize( w_fd.type ));
+        case SEGY_SIGNED_CHAR_1_BYTE:
+            *buf8 = (uint8_t) *buf8;
+            memcpy( header + (field - 1), buf8, formatsize( w_fd.type ));
             return SEGY_OK;
 
         default:
