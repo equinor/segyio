@@ -2,6 +2,7 @@
 #define SEGYIO_HPP
 
 #include <cerrno>
+#include <cstdint>
 #include <cstring>
 #include <exception>
 #include <functional>
