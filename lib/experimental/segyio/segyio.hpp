@@ -2,6 +2,7 @@
 #define SEGYIO_HPP
 
 #include <cerrno>
+#include <cstdint>
 #include <cstring>
 #include <exception>
 #include <functional>
@@ -13,7 +14,6 @@
 #include <vector>
 
 #include <segyio/segy.h>
-#include <cstdint>
 
 /*
  * KNOWN ISSUES AND TODOs:
