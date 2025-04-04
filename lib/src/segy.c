@@ -223,9 +223,8 @@ void ieee2ibm( void* to, const void* from ) {
 }
 
 /*
-    Lookup table for field data type. All values not explicitly set are 0.
-    Datatype enumeration is defined incrementally with 1 as the base.
-    Thus, fields with undefined type will be assigned datatype 0.
+    Lookup table for segy field data types. Types are defined in the SEGY_FORMAT enum.
+    All values not explicitly set are 0 which is undefined in the SEGY_FORMAT.
 */
 static uint8_t tr_field_type[SEGY_TRACE_HEADER_SIZE] = {
     [SEGY_TR_SEQ_LINE               ] = SEGY_SIGNED_INTEGER_4_BYTE,
@@ -326,9 +325,8 @@ static uint8_t tr_field_type[SEGY_TRACE_HEADER_SIZE] = {
 #define HEADER_SIZE SEGY_TEXT_HEADER_SIZE
 
 /*
-    Lookup table for binary header data type. All values not explicitly set are 0.
-    Datatype enumeration is defined incrementally with 1 as the base.
-    Thus, fields with undefined type will be assigned datatype 0.
+    Lookup table for segy binary field data types. Types are defined in the SEGY_FORMAT enum.
+    All values not explicitly set are 0 which is undefined in the SEGY_FORMAT.
 */
 static uint8_t bin_field_type[SEGY_BINARY_HEADER_SIZE] = {
     [- HEADER_SIZE + SEGY_BIN_JOB_ID                ] = SEGY_SIGNED_INTEGER_4_BYTE,
