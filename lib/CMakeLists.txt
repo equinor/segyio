@@ -138,3 +138,19 @@ add_test(NAME c.segy.mmap     COMMAND c.segy --test-mmap)
 add_test(NAME c.segy.lsb      COMMAND c.segy --test-lsb)
 add_test(NAME c.segy.mmap.lsb COMMAND c.segy --test-mmap --test-lsb)
 add_test(NAME cpp.segy        COMMAND c.segy [c++])
+
+
+# These targets check if code that includes the public C and C++ header compile
+# correctly. This is done to detect issues like missing includes directives in
+# these headers of segyio. Missing includes may not be picked up by the tests
+# above because the test framework does include some C++ dependencies like
+# `cstdint` and `algorithm` that may be used in the segyio headers.
+add_executable(c-include.segy test/test-include.c)
+target_link_libraries(c-include.segy segyio)
+target_include_directories(c-include.segy PRIVATE src)
+add_test(NAME c-include.segy COMMAND c-include.segy)
+
+add_executable(cpp-include.segy test/test-include.cpp)
+target_link_libraries(cpp-include.segy segyio::segyio)
+target_include_directories(cpp-include.segy PRIVATE experimental)
+add_test(NAME cpp-include.segy COMMAND cpp-include.segy)
