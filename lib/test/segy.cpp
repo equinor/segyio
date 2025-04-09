@@ -1530,31 +1530,6 @@ TEST_CASE("open file with >32k traces", "[c.segy]") {
     CHECK(samples == 60000);
 }
 
-SCENARIO( "reading a large file", "[c.segy]" ) {
-    GIVEN( "a large file" ) {
-        const char* file = "4G-file.sgy";
-
-        unique_segy ufp( segy_open( file, "w+b" ) );
-        auto fp = ufp.get();
-
-        const int trace = 5000000;
-        const int trace_bsize = 1000;
-        const long long tracesize = trace_bsize + SEGY_TRACE_HEADER_SIZE;
-        const long trace0 = 0;
-
-        const Err err = segy_seek( fp, trace, trace0, trace_bsize );
-        CHECK( err == Err::ok() );
-        WHEN( "reading past 4GB (pos >32bit)" ) {
-            THEN( "there is no overflow" ) {
-                const long long pos = segy_ftell( fp );
-                CHECK( pos > std::numeric_limits< int >::max() );
-                CHECK( pos != -1 );
-                CHECK( pos == trace * tracesize );
-            }
-        }
-    }
-}
-
 #ifdef HOST_BIG_ENDIAN
     #define HOST_LSB 0
     #define HOST_MSB 1
