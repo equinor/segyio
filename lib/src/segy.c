@@ -500,14 +500,14 @@ int segy_mmap( segy_file* fp ) {
 #endif //HAVE_MMAP
 }
 
-int segy_flush( segy_file* fp, bool async ) {
+int segy_flush( segy_file* fp ) {
 
     // flush is a no-op for read-only files
     if( !fp->writable ) return SEGY_OK;
 
 #ifdef HAVE_MMAP
     if( fp->addr ) {
-        int flag = async ? MS_ASYNC : MS_SYNC;
+        int flag = MS_SYNC;
         int syncerr = msync( fp->addr, fp->fsize, flag );
         if( syncerr != 0 ) return syncerr;
         return SEGY_OK;
@@ -586,7 +586,7 @@ long long segy_ftell( segy_file* fp ) {
 */
 
 int segy_close( segy_file* fp ) {
-    int err = segy_flush( fp, false );
+    int err = segy_flush( fp );
 
 #ifdef HAVE_MMAP
     if( !fp->addr ) goto no_mmap;
