@@ -23,7 +23,6 @@
 
 
 #include <segyio/segy.h>
-#include <segyio/util.h>
 
 #include "test-config.hpp"
 

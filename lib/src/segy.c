@@ -28,7 +28,6 @@
 #include <string.h>
 
 #include <segyio/segy.h>
-#include <segyio/util.h>
 
 static const unsigned char a2e[256] = {
     0,  1,  2,  3,  55, 45, 46, 47, 22, 5,  37, 11, 12, 13, 14, 15,
@@ -144,24 +143,6 @@ static uint32_t be32toh( uint32_t v ) {
 #endif
 }
 
-/*
- * DEPRECATED
- * ebcdic2ascii and ascii2ebcdic are deprecated in favour of the length-aware
- * encode. They will be removed in segyio2. These functions were never public
- * (in the sense they're not available in headers), but currently have external
- * linkage.
- */
-void ebcdic2ascii( const char* ebcdic, char* ascii ) {
-    size_t len = strlen( ebcdic );
-    encode( ascii, ebcdic, e2a, len );
-    ascii[ len ] = '\0';
-}
-
-void ascii2ebcdic( const char* ascii, char* ebcdic ) {
-    size_t len = strlen( ascii );
-    encode( ebcdic, ascii, a2e, len );
-    ebcdic[ len ] = '\0';
-}
 
 #define IEEEMAX 0x7FFFFFFF
 #define IEMAXIB 0x611FFFFF
@@ -202,24 +183,6 @@ static inline void native_ibm( void* buf ) {
     manthi = ( manthi + iexp ) | ( u & 0x80000000 );
     u      = ( u & 0x7fffffff ) ? manthi : 0;
     memcpy( buf, &u, sizeof( u ) );
-}
-
-void ibm2ieee( void* to, const void* from ) {
-    uint32_t u;
-    memcpy( &u, from, sizeof( u ) );
-    u = be32toh( u );
-
-    ibm_native( &u );
-    memcpy( to, &u, sizeof( u ) );
-}
-
-void ieee2ibm( void* to, const void* from ) {
-    uint32_t u;
-    memcpy( &u, from, sizeof( u ) );
-
-    native_ibm( &u );
-    u = be32toh( u );
-    memcpy( to, &u, sizeof( u ) );
 }
 
 /* Lookup table for field sizes. All values not explicitly set are 0 */
@@ -368,6 +331,8 @@ static int bfield_size[] = {
     [- HEADER_SIZE + SEGY_BIN_UNASSIGNED1           ] = 0,
     [- HEADER_SIZE + SEGY_BIN_UNASSIGNED2           ] = 0,
 };
+
+static int segy_seek( segy_file* fp, int trace, long trace0, int trace_bsize );
 
 /*
  * Determine the file size in bytes. If this function succeeds, the file
@@ -558,6 +523,8 @@ int segy_flush( segy_file* fp, bool async ) {
     return SEGY_OK;
 }
 
+// code would be reused at later date
+/*
 long long segy_ftell( segy_file* fp ) {
 #ifdef HAVE_FTELLO
     off_t pos = ftello( fp->fp );
@@ -571,6 +538,7 @@ long long segy_ftell( segy_file* fp ) {
     assert( false );
 #endif
 }
+*/
 
 int segy_close( segy_file* fp ) {
     int err = segy_flush( fp, false );
