@@ -1,12 +1,15 @@
 #ifndef SEGYIO_HPP
 #define SEGYIO_HPP
 
+#include <algorithm>
 #include <cerrno>
+#include <cstdint>
 #include <cstring>
 #include <exception>
 #include <functional>
 #include <iterator>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <utility>
