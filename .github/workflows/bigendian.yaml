@@ -3,6 +3,8 @@ name: Test bigendian
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -20,11 +22,60 @@ jobs:
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          # driver must be docker, likely related to https://github.com/moby/buildkit/issues/2343
+          driver: docker
 
-      - name: Build
+      - name: Set caching parameters
+        run: |
+          dockerfile_sha=$(sha1sum .github/images/bigendian.Dockerfile| head -c 40)
+          echo "DOCKERFILE_SHA=$dockerfile_sha" >> $GITHUB_ENV
+          echo "S390X_CACHE_DIR=~/s390x_image" >> $GITHUB_ENV
+          echo "S390X_CACHE_FILE=s390x.tar" >> $GITHUB_ENV
+          echo "S390X_IMAGE_TAG=s390x:$dockerfile_sha" >> $GITHUB_ENV
+
+      - name: Make s390x cache directory
+        run: mkdir -p ${{ env.S390X_CACHE_DIR }}
+
+      - name: Check for s390x cache
+        uses: actions/cache@v4
+        id: s390x-cache
+        with:
+          path: ${{ env.S390X_CACHE_DIR }}
+          key: s390x-cache-${{ env.DOCKERFILE_SHA }}
+
+      - if: steps.s390x-cache.outputs.cache-hit != 'true'
+        name: Build s390x image
         uses: docker/build-push-action@v6
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: .
           file: .github/images/bigendian.Dockerfile
+          load: true
           platforms: linux/s390x
+          target: s390x_base
+          tags: ${{ env.S390X_IMAGE_TAG }}
+
+      - if: steps.s390x-cache.outputs.cache-hit != 'true'
+        name: Save built s390x image
+        run: |
+          echo "s390x image from dockerfile with sha ${{ env.DOCKERFILE_SHA }} not found in cache"
+          echo "made s390x image with tag: ${{ env.S390X_IMAGE_TAG }}"
+          docker save -o ${{ env.S390X_CACHE_DIR }}/${{ env.S390X_CACHE_FILE }} ${{ env.S390X_IMAGE_TAG }}
+
+      - if: steps.s390x-cache.outputs.cache-hit == 'true'
+        name: Load s390x image
+        run: |
+          ls ${{ env.S390X_CACHE_DIR }}
+          docker load -i ${{ env.S390X_CACHE_DIR }}/${{ env.S390X_CACHE_FILE }}
+
+      - name: Build
+        uses: docker/build-push-action@v6
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          build-args: |
+            S390X_BASE_IMAGE=${{ env.S390X_IMAGE_TAG }}
+          context: .
+          file: .github/images/bigendian.Dockerfile
+          platforms: linux/s390x
+          target: tester
