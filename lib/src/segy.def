@@ -49,9 +49,3 @@ segy_line_trace0
 segy_inline_stride
 segy_crossline_stride
 segy_rotation_cw
-segy_seek
-segy_ftell
-ebcdic2ascii
-ascii2ebcdic
-ieee2ibm
-ibm2ieee
