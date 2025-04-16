@@ -1928,45 +1928,23 @@ int segy_writetrace( segy_file* fp,
     return segy_writesubtr( fp, traceno, 0, stop, 1, buf, NULL, trace0, trace_bsize );
 }
 
-static int bswap64vec_strided( char* dst, const char* src, int step, int len ) {
-    const int elemsize = sizeof(int64_t);
-    step *= elemsize;
-
-    uint64_t v;
-    for (; len > 0; dst += step, src += elemsize, --len) {
+static int bswap_elemsize(char* dst, const char* src, int elemsize) {
+    if (elemsize == 8) {
+        uint64_t v;
         memcpy(&v, src, elemsize);
         v = bswap64(v);
         memcpy(dst, &v, elemsize);
+    } else if (elemsize == 4) {
+        uint32_t v;
+        memcpy(&v, src, elemsize);
+        v = bswap32(v);
+        memcpy(dst, &v, elemsize);
+    } else if (elemsize == 2) {
+        uint16_t v;
+        memcpy(&v, src, elemsize);
+        v = bswap16(v);
+        memcpy(dst, &v, elemsize);
     }
-
-    return SEGY_OK;
-}
-
-static int bswap32vec_strided( char* dst, const char* src, int step, int len ) {
-    const int elemsize = sizeof( int32_t );
-    step *= elemsize;
-
-    uint32_t v;
-    for( ; len > 0; dst += step, src += elemsize, --len ) {
-        memcpy( &v, src, elemsize );
-        v = bswap32( v );
-        memcpy( dst, &v, elemsize );
-    }
-
-    return SEGY_OK;
-}
-
-static int bswap16vec_strided( char* dst, const char* src, int step, int len ) {
-    const int elemsize = sizeof( int16_t );
-    step *= elemsize;
-
-    uint16_t v;
-    for( ; len > 0; dst += step, src += elemsize, --len ) {
-        memcpy( &v, src, elemsize );
-        v = bswap16( v );
-        memcpy( dst, &v, elemsize );
-    }
-
     return SEGY_OK;
 }
 
@@ -2036,6 +2014,8 @@ int segy_writesubtr( segy_file* fp,
     int defstart = start < stop ? 0 : elems - 1;
     int slicelen = slicelength( start, stop, step );
 
+    step *= elemsize;
+
     // step is the distance between elems, but we're counting bytes
     const char* src = (const char*)buf;
 
@@ -2043,16 +2023,14 @@ int segy_writesubtr( segy_file* fp,
         /* if mmap is on, strided write is trivial and fast */
         char* cur = (char*)fp->cur + elemsize * defstart;
 
-        if( !fp->lsb ) {
-            step *= elemsize;
-            for( ; slicelen > 0; cur += step, src += elemsize, --slicelen )
-                memcpy( cur, src, elemsize );
-        } else if( elemsize == 8 ) {
-            bswap64vec_strided( cur, src, step, slicelen );
-        } else if( elemsize == 4 ) {
-            bswap32vec_strided( cur, src, step, slicelen );
-        } else if( elemsize == 2 ) {
-            bswap16vec_strided( cur, src, step, slicelen );
+        if (!fp->lsb) {
+            for (; slicelen > 0; cur += step, src += elemsize, --slicelen) {
+                memcpy(cur, src, elemsize);
+            }
+        } else {
+            for (; slicelen > 0; cur += step, src += elemsize, --slicelen) {
+                bswap_elemsize(cur, src, elemsize);
+            }
         }
 
         return SEGY_OK;
@@ -2071,16 +2049,14 @@ int segy_writesubtr( segy_file* fp,
     }
 
     char* cur = (char*)tracebuf + elemsize * defstart;
-    if( !fp->lsb ) {
-        step *= elemsize;
-        for( ; slicelen > 0; cur += step, --slicelen, src += elemsize )
-            memcpy( cur, src, elemsize );
-    } else if( elemsize == 8 ) {
-        bswap64vec_strided( cur, src, step, slicelen );
-    } else if( elemsize == 4 ) {
-        bswap32vec_strided( cur, src, step, slicelen );
-    } else if( elemsize == 2 ) {
-        bswap16vec_strided( cur, src, step, slicelen );
+    if (!fp->lsb) {
+        for (; slicelen > 0; cur += step, --slicelen, src += elemsize) {
+            memcpy(cur, src, elemsize);
+        }
+    } else {
+        for (; slicelen > 0; cur += step, --slicelen, src += elemsize) {
+            bswap_elemsize(cur, src, elemsize);
+        }
     }
 
     const int writec = (int) fwrite( tracebuf, elemsize, elems, fp->fp );
