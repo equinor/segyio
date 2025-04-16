@@ -36,7 +36,7 @@ typedef struct segy_file_handle segy_file;
 
 segy_file* segy_open( const char* path, const char* mode );
 int segy_mmap( segy_file* );
-int segy_flush( segy_file*, bool async );
+int segy_flush( segy_file* );
 int segy_close( segy_file* );
 
 /* binary header operations */

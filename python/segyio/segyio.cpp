@@ -547,7 +547,7 @@ PyObject* flush( segyiofd* self ) {
     if( !fp ) return NULL;
 
     errno = 0;
-    segy_flush( self->fd, false );
+    segy_flush( self->fd );
     if( errno ) return IOErrno();
 
     return Py_BuildValue( "" );
