@@ -1,0 +1,135 @@
+name: Run large tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  large:
+    name: Run large tests on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # only 64-bit windows
+          - os: windows-2019
+            cmake_generator: '-G "Visual Studio 16 2019"'
+          - os: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build/test dependencies
+        working-directory: python
+        run: |
+          python -m pip install -r requirements-dev.txt
+
+      - name: Configure and Build
+        shell: bash
+        run: |
+          cmake -S . -B build \
+            -DBUILD_PYTHON=ON \
+            -DBUILD_TESTING=OFF \
+            -DBUILD_BIN=OFF \
+            -DCMAKE_BUILD_TYPE=Release \
+            ${{ matrix.cmake_generator }} \
+
+            cmake \
+              --build build \
+              --config Release \
+
+      - name: Test
+        shell: bash
+        run: |
+          cd python
+          pytest test/large.py -rPV
+
+  large-32-bit-linux:
+    name: Run large tests on 32-bit linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build
+        uses: docker/build-push-action@v6
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: .
+          file: .github/images/large32-bit.Dockerfile
+          platforms: linux/386
+
+  # The only true way to test 32-bit library is to run it on 32-bit machine, but
+  # there are no 32-bit runner in Github Actions.
+  #
+  # Running compiled 32-bit library on 64-bit machine is a substitute. It is not
+  # clear how well it represents true 32-bit system, but it is our only option.
+  #
+  # Building python code directly, without cbuildwheel, with 32-bit MSVC compiler
+  # fails. Seems like skbuild forces native platform internally, even if we supply
+  # 32-bit one directly. Build works in cbuildwheel as they seem to hack the
+  # environment to make it look like 32-bit system.
+  large_win32:
+    name: Run large tests on windows-2019, 32-bit wheel
+    runs-on: windows-2019
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          architecture: "x86"
+
+      - name: Install cibuildwheel
+        run: python3 -m pip install cibuildwheel
+
+      - name: Install build/test dependencies
+        working-directory: python
+        run: |
+          python -m pip install -r requirements-dev.txt
+
+      - name: Build wheel
+        shell: bash
+        env:
+          CIBW_BUILD_VERBOSITY: 1
+          CIBW_ENVIRONMENT_WINDOWS: >
+            CMAKE_GENERATOR="Visual Studio 16 2019"
+            CMAKE_GENERATOR_PLATFORM="Win32"
+        run: |
+          python -m cibuildwheel --only cp312-win32 --output-dir ./wheelhouse python/
+
+      - name: Install local wheel
+        shell: bash
+        run: |
+          pip install ./wheelhouse/*.whl
+          rm -f ./wheelhouse/*.whl
+
+      # assure that local segyio doesn't take priority (one installed to pip is used)
+      - name: Remove local segyio
+        shell: bash
+        working-directory: python
+        run: |
+          python -c "import segyio; import inspect; print('before: segyio loaded from ' + inspect.getfile(segyio))"
+          rm -rf $(pwd)/segyio
+          python -c "import segyio; import inspect; print('after: segyio loaded from ' + inspect.getfile(segyio))"
+
+      - name: Test
+        shell: bash
+        run: |
+          cd python
+          pytest test/large.py -rPV

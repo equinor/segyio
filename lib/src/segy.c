@@ -28,7 +28,6 @@
 #include <string.h>
 
 #include <segyio/segy.h>
-#include <segyio/util.h>
 
 static const unsigned char a2e[256] = {
     0,  1,  2,  3,  55, 45, 46, 47, 22, 5,  37, 11, 12, 13, 14, 15,
@@ -144,24 +143,6 @@ static uint32_t be32toh( uint32_t v ) {
 #endif
 }
 
-/*
- * DEPRECATED
- * ebcdic2ascii and ascii2ebcdic are deprecated in favour of the length-aware
- * encode. They will be removed in segyio2. These functions were never public
- * (in the sense they're not available in headers), but currently have external
- * linkage.
- */
-void ebcdic2ascii( const char* ebcdic, char* ascii ) {
-    size_t len = strlen( ebcdic );
-    encode( ascii, ebcdic, e2a, len );
-    ascii[ len ] = '\0';
-}
-
-void ascii2ebcdic( const char* ascii, char* ebcdic ) {
-    size_t len = strlen( ascii );
-    encode( ebcdic, ascii, a2e, len );
-    ebcdic[ len ] = '\0';
-}
 
 #define IEEEMAX 0x7FFFFFFF
 #define IEMAXIB 0x611FFFFF
@@ -202,24 +183,6 @@ static inline void native_ibm( void* buf ) {
     manthi = ( manthi + iexp ) | ( u & 0x80000000 );
     u      = ( u & 0x7fffffff ) ? manthi : 0;
     memcpy( buf, &u, sizeof( u ) );
-}
-
-void ibm2ieee( void* to, const void* from ) {
-    uint32_t u;
-    memcpy( &u, from, sizeof( u ) );
-    u = be32toh( u );
-
-    ibm_native( &u );
-    memcpy( to, &u, sizeof( u ) );
-}
-
-void ieee2ibm( void* to, const void* from ) {
-    uint32_t u;
-    memcpy( &u, from, sizeof( u ) );
-
-    native_ibm( &u );
-    u = be32toh( u );
-    memcpy( to, &u, sizeof( u ) );
 }
 
 /* Lookup table for field sizes. All values not explicitly set are 0 */
@@ -558,6 +521,55 @@ int segy_flush( segy_file* fp, bool async ) {
     return SEGY_OK;
 }
 
+static int segy_seek( segy_file* fp,
+                      int trace,
+                      long trace0,
+                      int trace_bsize ) {
+
+    trace_bsize += SEGY_TRACE_HEADER_SIZE;
+    long long pos = (long long)trace0 + (trace * (long long)trace_bsize);
+
+#ifdef HAVE_MMAP
+    if( fp->addr ) {
+        /*
+         * mmap fseek doesn't fail (it's just a pointer readjustment) and won't
+         * set errno, in order to keep its behaviour consistent with fseek,
+         * which can easily reposition itself past the end-of-file
+         */
+        fp->cur = (char*)fp->addr + pos;
+        return SEGY_OK;
+    }
+#endif //HAVE_MMAP
+
+    int err;
+#if LONG_MAX == LLONG_MAX
+    assert( pos <= LONG_MAX );
+    err = fseek( fp->fp, (long)pos, SEEK_SET );
+#else
+   /*
+    * If long is 32bit on our platform (hello, windows), we do skips according
+    * to LONG_MAX and seek relative to our cursor rather than absolute on file
+    * begin.
+    */
+    err = SEGY_OK;
+    rewind( fp->fp );
+    while( pos >= LONG_MAX && err == SEGY_OK ) {
+        err = fseek( fp->fp, LONG_MAX, SEEK_CUR );
+        pos -= LONG_MAX;
+    }
+
+    if( err != 0 ) return SEGY_FSEEK_ERROR;
+
+    assert( pos <= LONG_MAX );
+    err = fseek( fp->fp, (long)pos, SEEK_CUR );
+#endif
+
+    if( err != 0 ) return SEGY_FSEEK_ERROR;
+    return SEGY_OK;
+}
+
+// code would be reused at the later date
+/*
 long long segy_ftell( segy_file* fp ) {
 #ifdef HAVE_FTELLO
     off_t pos = ftello( fp->fp );
@@ -571,6 +583,7 @@ long long segy_ftell( segy_file* fp ) {
     assert( false );
 #endif
 }
+*/
 
 int segy_close( segy_file* fp ) {
     int err = segy_flush( fp, false );
@@ -1019,53 +1032,6 @@ long segy_trace0( const char* binheader ) {
 
     return SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE +
            SEGY_TEXT_HEADER_SIZE * extra_headers;
-}
-
-int segy_seek( segy_file* fp,
-               int trace,
-               long trace0,
-               int trace_bsize ) {
-
-    trace_bsize += SEGY_TRACE_HEADER_SIZE;
-    long long pos = (long long)trace0 + (trace * (long long)trace_bsize);
-
-#ifdef HAVE_MMAP
-    if( fp->addr ) {
-        /*
-         * mmap fseek doesn't fail (it's just a pointer readjustment) and won't
-         * set errno, in order to keep its behaviour consistent with fseek,
-         * which can easily reposition itself past the end-of-file
-         */
-        fp->cur = (char*)fp->addr + pos;
-        return SEGY_OK;
-    }
-#endif //HAVE_MMAP
-
-    int err;
-#if LONG_MAX == LLONG_MAX
-    assert( pos <= LONG_MAX );
-    err = fseek( fp->fp, (long)pos, SEEK_SET );
-#else
-   /*
-    * If long is 32bit on our platform (hello, windows), we do skips according
-    * to LONG_MAX and seek relative to our cursor rather than absolute on file
-    * begin.
-    */
-    err = SEGY_OK;
-    rewind( fp->fp );
-    while( pos >= LONG_MAX && err == SEGY_OK ) {
-        err = fseek( fp->fp, LONG_MAX, SEEK_CUR );
-        pos -= LONG_MAX;
-    }
-
-    if( err != 0 ) return SEGY_FSEEK_ERROR;
-
-    assert( pos <= LONG_MAX );
-    err = fseek( fp->fp, (long)pos, SEEK_CUR );
-#endif
-
-    if( err != 0 ) return SEGY_FSEEK_ERROR;
-    return SEGY_OK;
 }
 
 static int bswap_th( char* xs, int lsb ) {
