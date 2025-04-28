@@ -225,24 +225,31 @@ def create(filename, spec):
     else:
         interval = int((samples[1] - samples[0]) * 1000)
 
-    f.bin.update(
-        ntrpr    = tracecount,
-        nart     = tracecount,
+    binary_header = {}
+    binary_header.update(
+        ntrpr    = 1,
         hdt      = interval,
         dto      = interval,
-        hns      = len(samples),
-        nso      = len(samples),
         format   = int(spec.format),
+        fold     = 1,
+        tsort    = 4,
         exth     = ext_headers,
     )
 
     if len(samples) > 2**16 - 1:
         # when using the ext-samples field, also set rev2, even though it's a
         # soft lie and files aren't really compliant
-        f.bin.update(
+        binary_header.update(
             exthns = len(samples),
             extnso = len(samples),
             rev    = 2
         )
+    else:
+        binary_header.update(
+            hns = len(samples),
+            nso = len(samples),
+        )
+
+    f.bin.update(**binary_header)
 
     return f

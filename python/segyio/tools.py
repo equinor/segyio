@@ -516,7 +516,6 @@ def from_array(filename, data, iline=189,
                     tr += 1
 
         f.bin.update(
-            tsort=TraceSortingFormat.INLINE_SORTING,
             hdt=dt,
             dto=dt
         )

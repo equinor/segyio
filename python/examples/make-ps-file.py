@@ -55,9 +55,5 @@ def main():
                     f.trace[tr] = trace + (xl / 100.0) + il + (off * 100)
                     tr += 1
 
-        f.bin.update(
-            tsort=segyio.TraceSortingFormat.INLINE_SORTING
-        )
-
 if __name__ == '__main__':
     main()
