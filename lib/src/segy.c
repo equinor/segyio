@@ -185,6 +185,26 @@ static inline void native_ibm( void* buf ) {
     memcpy( buf, &u, sizeof( u ) );
 }
 
+static void bswap64_mem( char* dst, const char* src ) {
+    uint64_t v;
+    memcpy( &v, src, 8 );
+    v = bswap64( v );
+    memcpy( dst, &v, 8 );
+}
+static void bswap32_mem( char* dst, const char* src ) {
+    uint32_t v;
+    memcpy( &v, src, 4 );
+    v = bswap32( v );
+    memcpy( dst, &v, 4 );
+}
+
+static void bswap16_mem( char* dst, const char* src ) {
+    uint16_t v;
+    memcpy( &v, src, 2 );
+    v = bswap16( v );
+    memcpy( dst, &v, 2 );
+}
+
 /* Lookup table for field sizes. All values not explicitly set are 0 */
 static int field_size[SEGY_TRACE_HEADER_SIZE] = {
     [SEGY_TR_CDP_X                  ] = 4,
@@ -858,11 +878,8 @@ static int bswap_bin( char* xs, int lsb ) {
     const int bytes4_len = sizeof(bytes4) / sizeof(int);
 
     for( int i = 0; i < bytes4_len; ++i ) {
-        uint32_t v;
         const int offset = bytes4[ i ] - (HEADER_SIZE+1);
-        memcpy( &v, xs + offset, sizeof( v ) );
-        v = bswap32( v );
-        memcpy( xs + offset, &v, sizeof( v ) );
+        bswap32_mem( xs + offset, xs + offset );
     }
 
     const int bytes2[] = {
@@ -898,11 +915,8 @@ static int bswap_bin( char* xs, int lsb ) {
     const int bytes2_len = sizeof( bytes2 ) / sizeof( int );
 
     for( int i = 0; i < bytes2_len; ++i ) {
-        uint16_t v;
         const int offset = bytes2[ i ] - (HEADER_SIZE+1);
-        memcpy( &v, xs + offset, sizeof( v ) );
-        v = bswap16( v );
-        memcpy( xs + offset, &v, sizeof( v ) );
+        bswap16_mem( xs + offset, xs + offset );
     }
 
     return SEGY_OK;
@@ -1069,11 +1083,8 @@ static int bswap_th( char* xs, int lsb ) {
     const int bytes4_len = sizeof(bytes4) / sizeof(int);
 
     for( int i = 0; i < bytes4_len; ++i ) {
-        uint32_t v;
         const int offset = bytes4[ i ] - 1;
-        memcpy( &v, xs + offset, sizeof( v ) );
-        v = bswap32( v );
-        memcpy( xs + offset, &v, sizeof( v ) );
+        bswap32_mem( xs + offset, xs + offset );
     }
 
     const int bytes2[] = {
@@ -1146,11 +1157,8 @@ static int bswap_th( char* xs, int lsb ) {
     const int bytes2_len = sizeof( bytes2 ) / sizeof( int );
 
     for( int i = 0; i < bytes2_len; ++i ) {
-        uint16_t v;
         const int offset = bytes2[ i ] - 1;
-        memcpy( &v, xs + offset, sizeof( v ) );
-        v = bswap16( v );
-        memcpy( xs + offset, &v, sizeof( v ) );
+        bswap16_mem( xs + offset, xs + offset );
     }
 
     return SEGY_OK;
@@ -1735,10 +1743,7 @@ static int bswap64vec( void* vec, long long len ) {
     const char* end = (char*) begin + len * sizeof(int64_t);
 
     for (char* xs = begin; xs != end; xs += sizeof(int64_t)) {
-        uint64_t v;
-        memcpy(&v, xs, sizeof(int64_t));
-        v = bswap64(v);
-        memcpy(xs, &v, sizeof(int64_t));
+        bswap64_mem( xs, xs );
     }
 
     return SEGY_OK;
@@ -1749,10 +1754,7 @@ static int bswap32vec( void* vec, long long len ) {
     const char* end = (char*) begin + len * sizeof(int32_t);
 
     for( char* xs = begin; xs != end; xs += sizeof(int32_t) ) {
-        uint32_t v;
-        memcpy( &v, xs, sizeof(int32_t) );
-        v = bswap32( v );
-        memcpy( xs, &v, sizeof(int32_t) );
+        bswap32_mem( xs, xs );
     }
 
     return SEGY_OK;
@@ -1780,10 +1782,7 @@ static int bswap16vec( void* vec, long long len ) {
     const char* end = (char*) begin + len * sizeof(int16_t);
 
     for( char* xs = begin; xs != end; xs += sizeof(int16_t) ) {
-        uint16_t v;
-        memcpy( &v, xs, sizeof(int16_t) );
-        v = bswap16( v );
-        memcpy( xs, &v, sizeof(int16_t) );
+        bswap16_mem( xs, xs );
     }
 
     return SEGY_OK;
@@ -1894,48 +1893,6 @@ int segy_writetrace( segy_file* fp,
     return segy_writesubtr( fp, traceno, 0, stop, 1, buf, NULL, trace0, trace_bsize );
 }
 
-static int bswap64vec_strided( char* dst, const char* src, int step, int len ) {
-    const int elemsize = sizeof(int64_t);
-    step *= elemsize;
-
-    uint64_t v;
-    for (; len > 0; dst += step, src += elemsize, --len) {
-        memcpy(&v, src, elemsize);
-        v = bswap64(v);
-        memcpy(dst, &v, elemsize);
-    }
-
-    return SEGY_OK;
-}
-
-static int bswap32vec_strided( char* dst, const char* src, int step, int len ) {
-    const int elemsize = sizeof( int32_t );
-    step *= elemsize;
-
-    uint32_t v;
-    for( ; len > 0; dst += step, src += elemsize, --len ) {
-        memcpy( &v, src, elemsize );
-        v = bswap32( v );
-        memcpy( dst, &v, elemsize );
-    }
-
-    return SEGY_OK;
-}
-
-static int bswap16vec_strided( char* dst, const char* src, int step, int len ) {
-    const int elemsize = sizeof( int16_t );
-    step *= elemsize;
-
-    uint16_t v;
-    for( ; len > 0; dst += step, src += elemsize, --len ) {
-        memcpy( &v, src, elemsize );
-        v = bswap16( v );
-        memcpy( dst, &v, elemsize );
-    }
-
-    return SEGY_OK;
-}
-
 int segy_writesubtr( segy_file* fp,
                      int traceno,
                      int start,
@@ -2002,6 +1959,19 @@ int segy_writesubtr( segy_file* fp,
     int defstart = start < stop ? 0 : elems - 1;
     int slicelen = slicelength( start, stop, step );
 
+    step *= elemsize;
+
+    void ( *bswap_mem )( char*, const char* );
+    if ( elemsize == 8 ) {
+        bswap_mem = bswap64_mem;
+    } else if ( elemsize == 4 ) {
+        bswap_mem = bswap32_mem;
+    } else if ( elemsize == 2 ) {
+        bswap_mem = bswap16_mem;
+    } else {
+        return SEGY_INVALID_ARGS;
+    }
+
     // step is the distance between elems, but we're counting bytes
     const char* src = (const char*)buf;
 
@@ -2009,16 +1979,14 @@ int segy_writesubtr( segy_file* fp,
         /* if mmap is on, strided write is trivial and fast */
         char* cur = (char*)fp->cur + elemsize * defstart;
 
-        if( !fp->lsb ) {
-            step *= elemsize;
-            for( ; slicelen > 0; cur += step, src += elemsize, --slicelen )
+        if ( !fp->lsb ) {
+            for ( ; slicelen > 0; cur += step, src += elemsize, --slicelen ) {
                 memcpy( cur, src, elemsize );
-        } else if( elemsize == 8 ) {
-            bswap64vec_strided( cur, src, step, slicelen );
-        } else if( elemsize == 4 ) {
-            bswap32vec_strided( cur, src, step, slicelen );
-        } else if( elemsize == 2 ) {
-            bswap16vec_strided( cur, src, step, slicelen );
+            }
+        } else {
+            for ( ; slicelen > 0; cur += step, src += elemsize, --slicelen ) {
+                bswap_mem( cur, src );
+            }
         }
 
         return SEGY_OK;
@@ -2037,16 +2005,14 @@ int segy_writesubtr( segy_file* fp,
     }
 
     char* cur = (char*)tracebuf + elemsize * defstart;
-    if( !fp->lsb ) {
-        step *= elemsize;
-        for( ; slicelen > 0; cur += step, --slicelen, src += elemsize )
+    if ( !fp->lsb ) {
+        for ( ; slicelen > 0; cur += step, --slicelen, src += elemsize ) {
             memcpy( cur, src, elemsize );
-    } else if( elemsize == 8 ) {
-        bswap64vec_strided( cur, src, step, slicelen );
-    } else if( elemsize == 4 ) {
-        bswap32vec_strided( cur, src, step, slicelen );
-    } else if( elemsize == 2 ) {
-        bswap16vec_strided( cur, src, step, slicelen );
+        }
+    } else {
+        for ( ; slicelen > 0; cur += step, --slicelen, src += elemsize ) {
+            bswap_mem( cur, src );
+        }
     }
 
     const int writec = (int) fwrite( tracebuf, elemsize, elems, fp->fp );
