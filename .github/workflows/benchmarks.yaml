@@ -20,7 +20,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install cibuildwheel
-        run: python3 -m pip install cibuildwheel
+        # old ref is incompatible with cmake 4.0.0, which is used in cbuildwheel > 2.23.2
+        # once default ref is updated, restriction can be removed
+        run: python3 -m pip install cibuildwheel==2.23.2
 
       - name: Install build/test dependencies
         working-directory: python
