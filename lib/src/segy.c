@@ -721,6 +721,18 @@ int segy_get_field( const char* traceheader, int field, int* val ) {
     return err;
 }
 
+int segy_get_field_u8( const char* header, int field, uint8_t* val ) {
+    segy_field_data fd;
+    int err = init_segy_field_data( field, &fd );
+    if ( err != SEGY_OK ) return err;
+    err = get_field( header, &fd );
+    if( err != SEGY_OK ) return err;
+    if ( fd.datatype != SEGY_UNSIGNED_CHAR_1_BYTE )
+        return SEGY_INVALID_FIELD;
+    *val = fd.value.u8;
+    return SEGY_OK;
+}
+
 int segy_get_bfield( const char* binheader, int field, int32_t* val ) {
 
     segy_field_data fd;
@@ -1138,8 +1150,8 @@ int segy_samples( const char* binheader ) {
      * used, the revision flag is also appropriately set to >= 2. Negative
      * values are ignored, as it's likely just noise.
      */
-    int revision = 0;
-    segy_get_bfield(binheader, SEGY_BIN_SEGY_REVISION, &revision);
+    uint8_t revision = 0;
+    segy_get_field_u8(binheader, SEGY_BIN_SEGY_REVISION, &revision);
     if (revision >= 2 && ext_samples > 0)
         return ext_samples;
 

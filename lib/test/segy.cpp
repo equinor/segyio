@@ -2003,14 +2003,14 @@ TEST_CASE("1-byte header words are correctly read", "[c.segy]") {
     header[300] = 0x01;
     header[301] = 0x02;
 
-    std::int32_t one;
-    std::int32_t two;
+    std::uint8_t one;
+    std::uint8_t two;
 
-    Err err = segy_get_bfield(header.data(), SEGY_BIN_SEGY_REVISION, &one);
+    Err err = segy_get_field_u8(header.data(), SEGY_BIN_SEGY_REVISION, &one);
     CHECK(err == Err::ok());
     CHECK(one == 0x01);
 
-    err = segy_get_bfield(header.data(), SEGY_BIN_SEGY_REVISION_MINOR, &two);
+    err = segy_get_field_u8(header.data(), SEGY_BIN_SEGY_REVISION_MINOR, &two);
     CHECK(err == Err::ok());
     CHECK(two == 0x02);
 }
