@@ -22,7 +22,10 @@ target_compile_definitions(segyio
     PRIVATE
         ${mmap}
         ${fstat}
-        ${ftello}
+        $<$<BOOL:${HAVE_FTELLI64}>:HAVE_FTELLI64>
+        $<$<BOOL:${HAVE_FSEEKI64}>:HAVE_FSEEKI64>
+        $<$<BOOL:${HAVE_FTELLO}>:HAVE_FTELLO>
+        $<$<BOOL:${HAVE_FSEEKO}>:HAVE_FSEEKO>
         $<${HOST_BIG_ENDIAN}:HOST_BIG_ENDIAN>
 )
 set_target_properties(segyio
