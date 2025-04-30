@@ -23,6 +23,7 @@ target_compile_definitions(segyio
         ${mmap}
         ${fstat}
         ${ftello}
+        ${fseeko}
         $<${HOST_BIG_ENDIAN}:HOST_BIG_ENDIAN>
 )
 set_target_properties(segyio
