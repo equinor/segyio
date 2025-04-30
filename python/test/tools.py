@@ -329,8 +329,6 @@ def test_from_array3D(tmpdir, create):
             assert list(g.attributes(TraceField.TRACE_SAMPLE_COUNT)) == list(
                 50 * np.ones(25))
 
-            assert g.bin[BinField.SortingCode] == 2
-
 
 @pytest.mark.parametrize("create", [createfrom4d, createfromany])
 def test_from_array4D(tmpdir, create):

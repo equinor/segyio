@@ -48,10 +48,6 @@ def main():
                 f.trace[tr] = trace + (xl / 100.0) + il
                 tr += 1
 
-        f.bin.update(
-            tsort=segyio.TraceSortingFormat.INLINE_SORTING
-        )
-
 
 if __name__ == '__main__':
     main()
