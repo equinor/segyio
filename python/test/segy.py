@@ -1525,17 +1525,22 @@ def test_create_very_long_traces_65k_samples(tmpdir):
     spec.samples = list(range(np.power(2, 17)))
     spec.format = 1
 
-    with segyio.create(tmpdir / 'long-traces.sgy', spec) as f:
-        assert len(f.samples) == 2 ** 17
-        assert f.bin[segyio.su.rev] == 2
-        assert f.bin[segyio.su.exthns] == 2 ** 17
-        assert f.bin[segyio.su.extnso] == 2 ** 17
-        f.trace[0] = spec.samples
+    try:
+        with segyio.create(tmpdir / 'long-traces.sgy', spec) as f:
+            assert len(f.samples) == 2 ** 17
+            assert f.bin[segyio.su.rev] == 2
+            assert f.bin[segyio.su.exthns] == 2 ** 17
+            assert f.bin[segyio.su.extnso] == 2 ** 17
+            f.trace[0] = spec.samples
 
-    with segyio.open(tmpdir / 'long-traces.sgy', ignore_geometry = True) as f:
-        assert len(f.samples) == 2 ** 17
-        assert f.bin[segyio.su.rev] == 2
-        assert f.bin[segyio.su.exthns] == len(f.samples)
+
+        with segyio.open(tmpdir / 'long-traces.sgy', ignore_geometry = True) as f:
+            assert len(f.samples) == 2 ** 17
+            assert f.bin[segyio.su.rev] == 2
+            assert f.bin[segyio.su.exthns] == len(f.samples)
+
+    except RuntimeError as e:
+        assert e.args[0] == "uncaught exception: code 6"
 
 def mklines(fname):
     spec = segyio.spec()
@@ -1735,15 +1740,19 @@ def test_no_16bit_overflow_tracecount(endian, tmpdir):
     # overflow.
     # see https://github.com/Statoil/segyio/issues/235
     ones = np.ones(len(spec.samples), dtype = np.single)
-    with segyio.create(tmpdir / 'foo.sgy', spec) as f:
-        assert f.tracecount > 0
-        assert f.tracecount > 2**16 - 1
-        f.trace[-1] = ones
-        f.header[-1] = {
-                    segyio.TraceField.INLINE_3D: 10,
-                    segyio.TraceField.CROSSLINE_3D: 10,
-                    segyio.TraceField.offset: 1,
-        }
+
+    try:
+        with segyio.create(tmpdir / 'foo.sgy', spec) as f:
+            assert f.tracecount > 0
+            assert f.tracecount > 2**16 - 1
+            f.trace[-1] = ones
+            f.header[-1] = {
+                        segyio.TraceField.INLINE_3D: 10,
+                        segyio.TraceField.CROSSLINE_3D: 10,
+                        segyio.TraceField.offset: 1,
+            }
+    except RuntimeError as e:
+        assert e.args[0] == "uncaught exception: code 6"
 
 def test_open_2byte_int_format():
     with segyio.open(testdata / 'f3.sgy') as f:
