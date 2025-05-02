@@ -1343,7 +1343,7 @@ SCENARIO( "modifying trace header", "[c.segy]" ) {
 
         Err err = segy_set_field( header, SEGY_TR_INLINE, 2 );
         CHECK( err == Err::ok() );
-        err = segy_set_field( header, SEGY_TR_SOURCE_GROUP_SCALAR, -100 );
+        err = segy_set_field_i16( header, SEGY_TR_SOURCE_GROUP_SCALAR, -100 );
         CHECK( err == Err::ok() );
 
         THEN( "the header buffer is updated") {
@@ -2059,7 +2059,7 @@ TEST_CASE("segy_set_field write values correctly",  "[c.segy]" ) {
 
     SECTION("test edge cases int16") {
         int16_t value = GENERATE(0, 1, -1, 0x0102, 0x0201, -32767, -32766);
-        Err err = segy_set_field( header, SEGY_TR_TRACE_ID, value );
+        Err err = segy_set_field_i16( header, SEGY_TR_TRACE_ID, value );
         CHECK( err == Err::ok() );
 
         uint8_t b0 = header[SEGY_TR_TRACE_ID-0];

@@ -864,6 +864,18 @@ int segy_set_bfield( char* binheader, int field, int val ) {
     return err;
 }
 
+int segy_set_field_i16( char* header, const int field, const int16_t val ) {
+    segy_field_data fd;
+    int err = init_segy_field_data( field, &fd );
+    if ( err != SEGY_OK ) return err;
+
+    if ( fd.datatype != SEGY_SIGNED_SHORT_2_BYTE )
+        return SEGY_INVALID_FIELD_DATATYPE;
+
+    fd.value.i16 = val;
+    return set_field( header, &fd );
+}
+
 static int slicelength( int start, int stop, int step ) {
     if( step == 0 ) return 0;
 

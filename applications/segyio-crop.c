@@ -508,7 +508,7 @@ int main( int argc, char** argv ) {
                                                src_samples );
 
         segy_set_field( trheader, SEGY_TR_SAMPLE_COUNT, d.len );
-        segy_set_field( trheader, SEGY_TR_DELAY_REC_TIME, d.delay );
+        segy_set_field_i16( trheader, SEGY_TR_DELAY_REC_TIME, d.delay );
         segy_set_bfield( binheader, SEGY_BIN_SAMPLES, d.len );
 
         if( verbosity > 2 ) printf( "Copying trace %lld\n", traces );
