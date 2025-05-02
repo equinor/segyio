@@ -735,36 +735,36 @@ int segy_get_bfield( const char* binheader, int field, int32_t* val ) {
 static int set_field( char* header,
                       const segy_field_data* fd ) {
 
-    segy_field_data w_fd = *fd;
+    segy_field_value fv = fd->value;
 
-    switch ( w_fd.datatype ) {
+    switch ( fd->datatype ) {
 
         case SEGY_SIGNED_INTEGER_4_BYTE:
-            w_fd.value.i32 = htobe32( w_fd.value.i32 );
-            memcpy( header + (w_fd.field_index - 1), &(w_fd.value.i32), formatsize( w_fd.datatype ));
+            fv.i32 = htobe32( fv.i32 );
+            memcpy( header + (fd->field_index - 1), &(fv.i32), formatsize( fd->datatype ));
             return SEGY_OK;
 
         case SEGY_SIGNED_SHORT_2_BYTE:
-            w_fd.value.i16 = htobe16( w_fd.value.i16 );
-            memcpy( header + (w_fd.field_index - 1), &(w_fd.value.i16), formatsize( w_fd.datatype ));
+            fv.i16 = htobe16( fv.i16 );
+            memcpy( header + (fd->field_index - 1), &(fv.i16), formatsize( fd->datatype ));
             return SEGY_OK;
 
         case SEGY_SIGNED_CHAR_1_BYTE:
-            memcpy( header + (w_fd.field_index - 1), &(w_fd.value.i8), formatsize( w_fd.datatype ));
+            memcpy( header + (fd->field_index - 1), &(fv.i8), formatsize( fd->datatype ));
             return SEGY_OK;
 
         case SEGY_UNSIGNED_INTEGER_4_BYTE:
-            w_fd.value.u32 = htobe32( w_fd.value.u32 );
-            memcpy( header + (w_fd.field_index - 1), &(w_fd.value.u32), formatsize( w_fd.datatype ));
+            fv.u32 = htobe32( fv.u32 );
+            memcpy( header + (fd->field_index - 1), &(fv.u32), formatsize( fd->datatype ));
             return SEGY_OK;
 
         case SEGY_UNSIGNED_SHORT_2_BYTE:
-            w_fd.value.u16 = htobe16( w_fd.value.u16 );
-            memcpy( header + (w_fd.field_index - 1), &(w_fd.value.u16), formatsize( w_fd.datatype ));
+            fv.u16 = htobe16( fv.u16 );
+            memcpy( header + (fd->field_index - 1), &(fv.u16), formatsize( fd->datatype ));
             return SEGY_OK;
 
         case SEGY_UNSIGNED_CHAR_1_BYTE:
-            memcpy( header + (w_fd.field_index - 1), &(w_fd.value.u8), formatsize( w_fd.datatype ));
+            memcpy( header + (fd->field_index - 1), &(fv.u8), formatsize( fd->datatype ));
             return SEGY_OK;
 
         default:

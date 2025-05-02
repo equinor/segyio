@@ -34,15 +34,17 @@ extern "C" {
 struct segy_file_handle;
 typedef struct segy_file_handle segy_file;
 
+typedef union {
+    uint8_t u8;
+    uint16_t u16;
+    uint32_t u32;
+    int8_t i8;
+    int16_t i16;
+    int32_t i32;
+} segy_field_value;
+
 typedef struct {
-    union {
-        uint8_t u8;
-        uint16_t u16;
-        uint32_t u32;
-        int8_t i8;
-        int16_t i16;
-        int32_t i32;
-    } value;
+    segy_field_value value;
     uint8_t datatype;
     int32_t field_index;
     int32_t field_offset;
