@@ -34,6 +34,22 @@ extern "C" {
 struct segy_file_handle;
 typedef struct segy_file_handle segy_file;
 
+typedef union {
+    uint8_t u8;
+    uint16_t u16;
+    uint32_t u32;
+    int8_t i8;
+    int16_t i16;
+    int32_t i32;
+} segy_field_value;
+
+typedef struct {
+    segy_field_value value;
+    uint8_t datatype;
+    int32_t field_index;
+    int32_t field_offset;
+} segy_field_data;
+
 segy_file* segy_open( const char* path, const char* mode );
 int segy_mmap( segy_file* );
 int segy_flush( segy_file* );
@@ -450,6 +466,28 @@ int segy_crossline_stride( int sorting,
                            int crossline_count,
                            int* stride );
 
+
+typedef enum {
+    SEGY_UNDEFINED_FIELD = 0,
+    SEGY_IBM_FLOAT_4_BYTE = 1,
+    SEGY_SIGNED_INTEGER_4_BYTE = 2,
+    SEGY_SIGNED_SHORT_2_BYTE = 3,
+    SEGY_FIXED_POINT_WITH_GAIN_4_BYTE = 4, // Obsolete
+    SEGY_IEEE_FLOAT_4_BYTE = 5,
+    SEGY_IEEE_FLOAT_8_BYTE = 6,
+    SEGY_SIGNED_CHAR_3_BYTE = 7,
+    SEGY_SIGNED_INTEGER_3_BYTE = 7,
+    SEGY_SIGNED_CHAR_1_BYTE = 8,
+    SEGY_SIGNED_INTEGER_8_BYTE = 9,
+    SEGY_UNSIGNED_INTEGER_4_BYTE = 10,
+    SEGY_UNSIGNED_SHORT_2_BYTE = 11,
+    SEGY_UNSIGNED_INTEGER_8_BYTE = 12,
+    SEGY_UNSIGNED_INTEGER_3_BYTE = 15,
+    SEGY_UNSIGNED_CHAR_1_BYTE = 16,
+    SEGY_NOT_IN_USE_1 = 19,
+    SEGY_NOT_IN_USE_2 = 20,
+} SEGY_FORMAT;
+
 typedef enum {
     SEGY_TR_SEQ_LINE                = 1,
     SEGY_TR_SEQ_FILE                = 5,
@@ -586,25 +624,6 @@ typedef enum {
     SEGY_BIN_UNASSIGNED2            = 3507,
 } SEGY_BINFIELD;
 
-typedef enum {
-    SEGY_IBM_FLOAT_4_BYTE = 1,
-    SEGY_SIGNED_INTEGER_4_BYTE = 2,
-    SEGY_SIGNED_SHORT_2_BYTE = 3,
-    SEGY_FIXED_POINT_WITH_GAIN_4_BYTE = 4, // Obsolete
-    SEGY_IEEE_FLOAT_4_BYTE = 5,
-    SEGY_IEEE_FLOAT_8_BYTE = 6,
-    SEGY_SIGNED_CHAR_3_BYTE = 7,
-    SEGY_SIGNED_INTEGER_3_BYTE = 7,
-    SEGY_SIGNED_CHAR_1_BYTE = 8,
-    SEGY_SIGNED_INTEGER_8_BYTE = 9,
-    SEGY_UNSIGNED_INTEGER_4_BYTE = 10,
-    SEGY_UNSIGNED_SHORT_2_BYTE = 11,
-    SEGY_UNSIGNED_INTEGER_8_BYTE = 12,
-    SEGY_UNSIGNED_INTEGER_3_BYTE = 15,
-    SEGY_UNSIGNED_CHAR_1_BYTE = 16,
-    SEGY_NOT_IN_USE_1 = 19,
-    SEGY_NOT_IN_USE_2 = 20,
-} SEGY_FORMAT;
 
 typedef enum {
     SEGY_MSB = 0,
@@ -624,6 +643,7 @@ typedef enum {
     SEGY_FREAD_ERROR,
     SEGY_FWRITE_ERROR,
     SEGY_INVALID_FIELD,
+    SEGY_INVALID_FIELD_VALUE,
     SEGY_INVALID_SORTING,
     SEGY_MISSING_LINE_INDEX,
     SEGY_INVALID_OFFSETS,

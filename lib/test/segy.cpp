@@ -71,6 +71,7 @@ struct Err {
     static Err ok()    { return SEGY_OK; }
     static Err args()  { return SEGY_INVALID_ARGS; }
     static Err field() { return SEGY_INVALID_FIELD; }
+    static Err value() { return SEGY_INVALID_FIELD_VALUE; }
 
     int err;
 };
@@ -2031,5 +2032,50 @@ TEST_CASE("segy_samples uses ext-samples word", "[c.segy]") {
         header[ext_samples + 3] = 0x01;
         const auto samples = segy_samples(header.data());
         CHECK(samples == 1);
+    }
+}
+
+TEST_CASE("segy_get_field reads values correctly",  "[c.segy]" ) {
+
+    char header[ SEGY_TRACE_HEADER_SIZE ] = { 0 };
+
+    SECTION("test edge cases int16") {
+        int16_t value = GENERATE(0, 1, -1, 0x0102, 0x0201, -32767, -32766);
+        uint8_t b0 = 0xFF & ((uint16_t)value >> 0);
+        uint8_t b1 = 0xFF & ((uint16_t)value >> 8);
+        header[SEGY_TR_TRACE_ID-1] = b1;
+        header[SEGY_TR_TRACE_ID-0] = b0;
+
+        int32_t read_value;
+        Err err = segy_get_field( header, SEGY_TR_TRACE_ID, &read_value );
+        CHECK( success( err ) );
+        CHECK( read_value == value );
+    }
+}
+
+TEST_CASE("segy_set_field write values correctly",  "[c.segy]" ) {
+
+    char header[ SEGY_TRACE_HEADER_SIZE ] = { 0 };
+
+    SECTION("test edge cases int16") {
+        int16_t value = GENERATE(0, 1, -1, 0x0102, 0x0201, -32767, -32766);
+        Err err = segy_set_field( header, SEGY_TR_TRACE_ID, value );
+        CHECK( err == Err::ok() );
+
+        uint8_t b0 = header[SEGY_TR_TRACE_ID-0];
+        uint8_t b1 = header[SEGY_TR_TRACE_ID-1];
+        uint16_t read_value = b1<<8 | b0;
+        CHECK( read_value == (uint16_t)value );
+    }
+}
+
+TEST_CASE("segy_set_field write invalid value",  "[c.segy]" ) {
+
+    char header[ SEGY_TRACE_HEADER_SIZE ] = { 0 };
+
+    SECTION("test value outside of int16 range") {
+        int32_t value = 0xFFFF + 1;
+        Err err = segy_set_field( header, SEGY_TR_TRACE_ID, value );
+        CHECK( err == Err::value() );
     }
 }
