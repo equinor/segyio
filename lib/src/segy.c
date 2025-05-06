@@ -562,12 +562,17 @@ static int segy_seek( segy_file* fp,
 #endif //HAVE_MMAP
 
     int err;
-#ifdef HAVE_FSEEKO
+#if LONG_MAX == LLONG_MAX
+    err = fseek( fp->fp, (long)pos, SEEK_SET );
+#elif HAVE_FSEEKO
     err = fseeko( fp->fp, pos, SEEK_SET );
 #elif HAVE_FSEEKI64
     err = _fseeki64( fp->fp, pos, SEEK_SET );
 #else
-    assert( false );
+    static_assert(
+        sizeof( long ) == sizeof( long long ),
+        "no 64-bit alternative to fseek() found, and long is too small"
+    );
 #endif
 
     if( err != 0 ) return SEGY_FSEEK_ERROR;
