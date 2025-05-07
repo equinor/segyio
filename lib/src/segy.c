@@ -842,28 +842,6 @@ static int fd_set_int( segy_field_data* fd, int val ) {
     }
 }
 
-int segy_set_field( char* traceheader, int field, int val ) {
-    segy_field_data fd;
-    int err = init_segy_field_data( field, &fd );
-    if ( err != SEGY_OK ) return err;
-
-    err = fd_set_int( &fd, val );
-    if ( err != SEGY_OK ) return err;
-    return set_field( traceheader, &fd );
-}
-
-int segy_set_bfield( char* binheader, int field, int val ) {
-
-    segy_field_data fd;
-    int err = init_segy_field_data( field, &fd );
-    if ( err != SEGY_OK ) return err;
-
-    err = fd_set_int( &fd, val );
-    if ( err != SEGY_OK ) return err;
-    err = set_field( binheader, &fd );
-    return err;
-}
-
 int segy_set_field_i16( char* header, const int field, const int16_t val ) {
     segy_field_data fd;
     int err = init_segy_field_data( field, &fd );
