@@ -659,6 +659,7 @@ typedef enum {
     SEGY_MMAP_INVALID,
     SEGY_READONLY,
     SEGY_NOTFOUND,
+    SEGY_MEMORY_ERROR,
 } SEGY_ERROR;
 
 #ifdef __cplusplus
