@@ -273,8 +273,8 @@ TEST_CASE_METHOD( smallbin,
                   "use bin-interval when trace-interval is zero",
                   "[c.segy]" ) {
 
-    std::int32_t hdt = arbitrary_int();
-    segy_get_bfield( bin, SEGY_BIN_INTERVAL, &hdt );
+    std::int16_t hdt = arbitrary_int();
+    segy_get_field_i16( bin, SEGY_BIN_INTERVAL, &hdt );
     REQUIRE( hdt == 4000 );
 
     float dt = arbitrary_float();
@@ -411,7 +411,7 @@ TEST_CASE_METHOD( smallheader,
                   "[c.segy]" ) {
 
     int32_t ilno;
-    Err err = segy_get_field( header, SEGY_TR_INLINE, &ilno );
+    Err err = segy_get_field_i32( header, SEGY_TR_INLINE, &ilno );
     CHECK( success( err ) );
     CHECK( ilno == 1 );
 }
@@ -421,7 +421,7 @@ TEST_CASE_METHOD( smallheader,
                   "[c.segy]" ) {
     const int32_t input_value = arbitrary_int();
     auto value = input_value;
-    Err err = segy_get_field( header, 0, &value );
+    Err err = segy_get_field_i32( header, 0, &value );
 
     CHECK( err == Err::field() );
     CHECK( value == input_value );
@@ -432,7 +432,7 @@ TEST_CASE_METHOD( smallheader,
                   "[c.segy]" ) {
     const int32_t input_value = arbitrary_int();
     auto value = input_value;
-    Err err = segy_get_field( header, -1, &value );
+    Err err = segy_get_field_i32( header, -1, &value );
 
     CHECK( err == Err::field() );
     CHECK( value == input_value );
@@ -443,7 +443,7 @@ TEST_CASE_METHOD( smallheader,
                   "[c.segy]" ) {
     const int32_t input_value = arbitrary_int();
     auto value = input_value;
-    Err err = segy_get_field( header, SEGY_TR_INLINE + 1, &value );
+    Err err = segy_get_field_i32( header, SEGY_TR_INLINE + 1, &value );
 
     CHECK( err == Err::field() );
     CHECK( value == input_value );
@@ -454,7 +454,7 @@ TEST_CASE_METHOD( smallheader,
                   "[c.segy]" ) {
     const int32_t input_value = arbitrary_int();
     auto value = input_value;
-    Err err = segy_get_field( header, SEGY_TRACE_HEADER_SIZE + 10, &value );
+    Err err = segy_get_field_int( header, SEGY_TRACE_HEADER_SIZE + 10, &value );
 
     CHECK( err == Err::field() );
     CHECK( value == input_value );
@@ -535,7 +535,7 @@ int field_read_size(const int field) {
     header.fill(0x01);
 
     int output;
-    segy_get_field(header.data(), field, &output);
+    segy_get_field_int(header.data(), field, &output);
 
     if (output == 0x0101)     return 2;
     if (output == 0x01010101) return 4;
@@ -1323,7 +1323,7 @@ TEST_CASE( "setting correct header fields succeeds",
 
 
     int32_t output;
-    err = segy_get_field( header, field, &output );
+    err = segy_get_field_int( header, field, &output );
     CHECK( success( err ) );
 
     CHECK( output == input );
@@ -1348,10 +1348,10 @@ SCENARIO( "modifying trace header", "[c.segy]" ) {
 
         THEN( "the header buffer is updated") {
             int ilno = 0;
-            int scale = 0;
-            err = segy_get_field( header, SEGY_TR_INLINE, &ilno );
+            int16_t scale = 0;
+            err = segy_get_field_i32( header, SEGY_TR_INLINE, &ilno );
             CHECK( err == Err::ok() );
-            err = segy_get_field( header, SEGY_TR_SOURCE_GROUP_SCALAR, &scale );
+            err = segy_get_field_i16( header, SEGY_TR_SOURCE_GROUP_SCALAR, &scale );
             CHECK( err == Err::ok() );
 
             CHECK( ilno == 2 );
@@ -1378,12 +1378,12 @@ SCENARIO( "modifying trace header", "[c.segy]" ) {
         THEN( "changes are observable on disk" ) {
             char fresh[ SEGY_TRACE_HEADER_SIZE ] = {};
             int ilno = 0;
-            int scale = 0;
+            int16_t scale = 0;
             err = segy_traceheader( fp, 5, fresh, trace0, trace_bsize );
             CHECK( err == Err::ok() );
-            err = segy_get_field( fresh, SEGY_TR_INLINE, &ilno );
+            err = segy_get_field_i32( fresh, SEGY_TR_INLINE, &ilno );
             CHECK( err == Err::ok() );
-            err = segy_get_field( fresh, SEGY_TR_SOURCE_GROUP_SCALAR, &scale );
+            err = segy_get_field_i16( fresh, SEGY_TR_SOURCE_GROUP_SCALAR, &scale );
             CHECK( err == Err::ok() );
 
             CHECK( ilno == 2 );
@@ -1851,18 +1851,18 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
             CHECK( err == Err::ok() );
 
             int ilno = 0;
-            err = segy_get_field( buf, SEGY_TR_INLINE, &ilno );
+            err = segy_get_field_i32( buf, SEGY_TR_INLINE, &ilno );
             CHECK( err == Err::ok() );
             CHECK( ilno == 111 );
         }
 
         GIVEN( "an invalid field" ) {
             int x = -1;
-            err = segy_get_field( buf, SEGY_TRACE_HEADER_SIZE + 10, &x );
+            err = segy_get_field_int( buf, SEGY_TRACE_HEADER_SIZE + 10, &x );
             CHECK( err == Err::field() );
             CHECK( x == -1 );
 
-            err = segy_get_field( buf, SEGY_TR_INLINE + 1, &x );
+            err = segy_get_field_i32( buf, SEGY_TR_INLINE + 1, &x );
             CHECK( err == Err::field() );
             CHECK( x == -1 );
         }
@@ -2003,14 +2003,14 @@ TEST_CASE("1-byte header words are correctly read", "[c.segy]") {
     header[300] = 0x01;
     header[301] = 0x02;
 
-    std::int32_t one;
-    std::int32_t two;
+    std::uint8_t one;
+    std::uint8_t two;
 
-    Err err = segy_get_bfield(header.data(), SEGY_BIN_SEGY_REVISION, &one);
+    Err err = segy_get_field_u8(header.data(), SEGY_BIN_SEGY_REVISION, &one);
     CHECK(err == Err::ok());
     CHECK(one == 0x01);
 
-    err = segy_get_bfield(header.data(), SEGY_BIN_SEGY_REVISION_MINOR, &two);
+    err = segy_get_field_u8(header.data(), SEGY_BIN_SEGY_REVISION_MINOR, &two);
     CHECK(err == Err::ok());
     CHECK(two == 0x02);
 }
@@ -2046,8 +2046,8 @@ TEST_CASE("segy_get_field reads values correctly",  "[c.segy]" ) {
         header[SEGY_TR_TRACE_ID-1] = b1;
         header[SEGY_TR_TRACE_ID-0] = b0;
 
-        int32_t read_value;
-        Err err = segy_get_field( header, SEGY_TR_TRACE_ID, &read_value );
+        int16_t read_value;
+        Err err = segy_get_field_i16( header, SEGY_TR_TRACE_ID, &read_value );
         CHECK( success( err ) );
         CHECK( read_value == value );
     }

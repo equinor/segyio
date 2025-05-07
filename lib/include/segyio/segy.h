@@ -105,8 +105,11 @@ int segy_set_format( segy_file*, int format );
  */
 int segy_set_endianness( segy_file*, int opt );
 
-int segy_get_field( const char* traceheader, int field, int32_t* f );
-int segy_get_bfield( const char* binheader, int field, int32_t* f );
+int segy_get_field_u8( const char* header, int field, uint8_t* val );
+int segy_get_field_u16( const char* header, int field, uint16_t* val );
+int segy_get_field_i16( const char* header, int field, int16_t* val );
+int segy_get_field_i32( const char* header, int field, int32_t* val );
+int segy_get_field_int( const char* header, int field, int* f );
 int segy_set_field( char* traceheader, int field, int32_t val );
 int segy_set_bfield( char* binheader, int field, int32_t val );
 
@@ -643,6 +646,7 @@ typedef enum {
     SEGY_FREAD_ERROR,
     SEGY_FWRITE_ERROR,
     SEGY_INVALID_FIELD,
+    SEGY_INVALID_FIELD_DATATYPE,
     SEGY_INVALID_FIELD_VALUE,
     SEGY_INVALID_SORTING,
     SEGY_MISSING_LINE_INDEX,

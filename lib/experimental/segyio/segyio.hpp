@@ -1327,7 +1327,7 @@ binary_header binary_header_reader< Derived >::get_bin() noexcept(false) {
 
     const auto getb = [&]( int key ) {
         int32_t f;
-        segy_get_bfield( buffer, key, &f );
+        segy_get_field_int( buffer, key, &f );
         return f;
     };
 
@@ -1392,7 +1392,7 @@ trace_header trace_header_reader< Derived >::get_th( int i ) noexcept(false) {
 
     const auto getf = [&]( int key ) {
         int32_t f;
-        segy_get_field( buffer, key, &f );
+        segy_get_field_int( buffer, key, &f );
         return f;
     };
 
