@@ -900,6 +900,18 @@ int segy_set_field_u16( char* header, const int field, const uint16_t val ) {
     return set_field( header, &fd );
 }
 
+int segy_set_field_int( char* header, const int field, const int val ) {
+
+    segy_field_data fd;
+    int err = init_segy_field_data( field, &fd );
+    if ( err != SEGY_OK ) return err;
+
+    err = fd_set_int( &fd, val );
+    if ( err != SEGY_OK ) return err;
+
+    return set_field( header, &fd );
+}
+
 static int slicelength( int start, int stop, int step ) {
     if( step == 0 ) return 0;
 

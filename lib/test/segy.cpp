@@ -1299,7 +1299,7 @@ TEST_CASE( "setting negative header-field fails",
     char header[ SEGY_TRACE_HEADER_SIZE ];
     const int32_t v = arbitrary_int();
 
-    Err err = segy_set_field( header, -1, v );
+    Err err = segy_set_field_int( header, -1, v );
     CHECK( err == Err::field() );
 }
 
@@ -2075,7 +2075,7 @@ TEST_CASE("segy_set_field write invalid value",  "[c.segy]" ) {
 
     SECTION("test value outside of int16 range") {
         int32_t value = 0xFFFF + 1;
-        Err err = segy_set_field( header, SEGY_TR_TRACE_ID, value );
+        Err err = segy_set_field_int( header, SEGY_TR_TRACE_ID, value );
         CHECK( err == Err::value() );
     }
 }

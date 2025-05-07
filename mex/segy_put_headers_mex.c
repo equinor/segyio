@@ -25,7 +25,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
      * check that the field is valid and writing it won't return an error. by
      * checking it here we don't have to do it in the write loop
      */
-    err = segy_set_field( traceheader, field, 0 );
+    err = segy_set_field_int( traceheader, field, 0 );
 
     if( err != 0 ) {
         msg1 = "segy:put_headers:invalid_field";
@@ -44,7 +44,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
             goto cleanup;
         }
 
-        segy_set_field( traceheader, field, val );
+        segy_set_field_int( traceheader, field, val );
         err = segy_write_traceheader( fp, i, traceheader, fmt.trace0, fmt.trace_bsize );
         if( err != 0 ) {
             msg1 = "segy:put_headers:os";

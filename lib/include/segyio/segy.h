@@ -115,6 +115,7 @@ int segy_set_bfield( char* binheader, int field, int32_t val );
 int segy_set_field_i16( char* header, const int field, const int16_t val );
 int segy_set_field_i32( char* header, const int field, const int32_t val );
 int segy_set_field_u16( char* header, const int field, const uint16_t val );
+int segy_set_field_int( char* header, const int field, const int val );
 
 int segy_field_forall( segy_file*,
                        int field,

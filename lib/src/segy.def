@@ -22,6 +22,7 @@ segy_set_bfield
 segy_set_field_u16
 segy_set_field_i16
 segy_set_field_i32
+segy_set_field_int
 segy_field_forall
 segy_trace_bsize
 segy_trsize

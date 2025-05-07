@@ -1473,8 +1473,8 @@ PyObject* putfield( PyObject*, PyObject *args ) {
         return BufferError( "buffer too small" );
 
     int err = buffer.len() == segy_binheader_size()
-            ? segy_set_bfield( buffer.buf< char >(), field, value )
-            : segy_set_field(  buffer.buf< char >(), field, value )
+            ? segy_set_field_int( buffer.buf< char >(), field, value )
+            : segy_set_field_int( buffer.buf< char >(), field, value )
             ;
 
     switch( err ) {
