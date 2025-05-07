@@ -454,7 +454,7 @@ TEST_CASE_METHOD( smallheader,
                   "[c.segy]" ) {
     const int32_t input_value = arbitrary_int();
     auto value = input_value;
-    Err err = segy_get_field( header, SEGY_TRACE_HEADER_SIZE + 10, &value );
+    Err err = segy_get_field_int( header, SEGY_TRACE_HEADER_SIZE + 10, &value );
 
     CHECK( err == Err::field() );
     CHECK( value == input_value );
@@ -535,7 +535,7 @@ int field_read_size(const int field) {
     header.fill(0x01);
 
     int output;
-    segy_get_field(header.data(), field, &output);
+    segy_get_field_int(header.data(), field, &output);
 
     if (output == 0x0101)     return 2;
     if (output == 0x01010101) return 4;
@@ -1323,7 +1323,7 @@ TEST_CASE( "setting correct header fields succeeds",
 
 
     int32_t output;
-    err = segy_get_field( header, field, &output );
+    err = segy_get_field_int( header, field, &output );
     CHECK( success( err ) );
 
     CHECK( output == input );
@@ -1858,7 +1858,7 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
 
         GIVEN( "an invalid field" ) {
             int x = -1;
-            err = segy_get_field( buf, SEGY_TRACE_HEADER_SIZE + 10, &x );
+            err = segy_get_field_int( buf, SEGY_TRACE_HEADER_SIZE + 10, &x );
             CHECK( err == Err::field() );
             CHECK( x == -1 );
 

@@ -487,7 +487,7 @@ PyObject* suopen( segyiofd* self, PyObject* args ) {
         return IOError( "unable to read first trace header in SU file" );
 
     int32_t f;
-    segy_get_field( header, SEGY_TR_SAMPLE_COUNT, &f );
+    segy_get_field_int( header, SEGY_TR_SAMPLE_COUNT, &f );
 
     const long trace0 = 0;
     const int samplecount = f;
@@ -1437,8 +1437,8 @@ PyObject* getfield( PyObject*, PyObject *args ) {
 
     int value = 0;
     int err = buffer.len() == segy_binheader_size()
-            ? segy_get_bfield( buffer.buf< const char >(), field, &value )
-            : segy_get_field(  buffer.buf< const char >(), field, &value )
+            ? segy_get_field_int( buffer.buf< const char >(), field, &value )
+            : segy_get_field_int(  buffer.buf< const char >(), field, &value )
             ;
 
     /*

@@ -14,7 +14,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
     const int field = mxGetScalar( prhs[ 1 ] );
     int f;
 
-    int err = segy_get_field( bin, field, &f );
+    int err = segy_get_field_int( bin, field, &f );
 
     if( err == SEGY_INVALID_FIELD )
         mexErrMsgIdAndTxt( "segy:get_field:invalid_field",

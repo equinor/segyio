@@ -37,7 +37,7 @@ int parseint( const char* str, int* x ) {
 
 int bfield( const char* header, int field ) {
     int32_t f;
-    int err = segy_get_bfield( header, field, &f );
+    int err = segy_get_field_int( header, field, &f );
 
     if( err ) return -1;
     return f;
@@ -45,7 +45,7 @@ int bfield( const char* header, int field ) {
 
 int trfield( const char* header, int field ) {
     int32_t f;
-    int err = segy_get_field( header, field, &f );
+    int err = segy_get_field_int( header, field, &f );
 
     if( err ) return -1;
     return f;

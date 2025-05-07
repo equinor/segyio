@@ -25,7 +25,7 @@ static int printhelp(void){
 
 static int get_binary_value( const char* binheader, int bfield ){
     int32_t f;
-    segy_get_bfield( binheader, bfield, &f );
+    segy_get_field_int( binheader, bfield, &f );
 
     /*
      * convert cannot-be-negative values to unsigned int, as mandated by SEGY-Y

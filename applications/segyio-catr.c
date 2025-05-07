@@ -700,7 +700,7 @@ int main( int argc, char** argv ) {
 
             for( int j = 0; j < 92; j++ ) {
                 int f;
-                segy_get_field( trheader, fields[j], &f );
+                segy_get_field_int( trheader, fields[j], &f );
                 if( opts.nonzero && !f ) continue;
 
                 /*
