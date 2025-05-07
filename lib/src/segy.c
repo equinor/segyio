@@ -659,7 +659,7 @@ static int get_field( const char* header, segy_field_data* fd) {
             return SEGY_OK;
 
         default:
-            return SEGY_INVALID_FIELD;
+            return SEGY_INVALID_FIELD_DATATYPE;
     }
 }
 
@@ -687,7 +687,7 @@ static int fd_get_int( const segy_field_data* fd, int* val ) {
             return SEGY_OK;
 
         default:
-            return SEGY_INVALID_FIELD;
+            return SEGY_INVALID_FIELD_DATATYPE;
     }
 }
 
@@ -716,7 +716,7 @@ int segy_get_field_u8( const char* header, int field, uint8_t* val ) {
     err = get_field( header, &fd );
     if( err != SEGY_OK ) return err;
     if ( fd.datatype != SEGY_UNSIGNED_CHAR_1_BYTE )
-        return SEGY_INVALID_FIELD;
+        return SEGY_INVALID_FIELD_DATATYPE;
     *val = fd.value.u8;
     return SEGY_OK;
 }
@@ -728,7 +728,7 @@ int segy_get_field_u16( const char* header, int field, uint16_t* val ) {
     err = get_field( header, &fd );
     if( err != SEGY_OK ) return err;
     if ( fd.datatype != SEGY_UNSIGNED_SHORT_2_BYTE )
-        return SEGY_INVALID_FIELD;
+        return SEGY_INVALID_FIELD_DATATYPE;
     *val = fd.value.u16;
     return SEGY_OK;
 }
@@ -740,7 +740,7 @@ int segy_get_field_i16( const char* header, int field, int16_t* val ) {
     err = get_field( header, &fd );
     if( err != SEGY_OK ) return err;
     if ( fd.datatype != SEGY_SIGNED_SHORT_2_BYTE )
-        return SEGY_INVALID_FIELD;
+        return SEGY_INVALID_FIELD_DATATYPE;
     *val = fd.value.i16;
     return SEGY_OK;
 }
@@ -752,7 +752,7 @@ int segy_get_field_i32( const char* header, int field, int32_t* val ) {
     err = get_field( header, &fd );
     if( err != SEGY_OK ) return err;
     if ( fd.datatype != SEGY_SIGNED_INTEGER_4_BYTE )
-        return SEGY_INVALID_FIELD;
+        return SEGY_INVALID_FIELD_DATATYPE;
     *val = fd.value.i32;
     return SEGY_OK;
 }
@@ -802,7 +802,7 @@ static int set_field( char* header,
             return SEGY_OK;
 
         default:
-            return SEGY_INVALID_FIELD;
+            return SEGY_INVALID_FIELD_DATATYPE;
     }
 }
 
@@ -838,7 +838,7 @@ static int fd_set_int( segy_field_data* fd, int val ) {
             return SEGY_OK;
 
         default:
-            return SEGY_INVALID_FIELD;
+            return SEGY_INVALID_FIELD_DATATYPE;
     }
 }
 
