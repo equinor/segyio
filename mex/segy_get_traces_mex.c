@@ -63,8 +63,8 @@ void mexFunction(int nlhs, mxArray *plhs[],
 
     segy_to_native( fmt.format, bufsize, mxGetData( plhs[ 0 ] ) );
 
-    int interval;
-    segy_get_bfield( binary, SEGY_BIN_INTERVAL, &interval );
+    int16_t interval;
+    segy_get_field_i16( binary, SEGY_BIN_INTERVAL, &interval );
     plhs[ 1 ] = mxCreateDoubleScalar( interval );
     plhs[ 2 ] = mxCreateDoubleScalar( fmt.format );
 

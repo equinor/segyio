@@ -745,6 +745,18 @@ int segy_get_field_u16( const char* header, int field, uint16_t* val ) {
     return SEGY_OK;
 }
 
+int segy_get_field_i16( const char* header, int field, int16_t* val ) {
+    segy_field_data fd;
+    int err = init_segy_field_data( field, &fd );
+    if ( err != SEGY_OK ) return err;
+    err = get_field( header, &fd );
+    if( err != SEGY_OK ) return err;
+    if ( fd.datatype != SEGY_SIGNED_SHORT_2_BYTE )
+        return SEGY_INVALID_FIELD;
+    *val = fd.value.i16;
+    return SEGY_OK;
+}
+
 int segy_get_bfield( const char* binheader, int field, int32_t* val ) {
 
     segy_field_data fd;
@@ -1114,8 +1126,8 @@ int segy_write_binheader( segy_file* fp, const char* buf ) {
 }
 
 int segy_format( const char* binheader ) {
-    int32_t format = 0;
-    segy_get_bfield( binheader, SEGY_BIN_FORMAT, &format );
+    int16_t format = 0;
+    segy_get_field_i16( binheader, SEGY_BIN_FORMAT, &format );
     return format;
 }
 
@@ -1182,8 +1194,8 @@ int segy_trsize( int format, int samples ) {
 }
 
 long segy_trace0( const char* binheader ) {
-    int extra_headers = 0;
-    segy_get_bfield( binheader, SEGY_BIN_EXT_HEADERS, &extra_headers );
+    int16_t extra_headers = 0;
+    segy_get_field_i16( binheader, SEGY_BIN_EXT_HEADERS, &extra_headers );
 
     return SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE +
            SEGY_TEXT_HEADER_SIZE * extra_headers;
@@ -1407,11 +1419,11 @@ int segy_sample_interval( segy_file* fp, float fallback, float* dt ) {
         return err;
     }
 
-    int32_t bindt = 0;
-    int32_t trdt = 0;
+    int16_t bindt = 0;
+    int16_t trdt = 0;
 
-    segy_get_bfield( bin_header, SEGY_BIN_INTERVAL, &bindt );
-    segy_get_field( trace_header, SEGY_TR_SAMPLE_INTER, &trdt );
+    segy_get_field_i16( bin_header, SEGY_BIN_INTERVAL, &bindt );
+    segy_get_field_i16( trace_header, SEGY_TR_SAMPLE_INTER, &trdt );
 
     float binary_header_dt = (float) bindt;
     float trace_header_dt = (float) trdt;
@@ -2448,7 +2460,8 @@ static int scaled_cdp( segy_file* fp,
                        float* cdpy,
                        long trace0,
                        int trace_bsize ) {
-    int32_t x, y, scalar;
+    int32_t x, y;
+    int16_t scalar;
     char trheader[ SEGY_TRACE_HEADER_SIZE ];
 
     int err = segy_traceheader( fp, traceno, trheader, trace0, trace_bsize );
@@ -2458,7 +2471,7 @@ static int scaled_cdp( segy_file* fp,
     if( err != 0 ) return err;
     err = segy_get_field( trheader, SEGY_TR_CDP_Y, &y );
     if( err != 0 ) return err;
-    err = segy_get_field( trheader, SEGY_TR_SOURCE_GROUP_SCALAR, &scalar );
+    err = segy_get_field_i16( trheader, SEGY_TR_SOURCE_GROUP_SCALAR, &scalar );
     if( err != 0 ) return err;
 
     float scale = (float) scalar;

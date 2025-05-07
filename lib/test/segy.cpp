@@ -273,8 +273,8 @@ TEST_CASE_METHOD( smallbin,
                   "use bin-interval when trace-interval is zero",
                   "[c.segy]" ) {
 
-    std::int32_t hdt = arbitrary_int();
-    segy_get_bfield( bin, SEGY_BIN_INTERVAL, &hdt );
+    std::int16_t hdt = arbitrary_int();
+    segy_get_field_i16( bin, SEGY_BIN_INTERVAL, &hdt );
     REQUIRE( hdt == 4000 );
 
     float dt = arbitrary_float();
@@ -1348,10 +1348,10 @@ SCENARIO( "modifying trace header", "[c.segy]" ) {
 
         THEN( "the header buffer is updated") {
             int ilno = 0;
-            int scale = 0;
             err = segy_get_field( header, SEGY_TR_INLINE, &ilno );
+            int16_t scale = 0;
             CHECK( err == Err::ok() );
-            err = segy_get_field( header, SEGY_TR_SOURCE_GROUP_SCALAR, &scale );
+            err = segy_get_field_i16( header, SEGY_TR_SOURCE_GROUP_SCALAR, &scale );
             CHECK( err == Err::ok() );
 
             CHECK( ilno == 2 );
@@ -1378,12 +1378,12 @@ SCENARIO( "modifying trace header", "[c.segy]" ) {
         THEN( "changes are observable on disk" ) {
             char fresh[ SEGY_TRACE_HEADER_SIZE ] = {};
             int ilno = 0;
-            int scale = 0;
+            int16_t scale = 0;
             err = segy_traceheader( fp, 5, fresh, trace0, trace_bsize );
             CHECK( err == Err::ok() );
             err = segy_get_field( fresh, SEGY_TR_INLINE, &ilno );
             CHECK( err == Err::ok() );
-            err = segy_get_field( fresh, SEGY_TR_SOURCE_GROUP_SCALAR, &scale );
+            err = segy_get_field_i16( fresh, SEGY_TR_SOURCE_GROUP_SCALAR, &scale );
             CHECK( err == Err::ok() );
 
             CHECK( ilno == 2 );
@@ -2046,8 +2046,8 @@ TEST_CASE("segy_get_field reads values correctly",  "[c.segy]" ) {
         header[SEGY_TR_TRACE_ID-1] = b1;
         header[SEGY_TR_TRACE_ID-0] = b0;
 
-        int32_t read_value;
-        Err err = segy_get_field( header, SEGY_TR_TRACE_ID, &read_value );
+        int16_t read_value;
+        Err err = segy_get_field_i16( header, SEGY_TR_TRACE_ID, &read_value );
         CHECK( success( err ) );
         CHECK( read_value == value );
     }
