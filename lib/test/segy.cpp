@@ -411,7 +411,7 @@ TEST_CASE_METHOD( smallheader,
                   "[c.segy]" ) {
 
     int32_t ilno;
-    Err err = segy_get_field( header, SEGY_TR_INLINE, &ilno );
+    Err err = segy_get_field_i32( header, SEGY_TR_INLINE, &ilno );
     CHECK( success( err ) );
     CHECK( ilno == 1 );
 }
@@ -421,7 +421,7 @@ TEST_CASE_METHOD( smallheader,
                   "[c.segy]" ) {
     const int32_t input_value = arbitrary_int();
     auto value = input_value;
-    Err err = segy_get_field( header, 0, &value );
+    Err err = segy_get_field_i32( header, 0, &value );
 
     CHECK( err == Err::field() );
     CHECK( value == input_value );
@@ -432,7 +432,7 @@ TEST_CASE_METHOD( smallheader,
                   "[c.segy]" ) {
     const int32_t input_value = arbitrary_int();
     auto value = input_value;
-    Err err = segy_get_field( header, -1, &value );
+    Err err = segy_get_field_i32( header, -1, &value );
 
     CHECK( err == Err::field() );
     CHECK( value == input_value );
@@ -443,7 +443,7 @@ TEST_CASE_METHOD( smallheader,
                   "[c.segy]" ) {
     const int32_t input_value = arbitrary_int();
     auto value = input_value;
-    Err err = segy_get_field( header, SEGY_TR_INLINE + 1, &value );
+    Err err = segy_get_field_i32( header, SEGY_TR_INLINE + 1, &value );
 
     CHECK( err == Err::field() );
     CHECK( value == input_value );
@@ -1348,8 +1348,8 @@ SCENARIO( "modifying trace header", "[c.segy]" ) {
 
         THEN( "the header buffer is updated") {
             int ilno = 0;
-            err = segy_get_field( header, SEGY_TR_INLINE, &ilno );
             int16_t scale = 0;
+            err = segy_get_field_i32( header, SEGY_TR_INLINE, &ilno );
             CHECK( err == Err::ok() );
             err = segy_get_field_i16( header, SEGY_TR_SOURCE_GROUP_SCALAR, &scale );
             CHECK( err == Err::ok() );
@@ -1381,7 +1381,7 @@ SCENARIO( "modifying trace header", "[c.segy]" ) {
             int16_t scale = 0;
             err = segy_traceheader( fp, 5, fresh, trace0, trace_bsize );
             CHECK( err == Err::ok() );
-            err = segy_get_field( fresh, SEGY_TR_INLINE, &ilno );
+            err = segy_get_field_i32( fresh, SEGY_TR_INLINE, &ilno );
             CHECK( err == Err::ok() );
             err = segy_get_field_i16( fresh, SEGY_TR_SOURCE_GROUP_SCALAR, &scale );
             CHECK( err == Err::ok() );
@@ -1851,7 +1851,7 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
             CHECK( err == Err::ok() );
 
             int ilno = 0;
-            err = segy_get_field( buf, SEGY_TR_INLINE, &ilno );
+            err = segy_get_field_i32( buf, SEGY_TR_INLINE, &ilno );
             CHECK( err == Err::ok() );
             CHECK( ilno == 111 );
         }
@@ -1862,7 +1862,7 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
             CHECK( err == Err::field() );
             CHECK( x == -1 );
 
-            err = segy_get_field( buf, SEGY_TR_INLINE + 1, &x );
+            err = segy_get_field_i32( buf, SEGY_TR_INLINE + 1, &x );
             CHECK( err == Err::field() );
             CHECK( x == -1 );
         }
