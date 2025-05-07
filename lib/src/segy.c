@@ -842,17 +842,43 @@ static int fd_set_int( segy_field_data* fd, int val ) {
     }
 }
 
-int segy_set_field( char* traceheader, int field, int val ) {
+int segy_set_field_i16( char* header, const int field, const int16_t val ) {
     segy_field_data fd;
     int err = init_segy_field_data( field, &fd );
     if ( err != SEGY_OK ) return err;
 
-    err = fd_set_int( &fd, val );
-    if ( err != SEGY_OK ) return err;
-    return set_field( traceheader, &fd );
+    if ( fd.datatype != SEGY_SIGNED_SHORT_2_BYTE )
+        return SEGY_INVALID_FIELD_DATATYPE;
+
+    fd.value.i16 = val;
+    return set_field( header, &fd );
 }
 
-int segy_set_bfield( char* binheader, int field, int val ) {
+int segy_set_field_i32( char* header, const int field, const int32_t val ) {
+    segy_field_data fd;
+    int err = init_segy_field_data( field, &fd );
+    if ( err != SEGY_OK ) return err;
+
+    if ( fd.datatype != SEGY_SIGNED_INTEGER_4_BYTE )
+        return SEGY_INVALID_FIELD_DATATYPE;
+
+    fd.value.i32 = val;
+    return set_field( header, &fd );
+}
+
+int segy_set_field_u16( char* header, const int field, const uint16_t val ) {
+    segy_field_data fd;
+    int err = init_segy_field_data( field, &fd );
+    if ( err != SEGY_OK ) return err;
+
+    if ( fd.datatype != SEGY_UNSIGNED_SHORT_2_BYTE )
+        return SEGY_INVALID_FIELD_DATATYPE;
+
+    fd.value.u16 = val;
+    return set_field( header, &fd );
+}
+
+int segy_set_field_int( char* header, const int field, const int val ) {
 
     segy_field_data fd;
     int err = init_segy_field_data( field, &fd );
@@ -860,8 +886,8 @@ int segy_set_bfield( char* binheader, int field, int val ) {
 
     err = fd_set_int( &fd, val );
     if ( err != SEGY_OK ) return err;
-    err = set_field( binheader, &fd );
-    return err;
+
+    return set_field( header, &fd );
 }
 
 static int slicelength( int start, int stop, int step ) {

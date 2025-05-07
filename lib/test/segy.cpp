@@ -1290,7 +1290,7 @@ TEST_CASE( "setting unaligned header-field fails",
     char header[ SEGY_TRACE_HEADER_SIZE ];
     const int32_t v = arbitrary_int();
 
-    Err err = segy_set_field( header, SEGY_TR_INLINE + 1, v );
+    Err err = segy_set_field_i32( header, SEGY_TR_INLINE + 1, v );
     CHECK( err == Err::field() );
 }
 
@@ -1299,7 +1299,7 @@ TEST_CASE( "setting negative header-field fails",
     char header[ SEGY_TRACE_HEADER_SIZE ];
     const int32_t v = arbitrary_int();
 
-    Err err = segy_set_field( header, -1, v );
+    Err err = segy_set_field_int( header, -1, v );
     CHECK( err == Err::field() );
 }
 
@@ -1308,7 +1308,7 @@ TEST_CASE( "setting too large header-field fails",
     char header[ SEGY_TRACE_HEADER_SIZE ];
     const int32_t v = arbitrary_int();
 
-    Err err = segy_set_field( header, SEGY_TRACE_HEADER_SIZE + 10, v );
+    Err err = segy_set_field_i32( header, SEGY_TRACE_HEADER_SIZE + 10, v );
     CHECK( err == Err::field() );
 }
 
@@ -1318,7 +1318,7 @@ TEST_CASE( "setting correct header fields succeeds",
     const int32_t input = 1;
     const int field = SEGY_TR_INLINE;
 
-    Err err = segy_set_field( header, field, input );
+    Err err = segy_set_field_i32( header, field, input );
     CHECK( success( err ) );
 
 
@@ -1341,9 +1341,9 @@ SCENARIO( "modifying trace header", "[c.segy]" ) {
     WHEN( "writing iline no" ) {
         char header[ SEGY_TRACE_HEADER_SIZE ] = {};
 
-        Err err = segy_set_field( header, SEGY_TR_INLINE, 2 );
+        Err err = segy_set_field_i32( header, SEGY_TR_INLINE, 2 );
         CHECK( err == Err::ok() );
-        err = segy_set_field( header, SEGY_TR_SOURCE_GROUP_SCALAR, -100 );
+        err = segy_set_field_i16( header, SEGY_TR_SOURCE_GROUP_SCALAR, -100 );
         CHECK( err == Err::ok() );
 
         THEN( "the header buffer is updated") {
@@ -2059,7 +2059,7 @@ TEST_CASE("segy_set_field write values correctly",  "[c.segy]" ) {
 
     SECTION("test edge cases int16") {
         int16_t value = GENERATE(0, 1, -1, 0x0102, 0x0201, -32767, -32766);
-        Err err = segy_set_field( header, SEGY_TR_TRACE_ID, value );
+        Err err = segy_set_field_i16( header, SEGY_TR_TRACE_ID, value );
         CHECK( err == Err::ok() );
 
         uint8_t b0 = header[SEGY_TR_TRACE_ID-0];
@@ -2075,7 +2075,7 @@ TEST_CASE("segy_set_field write invalid value",  "[c.segy]" ) {
 
     SECTION("test value outside of int16 range") {
         int32_t value = 0xFFFF + 1;
-        Err err = segy_set_field( header, SEGY_TR_TRACE_ID, value );
+        Err err = segy_set_field_int( header, SEGY_TR_TRACE_ID, value );
         CHECK( err == Err::value() );
     }
 }

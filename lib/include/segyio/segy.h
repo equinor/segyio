@@ -110,8 +110,10 @@ int segy_get_field_u16( const char* header, int field, uint16_t* val );
 int segy_get_field_i16( const char* header, int field, int16_t* val );
 int segy_get_field_i32( const char* header, int field, int32_t* val );
 int segy_get_field_int( const char* header, int field, int* f );
-int segy_set_field( char* traceheader, int field, int32_t val );
-int segy_set_bfield( char* binheader, int field, int32_t val );
+int segy_set_field_i16( char* header, const int field, const int16_t val );
+int segy_set_field_i32( char* header, const int field, const int32_t val );
+int segy_set_field_u16( char* header, const int field, const uint16_t val );
+int segy_set_field_int( char* header, const int field, const int val );
 
 int segy_field_forall( segy_file*,
                        int field,
