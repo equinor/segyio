@@ -1290,7 +1290,7 @@ TEST_CASE( "setting unaligned header-field fails",
     char header[ SEGY_TRACE_HEADER_SIZE ];
     const int32_t v = arbitrary_int();
 
-    Err err = segy_set_field( header, SEGY_TR_INLINE + 1, v );
+    Err err = segy_set_field_i32( header, SEGY_TR_INLINE + 1, v );
     CHECK( err == Err::field() );
 }
 
@@ -1308,7 +1308,7 @@ TEST_CASE( "setting too large header-field fails",
     char header[ SEGY_TRACE_HEADER_SIZE ];
     const int32_t v = arbitrary_int();
 
-    Err err = segy_set_field( header, SEGY_TRACE_HEADER_SIZE + 10, v );
+    Err err = segy_set_field_i32( header, SEGY_TRACE_HEADER_SIZE + 10, v );
     CHECK( err == Err::field() );
 }
 
@@ -1318,7 +1318,7 @@ TEST_CASE( "setting correct header fields succeeds",
     const int32_t input = 1;
     const int field = SEGY_TR_INLINE;
 
-    Err err = segy_set_field( header, field, input );
+    Err err = segy_set_field_i32( header, field, input );
     CHECK( success( err ) );
 
 
@@ -1341,7 +1341,7 @@ SCENARIO( "modifying trace header", "[c.segy]" ) {
     WHEN( "writing iline no" ) {
         char header[ SEGY_TRACE_HEADER_SIZE ] = {};
 
-        Err err = segy_set_field( header, SEGY_TR_INLINE, 2 );
+        Err err = segy_set_field_i32( header, SEGY_TR_INLINE, 2 );
         CHECK( err == Err::ok() );
         err = segy_set_field_i16( header, SEGY_TR_SOURCE_GROUP_SCALAR, -100 );
         CHECK( err == Err::ok() );
