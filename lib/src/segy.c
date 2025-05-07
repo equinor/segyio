@@ -709,18 +709,6 @@ static int init_segy_field_data(int field, segy_field_data* fd) {
     return SEGY_OK;
 }
 
-int segy_get_field( const char* traceheader, int field, int* val ) {
-
-    segy_field_data fd;
-    int err = init_segy_field_data( field, &fd );
-    if ( err != SEGY_OK ) return err;
-
-    err = get_field( traceheader, &fd );
-    if ( err != SEGY_OK ) return err;
-    err = fd_get_int( &fd, val );
-    return err;
-}
-
 int segy_get_field_u8( const char* header, int field, uint8_t* val ) {
     segy_field_data fd;
     int err = init_segy_field_data( field, &fd );
@@ -775,17 +763,6 @@ int segy_get_field_int( const char* header, int field, int* val ) {
     if ( err != SEGY_OK ) return err;
     err = get_field( header, &fd );
     if( err != SEGY_OK ) return err;
-    return fd_get_int( &fd, val );
-}
-
-int segy_get_bfield( const char* binheader, int field, int32_t* val ) {
-
-    segy_field_data fd;
-    int err = init_segy_field_data( field, &fd );
-    if ( err != SEGY_OK ) return err;
-
-    err = get_field( binheader, &fd );
-    if ( err != SEGY_OK ) return err;
     return fd_get_int( &fd, val );
 }
 
