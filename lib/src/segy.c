@@ -825,6 +825,14 @@ int segy_get_field_int( const char* header, int field, int* val ) {
     return fd_get_int( &fd, val );
 }
 
+segy_field_data segy_get_field( const char* header, int field) {
+    segy_field_data fd;
+    fd.error = init_segy_field_data( field, &fd );
+    if ( fd.error != SEGY_OK ) return fd;
+    fd.error = get_field( header, &fd );
+    return fd;
+}
+
 static int set_field( char* header,
                       const segy_field_data* fd ) {
 
