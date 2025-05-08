@@ -1031,7 +1031,7 @@ static int mmapread( void* dest, const segy_file* fp, const void* src, size_t n 
     return SEGY_OK;
 }
 
-static int mmapwrite( segy_file* fp, void* dest, const void* src, size_t n ) {
+static int mmapwrite( const segy_file* fp, void* dest, const void* src, size_t n ) {
     const void* begin = fp->addr;
     const void* end = (const char*)fp->addr + fp->fsize;
     const void* destend = (const char*)dest + n;
@@ -2039,6 +2039,7 @@ int segy_readsubtr( segy_file* fp,
      */
     void* tracebuf = rangebuf ? rangebuf : malloc( elems * elemsize );
 
+    if (!tracebuf) return SEGY_MEMORY_ERROR;
     const int readc = (int) fread( tracebuf, elemsize, elems, fp->fp );
     if( readc != elems ) {
         if( !rangebuf ) free( tracebuf );
@@ -2113,6 +2114,8 @@ int segy_writesubtr( segy_file* fp,
      */
     if( !fp->addr && (step == 1 || step == -1) && fp->lsb ) {
         void* tracebuf = rangebuf ? rangebuf : malloc( elems * elemsize );
+
+        if (!tracebuf) return SEGY_MEMORY_ERROR;
         memcpy( tracebuf, buf, elemsize * elems );
 
         if (step == -1) reverse(tracebuf, elems, elemsize);
@@ -2172,6 +2175,7 @@ int segy_writesubtr( segy_file* fp,
     void* tracebuf = rangebuf ? rangebuf : malloc( elems * elemsize );
 
     // like in readsubtr, read a larger chunk and then step through that
+    if (!tracebuf) return SEGY_MEMORY_ERROR;
     const int readc = (int) fread( tracebuf, elemsize, elems, fp->fp );
     if( readc != elems ) { free( tracebuf ); return SEGY_FREAD_ERROR; }
     /* rewind, because fread advances the file pointer */

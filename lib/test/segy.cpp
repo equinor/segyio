@@ -6,6 +6,7 @@
 #include <limits>
 #include <vector>
 #include <array>
+#include <string.h>
 
 // disable conversion from 'const _Elem' to '_Objty' MSC warnings.
 // warnings reason is unknown, should be caused by Catch2 though, thus ignored
@@ -1551,7 +1552,7 @@ TEST_CASE("open file with >32k traces", "[c.segy]") {
 struct int24_base {
     unsigned char bytes[3];
 
-    int24_base() = default;
+    int24_base() : bytes{0, 0, 0} {}
     // cppcheck-suppress noExplicitConstructor
     int24_base(const int16_t& x) {
         /* Sign is allowed to be negative even if type represents unsigned int,
@@ -1559,13 +1560,11 @@ struct int24_base {
          */
         char sign = x < 0 ? -1 : 0;
 #if HOST_LSB
-        this->bytes[0] = ((const char*)&x)[0];
-        this->bytes[1] = ((const char*)&x)[1];
+        memcpy(&this->bytes[0], &x, 2);
         this->bytes[2] = sign;
 #else
         this->bytes[0] = sign;
-        this->bytes[1] = ((const char*)&x)[0];
-        this->bytes[2] = ((const char*)&x)[1];
+        memcpy(&this->bytes[1], &x, 2);
 #endif
     }
 
@@ -1737,14 +1736,18 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
             CHECK( trace_bsize == 75 * 2 );
         }
 
-        WHEN( "the format is valid" ) THEN( "setting format succeeds" ) {
+        WHEN( "the format is valid" ) {
+            THEN( "setting format succeeds" ) {
                 Err err = segy_set_format( fp, format );
                 CHECK( err == Err::ok() );
+            }
         }
 
-        WHEN( "the format is invalid" ) THEN( "setting format fails" ) {
+        WHEN( "the format is invalid" ) {
+            THEN( "setting format fails" ) {
                 Err err = segy_set_format( fp, 50 );
                 CHECK( err == Err::args() );
+            }
         }
     }
 
@@ -1789,21 +1792,25 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
             WHEN( "trace0 is after end-of-file" ) {
                 err = segy_traces( fp, &traces, 500000, trace_bsize );
 
-                THEN( "segy_traces fail" )
+                THEN( "segy_traces fail" ) {
                     CHECK( err == Err::args() );
+                }
 
-                THEN( "the input does not change" )
+                THEN( "the input does not change" ) {
                     CHECK( traces == 414 );
+                }
             }
 
             WHEN( "trace0 is negative" ) {
                 err = segy_traces( fp, &traces, -1, trace_bsize );
 
-                THEN( "segy_traces fail" )
+                THEN( "segy_traces fail" ) {
                     CHECK( err == Err::args() );
+                }
 
-                THEN( "the input does not change" )
+                THEN( "the input does not change" ) {
                     CHECK( traces == 414 );
+                }
             }
         }
     }
