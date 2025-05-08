@@ -780,6 +780,18 @@ int segy_get_field_u16( const char* header, int field, uint16_t* val ) {
     return SEGY_OK;
 }
 
+int segy_get_field_u64( const char* header, int field, uint64_t* val ) {
+    segy_field_data fd;
+    int err = init_segy_field_data( field, &fd );
+    if ( err != SEGY_OK ) return err;
+    err = get_field( header, &fd );
+    if( err != SEGY_OK ) return err;
+    if ( fd.datatype != SEGY_UNSIGNED_INTEGER_8_BYTE )
+        return SEGY_INVALID_FIELD_DATATYPE;
+    *val = fd.value.u64;
+    return SEGY_OK;
+}
+
 int segy_get_field_i16( const char* header, int field, int16_t* val ) {
     segy_field_data fd;
     int err = init_segy_field_data( field, &fd );
@@ -939,6 +951,18 @@ int segy_set_field_u16( char* header, const int field, const uint16_t val ) {
         return SEGY_INVALID_FIELD_DATATYPE;
 
     fd.value.u16 = val;
+    return set_field( header, &fd );
+}
+
+int segy_set_field_u64( char* header, const int field, const uint64_t val ) {
+    segy_field_data fd;
+    int err = init_segy_field_data( field, &fd );
+    if ( err != SEGY_OK ) return err;
+
+    if ( fd.datatype != SEGY_UNSIGNED_INTEGER_8_BYTE )
+        return SEGY_INVALID_FIELD_DATATYPE;
+
+    fd.value.u64 = val;
     return set_field( header, &fd );
 }
 
