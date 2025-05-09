@@ -23,23 +23,6 @@ static int printhelp(void){
     return 0;
 }
 
-static int get_binary_value( const char* binheader, int bfield ){
-    int32_t f;
-    segy_get_field_int( binheader, bfield, &f );
-
-    /*
-     * convert cannot-be-negative values to unsigned int, as mandated by SEGY-Y
-     * rev2
-     */
-    switch (bfield) {
-        case SEGY_BIN_SAMPLES:
-        case SEGY_BIN_SAMPLES_ORIG:
-            f = (int32_t)((uint16_t)(f));
-            break;
-    }
-    return f;
-}
-
 struct options {
     int version;
     int help;
@@ -152,20 +135,40 @@ int main( int argc, char** argv ){
 
         int nr_fields = sizeof(field_data)/sizeof(binary_field_type);
         for( int c = 0; c < nr_fields; ++c ){
-            int field = get_binary_value( binheader, field_data[c].offset );
+            segy_field_data fd = segy_get_field( binheader, field_data[c].offset );
+            if ( fd.error ) return errmsg( fd.error, "Unable to read field" );
 
-            if( opts.nonzero && !field) continue;
+            int byte_offset = (field_data[c].offset - SEGY_TEXT_HEADER_SIZE);
+            const char* short_name = field_data[c].short_name;
+            const char* description = field_data[c].description;
 
-            if( opts.description ) {
-                int byte_offset = (field_data[c].offset - SEGY_TEXT_HEADER_SIZE);
-                printf( "%s\t%d\t%d\t%s\n",
-                    field_data[c].short_name,
-                    field,
-                    byte_offset,
-                    field_data[c].description );
+            if( fd.datatype == SEGY_UNSIGNED_INTEGER_8_BYTE ) {
+                long long int field = fd.value.u64;
+                if( opts.nonzero && field == 0) continue;
+                if( opts.description )
+                    printf( "%s\t%lld\t%d\t%s\n", short_name, field, byte_offset, description );
+                else
+                    printf( "%s\t%lld\n", short_name, field );
             }
-            else
-                printf( "%s\t%d\n", field_data[c].short_name, field );
+            else if( fd.datatype == SEGY_IEEE_FLOAT_8_BYTE ) {
+                double field = fd.value.f64;
+                if( opts.nonzero && field == 0.0) continue;
+                if( opts.description )
+                    printf( "%s\t%f\t%d\t%s\n", short_name, field, byte_offset, description );
+                else
+                    printf( "%s\t%f\n", short_name, field );
+            }
+            else {
+                int field;
+                err = segy_field_data_to_int( &fd, &field );
+                if( err ) return errmsg( err, "Unable to convert segy_field_data to int32" );
+
+                if( opts.nonzero && field == 0) continue;
+                if( opts.description )
+                    printf( "%s\t%d\t%d\t%s\n", short_name, field, byte_offset, description );
+                else
+                    printf( "%s\t%d\n", short_name, field );
+            }
         }
         segy_close( fp );
     }
