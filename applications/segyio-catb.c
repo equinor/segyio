@@ -113,9 +113,25 @@ int main( int argc, char** argv ){
         {SEGY_BIN_MEASUREMENT_SYSTEM, "mfeet", "Measurement system"},
         {SEGY_BIN_IMPULSE_POLARITY, "polyt", "Impulse signal polarity"},
         {SEGY_BIN_VIBRATORY_POLARITY, "vpol", "Vibratory polarity code"},
+        {SEGY_BIN_EXT_TRACES, "extntrpr", "ExtTraces"},
+        {SEGY_BIN_EXT_AUX_TRACES, "extnart", "ExtAuxTraces"},
+        {SEGY_BIN_EXT_SAMPLES, "extns", "ExtSamples"},
+        {SEGY_BIN_EXT_INTERVAL, "extdt", "ExtSampleInterval"},
+        {SEGY_BIN_EXT_INTERVAL_ORIG, "extdto", "ExtSampleIntervalOrig"},
+        {SEGY_BIN_EXT_SAMPLES_ORIG, "extns", "ExtSamplesOrig"},
+        {SEGY_BIN_EXT_ENSEMBLE_FOLD, "extfold", "ExtEnsembleFold"},
+        {SEGY_BIN_INTEGER_CONSTANT, "intconst", "IntegerConstant"},
+
         {SEGY_BIN_SEGY_REVISION, "rev", "SEG Y Format Revision Number"},
+        {SEGY_BIN_SEGY_REVISION_MINOR, "revmin", "SEG Y Format Min Revision Number"},
         {SEGY_BIN_TRACE_FLAG, "trflag", "Fixed length trace flag"},
         {SEGY_BIN_EXT_HEADERS, "exth", "Number of 3200-byte, Extended Textual File Headers"},
+        {SEGY_BIN_MAX_ADD_TRACE_HEADERS, "maxtrh", "MaxTrh"},
+        {SEGY_BIN_SURVEY_TYPE, "survty", "SurveyType"},
+        {SEGY_BIN_TIME_BASIC_CODE, "timbas", "TimeBasis"},
+        {SEGY_BIN_NR_TRACES_IN_STREAM, "ntrpr", "NrTracesInStream"},
+        {SEGY_BIN_FIRST_TRACE_OFFSET, "lcf", "FirstTraceOffset"},
+        {SEGY_BIN_NR_TRAILER_RECORDS, "ntr", "NrTrailerRecords"}
     };
 
     struct options opts = parse_options( argc, argv );
@@ -149,14 +165,14 @@ int main( int argc, char** argv ){
                 if( opts.description )
                     printf( "%s\t%lld\t%d\t%s\n", short_name, field, byte_offset, description );
                 else
-                    printf( "%s\t%lld\n", short_name, field );
+                    printf( "%-10s\t%lld\n", short_name, field );
             }
             else if( fd.datatype == SEGY_IEEE_FLOAT_8_BYTE ) {
                 double field = fd.value.f64;
                 if( opts.description )
                     printf( "%s\t%f\t%d\t%s\n", short_name, field, byte_offset, description );
                 else
-                    printf( "%s\t%f\n", short_name, field );
+                    printf( "%-10s\t%f\n", short_name, field );
             }
             else {
                 int field;
@@ -166,7 +182,7 @@ int main( int argc, char** argv ){
                 if( opts.description )
                     printf( "%s\t%d\t%d\t%s\n", short_name, field, byte_offset, description );
                 else
-                    printf( "%s\t%d\n", short_name, field );
+                    printf( "%-10s\t%d\n", short_name, field );
             }
         }
         segy_close( fp );
