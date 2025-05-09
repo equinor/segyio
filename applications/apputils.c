@@ -35,22 +35,6 @@ int parseint( const char* str, int* x ) {
     return 0;
 }
 
-int bfield( const char* header, int field ) {
-    int32_t f;
-    int err = segy_get_field_int( header, field, &f );
-
-    if( err ) return -1;
-    return f;
-}
-
-int trfield( const char* header, int field ) {
-    int32_t f;
-    int err = segy_get_field_int( header, field, &f );
-
-    if( err ) return -1;
-    return f;
-}
-
 int printversion( const char* name ) {
     printf( "%s (segyio version %d.%d)\n", name, segyio_MAJOR, segyio_MINOR );
     return 0;

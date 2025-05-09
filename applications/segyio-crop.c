@@ -51,8 +51,10 @@ static struct delay delay_recording_time( const char* trheader,
                                           int dt,
                                           int samples ) {
 
-    long long t0 = trfield( trheader, SEGY_TR_DELAY_REC_TIME );
-    int trdt     = trfield( trheader, SEGY_TR_SAMPLE_INTER );
+    int16_t t0;
+    segy_get_field_i16( trheader, SEGY_TR_DELAY_REC_TIME, &t0 );
+    int16_t trdt;
+    segy_get_field_i16( trheader, SEGY_TR_SAMPLE_INTER, &trdt );
     if( trdt ) dt = trdt;
 
     /*
@@ -72,7 +74,7 @@ static struct delay delay_recording_time( const char* trheader,
 
     /* determine what to cut off at the end of the trace */
     if( (long long)send * 1000 < (t0 * 1000) + (samples * dt) ) {
-        long long t0us = t0 * 1000;
+        long long t0us = (uint32_t)(t0 * 1000);
         long long sendus = (long long)send * 1000;
         d.len -= (t0us + ((samples - 1) * dt) - sendus) / dt;
     }
@@ -406,8 +408,9 @@ int main( int argc, char** argv ) {
     if( sz != 1 ) exit( errmsg2( errno, "Unable to write binary header",
                                          strerror( errno ) ) );
 
-    int ext_headers = bfield( binheader, SEGY_BIN_EXT_HEADERS );
-    if( ext_headers < 0 ) exit( errmsg( -1, "Malformed binary header" ) );
+    int16_t ext_headers;
+    int err = segy_get_field_i16(binheader, SEGY_BIN_EXT_HEADERS, &ext_headers);
+    if( err != SEGY_OK ) exit( errmsg( -1, "Malformed binary header" ) );
 
     for( int i = 0; i < ext_headers; ++i ) {
         if( verbosity > 0 ) puts( "Copying extended text header" );
@@ -421,9 +424,11 @@ int main( int argc, char** argv ) {
     }
 
     if( verbosity > 2 ) puts( "Computing samples-per-trace" );
-    const int bindt = bfield( binheader, SEGY_BIN_INTERVAL );
-    const int src_samples = bfield( binheader, SEGY_BIN_SAMPLES );
-    if( src_samples < 0 )
+    int16_t bindt;
+    segy_get_field_i16( binheader, SEGY_BIN_INTERVAL, &bindt );
+    uint16_t src_samples;
+    err = segy_get_field_u16( binheader, SEGY_BIN_SAMPLES, &src_samples );
+    if( err != SEGY_OK )
         exit( errmsg( -2, "Could not determine samples per trace" ) );
 
     if( verbosity > 2 ) printf( "Found %d samples per trace\n", src_samples );
@@ -486,8 +491,10 @@ int main( int argc, char** argv ) {
         if( sz != 1 && ferror( src ) )
             exit( errmsg( ferror( src ), "Unable to read trace header" ) );
 
-        int ilno = trfield( trheader, il );
-        int xlno = trfield( trheader, xl );
+        int ilno;
+        segy_get_field_int( trheader, il, &ilno );
+        int xlno;
+        segy_get_field_int( trheader, xl, &xlno );
 
         /* outside copy interval - skip this trace */
         if( ilno < ibeg || ilno > iend || xlno < xbeg || xlno > xend ) {
