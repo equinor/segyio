@@ -113,9 +113,25 @@ int main( int argc, char** argv ){
         {SEGY_BIN_MEASUREMENT_SYSTEM, "mfeet", "Measurement system"},
         {SEGY_BIN_IMPULSE_POLARITY, "polyt", "Impulse signal polarity"},
         {SEGY_BIN_VIBRATORY_POLARITY, "vpol", "Vibratory polarity code"},
+
+        {SEGY_BIN_EXT_ENSEMBLE_TRACES, "extntrpr", "Extended number of data traces per ensemble"},
+        {SEGY_BIN_EXT_AUX_ENSEMBLE_TRACES, "extnart", "Extended number of auxiliary traces per ensemble"},
+        {SEGY_BIN_EXT_SAMPLES, "exthns", "Extended number of samples per data trace"},
+        {SEGY_BIN_EXT_INTERVAL, "exthdt", "Extended sample interval, IEEE double precision (64-bit)"},
+        {SEGY_BIN_EXT_INTERVAL_ORIG, "extdto", "Extended sample interval of original field recording, IEEE double precision (64-bit)"},
+        {SEGY_BIN_EXT_SAMPLES_ORIG, "extnso", "Extended number of samples per data trace in original recording"},
+        {SEGY_BIN_EXT_ENSEMBLE_FOLD, "extfold", "Extended ensemble fold"},
+        {SEGY_BIN_INTEGER_CONSTANT, "intconst", "The integer constant 1690906010"},
         {SEGY_BIN_SEGY_REVISION, "rev", "SEG Y Format Revision Number"},
+        {SEGY_BIN_SEGY_REVISION_MINOR, "revmin", "SEG Y Format Min Revision Number"},
         {SEGY_BIN_TRACE_FLAG, "trflag", "Fixed length trace flag"},
         {SEGY_BIN_EXT_HEADERS, "exth", "Number of 3200-byte, Extended Textual File Headers"},
+        {SEGY_BIN_MAX_ADDITIONAL_TR_HEADERS, "maxtrh", "Maximum number of additional 240-byte trace headers"},
+        {SEGY_BIN_SURVEY_TYPE, "survty", "Survey type"},
+        {SEGY_BIN_TIME_BASIS_CODE, "timebc", "Time basis code"},
+        {SEGY_BIN_NR_TRACES_IN_STREAM, "ntrst", "Number of traces in this file or stream"},
+        {SEGY_BIN_FIRST_TRACE_OFFSET, "ftroff", "Byte offset of first trace relative to start of stream"},
+        {SEGY_BIN_NR_TRAILER_RECORDS, "ntr", "Number of 3200-byte data trailer stanza records"}
     };
 
     struct options opts = parse_options( argc, argv );
@@ -148,7 +164,7 @@ int main( int argc, char** argv ){
                 if( opts.description )
                     printf( "%s\t%lld\t%d\t%s\n", short_name, field, byte_offset, description );
                 else
-                    printf( "%s\t%lld\n", short_name, field );
+                    printf( "%-10s\t%lld\n", short_name, field );
             }
             else if( fd.datatype == SEGY_IEEE_FLOAT_8_BYTE ) {
                 double field = fd.value.f64;
@@ -156,7 +172,7 @@ int main( int argc, char** argv ){
                 if( opts.description )
                     printf( "%s\t%f\t%d\t%s\n", short_name, field, byte_offset, description );
                 else
-                    printf( "%s\t%f\n", short_name, field );
+                    printf( "%-10s\t%f\n", short_name, field );
             }
             else {
                 int field;
@@ -167,7 +183,7 @@ int main( int argc, char** argv ){
                 if( opts.description )
                     printf( "%s\t%d\t%d\t%s\n", short_name, field, byte_offset, description );
                 else
-                    printf( "%s\t%d\n", short_name, field );
+                    printf( "%-10s\t%d\n", short_name, field );
             }
         }
         segy_close( fp );
