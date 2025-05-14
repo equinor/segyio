@@ -1,6 +1,6 @@
 #define _POSIX_SOURCE /* fileno */
 
-/* 64-bit off_t in ftello */
+/* 64-bit off_t in fseeko/ftello */
 #define _POSIX_C_SOURCE 200808L
 #define _FILE_OFFSET_BITS 64
 
@@ -565,25 +565,13 @@ static int segy_seek( segy_file* fp,
 
     int err;
 #if LONG_MAX == LLONG_MAX
-    assert( pos <= LONG_MAX );
     err = fseek( fp->fp, (long)pos, SEEK_SET );
+#elif HAVE_FSEEKO
+    err = fseeko( fp->fp, pos, SEEK_SET );
+#elif HAVE_FSEEKI64
+    err = _fseeki64( fp->fp, pos, SEEK_SET );
 #else
-   /*
-    * If long is 32bit on our platform (hello, windows), we do skips according
-    * to LONG_MAX and seek relative to our cursor rather than absolute on file
-    * begin.
-    */
-    err = SEGY_OK;
-    rewind( fp->fp );
-    while( pos >= LONG_MAX && err == SEGY_OK ) {
-        err = fseek( fp->fp, LONG_MAX, SEEK_CUR );
-        pos -= LONG_MAX;
-    }
-
-    if( err != 0 ) return SEGY_FSEEK_ERROR;
-
-    assert( pos <= LONG_MAX );
-    err = fseek( fp->fp, (long)pos, SEEK_CUR );
+#   error "no 64-bit alternative to fseek() found, and long is too small"
 #endif
 
     if( err != 0 ) return SEGY_FSEEK_ERROR;
