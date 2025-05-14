@@ -38,9 +38,13 @@ typedef union {
     uint8_t u8;
     uint16_t u16;
     uint32_t u32;
+    uint64_t u64;
     int8_t i8;
     int16_t i16;
     int32_t i32;
+    int64_t i64;
+    float f32;
+    double f64;
 } segy_field_value;
 
 typedef struct {
@@ -107,12 +111,16 @@ int segy_set_endianness( segy_file*, int opt );
 
 int segy_get_field_u8( const char* header, int field, uint8_t* val );
 int segy_get_field_u16( const char* header, int field, uint16_t* val );
+int segy_get_field_u64( const char* header, int field, uint64_t* val );
 int segy_get_field_i16( const char* header, int field, int16_t* val );
 int segy_get_field_i32( const char* header, int field, int32_t* val );
+int segy_get_field_f64( const char* header, int field, double* val );
 int segy_get_field_int( const char* header, int field, int* f );
 int segy_set_field_i16( char* header, const int field, const int16_t val );
 int segy_set_field_i32( char* header, const int field, const int32_t val );
 int segy_set_field_u16( char* header, const int field, const uint16_t val );
+int segy_set_field_u64( char* header, const int field, const uint64_t val );
+int segy_set_field_f64( char* header, const int field, const double val );
 int segy_set_field_int( char* header, const int field, const int val );
 
 int segy_field_forall( segy_file*,
@@ -589,44 +597,53 @@ typedef enum {
 } SEGY_FIELD;
 
 typedef enum {
-    SEGY_BIN_JOB_ID                 = 3201,
-    SEGY_BIN_LINE_NUMBER            = 3205,
-    SEGY_BIN_REEL_NUMBER            = 3209,
-    SEGY_BIN_TRACES                 = 3213,
-    SEGY_BIN_AUX_TRACES             = 3215,
-    SEGY_BIN_INTERVAL               = 3217,
-    SEGY_BIN_INTERVAL_ORIG          = 3219,
-    SEGY_BIN_SAMPLES                = 3221,
-    SEGY_BIN_SAMPLES_ORIG           = 3223,
-    SEGY_BIN_FORMAT                 = 3225,
-    SEGY_BIN_ENSEMBLE_FOLD          = 3227,
-    SEGY_BIN_SORTING_CODE           = 3229,
-    SEGY_BIN_VERTICAL_SUM           = 3231,
-    SEGY_BIN_SWEEP_FREQ_START       = 3233,
-    SEGY_BIN_SWEEP_FREQ_END         = 3235,
-    SEGY_BIN_SWEEP_LENGTH           = 3237,
-    SEGY_BIN_SWEEP                  = 3239,
-    SEGY_BIN_SWEEP_CHANNEL          = 3241,
-    SEGY_BIN_SWEEP_TAPER_START      = 3243,
-    SEGY_BIN_SWEEP_TAPER_END        = 3245,
-    SEGY_BIN_TAPER                  = 3247,
-    SEGY_BIN_CORRELATED_TRACES      = 3249,
-    SEGY_BIN_BIN_GAIN_RECOVERY      = 3251,
-    SEGY_BIN_AMPLITUDE_RECOVERY     = 3253,
-    SEGY_BIN_MEASUREMENT_SYSTEM     = 3255,
-    SEGY_BIN_IMPULSE_POLARITY       = 3257,
-    SEGY_BIN_VIBRATORY_POLARITY     = 3259,
-    SEGY_BIN_EXT_TRACES             = 3261,
-    SEGY_BIN_EXT_AUX_TRACES         = 3265,
-    SEGY_BIN_EXT_SAMPLES            = 3269,
-    SEGY_BIN_EXT_SAMPLES_ORIG       = 3289,
-    SEGY_BIN_EXT_ENSEMBLE_FOLD      = 3293,
-    SEGY_BIN_UNASSIGNED1            = 3301,
-    SEGY_BIN_SEGY_REVISION          = 3501,
-    SEGY_BIN_SEGY_REVISION_MINOR    = 3502,
-    SEGY_BIN_TRACE_FLAG             = 3503,
-    SEGY_BIN_EXT_HEADERS            = 3505,
-    SEGY_BIN_UNASSIGNED2            = 3507,
+    SEGY_BIN_JOB_ID                     = 3201,
+    SEGY_BIN_LINE_NUMBER                = 3205,
+    SEGY_BIN_REEL_NUMBER                = 3209,
+    SEGY_BIN_ENSEMBLE_TRACES            = 3213,
+    SEGY_BIN_AUX_ENSEMBLE_TRACES        = 3215,
+    SEGY_BIN_INTERVAL                   = 3217,
+    SEGY_BIN_INTERVAL_ORIG              = 3219,
+    SEGY_BIN_SAMPLES                    = 3221,
+    SEGY_BIN_SAMPLES_ORIG               = 3223,
+    SEGY_BIN_FORMAT                     = 3225,
+    SEGY_BIN_ENSEMBLE_FOLD              = 3227,
+    SEGY_BIN_SORTING_CODE               = 3229,
+    SEGY_BIN_VERTICAL_SUM               = 3231,
+    SEGY_BIN_SWEEP_FREQ_START           = 3233,
+    SEGY_BIN_SWEEP_FREQ_END             = 3235,
+    SEGY_BIN_SWEEP_LENGTH               = 3237,
+    SEGY_BIN_SWEEP                      = 3239,
+    SEGY_BIN_SWEEP_CHANNEL              = 3241,
+    SEGY_BIN_SWEEP_TAPER_START          = 3243,
+    SEGY_BIN_SWEEP_TAPER_END            = 3245,
+    SEGY_BIN_TAPER                      = 3247,
+    SEGY_BIN_CORRELATED_TRACES          = 3249,
+    SEGY_BIN_BIN_GAIN_RECOVERY          = 3251,
+    SEGY_BIN_AMPLITUDE_RECOVERY         = 3253,
+    SEGY_BIN_MEASUREMENT_SYSTEM         = 3255,
+    SEGY_BIN_IMPULSE_POLARITY           = 3257,
+    SEGY_BIN_VIBRATORY_POLARITY         = 3259,
+    SEGY_BIN_EXT_ENSEMBLE_TRACES        = 3261,
+    SEGY_BIN_EXT_AUX_ENSEMBLE_TRACES    = 3265,
+    SEGY_BIN_EXT_SAMPLES                = 3269,
+    SEGY_BIN_EXT_INTERVAL               = 3273,
+    SEGY_BIN_EXT_INTERVAL_ORIG          = 3281,
+    SEGY_BIN_EXT_SAMPLES_ORIG           = 3289,
+    SEGY_BIN_EXT_ENSEMBLE_FOLD          = 3293,
+    SEGY_BIN_INTEGER_CONSTANT           = 3297, // Expected value 16909060 (decimal). Used to detect order of bytes
+    SEGY_BIN_UNASSIGNED1                = 3301,
+    SEGY_BIN_SEGY_REVISION              = 3501,
+    SEGY_BIN_SEGY_REVISION_MINOR        = 3502,
+    SEGY_BIN_TRACE_FLAG                 = 3503,
+    SEGY_BIN_EXT_HEADERS                = 3505,
+    SEGY_BIN_MAX_ADDITIONAL_TR_HEADERS  = 3507,
+    SEGY_BIN_SURVEY_TYPE                = 3509,
+    SEGY_BIN_TIME_BASIS_CODE            = 3511,
+    SEGY_BIN_NR_TRACES_IN_STREAM        = 3513,
+    SEGY_BIN_FIRST_TRACE_OFFSET         = 3521,
+    SEGY_BIN_NR_TRAILER_RECORDS         = 3529,
+    SEGY_BIN_UNASSIGNED2                = 3533,
 } SEGY_BINFIELD;
 
 

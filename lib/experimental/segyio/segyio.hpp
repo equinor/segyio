@@ -1336,8 +1336,8 @@ binary_header binary_header_reader< Derived >::get_bin() noexcept(false) {
     b.job_identification    = getb( SEGY_BIN_JOB_ID );
     b.line                  = getb( SEGY_BIN_LINE_NUMBER );
     b.reel                  = getb( SEGY_BIN_REEL_NUMBER );
-    b.traces                = getb( SEGY_BIN_TRACES );
-    b.auxiliary_traces      = getb( SEGY_BIN_AUX_TRACES );
+    b.traces                = getb( SEGY_BIN_ENSEMBLE_TRACES );
+    b.auxiliary_traces      = getb( SEGY_BIN_AUX_ENSEMBLE_TRACES );
     b.interval              = getb( SEGY_BIN_INTERVAL );
     b.interval_orig         = getb( SEGY_BIN_INTERVAL_ORIG );
     b.samples               = getb( SEGY_BIN_SAMPLES );
