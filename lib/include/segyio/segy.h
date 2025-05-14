@@ -619,14 +619,23 @@ typedef enum {
     SEGY_BIN_EXT_ENSEMBLE_TRACES        = 3261,
     SEGY_BIN_EXT_AUX_ENSEMBLE_TRACES    = 3265,
     SEGY_BIN_EXT_SAMPLES                = 3269,
+    SEGY_BIN_EXT_INTERVAL               = 3273,
+    SEGY_BIN_EXT_INTERVAL_ORIG          = 3281,
     SEGY_BIN_EXT_SAMPLES_ORIG           = 3289,
     SEGY_BIN_EXT_ENSEMBLE_FOLD          = 3293,
+    SEGY_BIN_INTEGER_CONSTANT           = 3297, // Expected value 16909060 (decimal). Used to detect order of bytes
     SEGY_BIN_UNASSIGNED1                = 3301,
     SEGY_BIN_SEGY_REVISION              = 3501,
     SEGY_BIN_SEGY_REVISION_MINOR        = 3502,
     SEGY_BIN_TRACE_FLAG                 = 3503,
     SEGY_BIN_EXT_HEADERS                = 3505,
-    SEGY_BIN_UNASSIGNED2                = 3507,
+    SEGY_BIN_MAX_ADDITIONAL_TR_HEADERS  = 3507,
+    SEGY_BIN_SURVEY_TYPE                = 3509,
+    SEGY_BIN_TIME_BASIS_CODE            = 3511,
+    SEGY_BIN_NR_TRACES_IN_STREAM        = 3513,
+    SEGY_BIN_FIRST_TRACE_OFFSET         = 3521,
+    SEGY_BIN_NR_TRAILER_RECORDS         = 3529,
+    SEGY_BIN_UNASSIGNED2                = 3533,
 } SEGY_BINFIELD;
 
 
