@@ -1324,7 +1324,7 @@ TEST_CASE( "setting correct header fields succeeds",
 
 
     int32_t output;
-    err = segy_get_field_int( header, field, &output );
+    err = segy_get_field_i32( header, field, &output );
     CHECK( success( err ) );
 
     CHECK( output == input );

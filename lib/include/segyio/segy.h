@@ -52,6 +52,7 @@ typedef struct {
     uint8_t datatype;
     int32_t field_index;
     int32_t field_offset;
+    int32_t error;
 } segy_field_data;
 
 segy_file* segy_open( const char* path, const char* mode );
@@ -116,6 +117,9 @@ int segy_get_field_i16( const char* header, int field, int16_t* val );
 int segy_get_field_i32( const char* header, int field, int32_t* val );
 int segy_get_field_f64( const char* header, int field, double* val );
 int segy_get_field_int( const char* header, int field, int* f );
+segy_field_data segy_get_field( const char* header, int field);
+int segy_field_data_to_int( const segy_field_data* fd, int* val );
+
 int segy_set_field_i16( char* header, const int field, const int16_t val );
 int segy_set_field_i32( char* header, const int field, const int32_t val );
 int segy_set_field_u16( char* header, const int field, const uint16_t val );

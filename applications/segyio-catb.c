@@ -23,23 +23,6 @@ static int printhelp(void){
     return 0;
 }
 
-static int get_binary_value( const char* binheader, int bfield ){
-    int32_t f;
-    segy_get_field_int( binheader, bfield, &f );
-
-    /*
-     * convert cannot-be-negative values to unsigned int, as mandated by SEGY-Y
-     * rev2
-     */
-    switch (bfield) {
-        case SEGY_BIN_SAMPLES:
-        case SEGY_BIN_SAMPLES_ORIG:
-            f = (int32_t)((uint16_t)(f));
-            break;
-    }
-    return f;
-}
-
 struct options {
     int version;
     int help;
@@ -88,112 +71,68 @@ static struct options parse_options( int argc, char** argv ){
     return opts;
 }
 
+typedef struct {
+    int offset;
+    const char* short_name;
+    const char* description;
+} binary_field_type;
+
 int main( int argc, char** argv ){
-
-   static const char* su[ 30 ] = {
-        "jobid",
-        "lino",
-        "reno",
-        "ntrpr",
-        "nart",
-        "hdt",
-        "dto",
-        "hns",
-        "nso",
-        "format",
-        "fold",
-        "tsort",
-        "vscode",
-        "hsfs",
-        "hsfe",
-        "hslen",
-        "hstyp",
-        "schn",
-        "hstas",
-        "hstae",
-        "htatyp",
-        "hcorr",
-        "bgrcv",
-        "rcvm",
-        "mfeet",
-        "polyt",
-        "vpol",
-        "rev",
-        "trflag",
-        "exth"
-    };
-
-    static const char* su_desc[ 30 ] = {
-        "Job identification number"                                         ,
-        "Line number"                                                       ,
-        "Reel number"                                                       ,
-        "Number of data traces per ensemble"                                ,
-        "Number of auxiliary traces per ensemble"                           ,
-        "Sample interval in microseconds (μs)"                              ,
-        "Sample interval in microseconds (μs) of original field recording"  ,
-        "Number of samples per data trace"                                  ,
-        "Number of samples per data trace for original field recording"     ,
-        "Data sample format code"                                           ,
-        "Ensemble fold"                                                     ,
-        "Trace sorting code"                                                ,
-        "Vertical sum code"                                                 ,
-        "Sweep frequency at start (Hz)"                                     ,
-        "Sweep frequency at end (Hz)"                                       ,
-        "Sweep length (ms)"                                                 ,
-        "Sweep type code"                                                   ,
-        "Trace number of sweep channel"                                     ,
-        "Sweep trace taper length in milliseconds at start if tapered"      ,
-        "Sweep trace taper length in milliseconds at end"                   ,
-        "Taper type"                                                        ,
-        "Correlated data traces"                                            ,
-        "Binary gain recovered"                                             ,
-        "Amplitude recovery method"                                         ,
-        "Measurement system"                                                ,
-        "Impulse signal polarity"                                           ,
-        "Vibratory polarity code"                                           ,
-        "SEG Y Format Revision Number"                                      ,
-        "Fixed length trace flag"                                           ,
-        "Number of 3200-byte, Extended Textual File Headers"
-    };
-
-    static const int bfield_value[ 30 ] = {
-        SEGY_BIN_JOB_ID,
-        SEGY_BIN_LINE_NUMBER,
-        SEGY_BIN_REEL_NUMBER,
-        SEGY_BIN_ENSEMBLE_TRACES,
-        SEGY_BIN_AUX_ENSEMBLE_TRACES,
-        SEGY_BIN_INTERVAL,
-        SEGY_BIN_INTERVAL_ORIG,
-        SEGY_BIN_SAMPLES,
-        SEGY_BIN_SAMPLES_ORIG,
-        SEGY_BIN_FORMAT,
-        SEGY_BIN_ENSEMBLE_FOLD,
-        SEGY_BIN_SORTING_CODE,
-        SEGY_BIN_VERTICAL_SUM,
-        SEGY_BIN_SWEEP_FREQ_START,
-        SEGY_BIN_SWEEP_FREQ_END,
-        SEGY_BIN_SWEEP_LENGTH,
-        SEGY_BIN_SWEEP,
-        SEGY_BIN_SWEEP_CHANNEL,
-        SEGY_BIN_SWEEP_TAPER_START,
-        SEGY_BIN_SWEEP_TAPER_END,
-        SEGY_BIN_TAPER,
-        SEGY_BIN_CORRELATED_TRACES,
-        SEGY_BIN_BIN_GAIN_RECOVERY,
-        SEGY_BIN_AMPLITUDE_RECOVERY,
-        SEGY_BIN_MEASUREMENT_SYSTEM,
-        SEGY_BIN_IMPULSE_POLARITY,
-        SEGY_BIN_VIBRATORY_POLARITY,
-        SEGY_BIN_SEGY_REVISION,
-        SEGY_BIN_TRACE_FLAG,
-        SEGY_BIN_EXT_HEADERS
-    };
 
     if( argc == 1 ){
          int err = errmsg(2, "Missing argument\n");
          printhelp();
          return err;
     }
+
+    binary_field_type field_data[] = {
+        {SEGY_BIN_JOB_ID, "jobid", "Job identification number"},
+        {SEGY_BIN_LINE_NUMBER, "lino", "Line number"},
+        {SEGY_BIN_REEL_NUMBER, "reno", "Reel number"},
+        {SEGY_BIN_ENSEMBLE_TRACES, "ntrpr", "Number of data traces per ensemble"},
+        {SEGY_BIN_AUX_ENSEMBLE_TRACES, "nart", "Number of auxiliary traces per ensemble"},
+        {SEGY_BIN_INTERVAL, "hdt", "Sample interval in microseconds (μs)"},
+        {SEGY_BIN_INTERVAL_ORIG, "dto", "Sample interval in microseconds (μs) of original field recording"},
+        {SEGY_BIN_SAMPLES, "hns", "Number of samples per data trace"},
+        {SEGY_BIN_SAMPLES_ORIG, "nso", "Number of samples per data trace for original field recording"},
+        {SEGY_BIN_FORMAT, "format", "Data sample format code"},
+        {SEGY_BIN_ENSEMBLE_FOLD, "fold", "Ensemble fold"},
+        {SEGY_BIN_SORTING_CODE, "tsort", "Trace sorting code"},
+        {SEGY_BIN_VERTICAL_SUM, "vscode", "Vertical sum code"},
+        {SEGY_BIN_SWEEP_FREQ_START, "hsfs", "Sweep frequency at start (Hz)"},
+        {SEGY_BIN_SWEEP_FREQ_END, "hsfe", "Sweep frequency at end (Hz)"},
+        {SEGY_BIN_SWEEP_LENGTH, "hslen", "Sweep length (ms)"},
+        {SEGY_BIN_SWEEP, "hstyp", "Sweep type code"},
+        {SEGY_BIN_SWEEP_CHANNEL, "schn", "Trace number of sweep channel"},
+        {SEGY_BIN_SWEEP_TAPER_START, "hstas", "Sweep trace taper length in milliseconds at start if tapered"},
+        {SEGY_BIN_SWEEP_TAPER_END, "hstae", "Sweep trace taper length in milliseconds at end"},
+        {SEGY_BIN_TAPER, "htatyp", "Taper type"},
+        {SEGY_BIN_CORRELATED_TRACES, "hcorr", "Correlated data traces"},
+        {SEGY_BIN_BIN_GAIN_RECOVERY, "bgrcv", "Binary gain recovered"},
+        {SEGY_BIN_AMPLITUDE_RECOVERY, "rcvm", "Amplitude recovery method"},
+        {SEGY_BIN_MEASUREMENT_SYSTEM, "mfeet", "Measurement system"},
+        {SEGY_BIN_IMPULSE_POLARITY, "polyt", "Impulse signal polarity"},
+        {SEGY_BIN_VIBRATORY_POLARITY, "vpol", "Vibratory polarity code"},
+
+        {SEGY_BIN_EXT_ENSEMBLE_TRACES, "extntrpr", "Extended number of data traces per ensemble"},
+        {SEGY_BIN_EXT_AUX_ENSEMBLE_TRACES, "extnart", "Extended number of auxiliary traces per ensemble"},
+        {SEGY_BIN_EXT_SAMPLES, "exthns", "Extended number of samples per data trace"},
+        {SEGY_BIN_EXT_INTERVAL, "exthdt", "Extended sample interval, IEEE double precision (64-bit)"},
+        {SEGY_BIN_EXT_INTERVAL_ORIG, "extdto", "Extended sample interval of original field recording, IEEE double precision (64-bit)"},
+        {SEGY_BIN_EXT_SAMPLES_ORIG, "extnso", "Extended number of samples per data trace in original recording"},
+        {SEGY_BIN_EXT_ENSEMBLE_FOLD, "extfold", "Extended ensemble fold"},
+        {SEGY_BIN_INTEGER_CONSTANT, "intconst", "The integer constant 1690906010"},
+        {SEGY_BIN_SEGY_REVISION, "rev", "SEG Y Format Revision Number"},
+        {SEGY_BIN_SEGY_REVISION_MINOR, "revmin", "SEG Y Format Min Revision Number"},
+        {SEGY_BIN_TRACE_FLAG, "trflag", "Fixed length trace flag"},
+        {SEGY_BIN_EXT_HEADERS, "exth", "Number of 3200-byte, Extended Textual File Headers"},
+        {SEGY_BIN_MAX_ADDITIONAL_TR_HEADERS, "maxtrh", "Maximum number of additional 240-byte trace headers"},
+        {SEGY_BIN_SURVEY_TYPE, "survty", "Survey type"},
+        {SEGY_BIN_TIME_BASIS_CODE, "timebc", "Time basis code"},
+        {SEGY_BIN_NR_TRACES_IN_STREAM, "ntrst", "Number of traces in this file or stream"},
+        {SEGY_BIN_FIRST_TRACE_OFFSET, "ftroff", "Byte offset of first trace relative to start of stream"},
+        {SEGY_BIN_NR_TRAILER_RECORDS, "ntr", "Number of 3200-byte data trailer stanza records"}
+    };
 
     struct options opts = parse_options( argc, argv );
 
@@ -210,20 +149,42 @@ int main( int argc, char** argv ){
 
         if( err ) return errmsg(opterr, "Unable to read binary header");
 
-        for( int c = 0; c < 30; ++c ){
-            int field = get_binary_value( binheader, bfield_value[ c ] );
-            if( opts.nonzero && !field) continue;
+        int nr_fields = sizeof(field_data)/sizeof(binary_field_type);
+        for( int c = 0; c < nr_fields; ++c ){
+            segy_field_data fd = segy_get_field( binheader, field_data[c].offset );
+            if ( fd.error ) return errmsg( fd.error, "Unable to read field" );
 
-            if( opts.description ) {
-                int byte_offset = (bfield_value[ c ] - SEGY_TEXT_HEADER_SIZE);
-                printf( "%s\t%d\t%d\t%s\n",
-                    su[ c ],
-                    field,
-                    byte_offset,
-                    su_desc[ c ] );
+            int byte_offset = (field_data[c].offset - SEGY_TEXT_HEADER_SIZE);
+            const char* short_name = field_data[c].short_name;
+            const char* description = field_data[c].description;
+
+            if( fd.datatype == SEGY_UNSIGNED_INTEGER_8_BYTE ) {
+                long long int field = fd.value.u64;
+                if( opts.nonzero && field == 0) continue;
+                if( opts.description )
+                    printf( "%s\t%lld\t%d\t%s\n", short_name, field, byte_offset, description );
+                else
+                    printf( "%-10s\t%lld\n", short_name, field );
             }
-            else
-                printf( "%s\t%d\n", su[ c ], field );
+            else if( fd.datatype == SEGY_IEEE_FLOAT_8_BYTE ) {
+                double field = fd.value.f64;
+                if( opts.nonzero && field == 0.0) continue;
+                if( opts.description )
+                    printf( "%s\t%f\t%d\t%s\n", short_name, field, byte_offset, description );
+                else
+                    printf( "%-10s\t%f\n", short_name, field );
+            }
+            else {
+                int field;
+                err = segy_field_data_to_int( &fd, &field );
+                if( err ) return errmsg( err, "Unable to convert segy_field_data to int32" );
+
+                if( opts.nonzero && field == 0) continue;
+                if( opts.description )
+                    printf( "%s\t%d\t%d\t%s\n", short_name, field, byte_offset, description );
+                else
+                    printf( "%-10s\t%d\n", short_name, field );
+            }
         }
         segy_close( fp );
     }
