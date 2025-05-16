@@ -218,6 +218,7 @@ int segy_set_field_u16( char* header, const int field, const uint16_t val );
 int segy_set_field_u64( char* header, const int field, const uint64_t val );
 int segy_set_field_f64( char* header, const int field, const double val );
 int segy_set_field_int( char* header, const int field, const int val );
+int segy_set_field( char* header, segy_field_data* fd );
 
 int segy_field_forall( segy_datasource*,
                        int field,
