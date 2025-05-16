@@ -1435,28 +1435,35 @@ PyObject* getfield( PyObject*, PyObject *args ) {
         buffer.len() != SEGY_TRACE_HEADER_SIZE )
         return BufferError( "buffer too small" );
 
-    int value = 0;
-    int err = buffer.len() == segy_binheader_size()
-            ? segy_get_field_int( buffer.buf< const char >(), field, &value )
-            : segy_get_field_int(  buffer.buf< const char >(), field, &value )
-            ;
+    segy_field_data fd = segy_get_field( buffer.buf< const char >(), field );
+    if( fd.error != SEGY_OK )
+        return KeyError( "Got error code %d when requesting field %d", fd.error, field );
 
-    /*
-     * Some fields be negative, and SEG-Y rev2 considers them unsigned. When
-     * reading them, widen to unsigned.
-     */
-    switch (field) {
-        case SEGY_TR_SAMPLE_COUNT:
-        case SEGY_BIN_SAMPLES:
-        case SEGY_BIN_SAMPLES_ORIG:
-            value = int(std::uint16_t(value));
-            break;
-    }
+    switch ( fd.datatype ) {
 
-    switch( err ) {
-        case SEGY_OK:            return PyLong_FromLong( value );
-        case SEGY_INVALID_FIELD: return KeyError( "No such field %d", field );
-        default:                 return Error( err );
+        case SEGY_SIGNED_INTEGER_8_BYTE:
+            return PyLong_FromLongLong( fd.value.i64 );
+        case SEGY_SIGNED_INTEGER_4_BYTE:
+            return PyLong_FromLong( fd.value.i32 );
+        case SEGY_SIGNED_SHORT_2_BYTE:
+            return PyLong_FromLong( fd.value.i16 );
+        case SEGY_SIGNED_CHAR_1_BYTE:
+            return PyLong_FromLong( fd.value.i8 );
+
+        case SEGY_UNSIGNED_INTEGER_8_BYTE:
+            return PyLong_FromUnsignedLongLong( fd.value.u64 );
+        case SEGY_UNSIGNED_INTEGER_4_BYTE:
+            return PyLong_FromUnsignedLong( fd.value.u32 );
+        case SEGY_UNSIGNED_SHORT_2_BYTE:
+            return PyLong_FromUnsignedLong( fd.value.u16 );
+        case SEGY_UNSIGNED_CHAR_1_BYTE:
+            return PyLong_FromUnsignedLong( fd.value.u8 );
+
+        case SEGY_IEEE_FLOAT_8_BYTE:
+            return PyFloat_FromDouble( fd.value.f64 );
+
+        default:
+            return KeyError( "No such field %d", field );
     }
 }
 
