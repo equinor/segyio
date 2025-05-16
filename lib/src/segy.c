@@ -1546,8 +1546,8 @@ int segy_sample_interval( segy_file* fp, float fallback, float* dt ) {
 
     /* we don't need to figure out a trace size, since we're not advancing
      * beyond the first header */
-    err = segy_traceheader(fp, 0, trace_header, trace0, 0);
-    if (err != 0) {
+    err = segy_traceheader( fp, 0, trace_header, trace0, 0 );
+    if( err != 0 ) {
         return err;
     }
 
@@ -1587,8 +1587,8 @@ int segy_sample_indices( segy_file* fp,
                          int count,
                          float* buf ) {
 
-    int err = segy_sample_interval(fp, dt, &dt);
-    if (err != 0) {
+    int err = segy_sample_interval( fp, dt, &dt );
+    if( err != 0 ) {
         return err;
     }
 
@@ -2250,11 +2250,11 @@ int segy_writesubtr( segy_file* fp,
     step *= elemsize;
 
     void ( *bswap_mem )( char*, const char* );
-    if ( elemsize == 8 ) {
+    if( elemsize == 8 ) {
         bswap_mem = bswap64_mem;
-    } else if ( elemsize == 4 ) {
+    } else if( elemsize == 4 ) {
         bswap_mem = bswap32_mem;
-    } else if ( elemsize == 2 ) {
+    } else if( elemsize == 2 ) {
         bswap_mem = bswap16_mem;
     } else {
         return SEGY_INVALID_ARGS;
@@ -2267,12 +2267,12 @@ int segy_writesubtr( segy_file* fp,
         /* if mmap is on, strided write is trivial and fast */
         char* cur = (char*)fp->cur + elemsize * defstart;
 
-        if ( !fp->lsb ) {
-            for ( ; slicelen > 0; cur += step, src += elemsize, --slicelen ) {
+        if( !fp->lsb ) {
+            for( ; slicelen > 0; cur += step, src += elemsize, --slicelen ) {
                 memcpy( cur, src, elemsize );
             }
         } else {
-            for ( ; slicelen > 0; cur += step, src += elemsize, --slicelen ) {
+            for( ; slicelen > 0; cur += step, src += elemsize, --slicelen ) {
                 bswap_mem( cur, src );
             }
         }
@@ -2283,23 +2283,26 @@ int segy_writesubtr( segy_file* fp,
     void* tracebuf = rangebuf ? rangebuf : malloc( elems * elemsize );
 
     // like in readsubtr, read a larger chunk and then step through that
-    if (!tracebuf) return SEGY_MEMORY_ERROR;
-    const int readc = (int) fread( tracebuf, elemsize, elems, fp->fp );
-    if( readc != elems ) { free( tracebuf ); return SEGY_FREAD_ERROR; }
+    if( !tracebuf ) return SEGY_MEMORY_ERROR;
+    const int readc = (int)fread( tracebuf, elemsize, elems, fp->fp );
+    if( readc != elems ) {
+        free( tracebuf );
+        return SEGY_FREAD_ERROR;
+    }
     /* rewind, because fread advances the file pointer */
-    err = fseek( fp->fp, -(elems * elemsize), SEEK_CUR );
+    err = fseek( fp->fp, -( elems * elemsize ), SEEK_CUR );
     if( err != 0 ) {
         if( !rangebuf ) free( tracebuf );
         return SEGY_FSEEK_ERROR;
     }
 
     char* cur = (char*)tracebuf + elemsize * defstart;
-    if ( !fp->lsb ) {
-        for ( ; slicelen > 0; cur += step, --slicelen, src += elemsize ) {
+    if( !fp->lsb ) {
+        for( ; slicelen > 0; cur += step, --slicelen, src += elemsize ) {
             memcpy( cur, src, elemsize );
         }
     } else {
-        for ( ; slicelen > 0; cur += step, --slicelen, src += elemsize ) {
+        for( ; slicelen > 0; cur += step, --slicelen, src += elemsize ) {
             bswap_mem( cur, src );
         }
     }
