@@ -14,10 +14,11 @@ static int printhelp(void){
           "Concatenate the binary header from FILE(s) to seismic unix "
           "output.\n"
           "\n"
-          "-n,  --nonzero       only print fields with non-zero values\n"
-          "-d,  --description   print with byte offset and field description\n"
-          "     --version       output version information and exit\n"
-          "     --help          display this help and exit\n"
+          "-n,  --nonzero        only print fields with non-zero values\n"
+          "-d,  --description    print with byte offset and field description\n"
+          "-l,  --lsb_endianness set endianness to big\n"
+          "     --version        output version information and exit\n"
+          "     --help           display this help and exit\n"
           "\n"
         );
     return 0;
@@ -28,6 +29,7 @@ struct options {
     int help;
     int nonzero;
     int description;
+    int lsb_endianness;
     const char* errmsg;
 };
 
@@ -36,6 +38,7 @@ static struct options parse_options( int argc, char** argv ){
     opts.nonzero = 0;
     opts.description = 0;
     opts.version = 0, opts.help = 0;
+    opts.lsb_endianness = SEGY_MSB;
     opts.errmsg = NULL;
 
     static struct option long_options[] = {
@@ -43,6 +46,7 @@ static struct options parse_options( int argc, char** argv ){
         {"help",            no_argument,    0,    'h'},
         {"description",     no_argument,    0,    'd'},
         {"nonzero",         no_argument,    0,    'n'},
+        {"lsb_endianness",  no_argument,    0,    'l'},
         {0, 0, 0, 0}
     };
 
@@ -51,7 +55,7 @@ static struct options parse_options( int argc, char** argv ){
     while( true ){
 
         int option_index = 0;
-        int c = getopt_long( argc, argv, "nd",
+        int c = getopt_long( argc, argv, "ndl",
                             long_options, &option_index);
 
         if ( c == -1 ) break;
@@ -62,6 +66,7 @@ static struct options parse_options( int argc, char** argv ){
             case 'V': opts.version = 1; return opts;
             case 'd': opts.description = 1; break;
             case 'n': opts.nonzero = 1; break;
+            case 'l': opts.lsb_endianness = SEGY_LSB; break;
             default:
                  opts.help = 1;
                  opts.errmsg = "";
@@ -144,8 +149,11 @@ int main( int argc, char** argv ){
 
         if( !fp ) return errmsg(opterr, "No such file or directory");
 
+        int err = segy_set_endianness( fp, opts.lsb_endianness );
+        if( err ) return errmsg(opterr, "Unable to set endianness");
+
         char binheader[ SEGY_BINARY_HEADER_SIZE ];
-        int err = segy_binheader( fp, binheader );
+        err = segy_binheader( fp, binheader );
 
         if( err ) return errmsg(opterr, "Unable to read binary header");
 
