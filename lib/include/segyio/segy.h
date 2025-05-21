@@ -102,12 +102,19 @@ struct segy_datasource {
      * amount of data at the cost of many requests.
      */
     bool minimize_requests_number;
+
+    /* Performance hack for in-memory datasources.
+     *
+     * If true, algorithms would be free to break encapsulation by assuming that
+     * stream is a "memfile" struct. It leads to improved performance for
+     * certain operations.
+     */
+    bool memory_speedup;
 };
 
 typedef struct segy_datasource segy_datasource;
 
-struct segy_file_handle;
-typedef struct segy_file_handle segy_file;
+typedef struct segy_datasource segy_file;
 
 typedef union {
     uint8_t u8;
@@ -131,9 +138,9 @@ typedef struct {
 } segy_field_data;
 
 segy_file* segy_open( const char* path, const char* mode );
-int segy_mmap( segy_file* );
-int segy_flush( segy_file* );
-int segy_close( segy_file* );
+int segy_mmap( segy_datasource* );
+int segy_flush( segy_datasource* );
+int segy_close( segy_datasource* );
 
 /* binary header operations */
 /*
@@ -141,8 +148,8 @@ int segy_close( segy_file* );
  * `segy_binheader_size`. Returns size, not an error code.
  */
 int segy_binheader_size( void );
-int segy_binheader( segy_file*, char* buf );
-int segy_write_binheader( segy_file*, const char* buf );
+int segy_binheader( segy_datasource*, char* buf );
+int segy_write_binheader( segy_datasource*, const char* buf );
 /*
  * exception: the int returned is the number of samples (the segy standard only
  * allocates 2 octets for this, so it comfortably sits inside an int. If the
@@ -155,7 +162,7 @@ int segy_samples( const char* binheader );
  * from the binary header and the first trace header, and will fall back to the
  * `fallback` argument.
  */
-int segy_sample_interval( segy_file*, float fallback , float* dt );
+int segy_sample_interval( segy_datasource*, float fallback , float* dt );
 
 /* exception: the int returned is an enum, SEGY_FORMAT, not an error code */
 int segy_format( const char* binheader );
@@ -172,7 +179,7 @@ int segy_format( const char* binheader );
  * unreliable with this information - however, if the header IS considered to
  * be reliable, the result of `segy_format` can be passed to this function.
  */
-int segy_set_format( segy_file*, int format );
+int segy_set_format( segy_datasource*, int format );
 
 /* set file as LSB/MSB (little/big endian)
  *
@@ -183,7 +190,7 @@ int segy_set_format( segy_file*, int format );
  * SEG-Y rev2) are LSB. *all* functions returning bytes in segyio will output
  * MSB, regardless of the properties of the underlying file.
  */
-int segy_set_endianness( segy_file*, int opt );
+int segy_set_endianness( segy_datasource*, int opt );
 
 int segy_get_field_u8( const char* header, int field, uint8_t* val );
 int segy_get_field_u16( const char* header, int field, uint16_t* val );
@@ -202,7 +209,7 @@ int segy_set_field_u64( char* header, const int field, const uint64_t val );
 int segy_set_field_f64( char* header, const int field, const double val );
 int segy_set_field_int( char* header, const int field, const int val );
 
-int segy_field_forall( segy_file*,
+int segy_field_forall( segy_datasource*,
                        int field,
                        int start,
                        int stop,
@@ -228,9 +235,9 @@ long segy_trace0( const char* binheader );
  * number of traces in this file.
  * if this function fails, the input argument is not modified.
  */
-int segy_traces( segy_file*, int*, long trace0, int trace_bsize );
+int segy_traces( segy_datasource*, int*, long trace0, int trace_bsize );
 
-int segy_sample_indices( segy_file*,
+int segy_sample_indices( segy_datasource*,
                          float t0,
                          float dt,
                          int count,
@@ -244,7 +251,7 @@ int segy_sample_indices( segy_file*,
  * all read_textheader function outputs are zero-terminated C strings. It is
  * assumed input is ebcdic encoded.
  */
-int segy_read_textheader( segy_file*, char *buf);
+int segy_read_textheader( segy_datasource*, char *buf);
 /*
  * segy_textheader_size() returns is a size hint for C-string style buffers,
  * and includes space for a terminating null byte.
@@ -255,7 +262,7 @@ int segy_textheader_size( void );
  * header, i.e. the first textual header following the binary header.
  * Behaviour is undefined if the file does not have extended headers
  */
-int segy_read_ext_textheader( segy_file*, int pos, char* buf );
+int segy_read_ext_textheader( segy_datasource*, int pos, char* buf );
 
 /*
  * Write the text header. `pos` is regular array indexing, i.e. pos = 0 is the
@@ -269,17 +276,17 @@ int segy_read_ext_textheader( segy_file*, int pos, char* buf );
  * Like the read-textheader functions, the input text should be in ascii and
  * will be automatically encoded to ebcdic.
  */
-int segy_write_textheader( segy_file*, int pos, const char* buf );
+int segy_write_textheader( segy_datasource*, int pos, const char* buf );
 
 /* Read the trace header at `traceno` into `buf`. */
-int segy_traceheader( segy_file*,
+int segy_traceheader( segy_datasource*,
                       int traceno,
                       char* buf,
                       long trace0,
                       int trace_bsize );
 
 /* Read the trace header at `traceno` into `buf`. */
-int segy_write_traceheader( segy_file*,
+int segy_write_traceheader( segy_datasource*,
                             int traceno,
                             const char* buf,
                             long trace0,
@@ -289,7 +296,7 @@ int segy_write_traceheader( segy_file*,
  * The sorting type will be written to `sorting` if the function can figure out
  * how the file is sorted.
  */
-int segy_sorting( segy_file*,
+int segy_sorting( segy_datasource*,
                   int il,
                   int xl,
                   int tr_offset,
@@ -301,7 +308,7 @@ int segy_sorting( segy_file*,
  * Number of offsets in this file, written to `offsets`. 1 if a 3D data set, >1
  * if a 4D data set.
  */
-int segy_offsets( segy_file*,
+int segy_offsets( segy_datasource*,
                   int il,
                   int xl,
                   int traces,
@@ -313,7 +320,7 @@ int segy_offsets( segy_file*,
  * The names of the individual offsets. `out` must be a buffer of
  * `segy_offsets` elements.
  */
-int segy_offset_indices( segy_file*,
+int segy_offset_indices( segy_datasource*,
                          int offset_field,
                          int offsets,
                          int* out,
@@ -325,13 +332,13 @@ int segy_offset_indices( segy_file*,
  * native formats, so this data can not be used directly on most systems (intel
  * in particular). use to/from native to convert to native representations.
  */
-int segy_readtrace( segy_file*,
+int segy_readtrace( segy_datasource*,
                     int traceno,
                     void* buf,
                     long trace0,
                     int trace_bsize );
 
-int segy_writetrace( segy_file*,
+int segy_writetrace( segy_datasource*,
                      int traceno,
                      const void* buf,
                      long trace0,
@@ -340,7 +347,7 @@ int segy_writetrace( segy_file*,
 /*
  * read/write sub traces, with the same assumption and requirements as
  * segy_readtrace. start and stop are *indices*, not byte offsets, so
- * segy_readsubtr(fp, traceno, 10, 12, ...) reads samples 10 through 12, and
+ * segy_readsubtr(ds, traceno, 10, 12, ...) reads samples 10 through 12, and
  * not bytes 10 through 12.
  *
  * start and stop are in the range [start,stop), so start=0, stop=5, step=2
@@ -360,7 +367,7 @@ int segy_writetrace( segy_file*,
  * you're fine with these functions allocating and freeing this buffer for you,
  * rangebuf can be NULL.
  */
-int segy_readsubtr( segy_file*,
+int segy_readsubtr( segy_datasource*,
                     int traceno,
                     int start,
                     int stop,
@@ -370,7 +377,7 @@ int segy_readsubtr( segy_file*,
                     long trace0,
                     int trace_bsize );
 
-int segy_writesubtr( segy_file*,
+int segy_writesubtr( segy_datasource*,
                      int traceno,
                      int start,
                      int stop,
@@ -399,7 +406,7 @@ int segy_from_native( int format,
                       long long size,
                       void* buf );
 
-int segy_read_line( segy_file* fp,
+int segy_read_line( segy_datasource* ds,
                     int line_trace0,
                     int line_length,
                     int stride,
@@ -408,7 +415,7 @@ int segy_read_line( segy_file* fp,
                     long trace0,
                     int trace_bsize );
 
-int segy_write_line( segy_file* fp,
+int segy_write_line( segy_datasource* ds,
                     int line_trace0,
                     int line_length,
                     int stride,
@@ -432,7 +439,7 @@ int segy_write_line( segy_file* fp,
  * If the file has only 1 trace (or, for pre-stack files, 1-trace-per-offset),
  * segyio considers this as 1 line in each direction.
  */
-int segy_count_lines( segy_file*,
+int segy_count_lines( segy_datasource*,
                       int field,
                       int offsets,
                       int* l1out,
@@ -446,7 +453,7 @@ int segy_count_lines( segy_file*,
  * header field positions. Does the argument shuffling needed to call
  * segy_count_lines.
  */
-int segy_lines_count( segy_file*,
+int segy_lines_count( segy_datasource*,
                       int il,
                       int xl,
                       int sorting,
@@ -472,7 +479,7 @@ int segy_crossline_length(int inline_count);
  * Find the indices of the inlines and write to `buf`. `offsets` are the number
  * of offsets for this file as returned by `segy_offsets`
  */
-int segy_inline_indices( segy_file*,
+int segy_inline_indices( segy_datasource*,
                          int il,
                          int sorting,
                          int inline_count,
@@ -482,7 +489,7 @@ int segy_inline_indices( segy_file*,
                          long trace0,
                          int trace_bsize );
 
-int segy_crossline_indices( segy_file*,
+int segy_crossline_indices( segy_datasource*,
                             int xl,
                             int sorting,
                             int inline_count,
@@ -537,7 +544,7 @@ int segy_line_trace0( int lineno,
  *
  * The return value is in the domain [0, 2pi)
  */
-int segy_rotation_cw( segy_file*,
+int segy_rotation_cw( segy_datasource*,
                       int line_length,
                       int stride,
                       int offsets,
@@ -756,6 +763,11 @@ typedef enum {
     SEGY_READONLY,
     SEGY_NOTFOUND,
     SEGY_MEMORY_ERROR,
+    // values are duplicated until enum is properly cleaned
+    SEGY_DS_READ_ERROR = SEGY_FREAD_ERROR,
+    SEGY_DS_WRITE_ERROR = SEGY_FWRITE_ERROR,
+    SEGY_DS_SEEK_ERROR = SEGY_FSEEK_ERROR,
+    SEGY_DS_ERROR = SEGY_FREAD_ERROR,
 } SEGY_ERROR;
 
 #ifdef __cplusplus
