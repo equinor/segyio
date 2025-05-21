@@ -76,6 +76,8 @@ endif ()
 
 set(small ${testdata}/small.sgy)
 set(long  ${testdata}/long.sgy)
+set(increment  ${testdata}/increment.sgy)
+set(decrement  ${testdata}/decrement.sgy)
 set(test ${CMAKE_CURRENT_SOURCE_DIR}/test)
 add_test(NAME catr.arg.t1       COMMAND segyio-catr -t 0 ${small})
 add_test(NAME catr.arg.t2       COMMAND segyio-catr -t 5 ${small})
@@ -121,6 +123,8 @@ add_custom_command(
             test/cath.output
             test/catr.output
     COMMAND segyio-catb ${small} > catb.out
+    COMMAND segyio-catb ${increment} > catb-inc.out
+    COMMAND segyio-catb ${decrement} > catb-dec.out
     COMMAND segyio-catb ${small} -n -d > catbnd.out
     COMMAND segyio-cath ${small} > cath.out
     COMMAND segyio-catb ${long} > catb-long.out
