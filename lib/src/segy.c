@@ -2126,15 +2126,24 @@ int segy_readsubtr( segy_datasource* ds,
     char* dst = (char*)buf;
 
     if( !ds->minimize_requests_number ) {
-        err = ds->seek( ds, elemsize * defstart, SEEK_CUR );
-        if( err != 0 ) return SEGY_DS_SEEK_ERROR;
-
-        for( int i = 0; i < slicelen; dst += elemsize, ++i ) {
-            err = ds->read( ds, dst, elemsize );
-            if( err != 0 ) return SEGY_DS_READ_ERROR;
-
-            err = ds->seek( ds, step - elemsize, SEEK_CUR );
+        if( ds->read == memread && ds->seek == memseek ) {
+            // separate "memory" path is used for better performance
+            memfile* mp = (memfile*)ds->stream;
+            const char* cur = (char*)mp->cur + elemsize * defstart;
+            for( int i = 0; i < slicelen; cur += step, dst += elemsize, ++i ) {
+                memcpy( dst, cur, elemsize );
+            }
+        } else {
+            err = ds->seek( ds, elemsize * defstart, SEEK_CUR );
             if( err != 0 ) return SEGY_DS_SEEK_ERROR;
+
+            for( int i = 0; i < slicelen; dst += elemsize, ++i ) {
+                err = ds->read( ds, dst, elemsize );
+                if( err != 0 ) return SEGY_DS_READ_ERROR;
+
+                err = ds->seek( ds, step - elemsize, SEEK_CUR );
+                if( err != 0 ) return SEGY_DS_SEEK_ERROR;
+            }
         }
 
         if( ds->lsb ) {
@@ -2271,12 +2280,21 @@ int segy_writesubtr( segy_datasource* ds,
         if( err != 0 ) return SEGY_DS_SEEK_ERROR;
 
         if( !ds->lsb ) {
-            for( ; slicelen > 0; src += elemsize, --slicelen ) {
-                err = ds->write( ds, src, elemsize );
-                if( err != 0 ) return SEGY_DS_WRITE_ERROR;
+            // separate "memory" path is used for better performance
+            if( ds->read == memread && ds->seek == memseek ) {
+                memfile* mp = (memfile*)ds->stream;
+                char* cur = (char*)mp->cur;
+                for( ; slicelen > 0; cur += step, src += elemsize, --slicelen ) {
+                    memcpy( cur, src, elemsize );
+                }
+            } else {
+                for( ; slicelen > 0; src += elemsize, --slicelen ) {
+                    err = ds->write( ds, src, elemsize );
+                    if( err != 0 ) return SEGY_DS_WRITE_ERROR;
 
-                err = ds->seek( ds, step - elemsize, SEEK_CUR );
-                if( err != 0 ) return SEGY_DS_SEEK_ERROR;
+                    err = ds->seek( ds, step - elemsize, SEEK_CUR );
+                    if( err != 0 ) return SEGY_DS_SEEK_ERROR;
+                }
             }
         } else {
             char temp[8]; // allocate largest possible
