@@ -1073,6 +1073,21 @@ def test_assign_all_traces(small):
     with segyio.open(copy) as f:
         assert np.array_equal(f.trace.raw[:], traces)
 
+    with segyio.open(copy, 'r+') as f:
+        traces = f.trace.raw[:]
+        f.trace[::2] = [trace * 2.0 for trace in traces[::2]]
+        f.trace[1::2] = [trace * 3.0 for trace in traces[1::2]]
+
+    with segyio.open(copy) as f:
+        for index, trace in enumerate(f.trace):
+            # assuming precision error comes from ibm-iee conversion as file is ibm
+            if index % 2 == 0:
+                npt.assert_array_almost_equal(
+                    trace, traces[index] * 2.0, decimal=5)
+            else:
+                npt.assert_array_almost_equal(
+                    trace, traces[index] * 3.0, decimal=5)
+
 
 def test_traceaccess_from_array():
     a = np.arange(10, dtype=int)
@@ -1724,6 +1739,16 @@ def test_depth_slice_writing(small):
         for index, depth_slice in itr:
             assert np.allclose(depth_slice, buf * index)
             next(islice(itr, 3, 3), None)
+
+        other = [buf * i * 2 for i in range(len(f.depth_slice))]
+        f.depth_slice[::2] = other[::2]
+
+        itr = iter(enumerate(f.depth_slice))
+        for index, depth_slice in itr:
+            if index % 2 == 0:
+                assert np.allclose(depth_slice, buf * index * 2)
+            else:
+                assert np.allclose(depth_slice, buf * index)
 
 
 @pytest.mark.parametrize('endian', ['little', 'big'])
