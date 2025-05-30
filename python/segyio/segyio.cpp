@@ -146,6 +146,10 @@ PyObject* Error( int err ) {
                                                "likely corrupted file" );
         case SEGY_READONLY:    return IOError( "file not open for writing. "
                                                "open with 'r+'" );
+        case SEGY_DS_FLUSH_ERROR:
+                               return IOError( "Datasource flush failed" );
+        case SEGY_DS_CLOSE_ERROR:
+                               return IOError( "Datasource close failed" );
         default:               return RuntimeError( err );
     }
 }
@@ -154,7 +158,7 @@ struct autods {
     operator segy_datasource*() const;
     operator bool() const;
     void swap( autods& other );
-    void close();
+    int close();
 
     segy_datasource* ds;
 };
@@ -169,9 +173,13 @@ autods::operator segy_datasource*() const {
 autods::operator bool() const { return this->ds; }
 
 void autods::swap( autods& other ) { std::swap( this->ds, other.ds ); }
-void autods::close() {
-    if( this->ds ) segy_close( this->ds );
+int autods::close() {
+    int err = SEGY_OK;
+    if( this->ds ) {
+        err = segy_close( this->ds );
+    }
     this->ds = NULL;
+    return err;
 }
 
 struct segyfd {
@@ -535,7 +543,10 @@ PyObject* close( segyfd* self ) {
     if( !self->ds ) return Py_BuildValue( "" );
 
     errno = 0;
-    self->ds.close();
+    const int err = self->ds.close();
+    if ( err ) {
+        return Error( err );
+    }
 
     if( errno ) return IOErrno();
 
