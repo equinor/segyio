@@ -735,7 +735,7 @@ int segy_flush( segy_datasource* ds ) {
     if( !ds->writable ) return SEGY_OK;
 
     int flusherr = ds->flush( ds );
-    if( flusherr != 0 ) return SEGY_DS_ERROR;
+    if( flusherr != 0 ) return SEGY_DS_FLUSH_ERROR;
 
     return SEGY_OK;
 }
@@ -759,7 +759,7 @@ int segy_close( segy_datasource* ds ) {
 
     err = ds->close(ds);
     free( ds );
-    if( err != 0 ) return SEGY_DS_ERROR;
+    if( err != 0 ) return SEGY_DS_CLOSE_ERROR;
     return SEGY_OK;
 }
 

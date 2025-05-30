@@ -774,6 +774,8 @@ typedef enum {
     SEGY_READONLY,
     SEGY_NOTFOUND,
     SEGY_MEMORY_ERROR,
+    SEGY_DS_FLUSH_ERROR,
+    SEGY_DS_CLOSE_ERROR,
     // values are duplicated until enum is properly cleaned
     SEGY_DS_READ_ERROR = SEGY_FREAD_ERROR,
     SEGY_DS_WRITE_ERROR = SEGY_FWRITE_ERROR,
