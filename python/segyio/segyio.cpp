@@ -150,33 +150,33 @@ PyObject* Error( int err ) {
     }
 }
 
-struct autofd {
-    operator segy_file*() const;
+struct autods {
+    operator segy_datasource*() const;
     operator bool() const;
-    void swap( autofd& other );
+    void swap( autods& other );
     void close();
 
-    segy_file* fd;
+    segy_datasource* ds;
 };
 
-autofd::operator segy_file*() const {
-    if( this->fd ) return this->fd;
+autods::operator segy_datasource*() const {
+    if( this->ds ) return this->ds;
 
-    IOError( "I/O operation on closed file" );
+    IOError( "I/O operation on closed datasource" );
     return NULL;
 }
 
-autofd::operator bool() const { return this->fd; }
+autods::operator bool() const { return this->ds; }
 
-void autofd::swap( autofd& other ) { std::swap( this->fd, other.fd ); }
-void autofd::close() {
-    if( this->fd ) segy_close( this->fd );
-    this->fd = NULL;
+void autods::swap( autods& other ) { std::swap( this->ds, other.ds ); }
+void autods::close() {
+    if( this->ds ) segy_close( this->ds );
+    this->ds = NULL;
 }
 
 struct segyiofd {
     PyObject_HEAD
-    autofd fd;
+    autods ds;
     long trace0;
     int trace_bsize;
     int tracecount;
@@ -250,23 +250,23 @@ int init( segyiofd* self, PyObject* args, PyObject* kwargs ) {
         return -1;
     }
 
-    struct unique : public autofd {
-        explicit unique( segy_file* p ) { this->fd = p; }
+    struct unique : public autods {
+        explicit unique( segy_datasource* p ) { this->ds = p; }
         ~unique() { this->close(); }
-    } fd( segy_open( filename, mode ) );
+    } ds( segy_open( filename, mode ) );
 
-    if( !fd && !strstr( "rb" "wb" "ab" "r+b" "w+b" "a+b", mode ) ) {
+    if( !ds && !strstr( "rb" "wb" "ab" "r+b" "w+b" "a+b", mode ) ) {
         ValueError( "invalid mode string '%s', good strings are %s",
                 mode, "'r' (read-only) and 'r+' (read-write)" );
         return -1;
     }
 
-    if( !fd ) {
+    if( !ds ) {
         IOErrno();
         return -1;
     }
 
-    int err = segy_set_endianness( fd, endian );
+    int err = segy_set_endianness( ds, endian );
     if( err ) {
         ValueError( "internal: error setting endianness, was %d", endian );
         return -1;
@@ -277,19 +277,19 @@ int init( segyiofd* self, PyObject* args, PyObject* kwargs ) {
      * file on the same object. That means the previous file handle must be
      * properly closed before the new file is set
      */
-    self->fd.swap( fd );
+    self->ds.swap( ds );
 
     return 0;
 }
 
 PyObject* segyopen( segyiofd* self ) {
-    segy_file* fp = self->fd;
-    if( !fp ) return NULL;
+    segy_datasource* ds = self->ds;
+    if( !ds ) return NULL;
 
     int tracecount = 0;
 
     char binary[ SEGY_BINARY_HEADER_SIZE ] = {};
-    int err = segy_binheader( fp, binary );
+    int err = segy_binheader( ds, binary );
     if( err ) return Error( err );
 
     const long trace0 = segy_trace0( binary );
@@ -304,7 +304,7 @@ PyObject* segyopen( segyiofd* self ) {
      * if set_format errors, it's because the format-field in the binary header
      * is 0 or some other garbage. if so, assume the file is 4-byte ibm float
      */
-   segy_set_format( fp, format );
+   segy_set_format( ds, format );
    int elemsize = 4;
 
     switch( format ) {
@@ -327,7 +327,7 @@ PyObject* segyopen( segyiofd* self ) {
             break;
     }
 
-    err = segy_traces( fp, &tracecount, trace0, trace_bsize );
+    err = segy_traces( ds, &tracecount, trace0, trace_bsize );
     switch( err ) {
         case SEGY_OK: break;
 
@@ -358,8 +358,8 @@ PyObject* segyopen( segyiofd* self ) {
 }
 
 PyObject* segycreate( segyiofd* self, PyObject* args, PyObject* kwargs ) {
-    segy_file* fp = self->fd;
-    if( !fp ) return NULL;
+    segy_datasource* ds = self->ds;
+    if( !ds ) return NULL;
 
     int samples;
     int tracecount;
@@ -419,7 +419,7 @@ PyObject* segycreate( segyiofd* self, PyObject* args, PyObject* kwargs ) {
             return ValueError( "unknown format identifier" );
     }
 
-    segy_set_format(fp, format);
+    segy_set_format(ds, format);
     int elemsize = 4;
     switch( format ) {
         case SEGY_SIGNED_INTEGER_8_BYTE:
@@ -469,20 +469,20 @@ PyObject* segycreate( segyiofd* self, PyObject* args, PyObject* kwargs ) {
 }
 
 PyObject* suopen( segyiofd* self, PyObject* args ) {
-    segy_file* fp = self->fd;
-    if( !fp ) return NULL;
+    segy_datasource* ds = self->ds;
+    if( !ds ) return NULL;
 
     if( !PyArg_ParseTuple( args, "" ) )
         return NULL;
 
-    int err = segy_set_format( fp, SEGY_IEEE_FLOAT_4_BYTE );
+    int err = segy_set_format( ds, SEGY_IEEE_FLOAT_4_BYTE );
 
     if( err )
         return RuntimeError( "internal: unable to set type to IEEE float " );
 
     char header[ SEGY_TRACE_HEADER_SIZE ] = {};
 
-    err = segy_traceheader( fp, 0, header, 0, 0 );
+    err = segy_traceheader( ds, 0, header, 0, 0 );
     if( err )
         return IOError( "unable to read first trace header in SU file" );
 
@@ -495,7 +495,7 @@ PyObject* suopen( segyiofd* self, PyObject* args ) {
     int trace_bsize = elemsize * samplecount;
 
     int tracecount;
-    err = segy_traces( fp, &tracecount, trace0, trace_bsize );
+    err = segy_traces( ds, &tracecount, trace0, trace_bsize );
     switch( err ) {
         case SEGY_OK: break;
 
@@ -526,16 +526,16 @@ PyObject* suopen( segyiofd* self, PyObject* args ) {
 }
 
 void dealloc( segyiofd* self ) {
-    self->fd.close();
+    self->ds.close();
     Py_TYPE( self )->tp_free( (PyObject*) self );
 }
 
 PyObject* close( segyiofd* self ) {
     /* multiple close() is a no-op */
-    if( !self->fd ) return Py_BuildValue( "" );
+    if( !self->ds ) return Py_BuildValue( "" );
 
     errno = 0;
-    self->fd.close();
+    self->ds.close();
 
     if( errno ) return IOErrno();
 
@@ -543,22 +543,22 @@ PyObject* close( segyiofd* self ) {
 }
 
 PyObject* flush( segyiofd* self ) {
-    segy_file* fp = self->fd;
-    if( !fp ) return NULL;
+    segy_datasource* ds = self->ds;
+    if( !ds ) return NULL;
 
     errno = 0;
-    segy_flush( self->fd );
+    segy_flush( self->ds );
     if( errno ) return IOErrno();
 
     return Py_BuildValue( "" );
 }
 
 PyObject* mmap( segyiofd* self ) {
-    segy_file* fp = self->fd;
+    segy_datasource* ds = self->ds;
 
-    if( !fp ) return NULL;
+    if( !ds ) return NULL;
 
-    const int err = segy_mmap( fp );
+    const int err = segy_mmap( ds );
 
     if( err != SEGY_OK )
         Py_RETURN_FALSE;
@@ -592,8 +592,8 @@ private:
 };
 
 PyObject* gettext( segyiofd* self, PyObject* args ) {
-    segy_file* fp = self->fd;
-    if( !fp ) return NULL;
+    segy_datasource* ds = self->ds;
+    if( !ds ) return NULL;
 
     int index = 0;
     if( !PyArg_ParseTuple( args, "i", &index ) ) return NULL;
@@ -602,8 +602,8 @@ PyObject* gettext( segyiofd* self, PyObject* args ) {
     if( !buffer ) return NULL;
 
     const int err = index == 0
-              ? segy_read_textheader( fp, buffer )
-              : segy_read_ext_textheader( fp, index - 1, buffer );
+              ? segy_read_textheader( ds, buffer )
+              : segy_read_ext_textheader( ds, index - 1, buffer );
 
     if( err ) return Error( err );
     /*
@@ -614,8 +614,8 @@ PyObject* gettext( segyiofd* self, PyObject* args ) {
 }
 
 PyObject* puttext( segyiofd* self, PyObject* args ) {
-    segy_file* fp = self->fd;
-    if( !fp ) return NULL;
+    segy_datasource* ds = self->ds;
+    if( !ds ) return NULL;
 
     int index;
     buffer_guard buffer;
@@ -630,7 +630,7 @@ PyObject* puttext( segyiofd* self, PyObject* args ) {
     const char* src = buffer.buf< const char >();
     std::copy( src, src + size, buf.ptr );
 
-    const int err = segy_write_textheader( fp, index, buf );
+    const int err = segy_write_textheader( ds, index, buf );
 
     if( err ) return Error( err );
 
@@ -638,20 +638,20 @@ PyObject* puttext( segyiofd* self, PyObject* args ) {
 }
 
 PyObject* getbin( segyiofd* self ) {
-    segy_file* fp = self->fd;
-    if( !fp ) return NULL;
+    segy_datasource* ds = self->ds;
+    if( !ds ) return NULL;
 
     char buffer[ SEGY_BINARY_HEADER_SIZE ] = {};
 
-    const int err = segy_binheader( fp, buffer );
+    const int err = segy_binheader( ds, buffer );
     if( err ) return Error( err );
 
     return PyByteArray_FromStringAndSize( buffer, sizeof( buffer ) );
 }
 
 PyObject* putbin( segyiofd* self, PyObject* args ) {
-    segy_file* fp = self->fd;
-    if( !fp ) return NULL;
+    segy_datasource* ds = self->ds;
+    if( !ds ) return NULL;
 
     buffer_guard buffer;
     if( !PyArg_ParseTuple(args, "s*", &buffer ) ) return NULL;
@@ -661,7 +661,7 @@ PyObject* putbin( segyiofd* self, PyObject* args ) {
                            "expected %i, was %zd",
                            SEGY_BINARY_HEADER_SIZE, buffer.len() );
 
-    const int err = segy_write_binheader( fp, buffer.buf< const char >() );
+    const int err = segy_write_binheader( ds, buffer.buf< const char >() );
 
     if( err == SEGY_INVALID_ARGS )
         return IOError( "file not open for writing. open with 'r+'" );
@@ -671,8 +671,8 @@ PyObject* putbin( segyiofd* self, PyObject* args ) {
 }
 
 PyObject* getth( segyiofd* self, PyObject *args ) {
-    segy_file* fp = self->fd;
-    if( !fp ) return NULL;
+    segy_datasource* ds = self->ds;
+    if( !ds ) return NULL;
 
     int traceno;
     PyObject* bufferobj;
@@ -687,7 +687,7 @@ PyObject* getth( segyiofd* self, PyObject *args ) {
                            "expected %i, was %zd",
                            SEGY_TRACE_HEADER_SIZE, buffer.len() );
 
-    int err = segy_traceheader( fp, traceno,
+    int err = segy_traceheader( ds, traceno,
                                     buffer.buf(),
                                     self->trace0,
                                     self->trace_bsize );
@@ -707,8 +707,8 @@ PyObject* getth( segyiofd* self, PyObject *args ) {
 }
 
 PyObject* putth( segyiofd* self, PyObject* args ) {
-    segy_file* fp = self->fd;
-    if( !fp ) return NULL;
+    segy_datasource* ds = self->ds;
+    if( !ds ) return NULL;
 
     int traceno;
     buffer_guard buf;
@@ -721,7 +721,7 @@ PyObject* putth( segyiofd* self, PyObject* args ) {
 
     const char* buffer = buf.buf< const char >();
 
-    const int err = segy_write_traceheader( fp,
+    const int err = segy_write_traceheader( ds,
                                             traceno,
                                             buffer,
                                             self->trace0,
@@ -740,8 +740,8 @@ PyObject* putth( segyiofd* self, PyObject* args ) {
 }
 
 PyObject* field_forall( segyiofd* self, PyObject* args ) {
-    segy_file* fp = self->fd;
-    if( !fp ) return NULL;
+    segy_datasource* ds = self->ds;
+    if( !ds ) return NULL;
 
     PyObject* bufferobj;
     int start, stop, step;
@@ -759,7 +759,7 @@ PyObject* field_forall( segyiofd* self, PyObject* args ) {
     buffer_guard buffer( bufferobj, PyBUF_CONTIG );
     if( !buffer ) return NULL;
 
-    const int err = segy_field_forall( fp,
+    const int err = segy_field_forall( ds,
                                        field,
                                        start,
                                        stop,
@@ -775,8 +775,8 @@ PyObject* field_forall( segyiofd* self, PyObject* args ) {
 }
 
 PyObject* field_foreach( segyiofd* self, PyObject* args ) {
-    segy_file* fp = self->fd;
-    if( !fp ) return NULL;
+    segy_datasource* ds = self->ds;
+    if( !ds ) return NULL;
 
     PyObject* bufferobj;
     buffer_guard indices;
@@ -797,7 +797,7 @@ PyObject* field_foreach( segyiofd* self, PyObject* args ) {
     Py_ssize_t len = bufout.len() / sizeof(int);
     int err = 0;
     for( int i = 0; err == 0 && i < len; ++i ) {
-        err = segy_field_forall( fp, field,
+        err = segy_field_forall( ds, field,
                                      ind[ i ],
                                      ind[ i ] + 1,
                                      1,
@@ -846,8 +846,8 @@ struct metrics_errmsg {
 };
 
 PyObject* cube_metrics( segyiofd* self, PyObject* args ) {
-    segy_file* fp = self->fd;
-    if( !fp ) return NULL;
+    segy_datasource* ds = self->ds;
+    if( !ds ) return NULL;
 
     int il;
     int xl;
@@ -856,7 +856,7 @@ PyObject* cube_metrics( segyiofd* self, PyObject* args ) {
     metrics_errmsg errmsg = { il, xl, SEGY_TR_OFFSET };
 
     int sorting = -1;
-    int err = segy_sorting( fp, il,
+    int err = segy_sorting( ds, il,
                                 xl,
                                 SEGY_TR_OFFSET,
                                 &sorting,
@@ -866,7 +866,7 @@ PyObject* cube_metrics( segyiofd* self, PyObject* args ) {
     if( err ) return errmsg( err );
 
     int offset_count = -1;
-    err = segy_offsets( fp, il,
+    err = segy_offsets( ds, il,
                             xl,
                             self->tracecount,
                             &offset_count,
@@ -877,7 +877,7 @@ PyObject* cube_metrics( segyiofd* self, PyObject* args ) {
 
     int xl_count = 0;
     int il_count = 0;
-    err = segy_lines_count( fp, il,
+    err = segy_lines_count( ds, il,
                                 xl,
                                 sorting,
                                 offset_count,
@@ -907,8 +907,8 @@ long getitem( PyObject* dict, const char* key ) {
 }
 
 PyObject* indices( segyiofd* self, PyObject* args ) {
-    segy_file* fp = self->fd;
-    if( !fp ) return NULL;
+    segy_datasource* ds = self->ds;
+    if( !ds ) return NULL;
 
     PyObject* metrics;
     buffer_guard iline_out;
@@ -948,7 +948,7 @@ PyObject* indices( segyiofd* self, PyObject* args ) {
 
     metrics_errmsg errmsg = { il_field, xl_field, SEGY_TR_OFFSET };
 
-    int err = segy_inline_indices( fp, il_field,
+    int err = segy_inline_indices( ds, il_field,
                                        sorting,
                                        iline_count,
                                        xline_count,
@@ -958,7 +958,7 @@ PyObject* indices( segyiofd* self, PyObject* args ) {
                                        self->trace_bsize );
     if( err ) return errmsg( err );
 
-    err = segy_crossline_indices( fp, xl_field,
+    err = segy_crossline_indices( ds, xl_field,
                                       sorting,
                                       iline_count,
                                       xline_count,
@@ -968,7 +968,7 @@ PyObject* indices( segyiofd* self, PyObject* args ) {
                                       self->trace_bsize );
     if( err ) return errmsg( err );
 
-    err = segy_offset_indices( fp, offset_field,
+    err = segy_offset_indices( ds, offset_field,
                                    offset_count,
                                    offset_out.buf< int >(),
                                    self->trace0,
@@ -979,8 +979,8 @@ PyObject* indices( segyiofd* self, PyObject* args ) {
 }
 
 PyObject* gettr( segyiofd* self, PyObject* args ) {
-    segy_file* fp = self->fd;
-    if( !fp ) return NULL;
+    segy_datasource* ds = self->ds;
+    if( !ds ) return NULL;
 
     PyObject* bufferobj;
     int start, length, step, sample_start, sample_stop, sample_step, samples;
@@ -1006,7 +1006,7 @@ PyObject* gettr( segyiofd* self, PyObject* args ) {
     int i = 0;
     char* buf = buffer.buf();
     for( ; err == 0 && i < length; ++i, buf += skip ) {
-        err = segy_readsubtr( fp, start + (i * step),
+        err = segy_readsubtr( ds, start + (i * step),
                                   sample_start,
                                   sample_stop,
                                   sample_step,
@@ -1028,8 +1028,8 @@ PyObject* gettr( segyiofd* self, PyObject* args ) {
 }
 
 PyObject* puttr( segyiofd* self, PyObject* args ) {
-    segy_file* fp = self->fd;
-    if( !fp ) return NULL;
+    segy_datasource* ds = self->ds;
+    if( !ds ) return NULL;
 
     int traceno;
     char* buffer;
@@ -1045,7 +1045,7 @@ PyObject* puttr( segyiofd* self, PyObject* args ) {
 
     segy_from_native( self->format, self->samplecount, buffer );
 
-    int err = segy_writetrace( fp, traceno,
+    int err = segy_writetrace( ds, traceno,
                                    buffer,
                                    self->trace0,
                                    self->trace_bsize );
@@ -1065,8 +1065,8 @@ PyObject* puttr( segyiofd* self, PyObject* args ) {
 }
 
 PyObject* getline( segyiofd* self, PyObject* args) {
-    segy_file* fp = self->fd;
-    if( !fp ) return NULL;
+    segy_datasource* ds = self->ds;
+    if( !ds ) return NULL;
 
     int line_trace0;
     int line_length;
@@ -1084,7 +1084,7 @@ PyObject* getline( segyiofd* self, PyObject* args) {
     buffer_guard buffer( bufferobj, PyBUF_CONTIG );
     if( !buffer ) return NULL;
 
-    int err = segy_read_line( fp, line_trace0,
+    int err = segy_read_line( ds, line_trace0,
                                   line_length,
                                   stride,
                                   offsets,
@@ -1102,8 +1102,8 @@ PyObject* getline( segyiofd* self, PyObject* args) {
 }
 
 PyObject* putline( segyiofd* self, PyObject* args) {
-    segy_file* fp = self->fd;
-    if( !fp ) return NULL;
+    segy_datasource* ds = self->ds;
+    if( !ds ) return NULL;
 
     int line_trace0;
     int line_length;
@@ -1132,7 +1132,7 @@ PyObject* putline( segyiofd* self, PyObject* args) {
     const int elems = line_length * self->samplecount;
     segy_from_native( self->format, elems, buffer.buf() );
 
-    int err = segy_write_line( fp, line_trace0,
+    int err = segy_write_line( ds, line_trace0,
                                    line_length,
                                    stride,
                                    offsets,
@@ -1156,8 +1156,8 @@ PyObject* putline( segyiofd* self, PyObject* args) {
 }
 
 PyObject* getdepth( segyiofd* self, PyObject* args ) {
-    segy_file* fp = self->fd;
-    if( !fp ) return NULL;
+    segy_datasource* ds = self->ds;
+    if( !ds ) return NULL;
 
     int depth;
     int count;
@@ -1182,7 +1182,7 @@ PyObject* getdepth( segyiofd* self, PyObject* args ) {
     const int trace_bsize = self->trace_bsize;
 
     for( ; err == 0 && traceno < count; ++traceno, buf += skip ) {
-        err = segy_readsubtr( fp,
+        err = segy_readsubtr( ds,
                               traceno * offsets,
                               depth,
                               depth + 1,
@@ -1205,8 +1205,8 @@ PyObject* getdepth( segyiofd* self, PyObject* args ) {
 }
 
 PyObject* putdepth( segyiofd* self, PyObject* args ) {
-    segy_file* fp = self->fd;
-    if( !fp ) return NULL;
+    segy_datasource* ds = self->ds;
+    if( !ds ) return NULL;
 
     int depth;
     int count;
@@ -1237,7 +1237,7 @@ PyObject* putdepth( segyiofd* self, PyObject* args ) {
     segy_from_native( self->format, count, buffer.buf() );
 
     for( ; err == 0 && traceno < count; ++traceno, buf += skip ) {
-        err = segy_writesubtr( fp,
+        err = segy_writesubtr( ds,
                                traceno * offsets,
                                depth,
                                depth + 1,
@@ -1260,14 +1260,14 @@ PyObject* putdepth( segyiofd* self, PyObject* args ) {
 }
 
 PyObject* getdt( segyiofd* self, PyObject* args ) {
-    segy_file* fp = self->fd;
-    if( !fp ) return NULL;
+    segy_datasource* ds = self->ds;
+    if( !ds ) return NULL;
 
     float fallback;
     if( !PyArg_ParseTuple(args, "f", &fallback ) ) return NULL;
 
     float dt;
-    int err = segy_sample_interval( fp, fallback, &dt );
+    int err = segy_sample_interval( ds, fallback, &dt );
 
     if( err == SEGY_OK )
         return PyFloat_FromDouble( dt );
@@ -1280,13 +1280,13 @@ PyObject* getdt( segyiofd* self, PyObject* args ) {
      * or the binary header
      */
     char buffer[ SEGY_BINARY_HEADER_SIZE ];
-    err = segy_binheader( fp, buffer );
+    err = segy_binheader( ds, buffer );
 
     if( err )
         return IOError( "I/O operation failed on binary header, "
                         "likely corrupted file" );
 
-    err = segy_traceheader( fp, 0, buffer, self->trace0, self->trace_bsize );
+    err = segy_traceheader( ds, 0, buffer, self->trace0, self->trace_bsize );
 
     if( err == SEGY_FREAD_ERROR )
         return IOError( "I/O operation failed on trace header 0, "
@@ -1296,8 +1296,8 @@ PyObject* getdt( segyiofd* self, PyObject* args ) {
 }
 
 PyObject* rotation( segyiofd* self, PyObject* args ) {
-    segy_file* fp = self->fd;
-    if( !fp ) return NULL;
+    segy_datasource* ds = self->ds;
+    if( !ds ) return NULL;
 
     int line_length;
     int stride;
@@ -1311,7 +1311,7 @@ PyObject* rotation( segyiofd* self, PyObject* args ) {
         return NULL;
 
     float rotation;
-    int err = segy_rotation_cw( fp, line_length,
+    int err = segy_rotation_cw( ds, line_length,
                                     stride,
                                     offsets,
                                     linenos.buf< const int >(),
