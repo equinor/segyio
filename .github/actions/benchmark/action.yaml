@@ -53,19 +53,19 @@ runs:
       working-directory: python
       run: |
         if [ ! -f file.sgy ]; then
-          time python -m examples.make-file file.sgy 1400 1 1000 1 600
+          time python -m examples.make-file file.sgy 1600 1 1000 1 1200
         else
           echo "file.sgy already exists"
         fi
 
-    - name: Make segy pre-stack file
+    - name: Make segy small file
       shell: bash
       working-directory: python
       run: |
-        if [ ! -f file-ps.sgy ]; then
-          time python -m examples.make-ps-file file-ps.sgy 1400 1 500 1 600 1 3
+        if [ ! -f file-small.sgy ]; then
+          time python -m examples.make-file file-small.sgy 500 1 350 1 350
         else
-          echo "file-ps.sgy already exists"
+          echo "file-small.sgy already exists"
         fi
 
     - name: Print filesize
@@ -73,13 +73,13 @@ runs:
       working-directory: python
       run: |
         ls -lh file.sgy
-        ls -lh file-ps.sgy
+        ls -lh file-small.sgy
 
     - name: Run benchmark tests
       shell: bash
       working-directory: python
       run: |
-        pytest test/benchmarks.py --benchmark-sort=name --benchmark-autosave ${{ inputs.compare }}
+        pytest test/benchmarks.py -rP --benchmark-sort=name --benchmark-autosave ${{ inputs.compare }}
 
     - name: Remove build artifacts
       shell: bash
