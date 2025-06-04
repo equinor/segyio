@@ -15,16 +15,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: windows-2019
-            cmake_generator: "-G \"Visual Studio 16 2019\" -A x64"
+          - os: windows-2022
+            cmake_generator: "-G \"Visual Studio 17 2022\" -A x64"
             build_type: "Release"
             compiler_flags: "-D_CRT_SECURE_NO_WARNINGS /EHsc"
-          - os: windows-2019
-            cmake_generator: "-G \"Visual Studio 16 2019\" -A x64"
+          - os: windows-2022
+            cmake_generator: "-G \"Visual Studio 17 2022\" -A x64"
             build_type: "Debug"
             compiler_flags: "-D_CRT_SECURE_NO_WARNINGS /EHsc"
-          - os: windows-2019
-            cmake_generator: "-G \"Visual Studio 16 2019\" -A Win32"
+          - os: windows-2022
+            cmake_generator: "-G \"Visual Studio 17 2022\" -A Win32"
             build_type: "Release"
             compiler_flags: "-D_CRT_SECURE_NO_WARNINGS /EHsc"
           - os: ubuntu-latest
