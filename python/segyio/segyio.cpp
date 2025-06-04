@@ -1482,7 +1482,7 @@ PyObject* getfield( PyObject*, PyObject *args ) {
             return PyFloat_FromDouble( fd.value.f64 );
 
         default:
-            return KeyError( "No such field %d", field );
+            return KeyError( "Unhandled datatype %d for field %d", fd.datatype, field );
     }
 }
 
@@ -1496,6 +1496,10 @@ PyObject* putfield( PyObject*, PyObject *args ) {
     if( !PyArg_Parse(buffer_arg, "w*", &buffer) )
         return NULL;
 
+    if( buffer.len() != SEGY_BINARY_HEADER_SIZE &&
+        buffer.len() != SEGY_TRACE_HEADER_SIZE )
+        return BufferError( "buffer too small" );
+
     int field = (int)PyLong_AsLong(field_arg);
 
     segy_field_data fd;
@@ -1506,7 +1510,7 @@ PyObject* putfield( PyObject*, PyObject *args ) {
 
     switch ( fd.datatype ) {
         case SEGY_UNSIGNED_INTEGER_8_BYTE:
-            fd.value.u64 = PyLong_AsUnsignedLong(value_arg);
+            fd.value.u64 = PyLong_AsUnsignedLongLong(value_arg);
             break;
         case SEGY_UNSIGNED_INTEGER_4_BYTE:
             fd.value.u32 = PyLong_AsUnsignedLong(value_arg);
@@ -1519,7 +1523,7 @@ PyObject* putfield( PyObject*, PyObject *args ) {
             break;
 
         case SEGY_SIGNED_INTEGER_8_BYTE:
-            fd.value.i64 = PyLong_AsLong(value_arg);
+            fd.value.i64 = PyLong_AsLongLong(value_arg);
             break;
         case SEGY_SIGNED_INTEGER_4_BYTE:
             fd.value.i32 = PyLong_AsLong(value_arg);
@@ -1548,21 +1552,21 @@ PyObject* putfield( PyObject*, PyObject *args ) {
         case SEGY_OK:
             switch ( fd.datatype ) {
                 case SEGY_UNSIGNED_INTEGER_8_BYTE:
-                    return PyLong_FromUnsignedLong( (long)fd.value.i64 );
+                    return PyLong_FromUnsignedLongLong( fd.value.i64 );
                 case SEGY_UNSIGNED_INTEGER_4_BYTE:
-                    return PyLong_FromUnsignedLong( (long)fd.value.i32 );
+                    return PyLong_FromUnsignedLong( (uint64_t)(uint32_t)fd.value.i32 );
                 case SEGY_UNSIGNED_SHORT_2_BYTE:
-                    return PyLong_FromUnsignedLong( (long)fd.value.i16 );
+                    return PyLong_FromUnsignedLong( (uint64_t)(uint16_t)fd.value.i16 );
                 case SEGY_UNSIGNED_CHAR_1_BYTE:
-                    return PyLong_FromUnsignedLong( (long)fd.value.i8 );
+                    return PyLong_FromUnsignedLong( (uint64_t)(uint8_t)fd.value.i8 );
                 case SEGY_SIGNED_INTEGER_8_BYTE:
-                    return PyLong_FromLong( (long)fd.value.i64 );
+                    return PyLong_FromLongLong( fd.value.i64 );
                 case SEGY_SIGNED_INTEGER_4_BYTE:
-                    return PyLong_FromLong( fd.value.i32 );
+                    return PyLong_FromLong( (int64_t)(int32_t)fd.value.i32 );
                 case SEGY_SIGNED_SHORT_2_BYTE:
-                    return PyLong_FromLong( (long)fd.value.i16 );
+                    return PyLong_FromLong( (int64_t)(int16_t)fd.value.i16 );
                 case SEGY_SIGNED_CHAR_1_BYTE:
-                    return PyLong_FromLong( (long)fd.value.i8 );
+                    return PyLong_FromLong( (int64_t)(int8_t)fd.value.i8 );
                 case SEGY_IEEE_FLOAT_8_BYTE:
                     return PyFloat_FromDouble( fd.value.f64 );
                 default:
