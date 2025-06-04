@@ -197,6 +197,44 @@ def test_binary_header_datatype_get_dec(tmpdir):
             range = get_field_range(binary_header, offset, field_name)
             assert range[1] == value + i, f"Value mismatch for field {field_name}: expected {range[0]} but got {value - i}"
 
+@tmpfiles(testdata / 'increment.sgy')
+def test_binary_header_datatype_set_inc(tmpdir):
+    f = get_instance_segyiofd(tmpdir,
+        str(testdata / 'increment.sgy')
+    )
+    binary_header = f.getbin()
+    for i, (field_name, offset) in enumerate(binfield_keys.items()):
+        if field_name in UNASSIGNED_FIELDS:
+            continue
+        value = _segyio.getfield(binary_header, offset)
+        if field_name in FIXED_VALUE_FIELDS:
+            check_fixed_value_fields(field_name, value)
+        else:
+            range = get_field_range(binary_header, offset, field_name)
+            value_set = _segyio.putfield(binary_header, offset, range[0] + i +1)
+            value_get = _segyio.getfield(binary_header, offset)
+            assert value_set == value_get, f"Value mismatch for field {field_name}: set {value_set} but got {value_get}"
+            assert range[0] == value_get - i-1, f"Value mismatch for field {field_name}: expected {range[0]} but got {value_get - i-1}"
+
+@tmpfiles(testdata / 'decrement.sgy')
+def test_binary_header_datatype_set_dec(tmpdir):
+    f = get_instance_segyiofd(tmpdir,
+        str(testdata / 'decrement.sgy')
+    )
+    binary_header = f.getbin()
+    for i, (field_name, offset) in enumerate(binfield_keys.items()):
+        if field_name in UNASSIGNED_FIELDS:
+            continue
+        value = _segyio.getfield(binary_header, offset)
+        if field_name in FIXED_VALUE_FIELDS:
+            check_fixed_value_fields(field_name, value)
+        else:
+            range = get_field_range(binary_header, offset, field_name)
+            value_set = _segyio.putfield(binary_header, offset, range[1] - i -1)
+            value_get = _segyio.getfield(binary_header, offset)
+            assert value_set == value_get, f"Value mismatch for field {field_name}: set {value_set} but got {value_get}"
+            assert range[1] == value_get+i+1, f"Value mismatch for field {field_name}: expected {range[1]} but got {value_get-i-1}"
+
 @tmpfiles(testdata / 'small.sgy')
 def test_read_and_write_binary_header(tmpdir):
     f = get_instance_segyiofd(tmpdir)
