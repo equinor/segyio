@@ -16,8 +16,8 @@ jobs:
       matrix:
         include:
           # only 64-bit windows
-          - os: windows-2019
-            cmake_generator: '-G "Visual Studio 16 2019"'
+          - os: windows-2022
+            cmake_generator: '-G "Visual Studio 17 2022"'
           - os: ubuntu-latest
 
     steps:
@@ -32,7 +32,7 @@ jobs:
         run: |
           python -m pip install -r requirements-dev.txt
 
-      - name: Configure and Build
+      - name: Configure
         shell: bash
         run: |
           cmake -S . -B build \
@@ -42,9 +42,17 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             ${{ matrix.cmake_generator }} \
 
-            cmake \
-              --build build \
-              --config Release \
+      - name: Build
+        shell: bash
+        # scikit-build first checks for toolset v144, which is not available on
+        # github windows-2022 environment. It is able to build with v143, but
+        # fails the command anyway. continue-on-error is a workaround for that.
+        # In case actual error occurs and segyio is not build, tests will fail.
+        continue-on-error: true
+        run: |
+          cmake \
+            --build build \
+            --config Release \
 
       - name: Test
         shell: bash
@@ -84,8 +92,8 @@ jobs:
   # 32-bit one directly. Build works in cbuildwheel as they seem to hack the
   # environment to make it look like 32-bit system.
   large_win32:
-    name: Run large tests on windows-2019, 32-bit wheel
-    runs-on: windows-2019
+    name: Run large tests on windows-2022, 32-bit wheel
+    runs-on: windows-2022
 
     steps:
       - uses: actions/checkout@v4
@@ -108,7 +116,7 @@ jobs:
         env:
           CIBW_BUILD_VERBOSITY: 1
           CIBW_ENVIRONMENT_WINDOWS: >
-            CMAKE_GENERATOR="Visual Studio 16 2019"
+            CMAKE_GENERATOR="Visual Studio 17 2022"
             CMAKE_GENERATOR_PLATFORM="Win32"
         run: |
           python -m cibuildwheel --only cp312-win32 --output-dir ./wheelhouse python/

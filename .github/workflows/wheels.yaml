@@ -17,12 +17,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: windows-2019
-            cmake_generator: "Visual Studio 16 2019"
+          - os: windows-2022
+            cmake_generator: "Visual Studio 17 2022"
             cmake_generator_platform: "x64"
             arch: AMD64
-          - os: windows-2019
-            cmake_generator: "Visual Studio 16 2019"
+          - os: windows-2022
+            cmake_generator: "Visual Studio 17 2022"
             cmake_generator_platform: "Win32"
             arch: x86
           - os: ubuntu-latest
