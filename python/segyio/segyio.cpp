@@ -1425,6 +1425,25 @@ PyObject* trbsize( PyObject*, PyObject* args ) {
     return PyLong_FromLong( segy_trace_bsize( sample_count ) );
 }
 
+PyObject* getfieldtype( PyObject*, PyObject *args ) {
+    buffer_guard buffer;
+    int field;
+
+    if( !PyArg_ParseTuple( args, "s*i", &buffer, &field ) ) return NULL;
+
+    if( buffer.len() != SEGY_BINARY_HEADER_SIZE &&
+        buffer.len() != SEGY_TRACE_HEADER_SIZE )
+        return BufferError( "buffer too small" );
+
+    segy_field_data fd = segy_get_field( buffer.buf< const char >(), field );
+    if( fd.error != SEGY_OK )
+        return KeyError( "No such field %d", field );
+
+    if( fd.datatype == SEGY_UNDEFINED_FIELD)
+        return KeyError( "Field %d has no datatype", field );
+    return PyLong_FromLong( fd.datatype );
+}
+
 PyObject* getfield( PyObject*, PyObject *args ) {
     buffer_guard buffer;
     int field;
@@ -1442,7 +1461,7 @@ PyObject* getfield( PyObject*, PyObject *args ) {
     switch ( fd.datatype ) {
 
         case SEGY_SIGNED_INTEGER_8_BYTE:
-            return PyLong_FromLong( fd.value.i64 );
+            return PyLong_FromLongLong( fd.value.i64 );
         case SEGY_SIGNED_INTEGER_4_BYTE:
             return PyLong_FromLong( fd.value.i32 );
         case SEGY_SIGNED_SHORT_2_BYTE:
@@ -1451,13 +1470,13 @@ PyObject* getfield( PyObject*, PyObject *args ) {
             return PyLong_FromLong( fd.value.i8 );
 
         case SEGY_UNSIGNED_INTEGER_8_BYTE:
-            return PyLong_FromLong( fd.value.u64 );
+            return PyLong_FromUnsignedLongLong( fd.value.u64 );
         case SEGY_UNSIGNED_INTEGER_4_BYTE:
-            return PyLong_FromLong( fd.value.u32 );
+            return PyLong_FromUnsignedLong( fd.value.u32 );
         case SEGY_UNSIGNED_SHORT_2_BYTE:
-            return PyLong_FromLong( fd.value.u16 );
+            return PyLong_FromUnsignedLong( fd.value.u16 );
         case SEGY_UNSIGNED_CHAR_1_BYTE:
-            return PyLong_FromLong( fd.value.u8 );
+            return PyLong_FromUnsignedLong( fd.value.u8 );
 
         case SEGY_IEEE_FLOAT_8_BYTE:
             return PyFloat_FromDouble( fd.value.f64 );
@@ -1650,6 +1669,7 @@ PyMethodDef SegyMethods[] = {
     { "trace_bsize", (PyCFunction) trbsize, METH_VARARGS, "Size of a trace (in bytes)." },
 
     { "getfield", (PyCFunction) getfield, METH_VARARGS, "Get a header field." },
+    { "getfieldtype", (PyCFunction) getfieldtype, METH_VARARGS, "Get a header field datatype." },
     { "putfield", (PyCFunction) putfield, METH_VARARGS, "Put a header field." },
 
     { "line_metrics", (PyCFunction) line_metrics,  METH_VARARGS, "Find the length and stride of lines." },
