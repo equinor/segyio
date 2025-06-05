@@ -151,6 +151,14 @@ add_test(NAME catb-long.output
          COMMAND ${CMAKE_COMMAND} -E compare_files ${test}/catb-long.output
                                                    catb-long.out
 )
+add_test(NAME catb-inc.output
+         COMMAND ${CMAKE_COMMAND} -E compare_files ${test}/catb-inc.output
+                                                   catb-inc.out
+)
+add_test(NAME catb-dec.output
+         COMMAND ${CMAKE_COMMAND} -E compare_files ${test}/catb-dec.output
+                                                   catb-dec.out
+)
 add_test(NAME cath.output
          COMMAND ${CMAKE_COMMAND} -E compare_files ${test}/cath.output cath.out
 )

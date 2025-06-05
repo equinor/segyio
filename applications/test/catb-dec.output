@@ -40,6 +40,6 @@ exth      	0
 maxtrh    	32727
 survty    	32726
 timebc    	32725
-ntrst     	-44
-ftroff    	-45
+ntrst     	18446744073709551572
+ftroff    	18446744073709551571
 ntr       	2147483602
