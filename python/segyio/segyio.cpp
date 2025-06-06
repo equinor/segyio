@@ -155,6 +155,175 @@ PyObject* Error( int err ) {
 }
 
 
+namespace ds {
+
+int py_read( segy_datasource* self, void* buffer, size_t size ) {
+    int err = SEGY_DS_READ_ERROR;
+    PyObject* stream = (PyObject*)self->stream;
+
+    PyObject* result = PyObject_CallMethod( stream, "read", "n", size );
+    if( !result ) {
+        if (PyErr_Occurred()) {
+            PyErr_Print();
+        }
+        return err;
+    }
+    const char* data = PyBytes_AsString( result );
+    if( data ) {
+        Py_ssize_t result_size = PyBytes_Size( result );
+        if( static_cast<size_t>( result_size ) == size ) {
+            memcpy( buffer, data, size );
+            err = SEGY_OK;
+        }
+    }
+
+    Py_DECREF( result );
+    return err;
+}
+
+int py_write( segy_datasource* self, const void* buffer, size_t size ) {
+    int err = SEGY_DS_WRITE_ERROR;
+    PyObject* stream = (PyObject*)self->stream;
+
+    PyObject* result = PyObject_CallMethod( stream, "write", "y#", buffer, size );
+    if( !result ) {
+        if (PyErr_Occurred()) {
+            PyErr_Print();
+        }
+        return err;
+    }
+
+    Py_ssize_t result_size = PyLong_AsSsize_t( result );
+    if( static_cast<size_t>( result_size ) == size ) {
+        err = SEGY_OK;
+    }
+    Py_DECREF( result );
+    return err;
+}
+
+int py_seek( segy_datasource* self, long long offset, int whence ) {
+    PyObject* stream = (PyObject*)self->stream;
+    PyObject* result = PyObject_CallMethod( stream, "seek", "Li", offset, whence );
+    if( !result ) {
+        if (PyErr_Occurred()) {
+            PyErr_Print();
+        }
+        return SEGY_DS_SEEK_ERROR;
+    }
+    Py_DECREF( result );
+    return SEGY_OK;
+}
+
+int py_tell( segy_datasource* self, long long* pos ) {
+    PyObject* stream = (PyObject*)self->stream;
+    PyObject* result = PyObject_CallMethod( stream, "tell", NULL );
+    if( !result ) {
+        if (PyErr_Occurred()) {
+            PyErr_Print();
+        }
+        return SEGY_DS_ERROR;
+    }
+    *pos = PyLong_AsLongLong( result );
+    Py_DECREF( result );
+    return SEGY_OK;
+}
+
+int py_size( segy_datasource* self, long long* out ) {
+    long long original_tell;
+    int err = py_tell( self, &original_tell );
+    if( err != SEGY_OK ) return err;
+
+    err = py_seek( self, 0, SEEK_END );
+    if( err != SEGY_OK ) return err;
+
+    err = py_tell( self, out );
+    if( err != SEGY_OK ) return err;
+
+    err = py_seek( self, original_tell, SEEK_SET );
+    if( err != SEGY_OK ) return err;
+    return SEGY_OK;
+}
+
+int py_flush( segy_datasource* self ) {
+    PyObject* stream = (PyObject*)self->stream;
+    PyObject* result = PyObject_CallMethod( stream, "flush", NULL );
+    if( !result ) {
+        if (PyErr_Occurred()) {
+            PyErr_Print();
+        }
+        return SEGY_DS_FLUSH_ERROR;
+    }
+    Py_DECREF( result );
+    return SEGY_OK;
+}
+
+int py_close( segy_datasource* self ) {
+    PyObject* stream = (PyObject*)self->stream;
+    PyObject* result = PyObject_CallMethod( stream, "close", NULL );
+    if( !result ) {
+        if (PyErr_Occurred()) {
+            PyErr_Print();
+        }
+        return SEGY_DS_CLOSE_ERROR;
+    }
+    Py_DECREF( result );
+    Py_DECREF( stream );
+    return SEGY_OK;
+}
+
+int py_set_writable( segy_datasource* self ) {
+    PyObject* stream = (PyObject*)self->stream;
+    PyObject* result = PyObject_CallMethod( stream, "writable", NULL );
+    if( !result ) {
+        if( PyErr_Occurred() ) {
+            PyErr_Print();
+        }
+        return SEGY_DS_ERROR;
+    }
+    self->writable = PyObject_IsTrue( result );
+    Py_DECREF( result );
+    return SEGY_OK;
+}
+
+segy_datasource* create_py_stream_datasource(
+    PyObject* py_stream, bool minimize_requests_number
+) {
+    segy_datasource* ds = (segy_datasource*)malloc( sizeof( segy_datasource ) );
+    if( !ds ) return NULL;
+
+    /* current requirements on file-like-object stream: read, write, seek, tell,
+     * flush, close, writable
+     */
+    ds->stream = py_stream;
+
+    ds->read = py_read;
+    ds->write = py_write;
+    ds->seek = py_seek;
+    ds->tell = py_tell;
+    ds->size = py_size;
+    ds->flush = py_flush;
+    ds->close = py_close;
+
+    // writable is set only on init, assuming stream does not change it during
+    // operation
+    const int err = py_set_writable( ds );
+    if( err ) return NULL;
+
+    ds->memory_speedup = false;
+    ds->minimize_requests_number = minimize_requests_number;
+    ds->elemsize = 4;
+    ds->lsb = false;
+
+    /* keep additional reference to assure object does not get deleted before
+     * segy_datasource is closed
+     */
+    Py_INCREF( py_stream );
+    return ds;
+}
+
+} // namespace ds
+
+
 struct buffer_guard {
     /* automate Py_buffer handling.
      *
