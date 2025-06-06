@@ -154,44 +154,6 @@ PyObject* Error( int err ) {
     }
 }
 
-struct autods {
-    operator segy_datasource*() const;
-    operator bool() const;
-    void swap( autods& other );
-    int close();
-
-    segy_datasource* ds;
-};
-
-autods::operator segy_datasource*() const {
-    if( this->ds ) return this->ds;
-
-    IOError( "I/O operation on closed datasource" );
-    return NULL;
-}
-
-autods::operator bool() const { return this->ds; }
-
-void autods::swap( autods& other ) { std::swap( this->ds, other.ds ); }
-int autods::close() {
-    int err = SEGY_OK;
-    if( this->ds ) {
-        err = segy_close( this->ds );
-    }
-    this->ds = NULL;
-    return err;
-}
-
-struct segyfd {
-    PyObject_HEAD
-    autods ds;
-    long trace0;
-    int trace_bsize;
-    int tracecount;
-    int samplecount;
-    int format;
-    int elemsize;
-};
 
 struct buffer_guard {
     /* automate Py_buffer handling.
@@ -235,6 +197,45 @@ struct buffer_guard {
     char* buf() const { return this->buf< char >(); }
 
     Py_buffer buffer;
+};
+
+struct autods {
+    operator segy_datasource*() const;
+    operator bool() const;
+    void swap( autods& other );
+    int close();
+
+    segy_datasource* ds;
+};
+
+autods::operator segy_datasource*() const {
+    if( this->ds ) return this->ds;
+
+    IOError( "I/O operation on closed datasource" );
+    return NULL;
+}
+
+autods::operator bool() const { return this->ds; }
+
+void autods::swap( autods& other ) { std::swap( this->ds, other.ds ); }
+int autods::close() {
+    int err = SEGY_OK;
+    if( this->ds ) {
+        err = segy_close( this->ds );
+    }
+    this->ds = NULL;
+    return err;
+}
+
+struct segyfd {
+    PyObject_HEAD
+    autods ds;
+    long trace0;
+    int trace_bsize;
+    int tracecount;
+    int samplecount;
+    int format;
+    int elemsize;
 };
 
 namespace fd {
