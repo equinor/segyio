@@ -411,6 +411,173 @@ static int file_size( FILE* fp, long long* size ) {
 }
 #endif //HAVE_SYS_STAT_H
 
+static int fileread( segy_datasource* self, void* buffer, size_t size ) {
+    FILE* file = (FILE*)self->stream;
+    size_t readc = fread( buffer, size, 1, file );
+    if ( readc != 1 ) return SEGY_FREAD_ERROR;
+    return SEGY_OK;
+}
+
+static int filewrite( segy_datasource* self, const void* buffer, size_t size ) {
+    if ( !self->writable ) return SEGY_READONLY;
+    FILE* file = (FILE*)self->stream;
+    size_t writec = fwrite( buffer, size, 1, file );
+    if ( writec != 1 ) return SEGY_FWRITE_ERROR;
+    return SEGY_OK;
+}
+
+static int fileseek( segy_datasource* self, long long pos, int whence ) {
+    FILE* file = (FILE*)self->stream;
+    int err;
+#if LONG_MAX == LLONG_MAX
+    err = fseek( file, (long)pos, whence );
+#elif HAVE_FSEEKO
+    err = fseeko( file, pos, whence );
+#elif HAVE_FSEEKI64
+    err = _fseeki64( file, pos, whence );
+#else
+    error "no 64-bit alternative to fseek() found, and long is too small"
+#endif
+    if( err != 0 ) return SEGY_FSEEK_ERROR;
+    return SEGY_OK;
+}
+
+static int filetell( segy_datasource* self, long long* pos ) {
+    FILE* file = (FILE*)self->stream;
+#if LONG_MAX == LLONG_MAX
+    *pos = ftell( file );
+#elif HAVE_FTELLO
+    *pos = ftello( file );
+#elif HAVE_FTELLI64
+    *pos = _ftelli64( file );
+#else
+    error "no 64-bit alternative to ftell() found, and long is too small"
+#endif
+    return SEGY_OK;
+}
+
+static int filesize( segy_datasource* self, long long* out ) {
+    FILE* file = (FILE*)self->stream;
+    int err = file_size( file, out );
+    return err;
+}
+
+static int fileflush( segy_datasource* self ) {
+    // flush is a no-op for read-only files
+    if ( !self->writable ) return SEGY_OK;
+    FILE* file = (FILE*)self->stream;
+
+    int flusherr = fflush( file );
+    if ( flusherr != 0 ) return SEGY_FWRITE_ERROR;
+
+    return SEGY_OK;
+}
+
+static int fileclose( segy_datasource* self ) {
+    int err = fileflush( self );
+    if ( err != SEGY_OK ) return err;
+
+    FILE* file = (FILE*)self->stream;
+    err = fclose( file );
+    if ( err != 0 ) return SEGY_FWRITE_ERROR;
+    return err;
+}
+
+/* Describes a file loaded into memory. */
+struct memfile {
+    unsigned char* addr;
+    unsigned char* cur;
+    size_t size;
+};
+typedef struct memfile memfile;
+
+static int memread( segy_datasource* self, void* buffer, size_t size ) {
+    memfile* mp = (memfile*)self->stream;
+    const unsigned char* begin = mp->addr;
+    const unsigned char* end = mp->addr + mp->size;
+    const unsigned char* src = mp->cur;
+    const unsigned char* srcend = src + size;
+
+    if ( src < begin || src > end || srcend > end )
+        return SEGY_FREAD_ERROR;
+
+    memcpy( buffer, src, size );
+    mp->cur = mp->cur + size;
+    return SEGY_OK;
+}
+
+/* Writes to the memfile. Overwrites memory, does not shrink/extend fsize. */
+static int memwrite( segy_datasource* self, const void* buffer, size_t size ) {
+    memfile* mp = (memfile*)self->stream;
+    const unsigned char* begin = mp->addr;
+    const unsigned char* end = mp->addr + mp->size;
+    unsigned char* dest = mp->cur;
+    const unsigned char* destend = dest + size;
+
+    if ( dest < begin || dest > end || destend > end )
+        return SEGY_FWRITE_ERROR;
+
+    memcpy( dest, buffer, size );
+    mp->cur = mp->cur + size;
+    return SEGY_OK;
+}
+
+static int memseek( segy_datasource* self, long long pos, int whence ) {
+    memfile* mp = (memfile*)self->stream;
+    /*
+     * mmap fseek doesn't fail (it's just a pointer readjustment) and won't
+     * set errno, in order to keep its behaviour consistent with fseek,
+     * which can easily reposition itself past the end-of-file
+     */
+    switch ( whence ) {
+        case SEEK_SET:
+            mp->cur = mp->addr + pos;
+            return SEGY_OK;
+        case SEEK_CUR:
+            mp->cur = mp->cur + pos;
+            return SEGY_OK;
+        case SEEK_END:
+            mp->cur = mp->addr + mp->size + pos;
+            return SEGY_OK;
+        default:
+            return SEGY_FSEEK_ERROR;
+    }
+}
+
+static int memtell( segy_datasource* self, long long* pos ) {
+    const memfile* mp = (memfile*)self->stream;
+    *pos = mp->cur - mp->addr;
+    return SEGY_OK;
+}
+
+static int memsize( segy_datasource* self, long long* out ) {
+    const memfile* mp = (memfile*)self->stream;
+    *out = mp->size;
+    return SEGY_OK;
+}
+
+static int mmapflush( segy_datasource* self ) {
+#ifdef HAVE_MMAP
+    const memfile* mp = (memfile*)self->stream;
+    int syncerr = msync( mp->addr, mp->size, MS_SYNC );
+    if( syncerr != 0 ) return SEGY_MMAP_ERROR;
+#endif // HAVE_MMAP
+    return SEGY_OK;
+}
+
+static int mmapclose( segy_datasource* self ) {
+#ifdef HAVE_MMAP
+    int err = mmapflush( self );
+    if ( err != SEGY_OK ) return err;
+
+    memfile* mp = (memfile*)self->stream;
+    err = munmap( mp->addr, mp->size );
+    free( mp );
+    if ( err != 0 ) return SEGY_MMAP_ERROR;
+#endif // HAVE_MMAP
+    return SEGY_OK;
+}
+
 static int formatsize( int format ) {
     switch( format ) {
         case SEGY_IBM_FLOAT_4_BYTE:             return 4;
@@ -434,22 +601,7 @@ static int formatsize( int format ) {
     }
 }
 
-/*
- * addr is NULL if mmap is not found under compilation or if the file is
- * not requested mmap'd. If so, the fallback code path of FILE* is taken
- */
-
 #define MODEBUF_SIZE 5
-struct segy_file_handle {
-    void* addr;
-    void* cur;
-    FILE* fp;
-    size_t fsize;
-    char mode[ MODEBUF_SIZE ];
-    int writable;
-    int elemsize;
-    int lsb;
-};
 
 segy_file* segy_open( const char* path, const char* mode ) {
 
@@ -496,78 +648,99 @@ segy_file* segy_open( const char* path, const char* mode ) {
 
     if( !fp ) return NULL;
 
-    segy_file* file = calloc( 1, sizeof( segy_file ) );
+    segy_file* ds = malloc( sizeof( segy_file ) );
 
-    if( !file ) {
+    if( !ds ) {
         fclose( fp );
         return NULL;
     }
 
-    file->fp = fp;
-    strcpy( file->mode, binary_mode );
+    ds->stream = fp;
 
-    bool rw = strstr( file->mode, "+" ) || strstr( file->mode, "w" );
-    if( rw ) file->writable = 1;
+    ds->read = fileread;
+    ds->write = filewrite;
+    ds->seek = fileseek;
+    ds->tell = filetell;
+    ds->size = filesize;
+    ds->flush = fileflush;
+    ds->close = fileclose;
+    ds->writable = strstr( binary_mode, "+" ) || strstr( binary_mode, "w" );
 
-    // assume a size of 4-bytes-per-element, until the set_format function
-    // tells us otherwise.
-    file->elemsize = 4;
+    // on init assume a size of 4-bytes-per-element and big-endian
+    ds->elemsize = 4;
+    ds->lsb = false;
 
-    return file;
+    ds->minimize_requests_number = true;
+    ds->memory_speedup = false;
+
+    return ds;
 }
 
-int segy_mmap( segy_file* fp ) {
+int segy_mmap( segy_datasource* ds ) {
 #ifndef HAVE_MMAP
     return SEGY_MMAP_INVALID;
 #else
-
     /* don't re-map; i.e. multiple consecutive calls should be no-ops */
-    if( fp->addr ) return SEGY_OK;
+    if( ds->read == memread ) return SEGY_OK;
+
+    /* make mmap available for file datasource only */
+    if( ds->read != fileread ) return SEGY_MMAP_INVALID;
 
     long long fsize;
-    int err = file_size( fp->fp, &fsize );
+    int err = ds->size( ds, &fsize );
 
     if( err != 0 ) return SEGY_FSEEK_ERROR;
 
-    const int prot = fp->writable ? PROT_READ | PROT_WRITE : PROT_READ;
+    memfile* mp = malloc( sizeof( memfile ) );
+    if( !mp ) return SEGY_MEMORY_ERROR;
 
-    int fd = fileno( fp->fp );
+    const int prot = ds->writable ? PROT_READ | PROT_WRITE : PROT_READ;
+
+    int fd = fileno( (FILE*) ds->stream );
     void* addr = mmap( NULL, fsize, prot, MAP_SHARED, fd, 0 );
 
     // cppcheck-suppress memleak
-    if( addr == MAP_FAILED ) return SEGY_MMAP_ERROR;
-
-    fp->addr = fp->cur = addr;
-    fp->fsize = fsize;
-
-    fclose(fp->fp);
-
-    return SEGY_OK;
-#endif //HAVE_MMAP
-}
-
-int segy_flush( segy_file* fp ) {
-
-    // flush is a no-op for read-only files
-    if( !fp->writable ) return SEGY_OK;
-
-#ifdef HAVE_MMAP
-    if( fp->addr ) {
-        int flag = MS_SYNC;
-        int syncerr = msync( fp->addr, fp->fsize, flag );
-        if( syncerr != 0 ) return syncerr;
-        return SEGY_OK;
+    if( addr == MAP_FAILED ) {
+        free( mp );
+        return SEGY_MMAP_ERROR;
     }
+
+    // free FILE datasource resources
+    ds->close( ds );
+
+    mp->addr = addr;
+    mp->cur = mp->addr;
+    mp->size = fsize;
+
+    /* repurpose ds */
+    ds->stream = mp;
+
+    ds->read = memread;
+    ds->write = memwrite;
+    ds->seek = memseek;
+    ds->tell = memtell;
+    ds->size = memsize;
+    ds->flush = mmapflush;
+    ds->close = mmapclose;
+
+    ds->minimize_requests_number = false;
+    ds->memory_speedup = true;
+
+    return SEGY_OK;
 #endif //HAVE_MMAP
+}
 
-    int flusherr = fflush( fp->fp );
+int segy_flush( segy_datasource* ds ) {
+    // flush is a no-op for read-only files
+    if( !ds->writable ) return SEGY_OK;
 
-    if( flusherr != 0 ) return SEGY_FWRITE_ERROR;
+    int flusherr = ds->flush( ds );
+    if( flusherr != 0 ) return SEGY_DS_ERROR;
 
     return SEGY_OK;
 }
 
-static int segy_seek( segy_file* fp,
+static int segy_seek( segy_datasource* ds,
                       int trace,
                       long trace0,
                       int trace_bsize ) {
@@ -575,72 +748,19 @@ static int segy_seek( segy_file* fp,
     trace_bsize += SEGY_TRACE_HEADER_SIZE;
     long long pos = (long long)trace0 + (trace * (long long)trace_bsize);
 
-#ifdef HAVE_MMAP
-    if( fp->addr ) {
-        /*
-         * mmap fseek doesn't fail (it's just a pointer readjustment) and won't
-         * set errno, in order to keep its behaviour consistent with fseek,
-         * which can easily reposition itself past the end-of-file
-         */
-        fp->cur = (char*)fp->addr + pos;
-        return SEGY_OK;
-    }
-#endif //HAVE_MMAP
-
-    int err;
-#if LONG_MAX == LLONG_MAX
-    err = fseek( fp->fp, (long)pos, SEEK_SET );
-#elif HAVE_FSEEKO
-    err = fseeko( fp->fp, pos, SEEK_SET );
-#elif HAVE_FSEEKI64
-    err = _fseeki64( fp->fp, pos, SEEK_SET );
-#else
-#   error "no 64-bit alternative to fseek() found, and long is too small"
-#endif
-
-    if( err != 0 ) return SEGY_FSEEK_ERROR;
+    int err = ds->seek( ds, pos, SEEK_SET );
+    if( err != 0 ) return SEGY_DS_SEEK_ERROR;
     return SEGY_OK;
 }
 
-// code would be reused at the later date
-/*
-long long segy_ftell( segy_file* fp ) {
-#ifdef HAVE_FTELLO
-    off_t pos = ftello( fp->fp );
-    assert( pos != -1 );
-    return pos;
-#elif HAVE_FTELLI64
-    // assuming we're on windows. This function is a little rough, but only
-    // meant for testing - it's not a part of the public interface.
-    return _ftelli64( fp->fp );
-#else
-    assert( false );
-#endif
-}
-*/
+int segy_close( segy_datasource* ds ) {
+    int err = segy_flush( ds);
+    if( err != SEGY_OK ) return err;
 
-int segy_close( segy_file* fp ) {
-    int err = segy_flush( fp );
-
-#ifdef HAVE_MMAP
-    if( !fp->addr ) goto no_mmap;
-
-    // let errors unmapping take preference over flush-errors, as it is far
-    // more severe
-    // cppcheck-suppress redundantAssignment
-    err = munmap( fp->addr, fp->fsize );
-    if( err != 0 )
-        err = SEGY_MMAP_ERROR;
-
-    free( fp );
-    return err;
-
-no_mmap:
-#endif //HAVE_MMAP
-
-    fclose( fp->fp );
-    free( fp );
-    return err;
+    err = ds->close(ds);
+    free( ds );
+    if( err != 0 ) return SEGY_DS_ERROR;
+    return SEGY_OK;
 }
 
 static int get_field( const char* header, segy_field_data* fd) {
@@ -1044,7 +1164,7 @@ static int32_t bswap_header_word(int32_t f, int word_size) {
     return (int16_t) bswap16((int16_t) f);
 }
 
-int segy_field_forall( segy_file* fp,
+int segy_field_forall( segy_datasource* ds,
                        int field,
                        int start,
                        int stop,
@@ -1061,51 +1181,12 @@ int segy_field_forall( segy_file* fp,
 
     int slicelen = slicelength( start, stop, step );
 
-    // check *once* that we don't look past the end-of-file
-    // checking seek error inside the loop is a performance killer
-    err = segy_seek( fp, start, trace0, trace_bsize );
-    if( err != SEGY_OK ) return err;
-    const int end = start + step * (slicelen - 1);
-    err = segy_seek( fp, end, trace0, trace_bsize );
-    if( err != SEGY_OK ) return err;
-
-    const int lsb = fp->lsb;
-
-#ifdef HAVE_MMAP
-    if( fp->addr ) {
-        for( int i = start; slicelen > 0; i += step, ++buf, --slicelen ) {
-            segy_seek( fp, i, trace0, trace_bsize );
-
-            segy_field_data fd;
-            err = init_segy_field_data(field, &fd);
-            if ( err != SEGY_OK ) return err;
-            err = get_field( fp->cur, &fd );
-            if( err != 0 ) return err;
-            err = segy_field_data_to_int( &fd, &f );
-            if( err != 0 ) return err;
-            if (lsb) f = bswap_header_word(f, formatsize( fd.datatype ));
-            *buf = f;
-        }
-
-        return SEGY_OK;
-    }
-#endif //HAVE_MMAP
-
-    /*
-     * non-mmap path. Doing multiple freads is slow, so instead the *actual*
-     * offset is computed, not just the start of the header, and that's copied
-     * into the correct offset in our local buffer. Note that byte offsets are
-     * exposed 1-indexed (to stay consistent with the specification), but the
-     * words in the buffer rely on 0-based offsets.
-     *
-     * Always read 4 bytes to be sure, there's no significant cost difference.
-     */
     const int zfield = field - 1;
     for( int i = start; slicelen > 0; i += step, ++buf, --slicelen ) {
-        err = segy_seek( fp, i, trace0 + zfield, trace_bsize );
-        if( err != 0 ) return err;
-        size_t readc = fread( header + zfield, sizeof(uint32_t), 1, fp->fp );
-        if( readc != 1 ) return SEGY_FREAD_ERROR;
+        err = segy_seek( ds, i, trace0 + zfield, trace_bsize );
+        if( err != SEGY_OK ) return err;
+        err = ds->read( ds, header + zfield, sizeof( uint32_t ) );
+        if( err != 0 ) return SEGY_DS_READ_ERROR;
 
         segy_field_data fd;
         err = init_segy_field_data(field, &fd);
@@ -1114,40 +1195,10 @@ int segy_field_forall( segy_file* fp,
         if( err != 0 ) return err;
         err = segy_field_data_to_int( &fd, &f );
         if( err != 0 ) return err;
-        if (lsb) f = bswap_header_word(f, formatsize( fd.datatype ));
+        if (ds->lsb) f = bswap_header_word(f, formatsize( fd.datatype ));
         *buf = f;
     }
 
-    return SEGY_OK;
-}
-
-/*
- * mmapread/mmapwrite are small utilities to give reading/writing to
- * memory-mapped files fread/fwrite like behaviour and fail if going outside
- * the file. Returns SEGY_FREAD/WRITE_ERROR, so that functions that are
- * read-and-return can just return this function's result
- */
-static int mmapread( void* dest, const segy_file* fp, const void* src, size_t n ) {
-    const void* begin = fp->addr;
-    const void* end = (const char*)fp->addr + fp->fsize;
-    const void* srcend = (const char*)src + n;
-
-    if( src < begin || src > end || srcend > end )
-        return SEGY_FREAD_ERROR;
-
-    memcpy( dest, src, n );
-    return SEGY_OK;
-}
-
-static int mmapwrite( const segy_file* fp, void* dest, const void* src, size_t n ) {
-    const void* begin = fp->addr;
-    const void* end = (const char*)fp->addr + fp->fsize;
-    const void* destend = (const char*)dest + n;
-
-    if( dest < begin || dest > end || destend > end )
-        return SEGY_FWRITE_ERROR;
-
-    memcpy( dest, src, n );
     return SEGY_OK;
 }
 
@@ -1207,52 +1258,31 @@ static int bswap_bin( char* xs, int lsb ) {
     return SEGY_OK;
 }
 
-int segy_binheader( segy_file* fp, char* buf ) {
-    if( !fp ) return SEGY_INVALID_ARGS;
+int segy_binheader( segy_datasource* ds, char* buf ) {
+    if( !ds ) return SEGY_INVALID_ARGS;
 
-#ifdef HAVE_MMAP
-    if( fp->addr ) {
-        const char* src = (char*)fp->addr + SEGY_TEXT_HEADER_SIZE;
-        const int len = SEGY_BINARY_HEADER_SIZE;
-        const int err = mmapread( buf, fp, src, len );
-        if( err ) return err;
+    int err = ds->seek( ds, SEGY_TEXT_HEADER_SIZE, SEEK_SET );
+    if( err != 0 ) return SEGY_DS_SEEK_ERROR;
 
-        /* successful and file was lsb - swap to present as msb */
-        return bswap_bin( buf, fp->lsb );
-    }
-#endif //HAVE_MMAP
+    err = ds->read( ds, buf, SEGY_BINARY_HEADER_SIZE );
+    if( err != 0 ) return SEGY_DS_READ_ERROR;
 
-    const int err = fseek( fp->fp, SEGY_TEXT_HEADER_SIZE, SEEK_SET );
-    if( err != 0 ) return SEGY_FSEEK_ERROR;
-
-    const size_t read_count = fread( buf, 1, SEGY_BINARY_HEADER_SIZE, fp->fp );
-    if( read_count != SEGY_BINARY_HEADER_SIZE )
-        return SEGY_FREAD_ERROR;
-
-    return bswap_bin( buf, fp->lsb );
+    /* successful and file was lsb - swap to present as msb */
+    return bswap_bin( buf, ds->lsb );
 }
 
-int segy_write_binheader( segy_file* fp, const char* buf ) {
-    if( !fp->writable ) return SEGY_READONLY;
+int segy_write_binheader( segy_datasource* ds, const char* buf ) {
+    if( !ds->writable ) return SEGY_READONLY;
 
     char swapped[ SEGY_BINARY_HEADER_SIZE ];
     memcpy( swapped, buf, SEGY_BINARY_HEADER_SIZE );
-    bswap_bin( swapped, fp->lsb );
+    bswap_bin( swapped, ds->lsb );
 
-#ifdef HAVE_MMAP
-    if( fp->addr ) {
-        char* dst = (char*)fp->addr + SEGY_TEXT_HEADER_SIZE;
-        const int len = SEGY_BINARY_HEADER_SIZE;
-        return mmapwrite( fp, dst, swapped, len );
-    }
-#endif //HAVE_MMAP
+    int err = ds->seek( ds, SEGY_TEXT_HEADER_SIZE, SEEK_SET );
+    if( err != 0 ) return SEGY_DS_SEEK_ERROR;
 
-    const int err = fseek( fp->fp, SEGY_TEXT_HEADER_SIZE, SEEK_SET );
-    if( err != 0 ) return SEGY_FSEEK_ERROR;
-
-    const size_t writec = fwrite( swapped, 1, sizeof( swapped ), fp->fp );
-    if( writec != SEGY_BINARY_HEADER_SIZE )
-        return SEGY_FWRITE_ERROR;
+    err = ds->write( ds, swapped, sizeof( swapped ) );
+    if( err != 0 ) return SEGY_DS_WRITE_ERROR;
 
     return SEGY_OK;
 }
@@ -1263,15 +1293,15 @@ int segy_format( const char* binheader ) {
     return format;
 }
 
-int segy_set_format( segy_file* fp, int format ) {
+int segy_set_format( segy_datasource* ds, int format ) {
     const int elemsize = formatsize( format );
     if( elemsize <= 0 ) return SEGY_INVALID_ARGS;
-    fp->elemsize = elemsize;
+    ds->elemsize = elemsize;
 
     return SEGY_OK;
 }
 
-int segy_set_endianness( segy_file* fp, int endianness) {
+int segy_set_endianness( segy_datasource* ds, int endianness) {
     switch( endianness ) {
         case SEGY_LSB:
         case SEGY_MSB:
@@ -1280,7 +1310,7 @@ int segy_set_endianness( segy_file* fp, int endianness) {
             return SEGY_INVALID_ARGS;
     }
 
-    fp->lsb = endianness;
+    ds->lsb = endianness;
     return SEGY_OK;
 }
 
@@ -1449,61 +1479,48 @@ static int bswap_th( char* xs, int lsb ) {
     return SEGY_OK;
 }
 
-int segy_traceheader( segy_file* fp,
+int segy_traceheader( segy_datasource* ds,
                       int traceno,
                       char* buf,
                       long trace0,
                       int trace_bsize ) {
 
-    const int err = segy_seek( fp, traceno, trace0, trace_bsize );
-    if( err != 0 ) return err;
+    int err = segy_seek( ds, traceno, trace0, trace_bsize );
+    if( err != SEGY_OK ) return err;
 
-    if( fp->addr ) {
-        const int errm = mmapread( buf, fp, fp->cur, SEGY_TRACE_HEADER_SIZE );
-        if( errm ) return errm;
-        return bswap_th( buf, fp->lsb );
-    }
+    err = ds->read( ds, buf, SEGY_TRACE_HEADER_SIZE );
+    if( err != 0 ) return SEGY_DS_READ_ERROR;
 
-    const size_t readc = fread( buf, 1, SEGY_TRACE_HEADER_SIZE, fp->fp );
-
-    if( readc != SEGY_TRACE_HEADER_SIZE )
-        return SEGY_FREAD_ERROR;
-
-    return bswap_th( buf, fp->lsb );
+    return bswap_th( buf, ds->lsb );
 }
 
-int segy_write_traceheader( segy_file* fp,
+int segy_write_traceheader( segy_datasource* ds,
                             int traceno,
                             const char* buf,
                             long trace0,
                             int trace_bsize ) {
-    if( !fp->writable ) return SEGY_READONLY;
+    if( !ds->writable ) return SEGY_READONLY;
 
-    const int err = segy_seek( fp, traceno, trace0, trace_bsize );
-    if( err != 0 ) return err;
+    int err = segy_seek( ds, traceno, trace0, trace_bsize );
+    if( err != SEGY_OK ) return err;
 
-    char swapped[ SEGY_TRACE_HEADER_SIZE ];
+    char swapped[SEGY_TRACE_HEADER_SIZE];
     memcpy( swapped, buf, SEGY_TRACE_HEADER_SIZE );
-    bswap_th( swapped, fp->lsb );
+    bswap_th( swapped, ds->lsb );
 
-    if( fp->addr )
-        return mmapwrite( fp, fp->cur, swapped, SEGY_TRACE_HEADER_SIZE );
-
-    const size_t writec = fwrite( swapped, 1, SEGY_TRACE_HEADER_SIZE, fp->fp );
-
-    if( writec != SEGY_TRACE_HEADER_SIZE )
-        return SEGY_FWRITE_ERROR;
+    err = ds->write( ds, swapped, SEGY_TRACE_HEADER_SIZE );
+    if( err != 0 ) return SEGY_DS_WRITE_ERROR;
 
     return SEGY_OK;
 }
 
 /*
- * Return the number of traces in the file. The file pointer won't change after
- * this call unless fseek itself fails.
+ * Return the number of traces in the file. Stream position won't change after
+ * this call.
  *
  * This function assumes that *all traces* are of the same size.
  */
-int segy_traces( segy_file* fp,
+int segy_traces( segy_datasource* ds,
                  int* traces,
                  long trace0,
                  int trace_bsize ) {
@@ -1511,12 +1528,8 @@ int segy_traces( segy_file* fp,
     if( trace0 < 0 ) return SEGY_INVALID_ARGS;
 
     long long size;
-    if( fp->addr )
-        size = fp->fsize;
-    else{
-        int err = file_size( fp->fp, &size );
-        if( err != 0 ) return err;
-    }
+    int err = ds->size( ds, &size );
+    if( err != 0 ) return SEGY_DS_ERROR;
 
     if( trace0 > size ) return SEGY_INVALID_ARGS;
 
@@ -1532,12 +1545,12 @@ int segy_traces( segy_file* fp,
     return SEGY_OK;
 }
 
-int segy_sample_interval( segy_file* fp, float fallback, float* dt ) {
+int segy_sample_interval( segy_datasource* ds, float fallback, float* dt ) {
 
     char bin_header[ SEGY_BINARY_HEADER_SIZE ];
     char trace_header[ SEGY_TRACE_HEADER_SIZE ];
 
-    int err = segy_binheader( fp, bin_header );
+    int err = segy_binheader( ds, bin_header );
     if (err != 0) {
         return err;
     }
@@ -1546,8 +1559,8 @@ int segy_sample_interval( segy_file* fp, float fallback, float* dt ) {
 
     /* we don't need to figure out a trace size, since we're not advancing
      * beyond the first header */
-    err = segy_traceheader(fp, 0, trace_header, trace0, 0);
-    if (err != 0) {
+    err = segy_traceheader( ds, 0, trace_header, trace0, 0 );
+    if( err != 0 ) {
         return err;
     }
 
@@ -1581,14 +1594,14 @@ int segy_sample_interval( segy_file* fp, float fallback, float* dt ) {
     return SEGY_OK;
 }
 
-int segy_sample_indices( segy_file* fp,
+int segy_sample_indices( segy_datasource* ds,
                          float t0,
                          float dt,
                          int count,
                          float* buf ) {
 
-    int err = segy_sample_interval(fp, dt, &dt);
-    if (err != 0) {
+    int err = segy_sample_interval( ds, dt, &dt );
+    if( err != 0 ) {
         return err;
     }
 
@@ -1614,7 +1627,7 @@ int segy_sample_indices( segy_file* fp,
  * increment from one trace to another for the file to be properly sorted.
  */
 
-int segy_sorting( segy_file* fp,
+int segy_sorting( segy_datasource* ds,
                   int il,
                   int xl,
                   int tr_offset,
@@ -1624,7 +1637,7 @@ int segy_sorting( segy_file* fp,
     int err;
     char traceheader[ SEGY_TRACE_HEADER_SIZE ];
 
-    err = segy_traceheader( fp, 0, traceheader, trace0, trace_bsize );
+    err = segy_traceheader( ds, 0, traceheader, trace0, trace_bsize );
     if( err != SEGY_OK ) return err;
 
     /* make sure field is valid, so we don't have to check errors later */
@@ -1641,7 +1654,7 @@ int segy_sorting( segy_file* fp,
     }
 
     int traces;
-    err = segy_traces( fp, &traces, trace0, trace_bsize );
+    err = segy_traces( ds, &traces, trace0, trace_bsize );
     if( err ) return err;
 
     if( traces == 1 ) {
@@ -1672,7 +1685,7 @@ int segy_sorting( segy_file* fp,
 
     int traceno = 1;
     while ( traceno < traces ) {
-        err = segy_traceheader( fp, traceno, traceheader, trace0, trace_bsize );
+        err = segy_traceheader( ds, traceno, traceheader, trace0, trace_bsize );
         if( err ) return err;
         ++traceno;
 
@@ -1718,7 +1731,7 @@ int segy_sorting( segy_file* fp,
  * the crossline number changes (which changes first depends on sorting, but is
  * irrelevant for this function).
  */
-int segy_offsets( segy_file* fp,
+int segy_offsets( segy_datasource* ds,
                   int il,
                   int xl,
                   int traces,
@@ -1742,7 +1755,7 @@ int segy_offsets( segy_file* fp,
     if( tr_field_type[ il ] == 0 || tr_field_type[ xl ] == 0 )
         return SEGY_INVALID_FIELD;
 
-    err = segy_traceheader( fp, 0, header, trace0, trace_bsize );
+    err = segy_traceheader( ds, 0, header, trace0, trace_bsize );
     if( err != 0 ) return SEGY_FREAD_ERROR;
 
     segy_get_field_int( header, il, &il0 );
@@ -1753,7 +1766,7 @@ int segy_offsets( segy_file* fp,
 
         if( offsets == traces ) break;
 
-        err = segy_traceheader( fp, offsets, header, trace0, trace_bsize );
+        err = segy_traceheader( ds, offsets, header, trace0, trace_bsize );
         if( err != 0 ) return err;
 
         segy_get_field_int( header, il, &il1 );
@@ -1764,7 +1777,7 @@ int segy_offsets( segy_file* fp,
     return SEGY_OK;
 }
 
-int segy_offset_indices( segy_file* fp,
+int segy_offset_indices( segy_datasource* ds,
                          int offset_field,
                          int offsets,
                          int* out,
@@ -1777,7 +1790,7 @@ int segy_offset_indices( segy_file* fp,
         return SEGY_INVALID_FIELD;
 
     for( int i = 0; i < offsets; ++i ) {
-        const int err = segy_traceheader( fp, i, header, trace0, trace_bsize );
+        const int err = segy_traceheader( ds, i, header, trace0, trace_bsize );
         if( err != SEGY_OK ) return err;
 
         segy_get_field_int( header, offset_field, &x );
@@ -1787,7 +1800,7 @@ int segy_offset_indices( segy_file* fp,
     return SEGY_OK;
 }
 
-static int segy_line_indices( segy_file* fp,
+static int segy_line_indices( segy_datasource* ds,
                               int field,
                               int traceno,
                               int stride,
@@ -1795,7 +1808,7 @@ static int segy_line_indices( segy_file* fp,
                               int* buf,
                               long trace0,
                               int trace_bsize ) {
-    return segy_field_forall( fp,
+    return segy_field_forall( ds,
                               field,
                               traceno,                          /* start */
                               traceno + (num_indices * stride), /* stop */
@@ -1805,7 +1818,7 @@ static int segy_line_indices( segy_file* fp,
                               trace_bsize );
 }
 
-static int count_lines( segy_file* fp,
+static int count_lines( segy_datasource* ds,
                         int field,
                         int offsets,
                         int traces,
@@ -1815,7 +1828,7 @@ static int count_lines( segy_file* fp,
 
     int err;
     char header[ SEGY_TRACE_HEADER_SIZE ];
-    err = segy_traceheader( fp, 0, header, trace0, trace_bsize );
+    err = segy_traceheader( ds, 0, header, trace0, trace_bsize );
     if( err != 0 ) return err;
 
     int first_lineno, first_offset, ln = 0, off = 0;
@@ -1833,7 +1846,7 @@ static int count_lines( segy_file* fp,
         if( curr == traces ) break;
         if( curr >  traces ) return SEGY_NOTFOUND;
 
-        err = segy_traceheader( fp, curr, header, trace0, trace_bsize );
+        err = segy_traceheader( ds, curr, header, trace0, trace_bsize );
         if( err != 0 ) return err;
 
         segy_get_field_int( header, field, &ln );
@@ -1849,7 +1862,7 @@ static int count_lines( segy_file* fp,
     return SEGY_OK;
 }
 
-int segy_count_lines( segy_file* fp,
+int segy_count_lines( segy_datasource* ds,
                       int field,
                       int offsets,
                       int* l1out,
@@ -1858,7 +1871,7 @@ int segy_count_lines( segy_file* fp,
                       int trace_bsize ) {
 
     int traces;
-    int err = segy_traces( fp, &traces, trace0, trace_bsize );
+    int err = segy_traces( ds, &traces, trace0, trace_bsize );
     if( err != 0 ) return err;
 
     /*
@@ -1872,7 +1885,7 @@ int segy_count_lines( segy_file* fp,
     }
 
     int l2count;
-    err = count_lines( fp, field,
+    err = count_lines( ds, field,
                            offsets,
                            traces,
                            &l2count,
@@ -1889,7 +1902,7 @@ int segy_count_lines( segy_file* fp,
     return SEGY_OK;
 }
 
-int segy_lines_count( segy_file* fp,
+int segy_lines_count( segy_datasource* ds,
                       int il,
                       int xl,
                       int sorting,
@@ -1907,7 +1920,7 @@ int segy_lines_count( segy_file* fp,
     if( sorting == SEGY_INLINE_SORTING ) field = xl;
     else field = il;
 
-    int err = segy_count_lines( fp, field, offsets,
+    int err = segy_count_lines( ds, field, offsets,
                                 &l1out, &l2out,
                                 trace0, trace_bsize );
 
@@ -1936,7 +1949,7 @@ int segy_crossline_length( int inline_count ) {
     return inline_count;
 }
 
-int segy_inline_indices( segy_file* fp,
+int segy_inline_indices( segy_datasource* ds,
                          int il,
                          int sorting,
                          int inline_count,
@@ -1948,17 +1961,17 @@ int segy_inline_indices( segy_file* fp,
 
     if( sorting == SEGY_INLINE_SORTING ) {
         int stride = crossline_count * offsets;
-        return segy_line_indices( fp, il, 0, stride, inline_count, buf, trace0, trace_bsize );
+        return segy_line_indices( ds, il, 0, stride, inline_count, buf, trace0, trace_bsize );
     }
 
     if( sorting == SEGY_CROSSLINE_SORTING ) {
-        return segy_line_indices( fp, il, 0, offsets, inline_count, buf, trace0, trace_bsize );
+        return segy_line_indices( ds, il, 0, offsets, inline_count, buf, trace0, trace_bsize );
     }
 
     return SEGY_INVALID_SORTING;
 }
 
-int segy_crossline_indices( segy_file* fp,
+int segy_crossline_indices( segy_datasource* ds,
                             int xl,
                             int sorting,
                             int inline_count,
@@ -1969,18 +1982,18 @@ int segy_crossline_indices( segy_file* fp,
                             int trace_bsize ) {
 
     if( sorting == SEGY_INLINE_SORTING ) {
-        return segy_line_indices( fp, xl, 0, offsets, crossline_count, buf, trace0, trace_bsize );
+        return segy_line_indices( ds, xl, 0, offsets, crossline_count, buf, trace0, trace_bsize );
     }
 
     if( sorting == SEGY_CROSSLINE_SORTING ) {
         int stride = inline_count * offsets;
-        return segy_line_indices( fp, xl, 0, stride, crossline_count, buf, trace0, trace_bsize );
+        return segy_line_indices( ds, xl, 0, stride, crossline_count, buf, trace0, trace_bsize );
     }
 
     return SEGY_INVALID_SORTING;
 }
 
-static inline int subtr_seek( segy_file* fp,
+static inline int subtr_seek( segy_datasource* ds,
                               int traceno,
                               int start,
                               int stop,
@@ -1998,7 +2011,7 @@ static inline int subtr_seek( segy_file* fp,
 
     // skip the trace header and skip everything before min
     trace0 += (min * elemsize) + SEGY_TRACE_HEADER_SIZE;
-    return segy_seek( fp, traceno, trace0, trace_bsize );
+    return segy_seek( ds, traceno, trace0, trace_bsize );
 }
 
 static int reverse( void* buf, int elems, int elemsize ) {
@@ -2014,13 +2027,13 @@ static int reverse( void* buf, int elems, int elemsize ) {
     return SEGY_OK;
 }
 
-int segy_readtrace( segy_file* fp,
+int segy_readtrace( segy_datasource* ds,
                     int traceno,
                     void* buf,
                     long trace0,
                     int trace_bsize ) {
-    const int stop = trace_bsize / fp->elemsize;
-    return segy_readsubtr( fp, traceno, 0, stop, 1, buf, NULL, trace0, trace_bsize );
+    const int stop = trace_bsize / ds->elemsize;
+    return segy_readsubtr( ds, traceno, 0, stop, 1, buf, NULL, trace0, trace_bsize );
 }
 
 static int bswap64vec( void* vec, long long len ) {
@@ -2073,7 +2086,7 @@ static int bswap16vec( void* vec, long long len ) {
     return SEGY_OK;
 }
 
-int segy_readsubtr( segy_file* fp,
+int segy_readsubtr( segy_datasource* ds,
                     int traceno,
                     int start,
                     int stop,
@@ -2084,27 +2097,21 @@ int segy_readsubtr( segy_file* fp,
                     int trace_bsize ) {
 
     const int elems = abs( stop - start );
-    const int elemsize = fp->elemsize;
+    const int elemsize = ds->elemsize;
 
-    int err = subtr_seek( fp, traceno, start, stop, elemsize, trace0, trace_bsize );
+    int err = subtr_seek( ds, traceno, start, stop, elemsize, trace0, trace_bsize );
     if( err != SEGY_OK ) return err;
 
     // most common case: step == abs(1), reading contiguously
     if( step == 1 || step == -1 ) {
+        err = ds->read( ds, buf, elemsize * elems );
+        if( err != 0 ) return SEGY_DS_READ_ERROR;
 
-        if( fp->addr ) {
-            err = mmapread( buf, fp, fp->cur, elemsize * elems );
-            if( err != SEGY_OK ) return err;
-        } else {
-            const int readc = (int) fread( buf, elemsize, elems, fp->fp );
-            if( readc != elems ) return SEGY_FREAD_ERROR;
-        }
-
-        if (fp->lsb) {
-            if (fp->elemsize == 8) bswap64vec(buf, elems);
-            if (fp->elemsize == 4) bswap32vec(buf, elems);
-            if (fp->elemsize == 3) bswap24vec(buf, elems);
-            if (fp->elemsize == 2) bswap16vec(buf, elems);
+        if( ds->lsb ) {
+            if( ds->elemsize == 8 ) bswap64vec( buf, elems );
+            if( ds->elemsize == 4 ) bswap32vec( buf, elems );
+            if( ds->elemsize == 3 ) bswap24vec( buf, elems );
+            if( ds->elemsize == 2 ) bswap16vec( buf, elems );
         }
 
         if( step == -1 ) reverse( buf, elems, elemsize );
@@ -2120,25 +2127,40 @@ int segy_readsubtr( segy_file* fp,
     step *= elemsize;
     char* dst = (char*)buf;
 
+    if( !ds->minimize_requests_number ) {
+        if( ds->memory_speedup ) {
+            // separate "memory" path is used for better performance
+            memfile* mp = (memfile*)ds->stream;
+            const char* cur = (char*)mp->cur + elemsize * defstart;
+            for( int i = 0; i < slicelen; cur += step, dst += elemsize, ++i ) {
+                memcpy( dst, cur, elemsize );
+            }
+        } else {
+            err = ds->seek( ds, elemsize * defstart, SEEK_CUR );
+            if( err != 0 ) return SEGY_DS_SEEK_ERROR;
 
-    if( fp->addr ) {
-        const char* cur = (char*)fp->cur + elemsize * defstart;
-        for( int i = 0; i < slicelen; cur += step, dst += elemsize, ++i )
-            memcpy( dst, cur, elemsize );
+            for( int i = 0; i < slicelen; dst += elemsize, ++i ) {
+                err = ds->read( ds, dst, elemsize );
+                if( err != 0 ) return SEGY_DS_READ_ERROR;
 
-        if (fp->lsb) {
-            if (fp->elemsize == 8) bswap64vec(buf, slicelen);
-            if (fp->elemsize == 4) bswap32vec(buf, slicelen);
-            if (fp->elemsize == 3) bswap24vec(buf, slicelen);
-            if (fp->elemsize == 2) bswap16vec(buf, slicelen);
+                err = ds->seek( ds, step - elemsize, SEEK_CUR );
+                if( err != 0 ) return SEGY_DS_SEEK_ERROR;
+            }
+        }
+
+        if( ds->lsb ) {
+            if( ds->elemsize == 8 ) bswap64vec( buf, slicelen );
+            if( ds->elemsize == 4 ) bswap32vec( buf, slicelen );
+            if( ds->elemsize == 3 ) bswap24vec( buf, slicelen );
+            if( ds->elemsize == 2 ) bswap16vec( buf, slicelen );
         }
 
         return SEGY_OK;
     }
 
     /*
-     * fread fallback: read the full chunk [start, stop) to avoid multiple
-     * fread calls (which are VERY expensive, measured to about 10x the cost of
+     * minimize requests number fallback: read the full chunk [start, stop) to
+     * avoid multiple calls (expensive in case of fread, about 10x the cost of
      * a single read when reading every other trace). If rangebuf is NULL, the
      * caller has not supplied a buffer for us to use (likely if it's a
      * one-off, and we heap-alloc a buffer. This way the function is safer to
@@ -2146,40 +2168,41 @@ int segy_readsubtr( segy_file* fp,
      * supplied.
      */
     void* tracebuf = rangebuf ? rangebuf : malloc( elems * elemsize );
-
     if (!tracebuf) return SEGY_MEMORY_ERROR;
-    const int readc = (int) fread( tracebuf, elemsize, elems, fp->fp );
-    if( readc != elems ) {
+
+    err = ds->read( ds, tracebuf, elemsize * elems );
+    if( err != 0 ) {
         if( !rangebuf ) free( tracebuf );
-        return SEGY_FREAD_ERROR;
+        return SEGY_DS_READ_ERROR;
     }
 
     const char* cur = (char*)tracebuf + elemsize * defstart;
     for( int i = 0; i < slicelen; cur += step, ++i, dst += elemsize )
         memcpy( dst, cur, elemsize );
 
-    if (fp->lsb) {
-        if (fp->elemsize == 8) bswap64vec(buf, slicelen);
-        if (fp->elemsize == 4) bswap32vec(buf, slicelen);
-        if (fp->elemsize == 3) bswap24vec(buf, slicelen);
-        if (fp->elemsize == 2) bswap16vec(buf, slicelen);
+    if( ds->lsb ) {
+        if( ds->elemsize == 8 ) bswap64vec( buf, slicelen );
+        if( ds->elemsize == 4 ) bswap32vec( buf, slicelen );
+        if( ds->elemsize == 3 ) bswap24vec( buf, slicelen );
+        if( ds->elemsize == 2 ) bswap16vec( buf, slicelen );
     }
 
     if( !rangebuf ) free( tracebuf );
     return SEGY_OK;
 }
 
-int segy_writetrace( segy_file* fp,
+int segy_writetrace( segy_datasource* ds,
                      int traceno,
                      const void* buf,
                      long trace0,
                      int trace_bsize ) {
 
-    const int stop = trace_bsize / fp->elemsize;
-    return segy_writesubtr( fp, traceno, 0, stop, 1, buf, NULL, trace0, trace_bsize );
+    const int stop = trace_bsize / ds->elemsize;
+    return segy_writesubtr( ds, traceno, 0, stop, 1, buf, NULL, trace0, trace_bsize );
 }
 
-int segy_writesubtr( segy_file* fp,
+
+int segy_writesubtr( segy_datasource* ds,
                      int traceno,
                      int start,
                      int stop,
@@ -2189,29 +2212,26 @@ int segy_writesubtr( segy_file* fp,
                      long trace0,
                      int trace_bsize ) {
 
-    if( !fp->writable ) return SEGY_READONLY;
+    if( !ds->writable ) return SEGY_READONLY;
 
     const int elems = abs( stop - start );
-    const int elemsize = fp->elemsize;
+    const int elemsize = ds->elemsize;
+    const size_t range = elems * elemsize;
 
-    int err = subtr_seek( fp, traceno, start, stop, elemsize, trace0, trace_bsize );
+    int err = subtr_seek( ds, traceno, start, stop, elemsize, trace0, trace_bsize );
     if( err != SEGY_OK ) return err;
 
 
-    if( step == 1 && !fp->lsb ) {
+    if( step == 1 && !ds->lsb ) {
         /*
          * most common case: step == 1, writing contiguously
          * -1 is not covered here as it would require reversing the input buffer
          * (which is const), which in turn may require a memory allocation. It will
          * be handled by the stride-aware code path
          */
-        if( fp->addr ) {
-            err = mmapwrite( fp, fp->cur, buf, elemsize * elems );
-            if( err ) return err;
-        } else {
-            const int writec = (int) fwrite( buf, elemsize, elems, fp->fp );
-            if( writec != elems ) return SEGY_FWRITE_ERROR;
-        }
+
+        err = ds->write( ds, buf, range );
+        if( err != 0 ) return SEGY_DS_WRITE_ERROR;
 
         return SEGY_OK;
     }
@@ -2220,26 +2240,20 @@ int segy_writesubtr( segy_file* fp,
      * contiguous, but require memory either because reversing, or byte
      * swapping
      */
-    if( !fp->addr && (step == 1 || step == -1) && fp->lsb ) {
-        void* tracebuf = rangebuf ? rangebuf : malloc( elems * elemsize );
-
+    if( ( step == 1 || step == -1 ) && ds->lsb ) {
+        void* tracebuf = rangebuf ? rangebuf : malloc( range );
         if (!tracebuf) return SEGY_MEMORY_ERROR;
-        memcpy( tracebuf, buf, elemsize * elems );
+        memcpy( tracebuf, buf, range );
 
-        if (step == -1) reverse(tracebuf, elems, elemsize);
-        if (fp->elemsize == 8) bswap64vec(tracebuf, elems);
-        if (fp->elemsize == 4) bswap32vec(tracebuf, elems);
-        if (fp->elemsize == 3) bswap24vec(tracebuf, elems);
-        if (fp->elemsize == 2) bswap16vec(tracebuf, elems);
+        if( step == -1 ) reverse( tracebuf, elems, elemsize );
+        if( ds->elemsize == 8 ) bswap64vec( tracebuf, elems );
+        if( ds->elemsize == 4 ) bswap32vec( tracebuf, elems );
+        if( ds->elemsize == 3 ) bswap24vec( tracebuf, elems );
+        if( ds->elemsize == 2 ) bswap16vec( tracebuf, elems );
 
-
-        /*
-         * only handle fstream path - the mmap is handled comfortably by the
-         * stride-aware code path
-         */
-        const int writec = (int) fwrite( tracebuf, elemsize, elems, fp->fp );
+        err = ds->write( ds, tracebuf, range );
         if( !rangebuf ) free( tracebuf );
-        if( writec != elems ) return SEGY_FWRITE_ERROR;
+        if( err != 0 ) return SEGY_DS_WRITE_ERROR;
         return SEGY_OK;
     }
 
@@ -2250,11 +2264,11 @@ int segy_writesubtr( segy_file* fp,
     step *= elemsize;
 
     void ( *bswap_mem )( char*, const char* );
-    if ( elemsize == 8 ) {
+    if( elemsize == 8 ) {
         bswap_mem = bswap64_mem;
-    } else if ( elemsize == 4 ) {
+    } else if( elemsize == 4 ) {
         bswap_mem = bswap32_mem;
-    } else if ( elemsize == 2 ) {
+    } else if( elemsize == 2 ) {
         bswap_mem = bswap16_mem;
     } else {
         return SEGY_INVALID_ARGS;
@@ -2263,51 +2277,74 @@ int segy_writesubtr( segy_file* fp,
     // step is the distance between elems, but we're counting bytes
     const char* src = (const char*)buf;
 
-    if( fp->addr ) {
-        /* if mmap is on, strided write is trivial and fast */
-        char* cur = (char*)fp->cur + elemsize * defstart;
+    if( !ds->minimize_requests_number ) {
+        err = ds->seek( ds, elemsize * defstart, SEEK_CUR );
+        if( err != 0 ) return SEGY_DS_SEEK_ERROR;
 
-        if ( !fp->lsb ) {
-            for ( ; slicelen > 0; cur += step, src += elemsize, --slicelen ) {
-                memcpy( cur, src, elemsize );
+        if( !ds->lsb ) {
+            // separate "memory" path is used for better performance
+            if( ds->memory_speedup ) {
+                memfile* mp = (memfile*)ds->stream;
+                char* cur = (char*)mp->cur;
+                for( ; slicelen > 0; cur += step, src += elemsize, --slicelen ) {
+                    memcpy( cur, src, elemsize );
+                }
+            } else {
+                for( ; slicelen > 0; src += elemsize, --slicelen ) {
+                    err = ds->write( ds, src, elemsize );
+                    if( err != 0 ) return SEGY_DS_WRITE_ERROR;
+
+                    err = ds->seek( ds, step - elemsize, SEEK_CUR );
+                    if( err != 0 ) return SEGY_DS_SEEK_ERROR;
+                }
             }
         } else {
-            for ( ; slicelen > 0; cur += step, src += elemsize, --slicelen ) {
-                bswap_mem( cur, src );
+            char temp[8]; // allocate largest possible
+            for( ; slicelen > 0; src += elemsize, --slicelen ) {
+                bswap_mem( temp, src );
+
+                err = ds->write( ds, temp, elemsize );
+                if( err != 0 ) return SEGY_DS_WRITE_ERROR;
+
+                err = ds->seek( ds, step - elemsize, SEEK_CUR );
+                if( err != 0 ) return SEGY_DS_SEEK_ERROR;
             }
         }
 
         return SEGY_OK;
     }
 
-    void* tracebuf = rangebuf ? rangebuf : malloc( elems * elemsize );
+    void* tracebuf = rangebuf ? rangebuf : malloc( range );
+    if( !tracebuf ) return SEGY_MEMORY_ERROR;
 
     // like in readsubtr, read a larger chunk and then step through that
-    if (!tracebuf) return SEGY_MEMORY_ERROR;
-    const int readc = (int) fread( tracebuf, elemsize, elems, fp->fp );
-    if( readc != elems ) { free( tracebuf ); return SEGY_FREAD_ERROR; }
-    /* rewind, because fread advances the file pointer */
-    err = fseek( fp->fp, -(elems * elemsize), SEEK_CUR );
+    err = ds->read( ds, tracebuf, range );
+    if( err != 0 ) {
+        free( tracebuf );
+        return SEGY_DS_READ_ERROR;
+    }
+    /* rewind, because ds->read advances stream position */
+    err = ds->seek( ds, -(long long)range, SEEK_CUR );
     if( err != 0 ) {
         if( !rangebuf ) free( tracebuf );
-        return SEGY_FSEEK_ERROR;
+        return SEGY_DS_SEEK_ERROR;
     }
 
     char* cur = (char*)tracebuf + elemsize * defstart;
-    if ( !fp->lsb ) {
-        for ( ; slicelen > 0; cur += step, --slicelen, src += elemsize ) {
+    if( !ds->lsb ) {
+        for( ; slicelen > 0; cur += step, --slicelen, src += elemsize ) {
             memcpy( cur, src, elemsize );
         }
     } else {
-        for ( ; slicelen > 0; cur += step, --slicelen, src += elemsize ) {
+        for( ; slicelen > 0; cur += step, --slicelen, src += elemsize ) {
             bswap_mem( cur, src );
         }
     }
 
-    const int writec = (int) fwrite( tracebuf, elemsize, elems, fp->fp );
+    err = ds->write( ds, tracebuf, range );
     if( !rangebuf ) free( tracebuf );
 
-    if( writec != elems ) return SEGY_FWRITE_ERROR;
+    if( err != 0 ) return SEGY_DS_WRITE_ERROR;
 
     return SEGY_OK;
 }
@@ -2412,7 +2449,7 @@ static int index_of( int x,
  * If reading a trace fails, this function will return whatever error
  * segy_readtrace returns.
  */
-int segy_read_line( segy_file* fp,
+int segy_read_line( segy_datasource* ds,
                     int line_trace0,
                     int line_length,
                     int stride,
@@ -2425,7 +2462,7 @@ int segy_read_line( segy_file* fp,
     stride *= offsets;
 
     for( ; line_length--; line_trace0 += stride, dst += trace_bsize ) {
-        int err = segy_readtrace( fp, line_trace0, dst, trace0, trace_bsize );
+        int err = segy_readtrace( ds, line_trace0, dst, trace0, trace_bsize );
         if( err != 0 ) return err;
     }
 
@@ -2443,7 +2480,7 @@ int segy_read_line( segy_file* fp,
  * If reading a trace fails, this function will return whatever error
  * segy_readtrace returns.
  */
-int segy_write_line( segy_file* fp,
+int segy_write_line( segy_datasource* ds,
                      int line_trace0,
                      int line_length,
                      int stride,
@@ -2451,13 +2488,13 @@ int segy_write_line( segy_file* fp,
                      const void* buf,
                      long trace0,
                      int trace_bsize ) {
-    if( !fp->writable ) return SEGY_READONLY;
+    if( !ds->writable ) return SEGY_READONLY;
 
     const char* src = (const char*) buf;
     stride *= offsets;
 
     for( ; line_length--; line_trace0 += stride, src += trace_bsize ) {
-        int err = segy_writetrace( fp, line_trace0, src, trace0, trace_bsize );
+        int err = segy_writetrace( ds, line_trace0, src, trace0, trace_bsize );
         if( err != 0 ) return err;
     }
 
@@ -2517,39 +2554,31 @@ int segy_crossline_stride( int sorting,
     }
 }
 
-int segy_read_textheader( segy_file* fp, char *buf) {
-    return segy_read_ext_textheader(fp, -1, buf );
+int segy_read_textheader( segy_datasource* ds, char *buf) {
+    return segy_read_ext_textheader(ds, -1, buf );
 }
 
-int segy_read_ext_textheader( segy_file* fp, int pos, char *buf) {
+int segy_read_ext_textheader( segy_datasource* ds, int pos, char *buf) {
     if( pos < -1 ) return SEGY_INVALID_ARGS;
-    if( !fp ) return SEGY_FSEEK_ERROR;
+    if( !ds ) return SEGY_FSEEK_ERROR;
 
     const long offset = pos == -1 ? 0 :
                         SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE +
                         (pos * SEGY_TEXT_HEADER_SIZE);
 
-#ifdef HAVE_MMAP
-    if ( fp->addr ) {
-        encode( buf, (char*)fp->addr + offset, e2a, SEGY_TEXT_HEADER_SIZE );
-        buf[ SEGY_TEXT_HEADER_SIZE ] = '\0';
-        return SEGY_OK;
-    }
-#endif //HAVE_MMAP
+    int err = ds->seek( ds, offset, SEEK_SET );
+    if( err != 0 ) return SEGY_DS_SEEK_ERROR;
 
-    int err = fseek( fp->fp, offset, SEEK_SET );
-    if( err != 0 ) return SEGY_FSEEK_ERROR;
-
-    char localbuf[ SEGY_TEXT_HEADER_SIZE + 1 ] = { 0 };
-    const size_t read = fread( localbuf, 1, SEGY_TEXT_HEADER_SIZE, fp->fp );
-    if( read != SEGY_TEXT_HEADER_SIZE ) return SEGY_FREAD_ERROR;
+    char localbuf[SEGY_TEXT_HEADER_SIZE + 1] = { 0 };
+    err = ds->read( ds, localbuf, SEGY_TEXT_HEADER_SIZE );
+    if( err != 0 ) return SEGY_DS_READ_ERROR;
 
     encode( buf, localbuf, e2a, SEGY_TEXT_HEADER_SIZE );
     return SEGY_OK;
 }
 
-int segy_write_textheader( segy_file* fp, int pos, const char* buf ) {
-    if( !fp->writable ) return SEGY_READONLY;
+int segy_write_textheader( segy_datasource* ds, int pos, const char* buf ) {
+    if( !ds->writable ) return SEGY_READONLY;
 
     int err;
     char mbuf[ SEGY_TEXT_HEADER_SIZE ];
@@ -2563,21 +2592,11 @@ int segy_write_textheader( segy_file* fp, int pos, const char* buf ) {
                       : SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE +
                         ((pos-1) * SEGY_TEXT_HEADER_SIZE);
 
-#ifdef HAVE_MMAP
-    if( fp->addr ) {
-        return mmapwrite( fp,
-                        (char*)fp->addr + offset,
-                        mbuf,
-                        SEGY_TEXT_HEADER_SIZE );
-    }
-#endif //HAVE_MMAP
+    err = ds->seek( ds, offset, SEEK_SET );
+    if( err != 0 ) return SEGY_DS_SEEK_ERROR;
 
-    err = fseek( fp->fp, offset, SEEK_SET );
-    if( err != 0 ) return SEGY_FSEEK_ERROR;
-
-    size_t writec = fwrite( mbuf, 1, SEGY_TEXT_HEADER_SIZE, fp->fp );
-    if( writec != SEGY_TEXT_HEADER_SIZE )
-        return SEGY_FWRITE_ERROR;
+    err = ds->write( ds, mbuf, SEGY_TEXT_HEADER_SIZE );
+    if( err != 0 ) return SEGY_DS_WRITE_ERROR;
 
     return SEGY_OK;
 }
@@ -2590,7 +2609,7 @@ int segy_binheader_size( void ) {
     return SEGY_BINARY_HEADER_SIZE;
 }
 
-static int scaled_cdp( segy_file* fp,
+static int scaled_cdp( segy_datasource* ds,
                        int traceno,
                        float* cdpx,
                        float* cdpy,
@@ -2600,7 +2619,7 @@ static int scaled_cdp( segy_file* fp,
     int16_t scalar;
     char trheader[ SEGY_TRACE_HEADER_SIZE ];
 
-    int err = segy_traceheader( fp, traceno, trheader, trace0, trace_bsize );
+    int err = segy_traceheader( ds, traceno, trheader, trace0, trace_bsize );
     if( err != 0 ) return err;
 
     err = segy_get_field_i32( trheader, SEGY_TR_CDP_X, &x );
@@ -2620,7 +2639,7 @@ static int scaled_cdp( segy_file* fp,
     return SEGY_OK;
 }
 
-int segy_rotation_cw( segy_file* fp,
+int segy_rotation_cw( segy_datasource* ds,
                       int line_length,
                       int stride,
                       int offsets,
@@ -2642,12 +2661,12 @@ int segy_rotation_cw( segy_file* fp,
                                         &traceno );
     if( err != 0 ) return err;
 
-    err = scaled_cdp( fp, traceno, &sw.x, &sw.y, trace0, trace_bsize );
+    err = scaled_cdp( ds, traceno, &sw.x, &sw.y, trace0, trace_bsize );
     if( err != 0 ) return err;
 
     /* read the last trace in the line */
     traceno += (line_length - 1) * stride * offsets;
-    err = scaled_cdp( fp, traceno, &nw.x, &nw.y, trace0, trace_bsize );
+    err = scaled_cdp( ds, traceno, &nw.x, &nw.y, trace0, trace_bsize );
     if( err != 0 ) return err;
 
     float x = nw.x - sw.x;
