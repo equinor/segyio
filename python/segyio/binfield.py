@@ -1,4 +1,46 @@
+import warnings
 from . import Enum
+
+class TracesWrapper:
+    def __get__(self, instance, owner):
+        warnings.warn(
+            "Traces is deprecated and will be removed in a future version."
+            "Please use EnsembleTraces instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        return 3213
+
+class AuxTracesWrapper:
+    def __get__(self, instance, owner):
+        warnings.warn(
+            "AuxTraces is deprecated and will be removed in a future version."
+            "Please use AuxEnsembleTraces instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        return 3215
+
+class ExtTracesWrapper:
+    def __get__(self, instance, owner):
+        warnings.warn(
+            "ExtTraces is deprecated and will be removed in a future version."
+            "Please use ExtEnsembleTraces instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        return 3261
+
+class ExtAuxTracesWrapper:
+    def __get__(self, instance, owner):
+        warnings.warn(
+            "ExtAuxTraces is deprecated and will be removed in a future version."
+            "Please use ExtAuxEnsembleTraces instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        return 3265
+
 
 class BinField(Enum):
     """Trace header field enumerator
@@ -11,7 +53,9 @@ class BinField(Enum):
     JobID = 3201
     LineNumber = 3205
     ReelNumber = 3209
+    Traces = TracesWrapper()  # Deprecated, use EnsembleTraces
     EnsembleTraces = 3213
+    AuxTraces = AuxTracesWrapper()  # Deprecated, use AuxEnsembleTraces
     AuxEnsembleTraces = 3215
     Interval = 3217
     IntervalOriginal = 3219
@@ -35,7 +79,9 @@ class BinField(Enum):
     MeasurementSystem = 3255
     ImpulseSignalPolarity = 3257
     VibratoryPolarity = 3259
+    ExtTraces = ExtTracesWrapper()  # Deprecated, use ExtEnsembleTraces
     ExtEnsembleTraces = 3261
+    ExtAuxTraces = ExtAuxTracesWrapper()  # Deprecated, use ExtAuxEnsembleTraces
     ExtAuxEnsembleTraces = 3265
     ExtSamples = 3269
     ExtInterval = 3273

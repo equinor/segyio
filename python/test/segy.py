@@ -828,6 +828,23 @@ def test_write_header(small):
         # i.e. don't access buf of treat it as a list
         # assertEqual(list(f.header[2].buf), list(f.header[1].buf))
 
+def test_depricated_fields(small):
+    with segyio.open(small, "r+") as f:
+        assert f.bin[BinField.EnsembleTraces] == 25
+        with pytest.warns(DeprecationWarning, match="Traces is deprecated and will be removed in a future version."):
+            assert f.bin[BinField.Traces] == 25
+
+        assert f.bin[BinField.AuxEnsembleTraces] == 0
+        with pytest.warns(DeprecationWarning, match="AuxTraces is deprecated and will be removed in a future version."):
+            assert f.bin[BinField.AuxTraces] == 0
+
+        assert f.bin[BinField.ExtEnsembleTraces] == 0
+        with pytest.warns(DeprecationWarning, match="ExtTraces is deprecated and will be removed in a future version."):
+            assert f.bin[BinField.ExtTraces] == 0
+
+        assert f.bin[BinField.ExtAuxEnsembleTraces] == 0
+        with pytest.warns(DeprecationWarning, match="ExtAuxTraces is deprecated and will be removed in a future version."):
+            assert f.bin[BinField.ExtAuxTraces] == 0
 
 def test_write_binary(small):
     with segyio.open(small, "r+") as f:
