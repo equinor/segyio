@@ -369,6 +369,12 @@ struct buffer_guard {
 };
 
 struct autods {
+    autods() : ds( nullptr ) {}
+
+    ~autods() {
+        this->close();
+    }
+
     operator segy_datasource*() const;
     operator bool() const;
     void swap( autods& other );
@@ -428,10 +434,8 @@ int init( segyfd* self, PyObject* args, PyObject* kwargs ) {
         return -1;
     }
 
-    struct unique : public autods {
-        explicit unique( segy_datasource* p ) { this->ds = p; }
-        ~unique() { this->close(); }
-    } ds( segy_open( filename, mode ) );
+    autods ds;
+    ds.ds = segy_open( filename, mode );
 
     if( !ds && !strstr( "rb" "wb" "ab" "r+b" "w+b" "a+b", mode ) ) {
         ValueError( "invalid mode string '%s', good strings are %s",
