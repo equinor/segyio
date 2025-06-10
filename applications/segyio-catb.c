@@ -159,12 +159,12 @@ int main( int argc, char** argv ){
             const char* description = field_data[c].description;
 
             if( fd.datatype == SEGY_UNSIGNED_INTEGER_8_BYTE ) {
-                long long int field = fd.value.u64;
+                unsigned long long int field = fd.value.u64;
                 if( opts.nonzero && field == 0) continue;
                 if( opts.description )
-                    printf( "%s\t%lld\t%d\t%s\n", short_name, field, byte_offset, description );
+                    printf( "%s\t%llu\t%d\t%s\n", short_name, field, byte_offset, description );
                 else
-                    printf( "%-10s\t%lld\n", short_name, field );
+                    printf( "%-10s\t%llu\n", short_name, field );
             }
             else if( fd.datatype == SEGY_IEEE_FLOAT_8_BYTE ) {
                 double field = fd.value.f64;
