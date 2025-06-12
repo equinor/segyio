@@ -13,7 +13,24 @@ import segyio
 import segyio._segyio as _segyio
 from segyio.binfield import keys as binfield_keys
 from segyio.segysampleformat import SegySampleFormat
-from segyio.segyformatrange import SegyFormatRange
+
+class SegyFormatRange(segyio.Enum):
+    IBM_FLOAT_4_BYTE = None
+    SIGNED_INTEGER_4_BYTE = (-(2**31), 2**31 - 1)
+    SIGNED_SHORT_2_BYTE = (-(2**15), 2**15 - 1)
+    FIXED_POINT_WITH_GAIN_4_BYTE = None
+    IEEE_FLOAT_4_BYTE = None
+    IEEE_FLOAT_8_BYTE = (-(2**50), 2**50)
+    SIGNED_CHAR_3_BYTE = (-(2**23), 2**23 - 1)
+    SIGNED_CHAR_1_BYTE = (-(2**7), 2**7 - 1)
+    SIGNED_INTEGER_8_BYTE = (-(2**63), 2**63 - 1)
+    UNSIGNED_INTEGER_4_BYTE = (0, 2**32 - 1)
+    UNSIGNED_SHORT_2_BYTE = (0, 0xFFFF - 1)
+    UNSIGNED_INTEGER_8_BYTE = (0, 2**64 - 1)
+    UNSIGNED_INTEGER_3_BYTE = (0, 2**24 - 1)
+    UNSIGNED_CHAR_1_BYTE = (0, 0xFF - 1)
+    NOT_IN_USE_1 = None
+    NOT_IN_USE_2 = None
 
 UNASSIGNED_FIELDS = ["Unassigned1", "Unassigned2"]
 FIXED_VALUE_FIELDS = ["Format", "ExtSamples", "ExtEnsembleTraces", "ExtendedHeaders"]
@@ -127,21 +144,22 @@ def get_instance_segyiofd(tmpdir,
         return _segyio.segyiofd(f, mode, 0).segyopen()
 
 
-def get_datatype_mapping():
-    datatype_mapping = {}
-    for k, v in SegySampleFormat.__dict__.items():
-        if isinstance(v, int):
-            datatype_mapping[v] = k
-    return datatype_mapping
-
-def get_datatype_range():
-    datatype_range = {}
-    for k, v in SegyFormatRange.__dict__.items():
-        if isinstance(v, tuple):
-            datatype_range[k] = v
-    return datatype_range
-
 def get_field_range(binary_header, offset, field_name):
+
+    def get_datatype_mapping():
+        datatype_mapping = {}
+        for k, v in SegySampleFormat.__dict__.items():
+            if isinstance(v, int):
+                datatype_mapping[v] = k
+        return datatype_mapping
+
+    def get_datatype_range():
+        datatype_range = {}
+        for k, v in SegyFormatRange.__dict__.items():
+            if isinstance(v, tuple):
+                datatype_range[k] = v
+        return datatype_range
+
     datatype_mapping = get_datatype_mapping()
     datatype_range = get_datatype_range()
     datatype = _segyio.getfieldtype(binary_header, offset)
@@ -164,11 +182,8 @@ def check_fixed_value_fields(field_name:str, value:int):
             assert value == 0, f"Expected ExtEnsembleTraces to be 0, got {value}"
 
 
-@tmpfiles(testdata / 'increment.sgy')
 def test_binary_header_datatype_get_inc(tmpdir):
-    f = get_instance_segyiofd(tmpdir,
-        str(testdata / 'increment.sgy')
-    )
+    f = _segyio.segyiofd(str(testdata / 'increment.sgy'), "r", 0)
     binary_header = f.getbin()
     for i, (field_name, offset) in enumerate(binfield_keys.items()):
         if field_name in UNASSIGNED_FIELDS:
@@ -180,12 +195,8 @@ def test_binary_header_datatype_get_inc(tmpdir):
             range = get_field_range(binary_header, offset, field_name)
             assert range[0] == value - i, f"Value mismatch for field {field_name}: expected {range[0]} but got {value - i}"
 
-
-@tmpfiles(testdata / 'decrement.sgy')
 def test_binary_header_datatype_get_dec(tmpdir):
-    f = get_instance_segyiofd(tmpdir,
-        str(testdata / 'decrement.sgy')
-    )
+    f = _segyio.segyiofd(str(testdata / 'decrement.sgy'), "r", 0)
     binary_header = f.getbin()
     for i, (field_name, offset) in enumerate(binfield_keys.items()):
         if field_name in UNASSIGNED_FIELDS:
@@ -195,13 +206,10 @@ def test_binary_header_datatype_get_dec(tmpdir):
             check_fixed_value_fields(field_name, value)
         else:
             range = get_field_range(binary_header, offset, field_name)
-            assert range[1] == value + i, f"Value mismatch for field {field_name}: expected {range[0]} but got {value - i}"
+            assert range[1] == value + i, f"Value mismatch for field {field_name}: expected {range[1]} but got {value - i}"
 
-@tmpfiles(testdata / 'increment.sgy')
 def test_binary_header_datatype_set_inc(tmpdir):
-    f = get_instance_segyiofd(tmpdir,
-        str(testdata / 'increment.sgy')
-    )
+    f = _segyio.segyiofd(str(testdata / 'increment.sgy'), "r", 0)
     binary_header = f.getbin()
     for i, (field_name, offset) in enumerate(binfield_keys.items()):
         if field_name in UNASSIGNED_FIELDS:
@@ -216,11 +224,8 @@ def test_binary_header_datatype_set_inc(tmpdir):
             assert value_set == value_get, f"Value mismatch for field {field_name}: set {value_set} but got {value_get}"
             assert range[0] == value_get - i-1, f"Value mismatch for field {field_name}: expected {range[0]} but got {value_get - i-1}"
 
-@tmpfiles(testdata / 'decrement.sgy')
 def test_binary_header_datatype_set_dec(tmpdir):
-    f = get_instance_segyiofd(tmpdir,
-        str(testdata / 'decrement.sgy')
-    )
+    f = _segyio.segyiofd(str(testdata / 'decrement.sgy'), "r", 0)
     binary_header = f.getbin()
     for i, (field_name, offset) in enumerate(binfield_keys.items()):
         if field_name in UNASSIGNED_FIELDS:
