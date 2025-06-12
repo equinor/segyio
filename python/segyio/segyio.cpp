@@ -1458,8 +1458,7 @@ PyObject* getfieldtype( PyObject*, PyObject *args ) {
         return BufferError( "buffer too small" );
 
     segy_field_data fd = segy_get_field( buffer.buf< const char >(), field );
-    if( fd.error != SEGY_OK )
-        return KeyError( "No such field %d", field );
+    if( fd.error != SEGY_OK ) return Error( fd.error );
 
     if( fd.datatype == SEGY_UNDEFINED_FIELD)
         return KeyError( "Field %d has no datatype", field );
@@ -1477,8 +1476,7 @@ PyObject* getfield( PyObject*, PyObject *args ) {
         return BufferError( "buffer too small" );
 
     segy_field_data fd = segy_get_field( buffer.buf< const char >(), field );
-    if( fd.error != SEGY_OK )
-        return KeyError( "No such field %d", field );
+    if( fd.error != SEGY_OK ) return Error( fd.error );
 
     switch ( fd.datatype ) {
 
@@ -1527,8 +1525,7 @@ PyObject* putfield( PyObject*, PyObject *args ) {
     segy_field_data fd;
     int err = segy_init_field_data(field, &fd);
 
-    if( err != SEGY_OK )
-        return KeyError( "No such field %d", field );
+    if( err != SEGY_OK ) return Error( err );
 
     switch ( fd.datatype ) {
         case SEGY_UNSIGNED_INTEGER_8_BYTE:

@@ -274,7 +274,7 @@ def test_read_binary_header_fields(mmap=False):
     with pytest.raises(TypeError):
         _ = _segyio.getfield([], 0)
 
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError):
         _ = _segyio.getfield(binary_header, -1)
 
     assert _segyio.getfield(binary_header, 3225) == 1
@@ -474,10 +474,10 @@ def test_get_and_putfield():
     with pytest.raises(TypeError):
         _segyio.putfield({}, 0, 1)
 
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError):
         _segyio.getfield(hdr, 0)
 
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError):
         _segyio.putfield(hdr, 0, 1)
 
     _segyio.putfield(hdr, 1, 127)
