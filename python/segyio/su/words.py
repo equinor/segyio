@@ -271,15 +271,15 @@ extnart   = bf.ExtAuxEnsembleTraces
 #:
 exthns    = bf.ExtSamples
 #:
+exthdt    = bf.ExtInterval
+#:
+extdto   = bf.ExtIntervalOriginal
+#:
 extnso    = bf.ExtSamplesOriginal
-# #:
-# extint    = bf.ExtInterval
-# #:
-# extinto   = bf.ExtIntervalOriginal
 #:
 extfold   = bf.ExtEnsembleFold
-# #:
-# intconst  = bf.IntConstant
+#:
+intconst  = bf.IntConstant
 #:
 rev    = bf.SEGYRevision
 #:
@@ -288,17 +288,17 @@ revmin = bf.SEGYRevisionMinor
 trflag = bf.TraceFlag
 #:
 exth   = bf.ExtendedHeaders
-# #:
-# math   = bf.MaxAddTraceHeaders
-# #:
-# surt  = bf.SurveyType
-# #:
-# timec = bf.TimeBasicCode
-# #:
-# nrtrs = bf.NrTracesInStream
-# #:
-# ftos = bf.FirstTraceOffset
-# #:
-# nrtrr = bf.NrTrailerRecords
+#:
+maxtrh  = bf.MaxAdditionalTraceHeaders
+#:
+survty  = bf.SurveyType
+#:
+timebc = bf.TimeBasisCode
+#:
+ntrst = bf.NrTracesInStream
+#:
+ftroff = bf.FirstTraceOffset
+#:
+ntr = bf.NrTrailerRecords
 #:
 unas2  = bf.Unassigned2
