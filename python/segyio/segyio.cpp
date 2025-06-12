@@ -1571,13 +1571,13 @@ PyObject* putfield( PyObject*, PyObject *args ) {
         case SEGY_OK:
             switch ( fd.datatype ) {
                 case SEGY_UNSIGNED_INTEGER_8_BYTE:
-                    return PyLong_FromUnsignedLongLong( fd.value.i64 );
+                    return PyLong_FromUnsignedLongLong( fd.value.u64 );
                 case SEGY_UNSIGNED_INTEGER_4_BYTE:
-                    return PyLong_FromUnsignedLong( (uint64_t)(uint32_t)fd.value.i32 );
+                    return PyLong_FromUnsignedLong( (uint64_t)(uint32_t)fd.value.u32 );
                 case SEGY_UNSIGNED_SHORT_2_BYTE:
-                    return PyLong_FromUnsignedLong( (uint64_t)(uint16_t)fd.value.i16 );
+                    return PyLong_FromUnsignedLong( (uint64_t)(uint16_t)fd.value.u16 );
                 case SEGY_UNSIGNED_CHAR_1_BYTE:
-                    return PyLong_FromUnsignedLong( (uint64_t)(uint8_t)fd.value.i8 );
+                    return PyLong_FromUnsignedLong( (uint64_t)(uint8_t)fd.value.u8 );
                 case SEGY_SIGNED_INTEGER_8_BYTE:
                     return PyLong_FromLongLong( fd.value.i64 );
                 case SEGY_SIGNED_INTEGER_4_BYTE:
