@@ -333,15 +333,16 @@ def test_header_dict_methods(openfn, kwargs):
         assert 90 == len(list(f.header[1].values()))
         assert 90 == len(list(f.header[2].items()))
         assert 90 == len(list(f.header[3]))
-        assert 0 not in f.header[0]
+        with pytest.raises(ValueError):
+            assert 0 not in f.header[0]
         assert 1 in f.header[0]
         assert segyio.su.cdpx in f.header[0]
         iter(f.header[0])
 
-        assert 35 == len(f.bin.keys())
-        assert 35 == len(list(f.bin.values()))
-        assert 35 == len(list(f.bin.items()))
-        assert 35 == len(f.bin)
+        assert 45 == len(f.bin.keys())
+        assert 45 == len(list(f.bin.values()))
+        assert 45 == len(list(f.bin.items()))
+        assert 45 == len(f.bin)
         iter(f.bin)
 
 
@@ -707,13 +708,13 @@ def test_read_header(openfn, kwargs):
         with pytest.raises(IndexError):
             _ = f.header[-30]
 
-        with pytest.raises(KeyError):
+        with pytest.raises(ValueError):
             _ = f.header[0][188]  # between byte offsets
 
-        with pytest.raises(KeyError):
+        with pytest.raises(ValueError):
             _ = f.header[0][-1]
 
-        with pytest.raises(KeyError):
+        with pytest.raises(ValueError):
             _ = f.header[0][700]
 
 def test_read_header_seismic_unix():
@@ -737,13 +738,13 @@ def test_write_header(small):
         assert 1 == f.header[1][189]
 
         # accessing non-existing offsets raises exceptions
-        with pytest.raises(KeyError):
+        with pytest.raises(ValueError):
             f.header[0][188] = 1  # between byte offsets
 
-        with pytest.raises(KeyError):
+        with pytest.raises(ValueError):
             f.header[0][-1] = 1
 
-        with pytest.raises(KeyError):
+        with pytest.raises(ValueError):
             f.header[0][700] = 1
 
         d = {TraceField.INLINE_3D: 43,
@@ -828,6 +829,23 @@ def test_write_header(small):
         # i.e. don't access buf of treat it as a list
         # assertEqual(list(f.header[2].buf), list(f.header[1].buf))
 
+def test_depricated_fields(small):
+    with segyio.open(small, "r") as f:
+        assert f.bin[BinField.EnsembleTraces] == 25
+        with pytest.warns(DeprecationWarning, match="Traces is deprecated and will be removed in a future version."):
+            assert f.bin[BinField.Traces] == 25
+
+        assert f.bin[BinField.AuxEnsembleTraces] == 0
+        with pytest.warns(DeprecationWarning, match="AuxTraces is deprecated and will be removed in a future version."):
+            assert f.bin[BinField.AuxTraces] == 0
+
+        assert f.bin[BinField.ExtEnsembleTraces] == 0
+        with pytest.warns(DeprecationWarning, match="ExtTraces is deprecated and will be removed in a future version."):
+            assert f.bin[BinField.ExtTraces] == 0
+
+        assert f.bin[BinField.ExtAuxEnsembleTraces] == 0
+        with pytest.warns(DeprecationWarning, match="ExtAuxTraces is deprecated and will be removed in a future version."):
+            assert f.bin[BinField.ExtAuxTraces] == 0
 
 def test_write_binary(small):
     with segyio.open(small, "r+") as f:
@@ -837,16 +855,16 @@ def test_write_binary(small):
         assert 5 == f.bin[3213]
 
         # accessing non-existing offsets raises exceptions
-        with pytest.raises(KeyError):
+        with pytest.raises(ValueError):
             _ = f.bin[0]
 
-        with pytest.raises(KeyError):
+        with pytest.raises(ValueError):
             _ = f.bin[50000]
 
-        with pytest.raises(KeyError):
+        with pytest.raises(ValueError):
             _ = f.bin[3214]
 
-        d = {BinField.Traces: 43,
+        d = {BinField.EnsembleTraces: 43,
              BinField.SweepFrequencyStart: 11}
 
         # assign multiple fields at once by using a dict
@@ -856,7 +874,7 @@ def test_write_binary(small):
         assert 43 == f.bin[segyio.su.ntrpr]
         assert 11 == f.bin[segyio.su.hsfs]
 
-        d = {BinField.Traces: 45,
+        d = {BinField.EnsembleTraces: 45,
              BinField.SweepFrequencyStart: 10}
 
         # assign multiple values using alternative syntax
@@ -876,7 +894,7 @@ def test_write_binary(small):
         assert 7 == f.bin[segyio.su.hdt]
 
         # looking up multiple values at once returns a { TraceField: value } dict
-        assert d == f.bin[BinField.Traces, BinField.SweepFrequencyStart]
+        assert d == f.bin[BinField.EnsembleTraces, BinField.SweepFrequencyStart]
 
         # copy a header
         f.bin = f.bin
@@ -895,7 +913,7 @@ def test_write_header_update_atomic(small):
         # use the same instance all the time, to also catch the case where
         # update dirties the backing storage
         header = f.header[10]
-        with pytest.raises(KeyError):
+        with pytest.raises(ValueError):
             header.update(d)
 
         assert orig == header

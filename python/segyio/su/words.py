@@ -215,9 +215,9 @@ lino   = bf.LineNumber
 #:
 reno   = bf.ReelNumber
 #:
-ntrpr  = bf.Traces
+ntrpr  = bf.EnsembleTraces
 #:
-nart   = bf.AuxTraces
+nart   = bf.AuxEnsembleTraces
 #:
 hdt    = bf.Interval
 #:
@@ -265,15 +265,21 @@ vpol   = bf.VibratoryPolarity
 #:
 unas1  = bf.Unassigned1
 #:
-extntrpr  = bf.ExtTraces
+extntrpr  = bf.ExtEnsembleTraces
 #:
-extnart   = bf.ExtAuxTraces
+extnart   = bf.ExtAuxEnsembleTraces
 #:
 exthns    = bf.ExtSamples
+#:
+exthdt    = bf.ExtInterval
+#:
+extdto   = bf.ExtIntervalOriginal
 #:
 extnso    = bf.ExtSamplesOriginal
 #:
 extfold   = bf.ExtEnsembleFold
+#:
+intconst  = bf.IntConstant
 #:
 rev    = bf.SEGYRevision
 #:
@@ -282,5 +288,17 @@ revmin = bf.SEGYRevisionMinor
 trflag = bf.TraceFlag
 #:
 exth   = bf.ExtendedHeaders
+#:
+maxtrh  = bf.MaxAdditionalTraceHeaders
+#:
+survty  = bf.SurveyType
+#:
+timebc = bf.TimeBasisCode
+#:
+ntrst = bf.NrTracesInStream
+#:
+ftroff = bf.FirstTraceOffset
+#:
+ntr = bf.NrTrailerRecords
 #:
 unas2  = bf.Unassigned2
