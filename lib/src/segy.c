@@ -1118,6 +1118,11 @@ int segy_set_field_int( char* header, const int field, const int val ) {
     return set_field( header, &fd );
 }
 
+int segy_set_field( char* header, segy_field_data* fd ) {
+    fd->error = set_field( header, fd );
+    return fd->error;
+}
+
 static int slicelength( int start, int stop, int step ) {
     if( step == 0 ) return 0;
 
