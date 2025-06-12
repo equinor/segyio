@@ -830,7 +830,7 @@ def test_write_header(small):
         # assertEqual(list(f.header[2].buf), list(f.header[1].buf))
 
 def test_depricated_fields(small):
-    with segyio.open(small, "r+") as f:
+    with segyio.open(small, "r") as f:
         assert f.bin[BinField.EnsembleTraces] == 25
         with pytest.warns(DeprecationWarning, match="Traces is deprecated and will be removed in a future version."):
             assert f.bin[BinField.Traces] == 25
