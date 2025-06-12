@@ -140,13 +140,35 @@ PyObject* Error( int err ) {
      * exception"
      */
     switch( err ) {
-        case SEGY_FSEEK_ERROR: return IOErrno();
-        case SEGY_FWRITE_ERROR: // fallthrough
-        case SEGY_FREAD_ERROR: return IOError( "I/O operation failed, "
-                                               "likely corrupted file" );
-        case SEGY_READONLY:    return IOError( "file not open for writing. "
-                                               "open with 'r+'" );
-        default:               return RuntimeError( err );
+        case SEGY_OK: return ValueError( "Unexpected to get SEGY_OK "
+                                         "error code, this is a bug" );
+        case SEGY_FOPEN_ERROR: return IOError( "failed to open file, "
+                                               "check file permissions" );
+        case SEGY_FSEEK_ERROR:
+        case SEGY_FREAD_ERROR:
+        case SEGY_FWRITE_ERROR: return IOError( "I/O operation failed, "
+                                                "likely corrupted file" );
+        case SEGY_INVALID_FIELD: return ValueError( "invalid field" );
+        case SEGY_INVALID_FIELD_DATATYPE: return ValueError( "invalid field "
+                                                             "datatype" );
+        case SEGY_INVALID_FIELD_VALUE: return ValueError( "invalid field "
+                                                             "value" );
+        case SEGY_INVALID_SORTING: return ValueError( "invalid sorting" );
+        case SEGY_MISSING_LINE_INDEX: return ValueError( "missing line index" );
+        case SEGY_INVALID_OFFSETS: return ValueError( "invalid offsets" );
+        case SEGY_TRACE_SIZE_MISMATCH: return ValueError( "trace size mismatch" );
+        case SEGY_INVALID_ARGS: return ValueError( "invalid arguments" );
+        case SEGY_MMAP_ERROR: return IOError( "mmap failed, check file "
+                                              "permissions" );
+        case SEGY_MMAP_INVALID: return ValueError( "mmap failed, file is not "
+                                                   "mmap'able" );
+        case SEGY_READONLY: return IOError( "file not open for writing. "
+                                                "Use 'r+' mode to write" );
+        case SEGY_NOTFOUND: return ValueError( "not found" );
+        case SEGY_MEMORY_ERROR: return RuntimeError( "memory allocation "
+                                                     "failed" );
+        default:
+            return RuntimeError( err );
     }
 }
 
