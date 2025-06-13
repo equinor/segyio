@@ -102,9 +102,9 @@ class Trace(Sequence):
 
     """
 
-    def __init__(self, filehandle, dtype, tracecount, samples, readonly):
+    def __init__(self, segyfd, dtype, tracecount, samples, readonly):
         super(Trace, self).__init__(tracecount)
-        self.filehandle = filehandle
+        self.segyfd = segyfd
         self.dtype = dtype
         self.shape = samples
         self.readonly = readonly
@@ -176,7 +176,7 @@ class Trace(Sequence):
             # optimize for the default case when i is a single trace index
             i = self.wrapindex(i)
             buf = np.zeros(self.shape, dtype = self.dtype)
-            return self.filehandle.gettr(buf, i, 1, 1, 0, self.shape, 1, self.shape)
+            return self.segyfd.gettr(buf, i, 1, 1, 0, self.shape, 1, self.shape)
         except TypeError:
             pass
 
@@ -203,7 +203,7 @@ class Trace(Sequence):
         try:
             i = self.wrapindex(i)
             buf = np.zeros(n_elements, dtype = self.dtype)
-            tr = self.filehandle.gettr(buf, i, 1, 1, start, stop, step, n_elements)
+            tr = self.segyfd.gettr(buf, i, 1, 1, start, stop, step, n_elements)
             return tr[0] if single else tr
         except TypeError:
             pass
@@ -221,7 +221,7 @@ class Trace(Sequence):
                 y = np.zeros(n_elements, dtype=self.dtype)
 
                 for k in range(*indices):
-                    self.filehandle.gettr(x, k, 1, 1, start, stop, step, n_elements)
+                    self.segyfd.gettr(x, k, 1, 1, start, stop, step, n_elements)
                     x, y = y, x
                     yield y
 
@@ -287,7 +287,7 @@ class Trace(Sequence):
 
         # TODO:  check if len(xs) > shape, and optionally warn on truncating
         # writes
-        self.filehandle.puttr(self.wrapindex(i), xs)
+        self.segyfd.puttr(self.wrapindex(i), xs)
 
     def __repr__(self):
         return "Trace(traces = {}, samples = {})".format(len(self), self.shape)
@@ -301,7 +301,7 @@ class Trace(Sequence):
         -------
         raw : RawTrace
         """
-        return RawTrace(self.filehandle,
+        return RawTrace(self.segyfd,
                         self.dtype,
                         len(self),
                         self.shape,
@@ -330,7 +330,7 @@ class Trace(Sequence):
         ...     ref[10] += 1.617
         """
 
-        x = RefTrace(self.filehandle,
+        x = RefTrace(self.segyfd,
                      self.dtype,
                      len(self),
                      self.shape,
@@ -380,7 +380,7 @@ class RawTrace(Trace):
         try:
             i = self.wrapindex(i)
             buf = np.zeros(self.shape, dtype = self.dtype)
-            return self.filehandle.gettr(buf, i, 1, 1, 0, self.shape, 1, self.shape)
+            return self.segyfd.gettr(buf, i, 1, 1, 0, self.shape, 1, self.shape)
         except TypeError:
             try:
                 indices = i.indices(len(self))
@@ -390,7 +390,7 @@ class RawTrace(Trace):
             start, _, step = indices
             length = len(range(*indices))
             buf = np.empty((length, self.shape), dtype = self.dtype)
-            return self.filehandle.gettr(buf, start, step, length, 0, self.shape, 1, self.shape)
+            return self.segyfd.gettr(buf, start, step, length, 0, self.shape, 1, self.shape)
 
 
 def fingerprint(x):
@@ -441,7 +441,7 @@ class RefTrace(Trace):
 
             if fingerprint(x) == signature: continue
 
-            self.filehandle.puttr(i, x)
+            self.segyfd.puttr(i, x)
             signature = fingerprint(x)
 
 
@@ -455,7 +455,7 @@ class RefTrace(Trace):
             buf = np.zeros(self.shape, dtype = self.dtype)
 
         try:
-            self.filehandle.gettr(buf, i, 1, 1, 0, self.shape, 1, self.shape)
+            self.segyfd.gettr(buf, i, 1, 1, 0, self.shape, 1, self.shape)
         except IOError:
             if not self.readonly:
                 # if the file is opened read-only and this happens, there's no
@@ -560,7 +560,7 @@ class RefTrace(Trace):
                         yield x
 
                         if not fingerprint(x) == y:
-                            self.filehandle.puttr(j, x)
+                            self.segyfd.puttr(j, x)
 
                 finally:
                     # the last yielded item is available after the loop, so
@@ -590,9 +590,9 @@ class Header(Sequence):
         common list operations (Sequence)
 
     """
-    def __init__(self, segy):
-        self.segy = segy
-        super(Header, self).__init__(segy.tracecount)
+    def __init__(self, segyfile):
+        self.segyfile = segyfile
+        super(Header, self).__init__(segyfile.tracecount)
 
     def __getitem__(self, i):
         """header[i]
@@ -632,7 +632,7 @@ class Header(Sequence):
         """
         try:
             i = self.wrapindex(i)
-            return Field.trace(traceno = i, segy = self.segy)
+            return Field.trace(traceno = i, segyfile = self.segyfile)
 
         except TypeError:
             try:
@@ -648,7 +648,7 @@ class Header(Sequence):
                 # header was untouched. this allows for some fancy control
                 # flow, and more importantly helps debugging because you can
                 # fully inspect and interact with the last good value.
-                x = Field.trace(None, self.segy)
+                x = Field.trace(None, self.segyfile)
                 buf = bytearray(x.buf)
                 for j in range(*indices):
                     # skip re-invoking __getitem__, just update the buffer
@@ -725,7 +725,7 @@ class Header(Sequence):
         -------
         line : HeaderLine
         """
-        return HeaderLine(self, self.segy.iline, 'inline')
+        return HeaderLine(self, self.segyfile.iline, 'inline')
 
     @iline.setter
     def iline(self, value):
@@ -738,7 +738,7 @@ class Header(Sequence):
             than that of the file being written to the surplus data will be
             ignored. Uses same rules for writing as `f.iline[i] = x`.
         """
-        for i, src in zip(self.segy.ilines, value):
+        for i, src in zip(self.segyfile.ilines, value):
             self.iline[i] = src
 
     @property
@@ -750,7 +750,7 @@ class Header(Sequence):
         -------
         line : HeaderLine
         """
-        return HeaderLine(self, self.segy.xline, 'crossline')
+        return HeaderLine(self, self.segyfile.xline, 'crossline')
 
     @xline.setter
     def xline(self, value):
@@ -764,7 +764,7 @@ class Header(Sequence):
             ignored. Uses same rules for writing as `f.xline[i] = x`.
         """
 
-        for i, src in zip(self.segy.xlines, value):
+        for i, src in zip(self.segyfile.xlines, value):
             self.xline[i] = src
 
 class Attributes(Sequence):
@@ -779,10 +779,10 @@ class Attributes(Sequence):
     .. versionadded:: 1.1
     """
 
-    def __init__(self, field, filehandle, tracecount):
+    def __init__(self, field, segyfd, tracecount):
         super(Attributes, self).__init__(tracecount)
         self.field = field
-        self.filehandle = filehandle
+        self.segyfd = segyfd
         self.tracecount = tracecount
         self.dtype = np.intc
 
@@ -828,7 +828,7 @@ class Attributes(Sequence):
             xs = np.asarray(i, dtype = self.dtype)
             xs = xs.astype(dtype = self.dtype, order = 'C', copy = False)
             attrs = np.empty(len(xs), dtype = self.dtype)
-            return self.filehandle.field_foreach(attrs, xs, self.field)
+            return self.segyfd.field_foreach(attrs, xs, self.field)
 
         except TypeError:
             try:
@@ -837,13 +837,13 @@ class Attributes(Sequence):
                 pass
 
             traces = self.tracecount
-            filehandle = self.filehandle
+            segyfd = self.segyfd
             field = self.field
 
             start, stop, step = i.indices(traces)
             indices = range(start, stop, step)
             attrs = np.empty(len(indices), dtype = self.dtype)
-            return filehandle.field_forall(attrs, start, stop, step, field)
+            return segyfd.field_forall(attrs, start, stop, step, field)
 
 class Text(Sequence):
     """Interact with segy in text mode
@@ -863,9 +863,9 @@ class Text(Sequence):
 
     """
 
-    def __init__(self, filehandle, textcount):
+    def __init__(self, segyfd, textcount):
         super(Text, self).__init__(textcount)
-        self.filehandle = filehandle
+        self.segyfd = segyfd
 
     def __getitem__(self, i):
         """text[i]
@@ -893,7 +893,7 @@ class Text(Sequence):
         """
         try:
             i = self.wrapindex(i)
-            return self.filehandle.gettext(i)
+            return self.segyfd.gettext(i)
 
         except TypeError:
             try:
@@ -904,7 +904,7 @@ class Text(Sequence):
 
             def gen():
                 for j in range(*indices):
-                    yield self.filehandle.gettext(j)
+                    yield self.segyfd.gettext(j)
             return gen()
 
     def __setitem__(self, i, val):
@@ -946,7 +946,7 @@ class Text(Sequence):
 
         try:
             i = self.wrapindex(i)
-            self.filehandle.puttext(i, val)
+            self.segyfd.puttext(i, val)
 
         except TypeError:
             try:
@@ -958,7 +958,7 @@ class Text(Sequence):
             for i, text in zip(range(*indices), val):
                 if isinstance(text, Text):
                     text = text[0]
-                self.filehandle.puttext(i, text)
+                self.segyfd.puttext(i, text)
 
 
     def __str__(self):
