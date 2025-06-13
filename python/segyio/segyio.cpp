@@ -174,7 +174,7 @@ void autods::close() {
     this->ds = NULL;
 }
 
-struct segyiofd {
+struct segyfd {
     PyObject_HEAD
     autods ds;
     long trace0;
@@ -231,7 +231,7 @@ struct buffer_guard {
 
 namespace fd {
 
-int init( segyiofd* self, PyObject* args, PyObject* kwargs ) {
+int init( segyfd* self, PyObject* args, PyObject* kwargs ) {
     char* filename = NULL;
     char* mode = NULL;
     int endian = 0;
@@ -282,7 +282,7 @@ int init( segyiofd* self, PyObject* args, PyObject* kwargs ) {
     return 0;
 }
 
-PyObject* segyopen( segyiofd* self ) {
+PyObject* segyopen( segyfd* self ) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
 
@@ -357,7 +357,7 @@ PyObject* segyopen( segyiofd* self ) {
     return (PyObject*) self;
 }
 
-PyObject* segycreate( segyiofd* self, PyObject* args, PyObject* kwargs ) {
+PyObject* segycreate( segyfd* self, PyObject* args, PyObject* kwargs ) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
 
@@ -468,7 +468,7 @@ PyObject* segycreate( segyiofd* self, PyObject* args, PyObject* kwargs ) {
     return (PyObject*) self;
 }
 
-PyObject* suopen( segyiofd* self, PyObject* args ) {
+PyObject* suopen( segyfd* self, PyObject* args ) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
 
@@ -525,12 +525,12 @@ PyObject* suopen( segyiofd* self, PyObject* args ) {
     return (PyObject*) self;
 }
 
-void dealloc( segyiofd* self ) {
+void dealloc( segyfd* self ) {
     self->ds.close();
     Py_TYPE( self )->tp_free( (PyObject*) self );
 }
 
-PyObject* close( segyiofd* self ) {
+PyObject* close( segyfd* self ) {
     /* multiple close() is a no-op */
     if( !self->ds ) return Py_BuildValue( "" );
 
@@ -542,7 +542,7 @@ PyObject* close( segyiofd* self ) {
     return Py_BuildValue( "" );
 }
 
-PyObject* flush( segyiofd* self ) {
+PyObject* flush( segyfd* self ) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
 
@@ -553,7 +553,7 @@ PyObject* flush( segyiofd* self ) {
     return Py_BuildValue( "" );
 }
 
-PyObject* mmap( segyiofd* self ) {
+PyObject* mmap( segyfd* self ) {
     segy_datasource* ds = self->ds;
 
     if( !ds ) return NULL;
@@ -591,7 +591,7 @@ private:
     heapbuffer( const heapbuffer& );
 };
 
-PyObject* gettext( segyiofd* self, PyObject* args ) {
+PyObject* gettext( segyfd* self, PyObject* args ) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
 
@@ -613,7 +613,7 @@ PyObject* gettext( segyiofd* self, PyObject* args ) {
     return PyByteArray_FromStringAndSize(buffer, segy_textheader_size() - 1);
 }
 
-PyObject* puttext( segyiofd* self, PyObject* args ) {
+PyObject* puttext( segyfd* self, PyObject* args ) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
 
@@ -637,7 +637,7 @@ PyObject* puttext( segyiofd* self, PyObject* args ) {
     return Py_BuildValue( "" );
 }
 
-PyObject* getbin( segyiofd* self ) {
+PyObject* getbin( segyfd* self ) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
 
@@ -649,7 +649,7 @@ PyObject* getbin( segyiofd* self ) {
     return PyByteArray_FromStringAndSize( buffer, sizeof( buffer ) );
 }
 
-PyObject* putbin( segyiofd* self, PyObject* args ) {
+PyObject* putbin( segyfd* self, PyObject* args ) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
 
@@ -670,7 +670,7 @@ PyObject* putbin( segyiofd* self, PyObject* args ) {
     return Py_BuildValue( "" );
 }
 
-PyObject* getth( segyiofd* self, PyObject *args ) {
+PyObject* getth( segyfd* self, PyObject *args ) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
 
@@ -706,7 +706,7 @@ PyObject* getth( segyiofd* self, PyObject *args ) {
     }
 }
 
-PyObject* putth( segyiofd* self, PyObject* args ) {
+PyObject* putth( segyfd* self, PyObject* args ) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
 
@@ -739,7 +739,7 @@ PyObject* putth( segyiofd* self, PyObject* args ) {
     }
 }
 
-PyObject* field_forall( segyiofd* self, PyObject* args ) {
+PyObject* field_forall( segyfd* self, PyObject* args ) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
 
@@ -774,7 +774,7 @@ PyObject* field_forall( segyiofd* self, PyObject* args ) {
     return bufferobj;
 }
 
-PyObject* field_foreach( segyiofd* self, PyObject* args ) {
+PyObject* field_foreach( segyfd* self, PyObject* args ) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
 
@@ -812,7 +812,7 @@ PyObject* field_foreach( segyiofd* self, PyObject* args ) {
     return bufferobj;
 }
 
-PyObject* metrics( segyiofd* self ) {
+PyObject* metrics( segyfd* self ) {
     static const int text = SEGY_TEXT_HEADER_SIZE;
     static const int bin  = SEGY_BINARY_HEADER_SIZE;
     const int ext = (self->trace0 - (text + bin)) / text;
@@ -845,7 +845,7 @@ struct metrics_errmsg {
     }
 };
 
-PyObject* cube_metrics( segyiofd* self, PyObject* args ) {
+PyObject* cube_metrics( segyfd* self, PyObject* args ) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
 
@@ -906,7 +906,7 @@ long getitem( PyObject* dict, const char* key ) {
     return PyLong_AsLong( PyDict_GetItemString( dict, key ) );
 }
 
-PyObject* indices( segyiofd* self, PyObject* args ) {
+PyObject* indices( segyfd* self, PyObject* args ) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
 
@@ -978,7 +978,7 @@ PyObject* indices( segyiofd* self, PyObject* args ) {
     return Py_BuildValue( "" );
 }
 
-PyObject* gettr( segyiofd* self, PyObject* args ) {
+PyObject* gettr( segyfd* self, PyObject* args ) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
 
@@ -1027,7 +1027,7 @@ PyObject* gettr( segyiofd* self, PyObject* args ) {
     return bufferobj;
 }
 
-PyObject* puttr( segyiofd* self, PyObject* args ) {
+PyObject* puttr( segyfd* self, PyObject* args ) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
 
@@ -1064,7 +1064,7 @@ PyObject* puttr( segyiofd* self, PyObject* args ) {
     }
 }
 
-PyObject* getline( segyiofd* self, PyObject* args) {
+PyObject* getline( segyfd* self, PyObject* args) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
 
@@ -1101,7 +1101,7 @@ PyObject* getline( segyiofd* self, PyObject* args) {
     return bufferobj;
 }
 
-PyObject* putline( segyiofd* self, PyObject* args) {
+PyObject* putline( segyfd* self, PyObject* args) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
 
@@ -1155,7 +1155,7 @@ PyObject* putline( segyiofd* self, PyObject* args) {
     }
 }
 
-PyObject* getdepth( segyiofd* self, PyObject* args ) {
+PyObject* getdepth( segyfd* self, PyObject* args ) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
 
@@ -1204,7 +1204,7 @@ PyObject* getdepth( segyiofd* self, PyObject* args ) {
     return bufferobj;
 }
 
-PyObject* putdepth( segyiofd* self, PyObject* args ) {
+PyObject* putdepth( segyfd* self, PyObject* args ) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
 
@@ -1259,7 +1259,7 @@ PyObject* putdepth( segyiofd* self, PyObject* args ) {
     return Py_BuildValue( "" );
 }
 
-PyObject* getdt( segyiofd* self, PyObject* args ) {
+PyObject* getdt( segyfd* self, PyObject* args ) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
 
@@ -1295,7 +1295,7 @@ PyObject* getdt( segyiofd* self, PyObject* args ) {
     return Error( err );
 }
 
-PyObject* rotation( segyiofd* self, PyObject* args ) {
+PyObject* rotation( segyfd* self, PyObject* args ) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
 
@@ -1368,10 +1368,10 @@ PyMethodDef methods [] = {
 
 }
 
-PyTypeObject Segyiofd = {
+PyTypeObject Segyfd = {
     PyVarObject_HEAD_INIT( NULL, 0 )
     "_segyio.segyfd",               /* name */
-    sizeof( segyiofd ),             /* basic size */
+    sizeof( segyfd ),             /* basic size */
     0,                              /* tp_itemsize */
     (destructor)fd::dealloc,        /* tp_dealloc */
     0,                              /* tp_print */
@@ -1604,27 +1604,27 @@ static struct PyModuleDef segyio_module = {
 PyMODINIT_FUNC
 PyInit__segyio(void) {
 
-    Segyiofd.tp_new = PyType_GenericNew;
-    if( PyType_Ready( &Segyiofd ) < 0 ) return NULL;
+    Segyfd.tp_new = PyType_GenericNew;
+    if( PyType_Ready( &Segyfd ) < 0 ) return NULL;
 
     PyObject* m = PyModule_Create(&segyio_module);
 
     if( !m ) return NULL;
 
-    Py_INCREF( &Segyiofd );
-    PyModule_AddObject( m, "segyiofd", (PyObject*)&Segyiofd );
+    Py_INCREF( &Segyfd );
+    PyModule_AddObject( m, "segyfd", (PyObject*)&Segyfd );
 
     return m;
 }
 #else
 PyMODINIT_FUNC
 init_segyio(void) {
-    Segyiofd.tp_new = PyType_GenericNew;
-    if( PyType_Ready( &Segyiofd ) < 0 ) return;
+    Segyfd.tp_new = PyType_GenericNew;
+    if( PyType_Ready( &Segyfd ) < 0 ) return;
 
     PyObject* m = Py_InitModule("_segyio", SegyMethods);
 
-    Py_INCREF( &Segyiofd );
-    PyModule_AddObject( m, "segyiofd", (PyObject*)&Segyiofd );
+    Py_INCREF( &Segyfd );
+    PyModule_AddObject( m, "segyfd", (PyObject*)&Segyfd );
 }
 #endif
