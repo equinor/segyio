@@ -46,8 +46,8 @@ class SegyFile(object):
         self._xline_length = None
         self._xline_stride = None
 
-        self.xfd = fd
-        metrics = self.xfd.metrics()
+        self.segyfd = fd
+        metrics = self.segyfd.metrics()
         self._fmt = metrics['format']
         self._tracecount = metrics['tracecount']
         self._ext_headers = metrics['ext_headers']
@@ -74,7 +74,7 @@ class SegyFile(object):
             self._fmt = 1
             self._dtype = np.dtype(np.float32)
 
-        self._trace = Trace(self.xfd,
+        self._trace = Trace(self.segyfd,
                             self.dtype,
                             self.tracecount,
                             metrics['samplecount'],
@@ -155,7 +155,7 @@ class SegyFile(object):
         ...     f.flush()
 
         """
-        self.xfd.flush()
+        self.segyfd.flush()
 
     def close(self):
         """Close the file
@@ -173,7 +173,7 @@ class SegyFile(object):
 
 
         """
-        self.xfd.close()
+        self.segyfd.close()
 
     def mmap(self):
         """Memory map the file
@@ -219,7 +219,7 @@ class SegyFile(object):
         1.02548
 
         """
-        return self.xfd.mmap()
+        return self.segyfd.mmap()
 
     @property
     def dtype(self):
@@ -414,7 +414,7 @@ class SegyFile(object):
         .. versionadded:: 1.1
 
         """
-        return Attributes(field, self.xfd, self.tracecount)
+        return Attributes(field, self.segyfd, self.tracecount)
 
     @property
     def trace(self):
@@ -767,7 +767,7 @@ class SegyFile(object):
         -----
         .. versionadded:: 1.1
         """
-        return Text(self.xfd, self._ext_headers + 1)
+        return Text(self.segyfd, self._ext_headers + 1)
 
     @property
     def bin(self):

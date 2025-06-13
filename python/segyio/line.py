@@ -61,13 +61,13 @@ class Line(Mapping):
         common dict operations (Mapping)
     """
 
-    def __init__(self, filehandle, labels, length, stride, offsets, name):
-        self.filehandle = filehandle.xfd
+    def __init__(self, segyfile, labels, length, stride, offsets, name):
+        self.segyfd = segyfile.segyfd
         self.lines = labels
         self.length = length
         self.stride = stride
-        self.shape = (length, len(filehandle.samples))
-        self.dtype = filehandle.dtype
+        self.shape = (length, len(segyfile.samples))
+        self.dtype = segyfile.dtype
 
         # pre-compute all line beginnings
         from ._segyio import fread_trace0
@@ -198,7 +198,7 @@ class Line(Mapping):
         # prioritise the code path that's potentially in loops externally
         if not isinstance(index, slice) and not isinstance(offset, slice):
             head = self.heads[index] + self.offsets[offset]
-            return self.filehandle.getline(head,
+            return self.segyfd.getline(head,
                                            self.length,
                                            self.stride,
                                            len(self.offsets),
@@ -220,7 +220,7 @@ class Line(Mapping):
             for line in irange:
                 for off in orange:
                     head = self.heads[line] + self.offsets[off]
-                    self.filehandle.getline(head,
+                    self.segyfd.getline(head,
                                             self.length,
                                             self.stride,
                                             len(self.offsets),
@@ -284,7 +284,7 @@ class Line(Mapping):
 
         if not isinstance(index, slice) and not isinstance(offset, slice):
             head = self.heads[index] + self.offsets[offset]
-            return self.filehandle.putline(head,
+            return self.segyfd.putline(head,
                                            self.length,
                                            self.stride,
                                            len(self.offsets),
@@ -299,7 +299,7 @@ class Line(Mapping):
         for line in irange:
             for off in orange:
                 head = self.heads[line] + self.offsets[off]
-                try: self.filehandle.putline(head,
+                try: self.segyfd.putline(head,
                                             self.length,
                                             self.stride,
                                             len(self.offsets),
@@ -357,7 +357,7 @@ class HeaderLine(Line):
     # __len__, keys() etc., however, the __getitem__ is  way different and is re-implemented
 
     def __init__(self, header, base, direction):
-        super(HeaderLine, self).__init__(header.segy,
+        super(HeaderLine, self).__init__(header.segyfile,
                                           base.lines,
                                           base.length,
                                           base.stride,

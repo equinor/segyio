@@ -37,17 +37,17 @@ class Depth(Sequence):
         depths, consider using a faster mode.
     """
 
-    def __init__(self, fd):
-        super(Depth, self).__init__(len(fd.samples))
-        self.filehandle = fd.xfd
-        self.dtype = fd.dtype
+    def __init__(self, segyfile):
+        super(Depth, self).__init__(len(segyfile.samples))
+        self.segyfd = segyfile.segyfd
+        self.dtype = segyfile.dtype
 
-        if fd.unstructured:
-            self.shape = fd.tracecount
+        if segyfile.unstructured:
+            self.shape = segyfile.tracecount
             self.offsets = 1
         else:
-            self.shape = (len(fd.fast), len(fd.slow))
-            self.offsets = len(fd.offsets)
+            self.shape = (len(segyfile.fast), len(segyfile.slow))
+            self.offsets = len(segyfile.offsets)
 
     def __getitem__(self, i):
         """depth[i]
@@ -116,7 +116,7 @@ class Depth(Sequence):
         try:
             i = self.wrapindex(i)
             buf = np.empty(self.shape, dtype=self.dtype)
-            return self.filehandle.getdepth(i, buf.size, self.offsets, buf)
+            return self.segyfd.getdepth(i, buf.size, self.offsets, buf)
 
         except TypeError:
             try:
@@ -130,7 +130,7 @@ class Depth(Sequence):
                 y = np.copy(x)
 
                 for j in range(*indices):
-                    self.filehandle.getdepth(j, x.size, self.offsets, x)
+                    self.segyfd.getdepth(j, x.size, self.offsets, x)
                     x, y = y, x
                     yield y
 
@@ -177,4 +177,4 @@ class Depth(Sequence):
             return
 
         val = castarray(val, dtype = self.dtype)
-        self.filehandle.putdepth(depth, val.size, self.offsets, val)
+        self.segyfd.putdepth(depth, val.size, self.offsets, val)

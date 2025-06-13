@@ -171,7 +171,7 @@ class Field(MutableMapping):
         'unas2' : BinField.Unassigned2,
     }
 
-    def __init__(self, buf, kind, traceno = None, filehandle = None, readonly = True):
+    def __init__(self, buf, kind, traceno = None, segyfd = None, readonly = True):
         # do setup of kind/keys first, so that keys() work. if this method
         # throws, we want repr() to be well-defined for backtrace, and that
         # requires _keys
@@ -186,7 +186,7 @@ class Field(MutableMapping):
 
         self.buf = buf
         self.traceno = traceno
-        self.filehandle = filehandle
+        self.segyfd = segyfd
         self.getfield = segyio._segyio.getfield
         self.putfield = segyio._segyio.putfield
 
@@ -238,9 +238,9 @@ class Field(MutableMapping):
         try:
             if self.kind == TraceField:
                 if traceno is None: return buf
-                return self.filehandle.getth(traceno, buf)
+                return self.segyfd.getth(traceno, buf)
             else:
-                return self.filehandle.getbin()
+                return self.segyfd.getbin()
         except IOError:
             if not self.readonly:
                 # the file was probably newly created and the trace header
@@ -308,10 +308,10 @@ class Field(MutableMapping):
         """
 
         if self.kind == TraceField:
-            self.filehandle.putth(self.traceno, self.buf)
+            self.segyfd.putth(self.traceno, self.buf)
 
         elif self.kind == BinField:
-            self.filehandle.putbin(self.buf)
+            self.segyfd.putbin(self.buf)
 
         else:
             msg = 'Object corrupted: kind {} not valid'
@@ -527,20 +527,20 @@ class Field(MutableMapping):
         self.flush()
 
     @classmethod
-    def binary(cls, segy):
+    def binary(cls, segyfile):
         buf = bytearray(segyio._segyio.binsize())
         return Field(buf, kind='binary',
-                          filehandle=segy.xfd,
-                          readonly=segy.readonly,
+                          segyfd=segyfile.segyfd,
+                          readonly=segyfile.readonly,
                     ).reload()
 
     @classmethod
-    def trace(cls, traceno, segy):
+    def trace(cls, traceno, segyfile):
         buf = bytearray(segyio._segyio.thsize())
         return Field(buf, kind='trace',
                           traceno=traceno,
-                          filehandle=segy.xfd,
-                          readonly=segy.readonly,
+                          segyfd=segyfile.segyfd,
+                          readonly=segyfile.readonly,
                     ).reload()
 
     def __repr__(self):

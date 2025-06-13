@@ -29,7 +29,7 @@ def dt(f, fallback_dt=4000.0):
     .. versionadded:: 1.1
 
     """
-    return f.xfd.getdt(fallback_dt)
+    return f.segyfd.getdt(fallback_dt)
 
 
 def sample_indexes(segyfile, t0=0.0, dt_override=None):
@@ -296,7 +296,7 @@ def rotation(f, line = 'fast'):
     origin = f.header[0][segyio.su.cdpx, segyio.su.cdpy]
     cdpx, cdpy = origin[segyio.su.cdpx], origin[segyio.su.cdpy]
 
-    rot = f.xfd.rotation( len(l),
+    rot = f.segyfd.rotation( len(l),
                           l.stride,
                           len(f.offsets),
                           np.fromiter(l.keys(), dtype = np.intc) )
