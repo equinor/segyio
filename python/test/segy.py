@@ -338,10 +338,10 @@ def test_header_dict_methods(openfn, kwargs):
         assert segyio.su.cdpx in f.header[0]
         iter(f.header[0])
 
-        assert 36 == len(f.bin.keys())
-        assert 36 == len(list(f.bin.values()))
-        assert 36 == len(list(f.bin.items()))
-        assert 36 == len(f.bin)
+        assert 45 == len(f.bin.keys())
+        assert 45 == len(list(f.bin.values()))
+        assert 45 == len(list(f.bin.items()))
+        assert 45 == len(f.bin)
         iter(f.bin)
 
 
