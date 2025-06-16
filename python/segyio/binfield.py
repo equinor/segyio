@@ -84,14 +84,23 @@ class BinField(Enum):
     ExtAuxTraces = ExtAuxTracesWrapper()  # Deprecated, use ExtAuxEnsembleTraces
     ExtAuxEnsembleTraces = 3265
     ExtSamples = 3269
+    ExtInterval = 3273
+    ExtIntervalOriginal = 3281
     ExtSamplesOriginal = 3289
     ExtEnsembleFold = 3293
+    IntConstant = 3297
     Unassigned1 = 3301
     SEGYRevision = 3501
     SEGYRevisionMinor = 3502
     TraceFlag = 3503
     ExtendedHeaders = 3505
-    Unassigned2 = 3507
+    MaxAdditionalTraceHeaders = 3507
+    SurveyType = 3509
+    TimeBasisCode = 3511
+    NrTracesInStream = 3513
+    FirstTraceOffset = 3521
+    NrTrailerRecords = 3529
+    Unassigned2 = 3533
 
 keys = {
     'JobID'                     : 3201,
@@ -124,12 +133,21 @@ keys = {
     'ExtEnsembleTraces'         : 3261,
     'ExtAuxEnsembleTraces'      : 3265,
     'ExtSamples'                : 3269,
+    'ExtInterval'               : 3273,
+    'ExtIntervalOriginal'       : 3281,
     'ExtSamplesOriginal'        : 3289,
     'ExtEnsembleFold'           : 3293,
+    'IntConstant'               : 3297,
     'Unassigned1'               : 3301,
     'SEGYRevision'              : 3501,
     'SEGYRevisionMinor'         : 3502,
     'TraceFlag'                 : 3503,
     'ExtendedHeaders'           : 3505,
-    'Unassigned2'               : 3507,
+    'MaxAdditionalTraceHeaders' : 3507,
+    'SurveyType'                : 3509,
+    'TimeBasisCode'             : 3511,
+    'NrTracesInStream'          : 3513,
+    'FirstTraceOffset'          : 3521,
+    'NrTrailerRecords'          : 3529,
+    'Unassigned2'               : 3533,
 }
