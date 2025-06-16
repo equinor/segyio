@@ -86,7 +86,7 @@ class BinField(Enum):
     ExtSamples = 3269
     ExtSamplesOriginal = 3289
     ExtEnsembleFold = 3293
-    Unassigned1 = 3261
+    Unassigned1 = 3301
     SEGYRevision = 3501
     SEGYRevisionMinor = 3502
     TraceFlag = 3503
