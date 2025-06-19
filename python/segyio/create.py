@@ -3,7 +3,7 @@ import numpy
 import segyio
 
 from . import TraceSortingFormat
-from .utils import c_endianness
+from .utils import FileDatasourceDescriptor
 
 def default_text_header(iline, xline, offset):
     lines = {
@@ -178,9 +178,10 @@ def create(filename, spec):
     ...         dst.header = src.header
     ...         dst.trace = src.trace
     """
+    return _create(FileDatasourceDescriptor(filename, "w+"), spec)
 
-    from . import _segyio
 
+def _create(datasource_descriptor, spec):
     if not structured(spec):
         tracecount = spec.tracecount
     else:
@@ -193,9 +194,7 @@ def create(filename, spec):
     if endian is None:
         endian = 'big'
 
-    fd = _segyio.segyfd(
-        filename=str(filename), mode='w+', endianness=c_endianness(endian)
-    )
+    fd = datasource_descriptor.make_segyfile_descriptor(endian)
     fd.segymake(
         samples = len(samples),
         tracecount = tracecount,
@@ -204,8 +203,7 @@ def create(filename, spec):
     )
 
     f = segyio.SegyFile(fd,
-            filename = str(filename),
-            mode = 'w+',
+            datasource_descriptor,
             iline = int(spec.iline),
             xline = int(spec.xline),
             endian = endian,

@@ -41,3 +41,27 @@ def c_endianness(endian):
         raise ValueError(problem.format(endian) + opts)
 
     return endians[endian]
+
+
+class FileDatasourceDescriptor():
+    def __init__(self, filename, mode):
+        self.filename = filename
+        self.mode = mode
+
+    def __repr__(self):
+        return "'{}', '{}'".format(self.filename, self.mode)
+
+    def __str__(self):
+        return "{}".format(self.filename)
+
+    def readonly(self):
+        return self.mode == 'rb' or self.mode == 'r'
+
+    def make_segyfile_descriptor(self, endian):
+        from . import _segyio
+        fd = _segyio.segyfd(
+            filename=str(self.filename),
+            mode=self.mode,
+            endianness=c_endianness(endian)
+        )
+        return fd
