@@ -418,39 +418,81 @@ namespace fd {
 int init( segyfd* self, PyObject* args, PyObject* kwargs ) {
     char* filename = NULL;
     char* mode = NULL;
-    int endian = 0;
+    PyObject* stream = NULL;
+    int endianness = -1;
+    int minimize_requests_number = -1;
 
-    if( !PyArg_ParseTuple( args, "ssi", &filename, &mode, &endian ) )
-        return -1;
+    static const char* keywords[] = {
+        "filename",
+        "mode",
+        "stream",
+        "endianness",
+        "minimize_requests_number",
+        NULL
+    };
 
-    if( std::strlen( mode ) == 0 ) {
-        ValueError( "mode string must be non-empty" );
+    if( !PyArg_ParseTupleAndKeywords(
+            args, kwargs, "|ssOip",
+            const_cast<char**>( keywords ),
+            &filename,
+            &mode,
+            &stream,
+            &endianness,
+            &minimize_requests_number
+        ) ) {
+        ValueError( "could not parse arguments" );
         return -1;
     }
 
-    if( std::strlen( mode ) > 3 ) {
-        ValueError( "invalid mode string '%s', good strings are %s",
-                     mode, "'r' (read-only) and 'r+' (read-write)" );
+    if( endianness != SEGY_MSB && endianness != SEGY_LSB ) {
+        ValueError( "endianness must be set to a valid value" );
         return -1;
     }
 
     autods ds;
-    ds.ds = segy_open( filename, mode );
+    if( stream ) {
+        if( minimize_requests_number < 0 ) {
+            ValueError( "minimize requests number is not set" );
+            return -1;
+        }
+        ds.ds = ds::create_py_stream_datasource(
+            stream, minimize_requests_number
+        );
+    } else if( filename && mode ) {
+        if( std::strlen( mode ) == 0 ) {
+            ValueError( "mode string must be non-empty" );
+            return -1;
+        }
 
-    if( !ds && !strstr( "rb" "wb" "ab" "r+b" "w+b" "a+b", mode ) ) {
-        ValueError( "invalid mode string '%s', good strings are %s",
-                mode, "'r' (read-only) and 'r+' (read-write)" );
+        if( std::strlen( mode ) > 3 ) {
+            ValueError( "invalid mode string '%s', good strings are %s",
+                            mode, "'r' (read-only) and 'r+' (read-write)" );
+            return -1;
+        }
+
+        segy_datasource* file = segy_open( filename, mode );
+        if( !file && !strstr( "rb" "wb" "ab" "r+b" "w+b" "a+b", mode ) ) {
+            ValueError( "invalid mode string '%s', good strings are %s",
+                    mode, "'r' (read-only) and 'r+' (read-write)" );
+            return -1;
+        }
+
+        if( !file ) {
+            IOErrno();
+        }
+        ds.ds = file;
+    } else {
+        ValueError( "unknown input configuration" );
         return -1;
     }
 
     if( !ds ) {
-        IOErrno();
         return -1;
     }
 
-    int err = segy_set_endianness( ds, endian );
+    const int err = segy_set_endianness( ds, endianness );
     if( err ) {
-        ValueError( "internal: error setting endianness, was %d", endian );
+        ValueError( "internal: error setting endianness, was %d", endianness );
         return -1;
     }
 
