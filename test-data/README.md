@@ -25,6 +25,7 @@ Due to changes in the scripts after the files were originally created, reproduci
 | small.sgy                      | Inline-sorted file with 50 samples, 5 inlines-xlines test file.             | make-file.py small.sgy 50 1 6 20 25                   | Basic file used in testing                 |
 | text-embed-null.sgy            | small.sgy but with one byte in text header exchanged with 00                |                                                       |                                            |
 | text.sgy                       | File with unique textual file header.                                       |                                                       | no traces                                  |
+| tiny.sgy                       | Inline-sorted file with 4 samples, 3 inlines, 2 xlines.                     | make-file.py small.sgy 4 1 4 20 22                    |                                            |
 | 小文件.sgy                      | small.sgy but with utf-8 characters in the filename                         | rename small.sgy                                      | bug test for Windows OS                    |
 
 
