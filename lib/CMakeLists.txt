@@ -72,6 +72,8 @@ if (NOT BUILD_TESTING)
     return ()
 endif ()
 
+configure_file(${testdata}/decrement.sgy                      test-data/decrement.sgy                        COPYONLY)
+configure_file(${testdata}/increment.sgy                      test-data/increment.sgy                        COPYONLY)
 configure_file(${testdata}/small.sgy                          test-data/small.sgy                            COPYONLY)
 configure_file(${testdata}/long.sgy                           test-data/long.sgy                             COPYONLY)
 configure_file(${testdata}/small-ps-dec-il-xl-off.sgy         test-data/small-ps-dec-il-xl-off.sgy           COPYONLY)
