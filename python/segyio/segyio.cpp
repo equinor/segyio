@@ -1435,50 +1435,103 @@ PyObject* getfield( PyObject*, PyObject *args ) {
         buffer.len() != SEGY_TRACE_HEADER_SIZE )
         return BufferError( "buffer too small" );
 
-    int value = 0;
-    int err = buffer.len() == segy_binheader_size()
-            ? segy_get_field_int( buffer.buf< const char >(), field, &value )
-            : segy_get_field_int(  buffer.buf< const char >(), field, &value )
-            ;
+    segy_field_data fd = segy_get_field( buffer.buf< const char >(), field );
+    if( fd.error != SEGY_OK )
+        return KeyError( "Got error code %d when requesting field %d", fd.error, field );
 
-    /*
-     * Some fields be negative, and SEG-Y rev2 considers them unsigned. When
-     * reading them, widen to unsigned.
-     */
-    switch (field) {
-        case SEGY_TR_SAMPLE_COUNT:
-        case SEGY_BIN_SAMPLES:
-        case SEGY_BIN_SAMPLES_ORIG:
-            value = int(std::uint16_t(value));
-            break;
-    }
+    switch ( fd.datatype ) {
 
-    switch( err ) {
-        case SEGY_OK:            return PyLong_FromLong( value );
-        case SEGY_INVALID_FIELD: return KeyError( "No such field %d", field );
-        default:                 return Error( err );
+        case SEGY_SIGNED_INTEGER_8_BYTE:
+            return PyLong_FromLongLong( fd.value.i64 );
+        case SEGY_SIGNED_INTEGER_4_BYTE:
+            return PyLong_FromLong( fd.value.i32 );
+        case SEGY_SIGNED_SHORT_2_BYTE:
+            return PyLong_FromLong( fd.value.i16 );
+        case SEGY_SIGNED_CHAR_1_BYTE:
+            return PyLong_FromLong( fd.value.i8 );
+
+        case SEGY_UNSIGNED_INTEGER_8_BYTE:
+            return PyLong_FromUnsignedLongLong( fd.value.u64 );
+        case SEGY_UNSIGNED_INTEGER_4_BYTE:
+            return PyLong_FromUnsignedLong( fd.value.u32 );
+        case SEGY_UNSIGNED_SHORT_2_BYTE:
+            return PyLong_FromUnsignedLong( fd.value.u16 );
+        case SEGY_UNSIGNED_CHAR_1_BYTE:
+            return PyLong_FromUnsignedLong( fd.value.u8 );
+
+        case SEGY_IEEE_FLOAT_8_BYTE:
+            return PyFloat_FromDouble( fd.value.f64 );
+
+        default:
+            return KeyError( "Unhandled datatype %d for field %d", fd.datatype, field );
     }
 }
 
 PyObject* putfield( PyObject*, PyObject *args ) {
 
+    PyObject *buffer_arg = PyTuple_GetItem(args, 0);
+    PyObject *field_arg = PyTuple_GetItem(args, 1);
+    PyObject *value_arg = PyTuple_GetItem(args, 2);
+
     buffer_guard buffer;
-    int field;
-    int value;
-    if( !PyArg_ParseTuple( args, "w*ii", &buffer, &field, &value ) )
+    if( !PyArg_Parse(buffer_arg, "w*", &buffer) )
         return NULL;
 
     if( buffer.len() != SEGY_BINARY_HEADER_SIZE &&
         buffer.len() != SEGY_TRACE_HEADER_SIZE )
         return BufferError( "buffer too small" );
 
-    int err = buffer.len() == segy_binheader_size()
-            ? segy_set_field_int( buffer.buf< char >(), field, value )
-            : segy_set_field_int( buffer.buf< char >(), field, value )
-            ;
+    int field = (int)PyLong_AsLong(field_arg);
+
+    segy_field_data fd;
+    int err = segy_init_field_data(field, &fd);
+
+    if( err != SEGY_OK )
+        return KeyError( "Failed to initialize field %d got error %d", field, err );
+
+    switch ( fd.datatype ) {
+        case SEGY_UNSIGNED_INTEGER_8_BYTE:
+            fd.value.u64 = PyLong_AsUnsignedLongLong(value_arg);
+            break;
+        case SEGY_UNSIGNED_INTEGER_4_BYTE:
+            fd.value.u32 = PyLong_AsUnsignedLong(value_arg);
+            break;
+        case SEGY_UNSIGNED_SHORT_2_BYTE:
+            fd.value.u16 = PyLong_AsUnsignedLong(value_arg);
+            break;
+        case SEGY_UNSIGNED_CHAR_1_BYTE:
+            fd.value.u8 = PyLong_AsUnsignedLong(value_arg);
+            break;
+
+        case SEGY_SIGNED_INTEGER_8_BYTE:
+            fd.value.i64 = PyLong_AsLongLong(value_arg);
+            break;
+        case SEGY_SIGNED_INTEGER_4_BYTE:
+            fd.value.i32 = PyLong_AsLong(value_arg);
+            break;
+        case SEGY_SIGNED_SHORT_2_BYTE:
+            fd.value.i16 = PyLong_AsLong(value_arg);
+            break;
+        case SEGY_SIGNED_CHAR_1_BYTE:
+            fd.value.i8 = PyLong_AsLong(value_arg);
+            break;
+
+        case SEGY_IEEE_FLOAT_8_BYTE:
+            fd.value.f64 = PyFloat_AsDouble(value_arg);
+            break;
+        case SEGY_IEEE_FLOAT_4_BYTE:
+            fd.value.f32 = PyFloat_AsDouble(value_arg);
+            break;
+
+        default:
+            return KeyError( "Field %d has unknown datatype %d", field, fd.datatype );
+    }
+
+    err = segy_set_field( buffer.buf< char >(), &fd );
 
     switch( err ) {
-        case SEGY_OK:            return PyLong_FromLong( value );
+        case SEGY_OK:
+            return Py_BuildValue("");
         case SEGY_INVALID_FIELD: return KeyError( "No such field %d", field );
         default:                 return Error( err );
     }

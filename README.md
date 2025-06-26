@@ -432,7 +432,7 @@ with segyio.open(filename) as segyfile:
 
     # Print binary header info
     print(segyfile.bin)
-    print(segyfile.bin[segyio.BinField.Traces])
+    print(segyfile.bin[segyio.BinField.EnsembleTraces])
 
     # Read headerword inline for trace 10
     print(segyfile.header[10][segyio.TraceField.INLINE_3D])
