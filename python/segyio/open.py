@@ -6,7 +6,7 @@ from .utils import c_endianness
 
 def infer_geometry(f, metrics, iline, xline, strict):
     try:
-        cube_metrics = f.xfd.cube_metrics(iline, xline)
+        cube_metrics = f.segyfd.cube_metrics(iline, xline)
         f._sorting   = cube_metrics['sorting']
         iline_count  = cube_metrics['iline_count']
         xline_count  = cube_metrics['xline_count']
@@ -17,7 +17,7 @@ def infer_geometry(f, metrics, iline, xline, strict):
         xlines  = numpy.zeros(xline_count,  dtype=numpy.intc)
         offsets = numpy.zeros(offset_count, dtype=numpy.intc)
 
-        f.xfd.indices(metrics, ilines, xlines, offsets)
+        f.segyfd.indices(metrics, ilines, xlines, offsets)
         f.interpret(ilines, xlines, offsets, f._sorting)
 
     except:
@@ -149,7 +149,7 @@ def open(filename, mode="r", iline = 189,
         raise ValueError(', '.join((problem, solution)))
 
     from . import _segyio
-    fd = _segyio.segyiofd(str(filename), mode, c_endianness(endian))
+    fd = _segyio.segyfd(str(filename), mode, c_endianness(endian))
     fd.segyopen()
     metrics = fd.metrics()
 

@@ -194,7 +194,7 @@ def create(filename, spec):
         endian = 'big'
 
 
-    fd = _segyio.segyiofd(str(filename), 'w+', c_endianness(endian))
+    fd = _segyio.segyfd(str(filename), 'w+', c_endianness(endian))
     fd.segymake(
         samples = len(samples),
         tracecount = tracecount,
