@@ -1468,8 +1468,8 @@ SCENARIO( "reading text header", "[c.segy]" ) {
 "C 9 3: INLINE 2500, CROSSLINE 1428, UTM-X 10021847.00, UTM-Y 9962849.00         "
 "C10 4: INLINE 2500, CROSSLINE 1440, UTM-X 10029348.00, UTM-Y 9975839.00         "
 "C11 TRACE HEADER POSITION:                                                      "
-"C12   INLINE BYTES 005-008    | OFFSET BYTES 037-040                            "
-"C13   CROSSLINE BYTES 021-024 | CMP UTM-X BYTES 181-184                         "
+"C12   INLINE BYTES 005-008    ""\xA6"" OFFSET BYTES 037-040                            "
+"C13   CROSSLINE BYTES 021-024 ""\xA6"" CMP UTM-X BYTES 181-184                         "
 "C14   CMP UTM-Y BYTES 185-188                                                   "
 "C15 END EBCDIC HEADER                                                           "
 "C16                                                                             "
@@ -1496,7 +1496,7 @@ SCENARIO( "reading text header", "[c.segy]" ) {
 "C37                                                                             "
 "C38                                                                             "
 "C39                                                                             "
-"C40                                                                            \x80";
+"C40                                                                            ""\x80";
 
         const char* file = "test-data/text.sgy";
 

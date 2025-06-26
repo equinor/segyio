@@ -64,13 +64,13 @@ def test_read_text_header(mmap=False):
         2: "AN INCREASE IN AMPLITUDE EQUALS AN INCREASE IN ACOUSTIC IMPEDANCE",
         3: "Written by libsegyio (python)",
         11: "TRACE HEADER POSITION:",
-        12: "  INLINE BYTES 189-193    | OFFSET BYTES 037-041",
-        13: "  CROSSLINE BYTES 193-197 |",
+        12: "  INLINE BYTES 189-193    ¦ OFFSET BYTES 037-041",
+        13: "  CROSSLINE BYTES 193-197 ¦",
         15: "END EBCDIC HEADER"
     }
 
     rows = segyio.create_text_header(lines)
-    rows = bytearray(rows, 'ascii')  # mutable array of bytes
+    rows = bytearray(rows, 'latin-1')  # mutable array of bytes
     rows[-1] = 128  # \x80
     actual_text_header = bytes(rows)
 
