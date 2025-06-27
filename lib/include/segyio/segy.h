@@ -139,6 +139,8 @@ typedef struct {
 
 segy_file* segy_open( const char* path, const char* mode );
 int segy_mmap( segy_datasource* );
+segy_datasource* segy_memopen( unsigned char* addr, size_t size );
+
 int segy_flush( segy_datasource* );
 int segy_close( segy_datasource* );
 
@@ -774,6 +776,8 @@ typedef enum {
     SEGY_READONLY,
     SEGY_NOTFOUND,
     SEGY_MEMORY_ERROR,
+    SEGY_DS_FLUSH_ERROR,
+    SEGY_DS_CLOSE_ERROR,
     // values are duplicated until enum is properly cleaned
     SEGY_DS_READ_ERROR = SEGY_FREAD_ERROR,
     SEGY_DS_WRITE_ERROR = SEGY_FWRITE_ERROR,

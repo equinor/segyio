@@ -149,7 +149,9 @@ def open(filename, mode="r", iline = 189,
         raise ValueError(', '.join((problem, solution)))
 
     from . import _segyio
-    fd = _segyio.segyfd(str(filename), mode, c_endianness(endian))
+    fd = _segyio.segyfd(
+        filename=str(filename), mode=mode, endianness=c_endianness(endian)
+    )
     fd.segyopen()
     metrics = fd.metrics()
 
