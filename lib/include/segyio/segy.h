@@ -139,6 +139,8 @@ typedef struct {
 
 segy_file* segy_open( const char* path, const char* mode );
 int segy_mmap( segy_datasource* );
+segy_datasource* segy_memopen( unsigned char* addr, size_t size );
+
 int segy_flush( segy_datasource* );
 int segy_close( segy_datasource* );
 
