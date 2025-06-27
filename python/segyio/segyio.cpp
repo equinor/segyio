@@ -391,7 +391,7 @@ struct autods {
 autods::operator segy_datasource*() const {
     if( this->ds ) return this->ds;
 
-    IOError( "I/O operation on closed datasource" );
+    ValueError( "I/O operation on closed datasource" );
     return NULL;
 }
 
