@@ -1510,6 +1510,61 @@ SCENARIO( "reading text header", "[c.segy]" ) {
         CHECK( ascii == expected );
 }
 
+
+SCENARIO( "writing text header", "[c.segy]" ) {
+    std::string name = std::string( "write-text-header.sgy" );
+    copyfile( "test-data/small.sgy", name );
+    segy_file* fp = openfile( name, "r+b" );
+
+    const int size = 40;
+
+    const std::string exchanged_line =
+"C 1 Updated line: ""\xA2\xA6\xAC""      ""\xFF\x9F\xB5\xBB""    ![]^|";
+
+    // workaround: std::string seems to treat direct x00 as end of string and
+    // refuses to create further part of it. So xCC is never exepcted to appear
+    // in the final string and is used as a substitute for x00.
+    const std::string expected_line =
+"C 1 Updated line: ""\xA2\xA6\xAC""      ""\xCC\x9F\xCC\xCC""    !""\xCC\xCC\xCC""|";
+
+    REQUIRE( exchanged_line.size() == size );
+    REQUIRE( expected_line.size() == size );
+
+    char baseheader[SEGY_TEXT_HEADER_SIZE] = {};
+    Err err = segy_read_textheader( fp, baseheader );
+    CHECK( err == Err::ok() );
+
+    memcpy( baseheader, exchanged_line.data(), size );
+    err = segy_write_textheader( fp, 0, baseheader );
+    CHECK( err == Err::ok() );
+
+    char header[SEGY_TEXT_HEADER_SIZE] = {};
+    err = segy_read_textheader( fp, header );
+    CHECK( err == Err::ok() );
+
+    for( int i = 0; i < SEGY_TEXT_HEADER_SIZE; ++i ) {
+        if( i < size ) {
+            int actual = static_cast<int>( static_cast<unsigned char>( header[i] ) );
+            int expected = static_cast<int>( static_cast<unsigned char>( expected_line[i] ) );
+
+            INFO( "i = " << i
+                << ", header[i] = 0x" << std::hex << actual
+                << ", expected[i] = 0x" << std::hex << expected
+            );
+            if( expected == 0xCC ) {
+                // workarond for 0x00 being treated differently
+                CHECK( header[i] == 0x00 );
+            } else {
+                CHECK( header[i] == expected_line[i] );
+            }
+        } else {
+            CHECK( header[i] == baseheader[i] );
+        }
+    }
+
+    segy_close( fp );
+}
+
 TEST_CASE("open file with >32k traces", "[c.segy]") {
     const char* file = "test-data/long.sgy";
     unique_segy ufp(segy_open(file, "rb"));
