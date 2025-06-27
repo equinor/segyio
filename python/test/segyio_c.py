@@ -46,7 +46,7 @@ def test_open_flush_and_close_file():
     f.flush()
     f.close()
 
-    with pytest.raises(IOError):
+    with pytest.raises(ValueError):
         f.flush()
 
 
