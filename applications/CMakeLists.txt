@@ -130,6 +130,8 @@ add_custom_command(
     COMMAND segyio-catb ${long} > catb-long.out
     COMMAND segyio-catr -r 4 9 -t 12 ${small} > catr.out
     COMMAND segyio-catr -t 1 ${small} -n -d > catrnd.out
+    COMMAND segyio-catr -t 2 ${increment} > catr-inc.out
+    COMMAND segyio-catr -t 2 ${decrement} > catr-dec.out
 )
 add_custom_command(
     OUTPUT crop-ns.out crop-ns.sgy
@@ -164,6 +166,14 @@ add_test(NAME cath.output
 )
 add_test(NAME catr.output
          COMMAND ${CMAKE_COMMAND} -E compare_files ${test}/catr.output catr.out
+)
+add_test(NAME catr-inc.output
+         COMMAND ${CMAKE_COMMAND} -E compare_files ${test}/catr-inc.output
+                                                   catr-inc.out
+)
+add_test(NAME catr-dec.output
+         COMMAND ${CMAKE_COMMAND} -E compare_files ${test}/catr-dec.output
+                                                   catr-dec.out
 )
 add_test(NAME catr.output.nd
          COMMAND ${CMAKE_COMMAND} -E compare_files ${test}/catrnd.output
