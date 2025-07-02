@@ -953,6 +953,108 @@ def test_write_header_update_atomic(small):
         assert header == f.header[10]
 
 
+def test_field_types_read():
+    with segyio.open(testdata / 'decrement.sgy', "r", ignore_geometry=True) as f:
+        bdec = f.bin
+        tdec = f.header[3]
+
+        assert bdec[BinField.JobID] == 2147483647
+        assert bdec[BinField.SamplesOriginal] == 65526
+        assert bdec[BinField.VerticalSum] == 32755
+        assert bdec[BinField.ExtIntervalOriginal] == 1125899906842593.0
+        assert bdec[BinField.SEGYRevisionMinor] == 217
+        assert bdec[BinField.NrTracesInStream] == 18446744073709551572
+
+        assert tdec[TraceField.DelayRecordingTime] == 32627
+        assert tdec[TraceField.TRACE_SAMPLE_COUNT] == 65382
+        assert tdec[TraceField.INLINE_3D] == 2147483355
+
+    with segyio.open(testdata / 'increment.sgy', "r", ignore_geometry=True) as f:
+        binc = f.bin
+        tinc = f.header[3]
+
+        assert binc[BinField.JobID] == -2147483648
+        assert binc[BinField.SamplesOriginal] == 8
+        assert binc[BinField.VerticalSum] == -32756
+        assert binc[BinField.ExtIntervalOriginal] == -1125899906842593.0
+        assert binc[BinField.SEGYRevisionMinor] == 37
+        assert binc[BinField.NrTracesInStream] == 43
+
+        assert tinc[TraceField.DelayRecordingTime] == -32628
+        assert tinc[TraceField.TRACE_SAMPLE_COUNT] == 152
+        assert tinc[TraceField.INLINE_3D] == -2147483356
+
+
+@tmpfiles(testdata / 'small.sgy')
+def test_field_types_write(tmpdir):
+    updpath = tmpdir / 'small.sgy'
+
+    with segyio.open(updpath, ignore_geometry=True) as f:
+        orig_binh = f.bin
+        orig_trh = f.header[0]
+
+    bupd = {
+        BinField.JobID: 2147483647,
+        BinField.SamplesOriginal: 65535,
+        BinField.VerticalSum: -32768,
+        BinField.ExtIntervalOriginal: 10.125,
+        BinField.SEGYRevisionMinor: 255,
+        BinField.NrTracesInStream: 18446744073709551615,
+    }
+
+    tupd = {
+        TraceField.DelayRecordingTime: 32767,
+        TraceField.TRACE_SAMPLE_COUNT: 65535,
+        TraceField.INLINE_3D: -2147483648,
+    }
+
+    with segyio.open(updpath, mode='r+', ignore_geometry=True) as f:
+        f.bin.update(bupd)
+        f.header[0].update(tupd)
+        f.flush()
+
+    with segyio.open(updpath, ignore_geometry=True) as f:
+        binh = f.bin
+        trh = f.header[0]
+
+        assert orig_binh != binh
+        assert orig_trh != trh
+
+        for k, v in bupd.items():
+            assert binh[k] == v
+
+        for k, v in tupd.items():
+            assert trh[k] == v
+
+
+@tmpfiles(testdata / 'small.sgy')
+def test_field_types_bad_write(tmpdir):
+    updpath = tmpdir / 'small.sgy'
+
+    with segyio.open(updpath, ignore_geometry=True) as f:
+        binh = f.bin
+
+    with segyio.open(updpath, mode='r+', ignore_geometry=True) as f:
+        bad = {
+            BinField.JobID: [18446744073709551616, 2147483648],
+            BinField.SamplesOriginal: [65536, -1],
+            BinField.VerticalSum: [-32769],
+            BinField.ExtIntervalOriginal: ["wrong"],
+            BinField.SEGYRevisionMinor: [256, -127],
+            BinField.NrTracesInStream: [18446744073709551616],
+        }
+
+        for k, vlist in bad.items():
+            for v in vlist:
+                with pytest.raises(ValueError, match="out of range"):
+                    f.bin[k] = v
+
+        f.flush()
+
+    with segyio.open(updpath, ignore_geometry=True) as f:
+        assert binh == f.bin
+
+
 def test_fopen_error():
     # non-existent file
     with pytest.raises(IOError):
