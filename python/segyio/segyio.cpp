@@ -369,7 +369,7 @@ struct buffer_guard {
 };
 
 struct autods {
-    autods() : ds( nullptr ) {}
+    autods() : ds( nullptr ), memory_ds_buffer() {}
 
     ~autods() {
         this->close();
@@ -381,6 +381,10 @@ struct autods {
     int close();
 
     segy_datasource* ds;
+    // only for memory datasource. Field is not directly used (it's .buf member
+    // is), it's only purpose is to stay alive so that .buf is available for the
+    // whole lifetime of segyfd.
+    Py_buffer memory_ds_buffer;
 };
 
 autods::operator segy_datasource*() const {
@@ -392,13 +396,21 @@ autods::operator segy_datasource*() const {
 
 autods::operator bool() const { return this->ds; }
 
-void autods::swap( autods& other ) { std::swap( this->ds, other.ds ); }
+void autods::swap( autods& other ) {
+    std::swap( this->ds, other.ds );
+    std::swap( this->memory_ds_buffer, other.memory_ds_buffer );
+}
+
 int autods::close() {
     int err = SEGY_OK;
     if( this->ds ) {
         err = segy_close( this->ds );
     }
     this->ds = NULL;
+    if ( this->memory_ds_buffer.buf ) {
+        PyBuffer_Release( &this->memory_ds_buffer );
+        this->memory_ds_buffer = Py_buffer();
+    }
     return err;
 }
 
@@ -419,6 +431,7 @@ int init( segyfd* self, PyObject* args, PyObject* kwargs ) {
     char* filename = NULL;
     char* mode = NULL;
     PyObject* stream = NULL;
+    PyObject* memory_buffer = NULL;
     int endianness = -1;
     int minimize_requests_number = -1;
 
@@ -426,17 +439,19 @@ int init( segyfd* self, PyObject* args, PyObject* kwargs ) {
         "filename",
         "mode",
         "stream",
+        "memory_buffer",
         "endianness",
         "minimize_requests_number",
         NULL
     };
 
     if( !PyArg_ParseTupleAndKeywords(
-            args, kwargs, "|ssOip",
+            args, kwargs, "|ssOOip",
             const_cast<char**>( keywords ),
             &filename,
             &mode,
             &stream,
+            &memory_buffer,
             &endianness,
             &minimize_requests_number
         ) ) {
@@ -457,6 +472,17 @@ int init( segyfd* self, PyObject* args, PyObject* kwargs ) {
         }
         ds.ds = ds::create_py_stream_datasource(
             stream, minimize_requests_number
+        );
+    } else if( memory_buffer ) {
+        auto flags = PyBUF_CONTIG | PyBUF_WRITABLE;
+        const int err = PyObject_GetBuffer( memory_buffer, &ds.memory_ds_buffer, flags );
+        if( err ) {
+            ValueError( "Could not export buffer of requested type" );
+            return -1;
+        }
+        ds.ds = segy_memopen(
+            static_cast<unsigned char*>( ds.memory_ds_buffer.buf ),
+            ds.memory_ds_buffer.len
         );
     } else if( filename && mode ) {
         if( std::strlen( mode ) == 0 ) {
