@@ -565,6 +565,11 @@ static int mmapflush( segy_datasource* self ) {
     return SEGY_OK;
 }
 
+static int memflush( segy_datasource* self ) {
+    (void)self; // mark parameter as unused
+    return SEGY_OK;
+}
+
 static int mmapclose( segy_datasource* self ) {
 #ifdef HAVE_MMAP
     int err = mmapflush( self );
@@ -575,6 +580,12 @@ static int mmapclose( segy_datasource* self ) {
     free( mp );
     if ( err != 0 ) return SEGY_MMAP_ERROR;
 #endif // HAVE_MMAP
+    return SEGY_OK;
+}
+
+static int memclose( segy_datasource* self ) {
+    memfile* mp = (memfile*)self->stream;
+    free( mp );
     return SEGY_OK;
 }
 
@@ -676,6 +687,47 @@ segy_file* segy_open( const char* path, const char* mode ) {
     return ds;
 }
 
+segy_datasource* segy_memopen( unsigned char* addr, size_t size ) {
+    if( !addr || !size ) return NULL;
+
+    /* as we don't support operations that change file size on update, no memory
+     * resize would be needed
+     */
+    memfile* mp = malloc( sizeof( memfile ) );
+    if( !mp ) {
+        return NULL;
+    }
+    mp->addr = addr;
+    mp->cur = addr;
+    mp->size = size;
+
+    segy_datasource* ds = malloc( sizeof( segy_datasource ) );
+    if( !ds ) {
+        free( mp );
+        return NULL;
+    }
+    ds->stream = mp;
+
+    ds->read = memread;
+    ds->write = memwrite;
+    ds->seek = memseek;
+    ds->tell = memtell;
+    ds->size = memsize;
+    ds->flush = memflush;
+    ds->close = memclose;
+
+    ds->writable = true;
+
+    // on init assume a size of 4-bytes-per-element and big-endian
+    ds->elemsize = 4;
+    ds->lsb = false;
+
+    ds->minimize_requests_number = false;
+    ds->memory_speedup = true;
+
+    return ds;
+}
+
 int segy_mmap( segy_datasource* ds ) {
 #ifndef HAVE_MMAP
     return SEGY_MMAP_INVALID;
@@ -735,7 +787,7 @@ int segy_flush( segy_datasource* ds ) {
     if( !ds->writable ) return SEGY_OK;
 
     int flusherr = ds->flush( ds );
-    if( flusherr != 0 ) return SEGY_DS_ERROR;
+    if( flusherr != 0 ) return SEGY_DS_FLUSH_ERROR;
 
     return SEGY_OK;
 }
@@ -759,7 +811,7 @@ int segy_close( segy_datasource* ds ) {
 
     err = ds->close(ds);
     free( ds );
-    if( err != 0 ) return SEGY_DS_ERROR;
+    if( err != 0 ) return SEGY_DS_CLOSE_ERROR;
     return SEGY_OK;
 }
 

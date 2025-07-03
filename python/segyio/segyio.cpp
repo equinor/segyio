@@ -146,44 +146,183 @@ PyObject* Error( int err ) {
                                                "likely corrupted file" );
         case SEGY_READONLY:    return IOError( "file not open for writing. "
                                                "open with 'r+'" );
+        case SEGY_DS_FLUSH_ERROR:
+                               return IOError( "Datasource flush failed" );
+        case SEGY_DS_CLOSE_ERROR:
+                               return IOError( "Datasource close failed" );
         default:               return RuntimeError( err );
     }
 }
 
-struct autods {
-    operator segy_datasource*() const;
-    operator bool() const;
-    void swap( autods& other );
-    void close();
 
-    segy_datasource* ds;
-};
+namespace ds {
 
-autods::operator segy_datasource*() const {
-    if( this->ds ) return this->ds;
+int py_read( segy_datasource* self, void* buffer, size_t size ) {
+    int err = SEGY_DS_READ_ERROR;
+    PyObject* stream = (PyObject*)self->stream;
 
-    IOError( "I/O operation on closed datasource" );
-    return NULL;
+    PyObject* result = PyObject_CallMethod( stream, "read", "n", size );
+    if( !result ) {
+        if (PyErr_Occurred()) {
+            PyErr_Print();
+        }
+        return err;
+    }
+    const char* data = PyBytes_AsString( result );
+    if( data ) {
+        Py_ssize_t result_size = PyBytes_Size( result );
+        if( static_cast<size_t>( result_size ) == size ) {
+            memcpy( buffer, data, size );
+            err = SEGY_OK;
+        }
+    }
+
+    Py_DECREF( result );
+    return err;
 }
 
-autods::operator bool() const { return this->ds; }
+int py_write( segy_datasource* self, const void* buffer, size_t size ) {
+    int err = SEGY_DS_WRITE_ERROR;
+    PyObject* stream = (PyObject*)self->stream;
 
-void autods::swap( autods& other ) { std::swap( this->ds, other.ds ); }
-void autods::close() {
-    if( this->ds ) segy_close( this->ds );
-    this->ds = NULL;
+    PyObject* result = PyObject_CallMethod( stream, "write", "y#", buffer, size );
+    if( !result ) {
+        if (PyErr_Occurred()) {
+            PyErr_Print();
+        }
+        return err;
+    }
+
+    Py_ssize_t result_size = PyLong_AsSsize_t( result );
+    if( static_cast<size_t>( result_size ) == size ) {
+        err = SEGY_OK;
+    }
+    Py_DECREF( result );
+    return err;
 }
 
-struct segyfd {
-    PyObject_HEAD
-    autods ds;
-    long trace0;
-    int trace_bsize;
-    int tracecount;
-    int samplecount;
-    int format;
-    int elemsize;
-};
+int py_seek( segy_datasource* self, long long offset, int whence ) {
+    PyObject* stream = (PyObject*)self->stream;
+    PyObject* result = PyObject_CallMethod( stream, "seek", "Li", offset, whence );
+    if( !result ) {
+        if (PyErr_Occurred()) {
+            PyErr_Print();
+        }
+        return SEGY_DS_SEEK_ERROR;
+    }
+    Py_DECREF( result );
+    return SEGY_OK;
+}
+
+int py_tell( segy_datasource* self, long long* pos ) {
+    PyObject* stream = (PyObject*)self->stream;
+    PyObject* result = PyObject_CallMethod( stream, "tell", NULL );
+    if( !result ) {
+        if (PyErr_Occurred()) {
+            PyErr_Print();
+        }
+        return SEGY_DS_ERROR;
+    }
+    *pos = PyLong_AsLongLong( result );
+    Py_DECREF( result );
+    return SEGY_OK;
+}
+
+int py_size( segy_datasource* self, long long* out ) {
+    long long original_tell;
+    int err = py_tell( self, &original_tell );
+    if( err != SEGY_OK ) return err;
+
+    err = py_seek( self, 0, SEEK_END );
+    if( err != SEGY_OK ) return err;
+
+    err = py_tell( self, out );
+    if( err != SEGY_OK ) return err;
+
+    err = py_seek( self, original_tell, SEEK_SET );
+    if( err != SEGY_OK ) return err;
+    return SEGY_OK;
+}
+
+int py_flush( segy_datasource* self ) {
+    PyObject* stream = (PyObject*)self->stream;
+    PyObject* result = PyObject_CallMethod( stream, "flush", NULL );
+    if( !result ) {
+        if (PyErr_Occurred()) {
+            PyErr_Print();
+        }
+        return SEGY_DS_FLUSH_ERROR;
+    }
+    Py_DECREF( result );
+    return SEGY_OK;
+}
+
+int py_close( segy_datasource* self ) {
+    PyObject* stream = (PyObject*)self->stream;
+    PyObject* result = PyObject_CallMethod( stream, "close", NULL );
+    if( !result ) {
+        if (PyErr_Occurred()) {
+            PyErr_Print();
+        }
+        return SEGY_DS_CLOSE_ERROR;
+    }
+    Py_DECREF( result );
+    Py_DECREF( stream );
+    return SEGY_OK;
+}
+
+int py_set_writable( segy_datasource* self ) {
+    PyObject* stream = (PyObject*)self->stream;
+    PyObject* result = PyObject_CallMethod( stream, "writable", NULL );
+    if( !result ) {
+        if( PyErr_Occurred() ) {
+            PyErr_Print();
+        }
+        return SEGY_DS_ERROR;
+    }
+    self->writable = PyObject_IsTrue( result );
+    Py_DECREF( result );
+    return SEGY_OK;
+}
+
+segy_datasource* create_py_stream_datasource(
+    PyObject* py_stream, bool minimize_requests_number
+) {
+    segy_datasource* ds = (segy_datasource*)malloc( sizeof( segy_datasource ) );
+    if( !ds ) return NULL;
+
+    /* current requirements on file-like-object stream: read, write, seek, tell,
+     * flush, close, writable
+     */
+    ds->stream = py_stream;
+
+    ds->read = py_read;
+    ds->write = py_write;
+    ds->seek = py_seek;
+    ds->tell = py_tell;
+    ds->size = py_size;
+    ds->flush = py_flush;
+    ds->close = py_close;
+
+    // writable is set only on init, assuming stream does not change it during
+    // operation
+    const int err = py_set_writable( ds );
+    if( err ) return NULL;
+
+    ds->memory_speedup = false;
+    ds->minimize_requests_number = minimize_requests_number;
+    ds->elemsize = 4;
+    ds->lsb = false;
+
+    /* keep additional reference to assure object does not get deleted before
+     * segy_datasource is closed
+     */
+    Py_INCREF( py_stream );
+    return ds;
+}
+
+} // namespace ds
+
 
 struct buffer_guard {
     /* automate Py_buffer handling.
@@ -229,46 +368,157 @@ struct buffer_guard {
     Py_buffer buffer;
 };
 
+struct autods {
+    autods() : ds( nullptr ), memory_ds_buffer() {}
+
+    ~autods() {
+        this->close();
+    }
+
+    operator segy_datasource*() const;
+    operator bool() const;
+    void swap( autods& other );
+    int close();
+
+    segy_datasource* ds;
+    // only for memory datasource. Field is not directly used (it's .buf member
+    // is), it's only purpose is to stay alive so that .buf is available for the
+    // whole lifetime of segyfd.
+    Py_buffer memory_ds_buffer;
+};
+
+autods::operator segy_datasource*() const {
+    if( this->ds ) return this->ds;
+
+    IOError( "I/O operation on closed datasource" );
+    return NULL;
+}
+
+autods::operator bool() const { return this->ds; }
+
+void autods::swap( autods& other ) {
+    std::swap( this->ds, other.ds );
+    std::swap( this->memory_ds_buffer, other.memory_ds_buffer );
+}
+
+int autods::close() {
+    int err = SEGY_OK;
+    if( this->ds ) {
+        err = segy_close( this->ds );
+    }
+    this->ds = NULL;
+    if ( this->memory_ds_buffer.buf ) {
+        PyBuffer_Release( &this->memory_ds_buffer );
+        this->memory_ds_buffer = Py_buffer();
+    }
+    return err;
+}
+
+struct segyfd {
+    PyObject_HEAD
+    autods ds;
+    long trace0;
+    int trace_bsize;
+    int tracecount;
+    int samplecount;
+    int format;
+    int elemsize;
+};
+
 namespace fd {
 
 int init( segyfd* self, PyObject* args, PyObject* kwargs ) {
     char* filename = NULL;
     char* mode = NULL;
-    int endian = 0;
+    PyObject* stream = NULL;
+    PyObject* memory_buffer = NULL;
+    int endianness = -1;
+    int minimize_requests_number = -1;
 
-    if( !PyArg_ParseTuple( args, "ssi", &filename, &mode, &endian ) )
-        return -1;
+    static const char* keywords[] = {
+        "filename",
+        "mode",
+        "stream",
+        "memory_buffer",
+        "endianness",
+        "minimize_requests_number",
+        NULL
+    };
 
-    if( std::strlen( mode ) == 0 ) {
-        ValueError( "mode string must be non-empty" );
+    if( !PyArg_ParseTupleAndKeywords(
+            args, kwargs, "|ssOOip",
+            const_cast<char**>( keywords ),
+            &filename,
+            &mode,
+            &stream,
+            &memory_buffer,
+            &endianness,
+            &minimize_requests_number
+        ) ) {
+        ValueError( "could not parse arguments" );
         return -1;
     }
 
-    if( std::strlen( mode ) > 3 ) {
-        ValueError( "invalid mode string '%s', good strings are %s",
-                     mode, "'r' (read-only) and 'r+' (read-write)" );
+    if( endianness != SEGY_MSB && endianness != SEGY_LSB ) {
+        ValueError( "endianness must be set to a valid value" );
         return -1;
     }
 
-    struct unique : public autods {
-        explicit unique( segy_datasource* p ) { this->ds = p; }
-        ~unique() { this->close(); }
-    } ds( segy_open( filename, mode ) );
+    autods ds;
+    if( stream ) {
+        if( minimize_requests_number < 0 ) {
+            ValueError( "minimize requests number is not set" );
+            return -1;
+        }
+        ds.ds = ds::create_py_stream_datasource(
+            stream, minimize_requests_number
+        );
+    } else if( memory_buffer ) {
+        auto flags = PyBUF_CONTIG | PyBUF_WRITABLE;
+        const int err = PyObject_GetBuffer( memory_buffer, &ds.memory_ds_buffer, flags );
+        if( err ) {
+            ValueError( "Could not export buffer of requested type" );
+            return -1;
+        }
+        ds.ds = segy_memopen(
+            static_cast<unsigned char*>( ds.memory_ds_buffer.buf ),
+            ds.memory_ds_buffer.len
+        );
+    } else if( filename && mode ) {
+        if( std::strlen( mode ) == 0 ) {
+            ValueError( "mode string must be non-empty" );
+            return -1;
+        }
 
-    if( !ds && !strstr( "rb" "wb" "ab" "r+b" "w+b" "a+b", mode ) ) {
-        ValueError( "invalid mode string '%s', good strings are %s",
-                mode, "'r' (read-only) and 'r+' (read-write)" );
+        if( std::strlen( mode ) > 3 ) {
+            ValueError( "invalid mode string '%s', good strings are %s",
+                            mode, "'r' (read-only) and 'r+' (read-write)" );
+            return -1;
+        }
+
+        segy_datasource* file = segy_open( filename, mode );
+        if( !file && !strstr( "rb" "wb" "ab" "r+b" "w+b" "a+b", mode ) ) {
+            ValueError( "invalid mode string '%s', good strings are %s",
+                    mode, "'r' (read-only) and 'r+' (read-write)" );
+            return -1;
+        }
+
+        if( !file ) {
+            IOErrno();
+        }
+        ds.ds = file;
+    } else {
+        ValueError( "unknown input configuration" );
         return -1;
     }
 
     if( !ds ) {
-        IOErrno();
         return -1;
     }
 
-    int err = segy_set_endianness( ds, endian );
+    const int err = segy_set_endianness( ds, endianness );
     if( err ) {
-        ValueError( "internal: error setting endianness, was %d", endian );
+        ValueError( "internal: error setting endianness, was %d", endianness );
         return -1;
     }
 
@@ -535,7 +785,10 @@ PyObject* close( segyfd* self ) {
     if( !self->ds ) return Py_BuildValue( "" );
 
     errno = 0;
-    self->ds.close();
+    const int err = self->ds.close();
+    if ( err ) {
+        return Error( err );
+    }
 
     if( errno ) return IOErrno();
 
