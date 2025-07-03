@@ -1,7 +1,7 @@
 from ..open import infer_geometry
 from ..segy import SegyFile
 from . import words
-from ..utils import c_endianness
+from ..utils import FileDatasourceDescriptor
 
 import numpy
 
@@ -81,17 +81,26 @@ def open(filename, mode = 'r', iline = 189,
         solution = 'use r+ to open in read-write'
         raise ValueError(', '.join((problem, solution)))
 
-    from .. import _segyio
-    fd = _segyio.segyfd(
-        filename=str(filename), mode=mode, endianness=c_endianness(endian)
+    return _open(
+        FileDatasourceDescriptor(filename, mode),
+        iline, xline, strict, ignore_geometry, endian
     )
+
+
+def _open(datasource_descriptor,
+          iline=189,
+          xline=193,
+          strict=True,
+          ignore_geometry=False,
+          endian='big'):
+
+    fd = datasource_descriptor.make_segyfile_descriptor(endian)
     fd.suopen()
     metrics = fd.metrics()
 
     f = sufile(
         fd,
-        filename = str(filename),
-        mode = mode,
+        datasource_descriptor,
         iline = iline,
         xline = xline,
     )
