@@ -466,6 +466,10 @@ int init( segyfd* self, PyObject* args, PyObject* kwargs ) {
 
     autods ds;
     if( stream ) {
+        if (stream == Py_None) {
+            ValueError( "stream must not be None" );
+            return -1;
+        }
         if( minimize_requests_number < 0 ) {
             ValueError( "minimize requests number is not set" );
             return -1;
@@ -474,6 +478,10 @@ int init( segyfd* self, PyObject* args, PyObject* kwargs ) {
             stream, minimize_requests_number
         );
     } else if( memory_buffer ) {
+        if (memory_buffer == Py_None) {
+            ValueError( "buffer must not be None" );
+            return -1;
+        }
         auto flags = PyBUF_CONTIG | PyBUF_WRITABLE;
         const int err = PyObject_GetBuffer( memory_buffer, &ds.memory_ds_buffer, flags );
         if( err ) {

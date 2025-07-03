@@ -2,7 +2,11 @@ import numpy
 
 import segyio
 
-from .utils import FileDatasourceDescriptor
+from .utils import (
+    FileDatasourceDescriptor,
+    StreamDatasourceDescriptor,
+    MemoryBufferDatasourceDescriptor
+)
 
 def infer_geometry(f, metrics, iline, xline, strict):
     try:
@@ -150,6 +154,76 @@ def open(filename, mode="r", iline = 189,
 
     return _open(
         FileDatasourceDescriptor(filename, mode),
+        iline, xline, strict, ignore_geometry, endian
+    )
+
+
+def open_with(stream,
+              iline=189,
+              xline=193,
+              strict=True,
+              ignore_geometry=False,
+              endian='big',
+              minimize_requests_number=True
+              ):
+    """
+    Opens a segy file from a stream.
+
+    Function behaves the same as `segyio.open`, but sources data from a finite
+    stream instead of a file. Stream's close() will be called when SegyFile is
+    closed.
+
+    Note that `segyio.open_with` can be very slow. `segyio.open` is generally a
+    preferred option when speed matters.
+
+    Parameters
+    ----------
+
+    stream : file-like object
+        Source of the data. It is up to the user to assure stream is opened in rb
+        mode for reading and r+b mode for updating.
+    minimize_requests_number : bool
+        Configuration for some internal algorithms. True to minimize number of
+        requests to the stream at the cost of higher memory usage. False to
+        minimize memory usage at the cost of more requests to the stream.
+
+    See other common parameters at `segyio.open`.
+    """
+    return _open(
+        StreamDatasourceDescriptor(
+            stream,
+            minimize_requests_number
+        ),
+        iline, xline, strict, ignore_geometry, endian
+    )
+
+
+def open_from_memory(memory_buffer,
+                   iline=189,
+                   xline=193,
+                   strict=True,
+                   ignore_geometry=False,
+                   endian='big'):
+    """
+    Opens a segy file from memory.
+
+    Function behaves the same as `segyio.open`, but expects file to fit
+    completely into memory. Performance is expected to be significantly faster
+    than using `segyio.open` or `segyio.open_with`.
+
+    Parameters
+    ----------
+
+    buffer : contiguous memory object
+        Source of the data: complete SEGY file loaded into memory. Update
+        operations assume memory is writable.
+
+    See other common parameters at `segyio.open`.
+    """
+    return _open(
+        MemoryBufferDatasourceDescriptor(
+            memory_buffer
+        ),
         iline, xline, strict, ignore_geometry, endian
     )
 
