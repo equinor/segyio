@@ -34,8 +34,8 @@ static int ext_headers( segy_file* fp ) {
 
     if( err ) return -1;
 
-    int16_t ext;
-    err = segy_get_field_i16( binary, SEGY_BIN_EXT_HEADERS, &ext );
+    int ext;
+    err = segy_get_field_int( binary, SEGY_BIN_EXT_HEADERS, &ext );
     if( err ) return -2;
     return ext;
 }

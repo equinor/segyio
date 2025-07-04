@@ -916,78 +916,6 @@ int segy_init_field_data(int field, segy_field_data* fd) {
     return SEGY_OK;
 }
 
-int segy_get_field_u8( const char* header, int field, uint8_t* val ) {
-    segy_field_data fd;
-    int err = segy_init_field_data( field, &fd );
-    if ( err != SEGY_OK ) return err;
-    err = get_field( header, &fd );
-    if( err != SEGY_OK ) return err;
-    if ( fd.datatype != SEGY_UNSIGNED_CHAR_1_BYTE )
-        return SEGY_INVALID_FIELD_DATATYPE;
-    *val = fd.value.u8;
-    return SEGY_OK;
-}
-
-int segy_get_field_u16( const char* header, int field, uint16_t* val ) {
-    segy_field_data fd;
-    int err = segy_init_field_data( field, &fd );
-    if ( err != SEGY_OK ) return err;
-    err = get_field( header, &fd );
-    if( err != SEGY_OK ) return err;
-    if ( fd.datatype != SEGY_UNSIGNED_SHORT_2_BYTE )
-        return SEGY_INVALID_FIELD_DATATYPE;
-    *val = fd.value.u16;
-    return SEGY_OK;
-}
-
-int segy_get_field_u64( const char* header, int field, uint64_t* val ) {
-    segy_field_data fd;
-    int err = segy_init_field_data( field, &fd );
-    if ( err != SEGY_OK ) return err;
-    err = get_field( header, &fd );
-    if( err != SEGY_OK ) return err;
-    if ( fd.datatype != SEGY_UNSIGNED_INTEGER_8_BYTE )
-        return SEGY_INVALID_FIELD_DATATYPE;
-    *val = fd.value.u64;
-    return SEGY_OK;
-}
-
-int segy_get_field_i16( const char* header, int field, int16_t* val ) {
-    segy_field_data fd;
-    int err = segy_init_field_data( field, &fd );
-    if ( err != SEGY_OK ) return err;
-    err = get_field( header, &fd );
-    if( err != SEGY_OK ) return err;
-    if ( fd.datatype != SEGY_SIGNED_SHORT_2_BYTE )
-        return SEGY_INVALID_FIELD_DATATYPE;
-    *val = fd.value.i16;
-    return SEGY_OK;
-}
-
-int segy_get_field_i32( const char* header, int field, int32_t* val ) {
-    segy_field_data fd;
-    int err = segy_init_field_data( field, &fd );
-    if ( err != SEGY_OK ) return err;
-    err = get_field( header, &fd );
-    if( err != SEGY_OK ) return err;
-    if ( fd.datatype != SEGY_SIGNED_INTEGER_4_BYTE )
-        return SEGY_INVALID_FIELD_DATATYPE;
-    *val = fd.value.i32;
-    return SEGY_OK;
-}
-
-int segy_get_field_f64( const char* header, int field, double* val ) {
-    segy_field_data fd;
-    int err = segy_init_field_data( field, &fd );
-    if ( err != SEGY_OK ) return err;
-    err = get_field( header, &fd );
-    if( err != SEGY_OK ) return err;
-    if ( fd.datatype != SEGY_IEEE_FLOAT_8_BYTE )
-        return SEGY_INVALID_FIELD_DATATYPE;
-    *val = fd.value.f64;
-    return SEGY_OK;
-}
-
 int segy_get_field_int( const char* header, int field, int* val ) {
     segy_field_data fd;
     int err = segy_init_field_data( field, &fd );
@@ -1096,66 +1024,6 @@ static int fd_set_int( segy_field_data* fd, int val ) {
         default:
             return SEGY_INVALID_FIELD_DATATYPE;
     }
-}
-
-int segy_set_field_i16( char* header, const int field, const int16_t val ) {
-    segy_field_data fd;
-    int err = segy_init_field_data( field, &fd );
-    if ( err != SEGY_OK ) return err;
-
-    if ( fd.datatype != SEGY_SIGNED_SHORT_2_BYTE )
-        return SEGY_INVALID_FIELD_DATATYPE;
-
-    fd.value.i16 = val;
-    return set_field( header, &fd );
-}
-
-int segy_set_field_i32( char* header, const int field, const int32_t val ) {
-    segy_field_data fd;
-    int err = segy_init_field_data( field, &fd );
-    if ( err != SEGY_OK ) return err;
-
-    if ( fd.datatype != SEGY_SIGNED_INTEGER_4_BYTE )
-        return SEGY_INVALID_FIELD_DATATYPE;
-
-    fd.value.i32 = val;
-    return set_field( header, &fd );
-}
-
-int segy_set_field_u16( char* header, const int field, const uint16_t val ) {
-    segy_field_data fd;
-    int err = segy_init_field_data( field, &fd );
-    if ( err != SEGY_OK ) return err;
-
-    if ( fd.datatype != SEGY_UNSIGNED_SHORT_2_BYTE )
-        return SEGY_INVALID_FIELD_DATATYPE;
-
-    fd.value.u16 = val;
-    return set_field( header, &fd );
-}
-
-int segy_set_field_u64( char* header, const int field, const uint64_t val ) {
-    segy_field_data fd;
-    int err = segy_init_field_data( field, &fd );
-    if ( err != SEGY_OK ) return err;
-
-    if ( fd.datatype != SEGY_UNSIGNED_INTEGER_8_BYTE )
-        return SEGY_INVALID_FIELD_DATATYPE;
-
-    fd.value.u64 = val;
-    return set_field( header, &fd );
-}
-
-int segy_set_field_f64( char* header, const int field, const double val ) {
-    segy_field_data fd;
-    int err = segy_init_field_data( field, &fd );
-    if ( err != SEGY_OK ) return err;
-
-    if ( fd.datatype != SEGY_IEEE_FLOAT_8_BYTE )
-        return SEGY_INVALID_FIELD_DATATYPE;
-
-    fd.value.f64 = val;
-    return set_field( header, &fd );
 }
 
 int segy_set_field_int( char* header, const int field, const int val ) {
@@ -1345,8 +1213,8 @@ int segy_write_binheader( segy_datasource* ds, const char* buf ) {
 }
 
 int segy_format( const char* binheader ) {
-    int16_t format = 0;
-    segy_get_field_i16( binheader, SEGY_BIN_FORMAT, &format );
+    int format = 0;
+    segy_get_field_int( binheader, SEGY_BIN_FORMAT, &format );
     return format;
 }
 
@@ -1372,12 +1240,12 @@ int segy_set_endianness( segy_datasource* ds, int endianness) {
 }
 
 int segy_samples( const char* binheader ) {
-    uint16_t samples = 0;
-    segy_get_field_u16( binheader, SEGY_BIN_SAMPLES, &samples );
+    int samples = 0;
+    segy_get_field_int( binheader, SEGY_BIN_SAMPLES, &samples );
     samples = (int32_t)((uint16_t)samples);
 
-    int32_t ext_samples = 0;
-    segy_get_field_i32(binheader, SEGY_BIN_EXT_SAMPLES, &ext_samples);
+    int ext_samples = 0;
+    segy_get_field_int(binheader, SEGY_BIN_EXT_SAMPLES, &ext_samples);
 
     if (samples == 0 && ext_samples > 0)
         return ext_samples;
@@ -1393,8 +1261,8 @@ int segy_samples( const char* binheader ) {
      * used, the revision flag is also appropriately set to >= 2. Negative
      * values are ignored, as it's likely just noise.
      */
-    uint8_t revision = 0;
-    segy_get_field_u8(binheader, SEGY_BIN_SEGY_REVISION, &revision);
+    int revision = 0;
+    segy_get_field_int(binheader, SEGY_BIN_SEGY_REVISION, &revision);
     if (revision >= 2 && ext_samples > 0)
         return ext_samples;
 
@@ -1413,8 +1281,8 @@ int segy_trsize( int format, int samples ) {
 }
 
 long segy_trace0( const char* binheader ) {
-    int16_t extra_headers = 0;
-    segy_get_field_i16( binheader, SEGY_BIN_EXT_HEADERS, &extra_headers );
+    int extra_headers = 0;
+    segy_get_field_int( binheader, SEGY_BIN_EXT_HEADERS, &extra_headers );
 
     return SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE +
            SEGY_TEXT_HEADER_SIZE * extra_headers;
@@ -1621,11 +1489,11 @@ int segy_sample_interval( segy_datasource* ds, float fallback, float* dt ) {
         return err;
     }
 
-    int16_t bindt = 0;
-    int16_t trdt = 0;
+    int bindt = 0;
+    int trdt = 0;
 
-    segy_get_field_i16( bin_header, SEGY_BIN_INTERVAL, &bindt );
-    segy_get_field_i16( trace_header, SEGY_TR_SAMPLE_INTER, &trdt );
+    segy_get_field_int( bin_header, SEGY_BIN_INTERVAL, &bindt );
+    segy_get_field_int( trace_header, SEGY_TR_SAMPLE_INTER, &trdt );
 
     float binary_header_dt = (float) bindt;
     float trace_header_dt = (float) trdt;
@@ -2672,18 +2540,18 @@ static int scaled_cdp( segy_datasource* ds,
                        float* cdpy,
                        long trace0,
                        int trace_bsize ) {
-    int32_t x, y;
-    int16_t scalar;
+    int x, y;
+    int scalar;
     char trheader[ SEGY_TRACE_HEADER_SIZE ];
 
     int err = segy_traceheader( ds, traceno, trheader, trace0, trace_bsize );
     if( err != 0 ) return err;
 
-    err = segy_get_field_i32( trheader, SEGY_TR_CDP_X, &x );
+    err = segy_get_field_int( trheader, SEGY_TR_CDP_X, &x );
     if( err != 0 ) return err;
-    err = segy_get_field_i32( trheader, SEGY_TR_CDP_Y, &y );
+    err = segy_get_field_int( trheader, SEGY_TR_CDP_Y, &y );
     if( err != 0 ) return err;
-    err = segy_get_field_i16( trheader, SEGY_TR_SOURCE_GROUP_SCALAR, &scalar );
+    err = segy_get_field_int( trheader, SEGY_TR_SOURCE_GROUP_SCALAR, &scalar );
     if( err != 0 ) return err;
 
     float scale = (float) scalar;

@@ -51,10 +51,10 @@ static struct delay delay_recording_time( const char* trheader,
                                           int dt,
                                           int samples ) {
 
-    int16_t t0;
-    segy_get_field_i16( trheader, SEGY_TR_DELAY_REC_TIME, &t0 );
-    int16_t trdt;
-    segy_get_field_i16( trheader, SEGY_TR_SAMPLE_INTER, &trdt );
+    int t0;
+    segy_get_field_int( trheader, SEGY_TR_DELAY_REC_TIME, &t0 );
+    int trdt;
+    segy_get_field_int( trheader, SEGY_TR_SAMPLE_INTER, &trdt );
     if( trdt ) dt = trdt;
 
     /*
@@ -408,8 +408,8 @@ int main( int argc, char** argv ) {
     if( sz != 1 ) exit( errmsg2( errno, "Unable to write binary header",
                                          strerror( errno ) ) );
 
-    int16_t ext_headers;
-    int err = segy_get_field_i16(binheader, SEGY_BIN_EXT_HEADERS, &ext_headers);
+    int ext_headers;
+    int err = segy_get_field_int(binheader, SEGY_BIN_EXT_HEADERS, &ext_headers);
     if( err != SEGY_OK ) exit( errmsg( -1, "Malformed binary header" ) );
 
     for( int i = 0; i < ext_headers; ++i ) {
@@ -424,10 +424,10 @@ int main( int argc, char** argv ) {
     }
 
     if( verbosity > 2 ) puts( "Computing samples-per-trace" );
-    int16_t bindt;
-    segy_get_field_i16( binheader, SEGY_BIN_INTERVAL, &bindt );
-    uint16_t src_samples;
-    err = segy_get_field_u16( binheader, SEGY_BIN_SAMPLES, &src_samples );
+    int bindt;
+    segy_get_field_int( binheader, SEGY_BIN_INTERVAL, &bindt );
+    int src_samples;
+    err = segy_get_field_int( binheader, SEGY_BIN_SAMPLES, &src_samples );
     if( err != SEGY_OK )
         exit( errmsg( -2, "Could not determine samples per trace" ) );
 
@@ -514,9 +514,9 @@ int main( int argc, char** argv ) {
                                                bindt,
                                                src_samples );
 
-        segy_set_field_u16( trheader, SEGY_TR_SAMPLE_COUNT, d.len );
-        segy_set_field_i16( trheader, SEGY_TR_DELAY_REC_TIME, d.delay );
-        segy_set_field_u16( binheader, SEGY_BIN_SAMPLES, d.len );
+        segy_set_field_int( trheader, SEGY_TR_SAMPLE_COUNT, d.len );
+        segy_set_field_int( trheader, SEGY_TR_DELAY_REC_TIME, d.delay );
+        segy_set_field_int( binheader, SEGY_BIN_SAMPLES, d.len );
 
         if( verbosity > 2 ) printf( "Copying trace %lld\n", traces );
         sz = fwrite( trheader, TRHSIZE, 1, dst );
