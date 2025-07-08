@@ -32,6 +32,9 @@ typedef enum {
     SEGY_UNSIGNED_CHAR_1_BYTE = 16,
     SEGY_NOT_IN_USE_1 = 19,
     SEGY_NOT_IN_USE_2 = 20,
+
+    // private formats
+    SEGY_STRING_8_BYTE = 255,
 } SEGY_FORMAT;
 
 typedef enum {
@@ -394,6 +397,7 @@ typedef union {
     int64_t i64;
     float f32;
     double f64;
+    char str8[8];
 } segy_field_value;
 
 typedef struct {

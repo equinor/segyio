@@ -2409,6 +2409,9 @@ static const TypeMapEntry entry_type_map[] = {
     { "time2",    SEGY_ENTRY_TYPE_TIME2       },
     { "spnum4",   SEGY_ENTRY_TYPE_SPNUM4      },
     { "scale6",   SEGY_ENTRY_TYPE_SCALE6_MANT },
+
+    // segyio private
+    { "string8",  SEGY_ENTRY_TYPE_STRING8     },
 };
 
 static const std::unordered_map<SEGY_ENTRY_TYPE, std::string> segytype_to_spectype_map = [] {
@@ -2715,6 +2718,22 @@ int parse_py_TraceHeaderLayoutEntry_list( PyObject* entries, segy_header_mapping
         );
         if( err != SEGY_OK ) return err;
     }
+
+    const int header_name_offset = 233;
+    const segy_entry_definition header_name_entry =
+        mapping->offset_to_entry_definition[header_name_offset - 1];
+    if( header_name_entry.entry_type == SEGY_ENTRY_TYPE_UNDEFINED ) {
+        int err = set_mapping_offset_to_entry_defintion(
+            mapping, "header_name", header_name_offset, "string8", false
+        );
+        if( err != SEGY_OK ) return err;
+    } else {
+        // we accept that users could have written their own values here only for SEG00000
+        if( strncmp( mapping->name, "SEG00000", 8 ) != 0 ) {
+            return SEGY_INVALID_ARGS;
+        }
+    }
+
     return SEGY_OK;
 }
 
