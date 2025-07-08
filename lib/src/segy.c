@@ -715,6 +715,7 @@ int segy_formatsize( int format ) {
         case SEGY_UNSIGNED_INTEGER_8_BYTE:      return 8;
         case SEGY_SIGNED_CHAR_3_BYTE:           return 3;
         case SEGY_UNSIGNED_INTEGER_3_BYTE:      return 3;
+        case SEGY_STRING_8_BYTE:                return 8;
         case SEGY_NOT_IN_USE_1:
         case SEGY_NOT_IN_USE_2:
         default:
@@ -1054,7 +1055,7 @@ static const uint8_t entry_type_to_datatype_map[22] = {
     [ SEGY_ENTRY_TYPE_SPNUM4      ] = SEGY_SIGNED_INTEGER_4_BYTE,
     [ SEGY_ENTRY_TYPE_SCALE6_MANT ] = SEGY_SIGNED_INTEGER_4_BYTE,
     [ SEGY_ENTRY_TYPE_SCALE6_EXP  ] = SEGY_SIGNED_SHORT_2_BYTE,
-    [ SEGY_ENTRY_TYPE_STRING8     ] = SEGY_UNDEFINED_FIELD,
+    [ SEGY_ENTRY_TYPE_STRING8     ] = SEGY_STRING_8_BYTE,
 };
 
 int segy_entry_type_to_datatype( uint8_t entry_type ) {

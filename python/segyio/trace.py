@@ -798,6 +798,7 @@ class Attributes(Sequence):
         "time2":    np.int16,
         "spnum4":   np.int32,
         # "scale6" unspported, unclear what to do yet
+        "string8":  np.dtype('S8'),
     }
 
     def __init__(self, field, segyfd, traceheader_layout, tracecount):
