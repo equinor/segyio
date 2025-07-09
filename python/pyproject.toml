@@ -138,9 +138,6 @@ test-command = [
     """python {project}/.github/utils.py remove --paths tmptest""",
 ]
 
-[tool.cibuildwheel.linux]
-manylinux-x86_64-image = "manylinux2014"
-
 [tool.cibuildwheel.macos]
 before-build = [
     """sudo cmake \
