@@ -44,11 +44,6 @@ jobs:
 
       - name: Build
         shell: bash
-        # scikit-build first checks for toolset v144, which is not available on
-        # github windows-2022 environment. It is able to build with v143, but
-        # fails the command anyway. continue-on-error is a workaround for that.
-        # In case actual error occurs and segyio is not build, tests will fail.
-        continue-on-error: true
         run: |
           cmake \
             --build build \
