@@ -10,27 +10,7 @@ endif ()
 cmake_minimum_required(VERSION 3.18)
 project(segyio-python)
 
-if (REQUIRE_PYTHON)
-    set(BUILD_PYTHON ON)
-endif()
-
-if (NOT BUILD_PYTHON)
-    return()
-endif()
-
 find_package(Python COMPONENTS Interpreter REQUIRED)
-
-if (NOT Python_EXECUTABLE AND REQUIRE_PYTHON)
-    message(SEND_ERROR "Could not find python executable")
-    return()
-endif()
-
-if (NOT Python_EXECUTABLE)
-    message(WARNING "Could not find python - skipping python bindings. "
-                    "Select specific python distribution with "
-                    "-DPython_EXECUTABLE=bin/python")
-    return()
-endif()
 
 if (PYTHON_INSTALL_LAYOUT)
     set(setup-install-layout --install-layout ${PYTHON_INSTALL_LAYOUT})
