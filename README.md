@@ -100,8 +100,6 @@ To build segyio you need:
  * [CMake](https://cmake.org/) version 3.18 or greater
  * [Python](https://www.python.org/) 3.9 or greater
  * [numpy](http://www.numpy.org/) version 1.10 or greater
- * [setuptools](https://pypi.python.org/pypi/setuptools) version 28 or greater
- * [setuptools-scm](https://pypi.python.org/pypi/setuptools_scm)
  * [pytest](https://pypi.org/project/pytest)
 
  To build the documentation, you also need
