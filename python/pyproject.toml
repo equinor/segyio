@@ -66,6 +66,7 @@ before-build = [
         -DBUILD_TESTING=OFF \
         -DBUILD_PYTHON=OFF \
         -DBUILD_BIN=OFF \
+        -DCMAKE_OSX_DEPLOYMENT_TARGET=10.9 \
     """,
     """sudo cmake \
         --build build \
