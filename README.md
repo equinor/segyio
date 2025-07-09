@@ -97,7 +97,7 @@ A copy of segyio is available both as pre-built binaries and source code:
 To build segyio you need:
  * A C99 compatible C compiler (tested mostly on gcc and clang)
  * A C++ compiler for the Python extension, and C++11 for the tests
- * [CMake](https://cmake.org/) version 3.11 or greater
+ * [CMake](https://cmake.org/) version 3.18 or greater
  * [Python](https://www.python.org/) 3.9 or greater
  * [numpy](http://www.numpy.org/) version 1.10 or greater
  * [setuptools](https://pypi.python.org/pypi/setuptools) version 28 or greater
@@ -126,7 +126,7 @@ LD_LIBRARY_PATH and PATH).
 
 If you have multiple Python installations, or want to use some alternative
 interpreter, you can help cmake find the right one by passing
-`-DPYTHON_EXECUTABLE=/opt/python/binary` along with install prefix and build
+`-DPython_ROOT_DIR=/opt/python/binary` along with install prefix and build
 type.
 
 To build the matlab bindings, invoke CMake with the option `-DBUILD_MEX=ON`. In
