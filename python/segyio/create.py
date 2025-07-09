@@ -3,7 +3,10 @@ import numpy
 import segyio
 
 from . import TraceSortingFormat
-from .utils import c_endianness
+from .utils import (
+    FileDatasourceDescriptor,
+    StreamDatasourceDescriptor,
+)
 
 def default_text_header(iline, xline, offset):
     lines = {
@@ -178,9 +181,42 @@ def create(filename, spec):
     ...         dst.header = src.header
     ...         dst.trace = src.trace
     """
+    return _create(FileDatasourceDescriptor(filename, "w+"), spec)
 
-    from . import _segyio
 
+def create_with(stream, spec, minimize_requests_number=True):
+    """
+    Creates a segy file on stream.
+
+    Function behaves the same as `segyio.create`, but outputs data to a
+    finite stream instead of a file. Stream's close() will be called when
+    SegyFile is closed.
+
+    Note that `segyio.create_with` can be very slow. `segyio.create` is
+    generally a preferred option when speed matters.
+
+    Parameters
+    ----------
+
+    stream : file-like object
+        Data destination. It is up to the user to assure stream is opened in w+b mode.
+    spec : segyio.spec
+        Structure of the segy file
+    minimize_requests_number : bool
+        Configuration for some internal algorithms. True to minimize number of
+        requests to the stream at the cost of higher memory usage. False to
+        minimize memory usage at the cost of more requests to the stream.
+    """
+    return _create(
+        StreamDatasourceDescriptor(
+            stream,
+            minimize_requests_number
+        ),
+        spec
+    )
+
+
+def _create(datasource_descriptor, spec):
     if not structured(spec):
         tracecount = spec.tracecount
     else:
@@ -193,9 +229,7 @@ def create(filename, spec):
     if endian is None:
         endian = 'big'
 
-    fd = _segyio.segyfd(
-        filename=str(filename), mode='w+', endianness=c_endianness(endian)
-    )
+    fd = datasource_descriptor.make_segyfile_descriptor(endian)
     fd.segymake(
         samples = len(samples),
         tracecount = tracecount,
@@ -204,8 +238,7 @@ def create(filename, spec):
     )
 
     f = segyio.SegyFile(fd,
-            filename = str(filename),
-            mode = 'w+',
+            datasource_descriptor,
             iline = int(spec.iline),
             xline = int(spec.xline),
             endian = endian,

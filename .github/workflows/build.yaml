@@ -134,3 +134,31 @@ jobs:
         uses: matlab-actions/run-command@v2
         with:
           command: addpath('build/mex'), try, run('build/mex/test/segyspec.m'), exit(0), catch ME, disp(getReport(ME, 'extended')), exit(-1), end;
+
+  python:
+    runs-on: ubuntu-latest
+    name: Build and test python on example stream
+    strategy:
+      fail-fast: false
+      matrix:
+        stream: [pyfile, pymemory]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build/test dependencies
+        working-directory: python
+        run: |
+          python3 -m pip install -r requirements-dev.txt
+
+      - name: Configure and build
+        shell: bash
+        run: |
+          cmake -S . -B build -DBUILD_PYTHON=ON -DBUILD_BIN=OFF
+          cmake --build build
+
+      - name: Test
+        shell: bash
+        run: |
+          cd python
+          pytest -rP --datasource ${{ matrix.stream }} test/stream.py

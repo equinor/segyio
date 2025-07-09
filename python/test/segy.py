@@ -37,10 +37,25 @@ small_sus = [
                        'endian': 'lsb' }),
 ]
 
+def load_contents(filepath):
+    with open(str(filepath), "rb") as f:
+        data = bytearray(f.read())
+    return data
+
+
 small_segys = [
-    (segyio.open,    { 'filename': testdata / 'small.sgy' }),
-    (segyio.open,    { 'filename': testdata / 'small-lsb.sgy',
-                       'endian': 'little' }),
+    (
+        segyio.open,
+        {'filename': testdata / 'small.sgy'}
+    ),
+    (
+        segyio.open,
+        {'filename': testdata / 'small-lsb.sgy', 'endian': 'little'}
+    ),
+    (
+        segyio.open_from_memory,
+        {'memory_buffer': load_contents(testdata / 'small.sgy')}
+    ),
 ]
 
 smallfiles = small_segys + small_sus
@@ -390,6 +405,7 @@ def test_headers_line_offset(smallps):
         assert f.header[0][xl] == 1
         assert f.header[1][xl] == 13
         assert f.header[2][xl] == 2
+
 
 def test_write_headers_line_slice_offset_int(smallps):
     il, xl = TraceField.INLINE_3D, TraceField.CROSSLINE_3D

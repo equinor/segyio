@@ -23,13 +23,16 @@ class SegyFile(object):
 
     _unstructured_errmsg = "File opened in unstructured mode."
 
-    def __init__(self, fd, filename, mode, iline=189,
-                                           xline=193,
-                                           endian='big',
-                                           ):
+    def __init__(
+        self,
+        fd,
+        datasource_descriptor,
+        iline=189,
+        xline=193,
+        endian='big'
+    ):
 
-        self._filename = filename
-        self._mode = mode
+        self._datasource_descriptor = datasource_descriptor
         self._il = iline
         self._xl = xline
 
@@ -90,7 +93,7 @@ class SegyFile(object):
         super(SegyFile, self).__init__()
 
     def __str__(self):
-        f = "SegyFile {}:".format(self._filename)
+        f = "SegyFile {}:".format(str(self._datasource_descriptor))
 
         if self.unstructured:
             il =  "  inlines: None"
@@ -115,8 +118,8 @@ class SegyFile(object):
 
 
     def __repr__(self):
-        return "SegyFile('{}', '{}', iline = {}, xline = {})".format(
-                        self._filename, self._mode, self._il, self._xl)
+        return "SegyFile('{}', iline = {}, xline = {})".format(
+                        self._datasource_descriptor.__repr__(), self._il, self._xl)
 
     def __enter__(self):
         return self
@@ -853,7 +856,7 @@ class SegyFile(object):
         .. versionadded:: 1.6
         """
 
-        return '+' not in self._mode
+        return self._datasource_descriptor.readonly()
 
 
     def interpret(self, ilines, xlines, offsets=None, sorting=TraceSortingFormat.INLINE_SORTING):

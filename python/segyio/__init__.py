@@ -88,8 +88,8 @@ from .segysampleformat import SegySampleFormat
 from .tracesortingformat import TraceSortingFormat
 from .tracefield import TraceField
 from . import su
-from .open import open
-from .create import create
+from .open import open, open_with, open_from_memory
+from .create import create, create_with
 from .segy import SegyFile, spec
 from .tools import dt, sample_indexes, create_text_header, native
 from .tools import collect, cube

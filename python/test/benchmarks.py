@@ -26,6 +26,26 @@ def run(filepath, mmap, func, mode="r"):
         func(f)
 
 
+def run_with_stream(stream, func):
+    with segyio.open_with(stream) as f:
+        func(f)
+
+
+def run_in_memory(memory_buffer, func):
+    with segyio.open_from_memory(memory_buffer) as f:
+        func(f)
+
+
+def run_with(filepath, mode, mmap, func, make_datasource):
+    filepath, memory_buffer, stream = make_datasource(filepath, mode)
+    if stream and "open_with" in dir(segyio):
+        run_with_stream(stream, func)
+    elif memory_buffer and "open_from_memory" in dir(segyio):
+        run_in_memory(memory_buffer, func)
+    else:
+        run(filepath, mmap, func, mode)
+
+
 def iline_slice(f):
     f.iline[200]
 
@@ -142,31 +162,35 @@ write_operations = [
 
 
 @pytest.mark.benchmark(group="nommap")
-@pytest.mark.parametrize("file", read_files)
+@pytest.mark.parametrize("read_file", read_files)
 @pytest.mark.parametrize("func", operations)
-def test_read_speed(benchmark, file, func):
-    benchmark(run, file, False, func)
+def test_read_speed(make_datasource, benchmark, read_file, func):
+    benchmark(run_with, read_file, "rb", False, func, make_datasource)
 
 
 @pytest.mark.benchmark(group="with mmap")
-@pytest.mark.parametrize("file", read_files)
+@pytest.mark.parametrize("read_file", read_files)
 @pytest.mark.parametrize("func", operations)
-def test_mmap_read_speed(benchmark, file, func):
-    benchmark(run, file, True, func)
+def test_mmap_read_speed(benchmark, read_file, func):
+    benchmark(run, read_file, True, func)
 
 
 @pytest.mark.benchmark(group="cube")
-@pytest.mark.parametrize("file", read_files)
-def test_cube_speed(benchmark, file):
-    benchmark.pedantic(run, rounds=5, args=[file, False, cube])
+@pytest.mark.parametrize("read_file", read_files)
+def test_cube_speed(make_datasource, benchmark, read_file):
+    benchmark.pedantic(
+        run_with, rounds=5, args=[read_file, "rb", False, cube, make_datasource]
+    )
 
 
 @pytest.mark.benchmark(group="write")
-@pytest.mark.parametrize("file", write_files)
+@pytest.mark.parametrize("write_file", write_files)
 @pytest.mark.parametrize("func", write_operations)
-def test_write_file(benchmark, file, func):
+def test_write_file(make_datasource, benchmark, write_file, func):
     # note that original file will get overwritten
-    benchmark.pedantic(run, rounds=7, args=[file, False, func, "r+"])
+    benchmark.pedantic(
+        run_with, rounds=7, args=[write_file, "r+b", False, func, make_datasource]
+    )
 
 
 @pytest.mark.benchmark(group="create")

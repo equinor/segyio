@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 import os
+import gc
 
 import numpy
 import pytest
@@ -592,3 +593,67 @@ def test_fread_trace0_for_depth():
 
     with pytest.raises(KeyError):
         _segyio.fread_trace0(25, 1, 1, 1, indices, "depth")
+
+
+@pytest.mark.parametrize("datasource", ["stream", "memory"])
+def test_datasource_little_endian(datasource):
+    if datasource == "stream":
+        stream = open(testdata / "small-lsb.sgy", "rb")
+        fd = _segyio.segyfd(
+            stream=stream,
+            endianness=1,
+            minimize_requests_number=False
+        ).segyopen()
+    else:
+        with open(testdata / "small-lsb.sgy", "rb") as f:
+            data = bytearray(f.read())
+        fd = _segyio.segyfd(
+            memory_buffer=data,
+            endianness=1,
+            minimize_requests_number=False
+        ).segyopen()
+
+    binary_header = fd.getbin()
+    assert _segyio.getfield(binary_header, 3221) == 50
+
+    fd.close()
+
+
+def test_memory_buffer_memory_management():
+    with open(testdata / "small.sgy", "rb") as f:
+        data = bytearray(f.read())
+    fd = _segyio.segyfd(memory_buffer=data, endianness=0).segyopen()
+    # assure test code owns no "data" reference, so it can be garbage collected
+    del data
+    gc.collect()
+
+    # trying our best to accidentally overwrite memory actually used by "data"
+    _ = [numpy.zeros(2500, dtype=numpy.single) for _ in range(100)]
+
+    # internal code should still have reference to original "data" buffer, so
+    # there should be no error
+    binary_header = fd.getbin()
+    assert _segyio.getfield(binary_header, 3225) == 1
+
+    fd.close()
+
+
+@pytest.mark.xfail(
+    reason=(
+        "Test assures users get an exception, not a segfault, "
+        "so xfail is intentional."
+    ),
+    strict=True
+)
+def test_memory_buffer_memory_management_on_uncaught_error():
+    with open(testdata / "small.sgy", "rb") as f:
+        data = bytearray(f.read())
+    fd = _segyio.segyfd(memory_buffer=data, endianness=0).segyopen()
+    # assure test code owns no "data" reference, so it can be garbage collected
+    del data
+    gc.collect()
+
+    # trying our best to accidentally overwrite memory actually used by "data"
+    _ = [numpy.zeros(2500, dtype=numpy.single) for _ in range(100)]
+
+    fd.putbin("Causing 'buffer too small' error")
