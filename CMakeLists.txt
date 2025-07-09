@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.11)
+cmake_minimum_required(VERSION 3.18)
 project(segyio LANGUAGES C CXX)
 
 include(CheckFunctionExists)

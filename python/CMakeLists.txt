@@ -7,7 +7,7 @@ if (SKBUILD)
     return ()
 endif ()
 
-cmake_minimum_required(VERSION 3.11)
+cmake_minimum_required(VERSION 3.18)
 project(segyio-python)
 
 if (REQUIRE_PYTHON)
@@ -18,17 +18,17 @@ if (NOT BUILD_PYTHON)
     return()
 endif()
 
-find_package(PythonInterp REQUIRED)
+find_package(Python COMPONENTS Interpreter REQUIRED)
 
-if (NOT PYTHON_EXECUTABLE AND REQUIRE_PYTHON)
+if (NOT Python_EXECUTABLE AND REQUIRE_PYTHON)
     message(SEND_ERROR "Could not find python executable")
     return()
 endif()
 
-if (NOT PYTHON_EXECUTABLE)
+if (NOT Python_EXECUTABLE)
     message(WARNING "Could not find python - skipping python bindings. "
                     "Select specific python distribution with "
-                    "-DPYTHON_EXECUTABLE=bin/python")
+                    "-DPython_EXECUTABLE=bin/python")
     return()
 endif()
 
@@ -62,7 +62,7 @@ add_custom_target(
     #
     # This is probably something that should be addressed upstream
     COMMAND ${CMAKE_COMMAND} -E env --unset=DESTDIR
-            ${PYTHON_EXECUTABLE} ${setup.py}
+            ${Python_EXECUTABLE} ${setup.py}
         # build the extension inplace (really, once its built, copy it to the
         # source tree) so that post-build, the directory can be used to run
         # tests against
@@ -95,7 +95,7 @@ install(CODE "
 
     execute_process(
         COMMAND ${CMAKE_COMMAND} -E env --unset=DESTDIR
-                ${PYTHON_EXECUTABLE} ${setup.py}
+                ${Python_EXECUTABLE} ${setup.py}
             install
                 \${root_destdir}
                 --single-version-externally-managed
@@ -121,7 +121,7 @@ if(BUILD_PYDOC)
             # run sphinx as the same python version that was just built
             # otherwise, the it will search for the wrong segyio extension and
             # fail
-        COMMAND ${PYTHON_EXECUTABLE} -m sphinx
+        COMMAND ${Python_EXECUTABLE} -m sphinx
             # use the -d argument to avoid putting cache dir in docs/, because
             # that directory will be install'd
             -d ${CMAKE_CURRENT_BINARY_DIR}/.doctrees
@@ -149,7 +149,7 @@ endif()
 
 add_test(
     NAME python.unit
-    COMMAND ${PYTHON_EXECUTABLE} -m pytest test/
+    COMMAND ${Python_EXECUTABLE} -m pytest test/
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
@@ -157,49 +157,49 @@ configure_file(../test-data/small.sgy write.sgy COPYONLY)
 
 add_test(
     NAME python.example.about
-    COMMAND ${PYTHON_EXECUTABLE} -m examples.about
+    COMMAND ${Python_EXECUTABLE} -m examples.about
                 ../test-data/small.sgy INLINE_3D CROSSLINE_3D
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 add_test(
     NAME python.example.write
-    COMMAND ${PYTHON_EXECUTABLE} -m examples.write
+    COMMAND ${Python_EXECUTABLE} -m examples.write
                 ${CMAKE_CURRENT_BINARY_DIR}/write.sgy
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 add_test(
     NAME python.example.makefile
-    COMMAND ${PYTHON_EXECUTABLE} -m examples.make-file
+    COMMAND ${Python_EXECUTABLE} -m examples.make-file
                 ../test-data/large-file.sgy 20 1 20 1 20
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 add_test(
     NAME python.example.makepsfile
-    COMMAND ${PYTHON_EXECUTABLE} -m examples.make-ps-file
+    COMMAND ${Python_EXECUTABLE} -m examples.make-ps-file
                 ../test-data/small-prestack.sgy 10 1 5 1 4 1 3
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 add_test(
     NAME python.example.subcube
-    COMMAND ${PYTHON_EXECUTABLE} -m examples.copy-sub-cube
+    COMMAND ${Python_EXECUTABLE} -m examples.copy-sub-cube
                 ../test-data/small.sgy ${CMAKE_CURRENT_BINARY_DIR}/copy.sgy
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 add_test(
     NAME python.example.rotate
-    COMMAND ${PYTHON_EXECUTABLE} -m examples.make-rotated-copies
+    COMMAND ${Python_EXECUTABLE} -m examples.make-rotated-copies
                 ../test-data/small.sgy ex-rotate.sgy ${CMAKE_CURRENT_BINARY_DIR}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 add_test(
     NAME python.example.scan_min_max
-    COMMAND ${PYTHON_EXECUTABLE} -m examples.scan_min_max
+    COMMAND ${Python_EXECUTABLE} -m examples.scan_min_max
                 ../test-data/small.sgy
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 add_test(
     NAME python.example.multi-text
-    COMMAND ${PYTHON_EXECUTABLE} -m examples.make-multiple-text
+    COMMAND ${Python_EXECUTABLE} -m examples.make-multiple-text
                 _skbuild/multi-text.sgy
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.11)
+cmake_minimum_required(VERSION 3.18)
 project(catch2 CXX)
 
 add_library(catch2 INTERFACE)
