@@ -7,6 +7,9 @@ inputs:
   compare:
     description: results comparison string
     default: --benchmark-compare=0001 --benchmark-compare-fail=min:25% --benchmark-group-by=fullname --color=yes
+  datasource:
+    description: datasource to run on
+    default: default
 
 runs:
   using: "composite"
@@ -76,10 +79,28 @@ runs:
         ls -lh file-small.sgy
 
     - name: Run benchmark tests
+      if: ${{ inputs.datasource == 'default' }}
       shell: bash
       working-directory: python
       run: |
         pytest test/benchmarks.py -rP --benchmark-sort=name --benchmark-autosave ${{ inputs.compare }}
+
+    - name: Run benchmark tests on datasource
+      if: ${{ inputs.datasource != 'default' }}
+      shell: bash
+      working-directory: python
+      run: |
+        pytest \
+          test/benchmarks.py::test_read_speed \
+          test/benchmarks.py::test_cube_speed \
+          test/benchmarks.py::test_write_file \
+          -rP \
+          --datasource ${{ inputs.datasource }} \
+          --readf file-small.sgy \
+          --writef file-small.sgy \
+          --benchmark-sort=name \
+          --benchmark-autosave \
+          ${{ inputs.compare }}
 
     - name: Remove build artifacts
       shell: bash

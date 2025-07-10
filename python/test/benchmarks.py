@@ -7,18 +7,6 @@ import pytest
 import numpy as np
 
 
-# Files are expected to be present at the run location
-# Files size should be compatible with retrieved lines
-read_files = [
-    'file.sgy',
-    'file-small.sgy',
-]
-
-write_files = [
-    'file-small.sgy',
-]
-
-
 def run(filepath, mmap, func, mode="r"):
     with segyio.open(filepath, mode=mode) as f:
         if mmap:
@@ -38,9 +26,13 @@ def run_in_memory(memory_buffer, func):
 
 def run_with(filepath, mode, mmap, func, make_datasource):
     filepath, memory_buffer, stream = make_datasource(filepath, mode)
-    if stream and "open_with" in dir(segyio):
+    if stream:
+        if "open_with" not in dir(segyio):
+            raise RuntimeError("segyio.open_with is not available")
         run_with_stream(stream, func)
-    elif memory_buffer and "open_from_memory" in dir(segyio):
+    elif memory_buffer:
+        if "open_from_memory" not in dir(segyio):
+            raise RuntimeError("segyio.open_from_memory is not available")
         run_in_memory(memory_buffer, func)
     else:
         run(filepath, mmap, func, mode)
@@ -162,21 +154,18 @@ write_operations = [
 
 
 @pytest.mark.benchmark(group="nommap")
-@pytest.mark.parametrize("read_file", read_files)
 @pytest.mark.parametrize("func", operations)
 def test_read_speed(make_datasource, benchmark, read_file, func):
     benchmark(run_with, read_file, "rb", False, func, make_datasource)
 
 
 @pytest.mark.benchmark(group="with mmap")
-@pytest.mark.parametrize("read_file", read_files)
 @pytest.mark.parametrize("func", operations)
 def test_mmap_read_speed(benchmark, read_file, func):
     benchmark(run, read_file, True, func)
 
 
 @pytest.mark.benchmark(group="cube")
-@pytest.mark.parametrize("read_file", read_files)
 def test_cube_speed(make_datasource, benchmark, read_file):
     benchmark.pedantic(
         run_with, rounds=5, args=[read_file, "rb", False, cube, make_datasource]
@@ -184,7 +173,6 @@ def test_cube_speed(make_datasource, benchmark, read_file):
 
 
 @pytest.mark.benchmark(group="write")
-@pytest.mark.parametrize("write_file", write_files)
 @pytest.mark.parametrize("func", write_operations)
 def test_write_file(make_datasource, benchmark, write_file, func):
     # note that original file will get overwritten
