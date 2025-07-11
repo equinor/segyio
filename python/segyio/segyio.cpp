@@ -1752,38 +1752,98 @@ PyObject* putfield( PyObject*, PyObject *args ) {
 
     switch ( fd.datatype ) {
         case SEGY_UNSIGNED_INTEGER_8_BYTE:
-            fd.value.u64 = PyLong_AsUnsignedLongLong(value_arg);
+            {
+                unsigned long long val = PyLong_AsUnsignedLongLong( value_arg );
+                if (PyErr_Occurred() || val > UINT64_MAX) {
+                    return ValueError( "Value out of range for unsigned long at field %d", field );
+                }
+                fd.value.u64 = val;
+            }
             break;
         case SEGY_UNSIGNED_INTEGER_4_BYTE:
-            fd.value.u32 = PyLong_AsUnsignedLong(value_arg);
+            {
+                unsigned long val = PyLong_AsUnsignedLong( value_arg );
+                if( PyErr_Occurred() || val > UINT32_MAX ) {
+                    return ValueError( "Value out of range for unsigned int at field %d", field );
+                }
+                fd.value.u32 = val;
+            }
             break;
         case SEGY_UNSIGNED_SHORT_2_BYTE:
-            fd.value.u16 = PyLong_AsUnsignedLong(value_arg);
+            {
+                unsigned long val = PyLong_AsUnsignedLong( value_arg );
+                if( PyErr_Occurred() || val > UINT16_MAX ) {
+                    return ValueError( "Value out of range for unsigned short at field %d", field );
+                }
+                fd.value.u16 = val;
+            }
             break;
         case SEGY_UNSIGNED_CHAR_1_BYTE:
-            fd.value.u8 = PyLong_AsUnsignedLong(value_arg);
+            {
+                unsigned long val = PyLong_AsUnsignedLong( value_arg );
+                if( PyErr_Occurred() || val > UINT8_MAX ) {
+                    return ValueError( "Value out of range for unsigned char at field %d", field );
+                }
+                fd.value.u8 = val;
+            }
             break;
 
         case SEGY_SIGNED_INTEGER_8_BYTE:
-            fd.value.i64 = PyLong_AsLongLong(value_arg);
+            {
+                long long val = PyLong_AsLongLong( value_arg );
+                if (PyErr_Occurred() || val > INT64_MAX || val < INT64_MIN ) {
+                    return ValueError( "Value out of range for signed long at field %d", field );
+                }
+                fd.value.i64 = val;
+            }
             break;
         case SEGY_SIGNED_INTEGER_4_BYTE:
-            fd.value.i32 = PyLong_AsLong(value_arg);
+            {
+                long val = PyLong_AsLong( value_arg );
+                if( PyErr_Occurred() || val > INT32_MAX || val < INT32_MIN ) {
+                    return ValueError( "Value out of range for signed int at field %d", field );
+                }
+                fd.value.i32 = val;
+            }
             break;
         case SEGY_SIGNED_SHORT_2_BYTE:
-            fd.value.i16 = PyLong_AsLong(value_arg);
+            {
+                long val = PyLong_AsLong( value_arg );
+                if( PyErr_Occurred() || val > INT16_MAX || val < INT16_MIN ) {
+                    return ValueError( "Value out of range for signed short at field %d", field );
+                }
+                fd.value.i16 = val;
+            }
             break;
         case SEGY_SIGNED_CHAR_1_BYTE:
-            fd.value.i8 = PyLong_AsLong(value_arg);
+            {
+                long val = PyLong_AsLong( value_arg );
+                if( PyErr_Occurred() || val > INT8_MAX || val < INT8_MIN ) {
+                    return ValueError( "Value out of range for signed char at field %d", field );
+                }
+                fd.value.i8 = val;
+            }
             break;
 
         case SEGY_IEEE_FLOAT_8_BYTE:
-            fd.value.f64 = PyFloat_AsDouble(value_arg);
-            break;
+            {
+                double val = PyFloat_AsDouble( value_arg );
+                if( PyErr_Occurred() ) {
+                    return ValueError( "Value out of range for double at field %d", field );
+                }
+                fd.value.f64 = val;
+                break;
+            }
         case SEGY_IEEE_FLOAT_4_BYTE:
-            fd.value.f32 = PyFloat_AsDouble(value_arg);
+            {
+                float val = PyFloat_AsDouble( value_arg );
+                if( PyErr_Occurred() ) {
+                    return ValueError( "Value out of range for float at field %d", field );
+                }
+                fd.value.f32 = val;
+                break;
+            }
             break;
-
         default:
             return KeyError( "Field %d has unknown datatype %d", field, fd.datatype );
     }
