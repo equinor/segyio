@@ -815,6 +815,24 @@ int segy_close( segy_datasource* ds ) {
     return SEGY_OK;
 }
 
+int segy_init_field_data( int field, segy_field_data* fd ) {
+    if( field > 0 && field < SEGY_TRACE_HEADER_SIZE ) {
+        fd->field_index = field;
+        fd->field_offset = 0;
+        fd->datatype = tr_field_type[fd->field_index];
+    } else if( field > SEGY_TEXT_HEADER_SIZE && field < SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE ) {
+        fd->field_index = field - SEGY_TEXT_HEADER_SIZE;
+        fd->field_offset = SEGY_TEXT_HEADER_SIZE;
+        fd->datatype = bin_field_type[fd->field_index];
+    } else {
+        return SEGY_INVALID_FIELD;
+    }
+
+    if( fd->datatype == SEGY_UNDEFINED_FIELD )
+        return SEGY_INVALID_FIELD;
+    return SEGY_OK;
+}
+
 static int get_field( const char* header, segy_field_data* fd) {
 
     uint64_t val;
@@ -898,39 +916,21 @@ static int fd_get_int( const segy_field_data* fd, int* val ) {
     }
 }
 
-int segy_init_field_data(int field, segy_field_data* fd) {
-    if ( field > 0 && field < SEGY_TRACE_HEADER_SIZE ) {
-        fd->field_index = field;
-        fd->field_offset = 0;
-        fd->datatype = tr_field_type[ fd->field_index ];
-    }        
-    else if ( field > SEGY_TEXT_HEADER_SIZE && field < SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE ) {
-        fd->field_index = field - SEGY_TEXT_HEADER_SIZE;
-        fd->field_offset = SEGY_TEXT_HEADER_SIZE;
-        fd->datatype = bin_field_type[ fd->field_index ];
-    }
-    else
-        return SEGY_INVALID_FIELD;
-    if ( fd->datatype == SEGY_UNDEFINED_FIELD )
-        return SEGY_INVALID_FIELD;
-    return SEGY_OK;
-}
-
-int segy_get_field_int( const char* header, int field, int* val ) {
-    segy_field_data fd;
-    int err = segy_init_field_data( field, &fd );
-    if ( err != SEGY_OK ) return err;
-    err = get_field( header, &fd );
-    if( err != SEGY_OK ) return err;
-    return fd_get_int( &fd, val );
-}
-
 segy_field_data segy_get_field( const char* header, int field) {
     segy_field_data fd;
     fd.error = segy_init_field_data( field, &fd );
     if ( fd.error != SEGY_OK ) return fd;
     fd.error = get_field( header, &fd );
     return fd;
+}
+
+int segy_get_field_int( const char* header, int field, int* val ) {
+    segy_field_data fd;
+    int err = segy_init_field_data( field, &fd );
+    if( err != SEGY_OK ) return err;
+    err = get_field( header, &fd );
+    if( err != SEGY_OK ) return err;
+    return fd_get_int( &fd, val );
 }
 
 static int set_field( char* header,
@@ -1026,21 +1026,20 @@ static int fd_set_int( segy_field_data* fd, int val ) {
     }
 }
 
-int segy_set_field_int( char* header, const int field, const int val ) {
-
-    segy_field_data fd;
-    int err = segy_init_field_data( field, &fd );
-    if ( err != SEGY_OK ) return err;
-
-    err = fd_set_int( &fd, val );
-    if ( err != SEGY_OK ) return err;
-
-    return set_field( header, &fd );
-}
-
 int segy_set_field( char* header, segy_field_data* fd ) {
     fd->error = set_field( header, fd );
     return fd->error;
+}
+
+int segy_set_field_int( char* header, const int field, const int val ) {
+    segy_field_data fd;
+    int err = segy_init_field_data( field, &fd );
+    if( err != SEGY_OK ) return err;
+
+    err = fd_set_int( &fd, val );
+    if( err != SEGY_OK ) return err;
+
+    return set_field( header, &fd );
 }
 
 static int slicelength( int start, int stop, int step ) {
