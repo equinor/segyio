@@ -833,8 +833,7 @@ int segy_init_field_data( int field, segy_field_data* fd ) {
     return SEGY_OK;
 }
 
-static int get_field( const char* header, segy_field_data* fd) {
-
+int segy_get_field( const char* header, segy_field_data* fd ) {
     uint64_t val;
     switch ( fd->datatype ) {
 
@@ -916,23 +915,17 @@ static int fd_get_int( const segy_field_data* fd, int* val ) {
     }
 }
 
-segy_field_data segy_get_field( const char* header, int field) {
-    segy_field_data fd;
-    fd.error = segy_init_field_data( field, &fd );
-    if ( fd.error != SEGY_OK ) return fd;
-    fd.error = get_field( header, &fd );
-    return fd;
-}
-
 int segy_get_field_int( const char* header, int field, int* val ) {
-    segy_field_data fd = segy_get_field(header, field);
-    if ( fd.error != SEGY_OK ) return fd.error;
+    segy_field_data fd;
+    int err = segy_init_field_data( field, &fd );
+    if( err != SEGY_OK ) return err;
+
+    err = segy_get_field(header, &fd);
+    if ( err != SEGY_OK ) return err;
     return fd_get_int( &fd, val );
 }
 
-static int set_field( char* header,
-                      const segy_field_data* fd ) {
-
+int segy_set_field( char* header, segy_field_data* fd ) {
     segy_field_value fv = fd->value;
     uint64_t val;
     switch ( fd->datatype ) {
@@ -987,7 +980,6 @@ static int set_field( char* header,
     }
 }
 
-
 static int fd_set_int( segy_field_data* fd, int val ) {
     switch( fd->datatype ) {
         case SEGY_SIGNED_INTEGER_4_BYTE:
@@ -1021,11 +1013,6 @@ static int fd_set_int( segy_field_data* fd, int val ) {
         default:
             return SEGY_INVALID_FIELD_DATATYPE;
     }
-}
-
-int segy_set_field( char* header, segy_field_data* fd ) {
-    fd->error = set_field( header, fd );
-    return fd->error;
 }
 
 int segy_set_field_int( char* header, const int field, const int val ) {
@@ -1112,7 +1099,7 @@ int segy_field_forall( segy_datasource* ds,
         segy_field_data fd;
         err = segy_init_field_data(field, &fd);
         if ( err != SEGY_OK ) return err;
-        err = get_field( header, &fd );
+        err = segy_get_field( header, &fd );
         if( err != 0 ) return err;
         err = fd_get_int( &fd, &f );
         if( err != 0 ) return err;

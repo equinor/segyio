@@ -159,8 +159,11 @@ int main( int argc, char** argv ){
 
         int nr_fields = sizeof(field_data)/sizeof(binary_field_type);
         for( int c = 0; c < nr_fields; ++c ){
-            segy_field_data fd = segy_get_field( binheader, field_data[c].offset );
-            if ( fd.error ) return errmsg( fd.error, "Unable to read field" );
+            segy_field_data fd;
+            int err = segy_init_field_data( field_data[c].offset, &fd );
+            if( err ) return errmsg(err, "Unable to initialize field");
+            err = segy_get_field( binheader, &fd );
+            if ( err ) return errmsg( err, "Unable to read field" );
 
             bool value_is_zero = false;
             char value_str[40]; // should be enough for all strings
