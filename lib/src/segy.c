@@ -925,11 +925,8 @@ segy_field_data segy_get_field( const char* header, int field) {
 }
 
 int segy_get_field_int( const char* header, int field, int* val ) {
-    segy_field_data fd;
-    int err = segy_init_field_data( field, &fd );
-    if( err != SEGY_OK ) return err;
-    err = get_field( header, &fd );
-    if( err != SEGY_OK ) return err;
+    segy_field_data fd = segy_get_field(header, field);
+    if ( fd.error != SEGY_OK ) return fd.error;
     return fd_get_int( &fd, val );
 }
 
@@ -1039,7 +1036,7 @@ int segy_set_field_int( char* header, const int field, const int val ) {
     err = fd_set_int( &fd, val );
     if( err != SEGY_OK ) return err;
 
-    return set_field( header, &fd );
+    return segy_set_field( header, &fd );
 }
 
 static int slicelength( int start, int stop, int step ) {
