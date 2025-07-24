@@ -870,7 +870,7 @@ static int get_field( const char* header, segy_field_data* fd) {
     }
 }
 
-int segy_field_data_to_int( const segy_field_data* fd, int* val ) {
+static int fd_get_int( const segy_field_data* fd, int* val ) {
     switch( fd->datatype ) {
 
         case SEGY_SIGNED_INTEGER_4_BYTE:
@@ -922,7 +922,7 @@ int segy_get_field_int( const char* header, int field, int* val ) {
     if ( err != SEGY_OK ) return err;
     err = get_field( header, &fd );
     if( err != SEGY_OK ) return err;
-    return segy_field_data_to_int( &fd, val );
+    return fd_get_int( &fd, val );
 }
 
 segy_field_data segy_get_field( const char* header, int field) {
@@ -1118,7 +1118,7 @@ int segy_field_forall( segy_datasource* ds,
         if ( err != SEGY_OK ) return err;
         err = get_field( header, &fd );
         if( err != 0 ) return err;
-        err = segy_field_data_to_int( &fd, &f );
+        err = fd_get_int( &fd, &f );
         if( err != 0 ) return err;
         if (ds->lsb) f = bswap_header_word(f, formatsize( fd.datatype ));
         *buf = f;
