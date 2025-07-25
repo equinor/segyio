@@ -69,10 +69,11 @@ struct Err {
     bool operator == ( Err other ) const { return this->err == other.err; }
     bool operator != ( Err other ) const { return !(*this == other); }
 
-    static Err ok()    { return SEGY_OK; }
-    static Err args()  { return SEGY_INVALID_ARGS; }
-    static Err field() { return SEGY_INVALID_FIELD; }
-    static Err value() { return SEGY_INVALID_FIELD_VALUE; }
+    static Err ok()       { return SEGY_OK; }
+    static Err args()     { return SEGY_INVALID_ARGS; }
+    static Err field()    { return SEGY_INVALID_FIELD; }
+    static Err value()    { return SEGY_INVALID_FIELD_VALUE; }
+    static Err datatype() { return SEGY_INVALID_FIELD_DATATYPE; }
 
     int err;
 };
@@ -2053,10 +2054,11 @@ TEST_CASE("segy_get_field reads values correctly",  "[c.segy]" ) {
         header[SEGY_TR_TRACE_ID-1] = b1;
         header[SEGY_TR_TRACE_ID-0] = b0;
 
-        int read_value;
-        Err err = segy_get_field_int( header, SEGY_TR_TRACE_ID, &read_value );
+        segy_field_data read_value;
+        Err err = segy_get_field( header, SEGY_TR_TRACE_ID, &read_value );
         CHECK( success( err ) );
-        CHECK( read_value == value );
+        CHECK( read_value.datatype == SEGY_SIGNED_SHORT_2_BYTE );
+        CHECK( read_value.value.i16 == value );
     }
 }
 
@@ -2066,7 +2068,11 @@ TEST_CASE("segy_set_field write values correctly",  "[c.segy]" ) {
 
     SECTION("test edge cases int16") {
         int16_t value = GENERATE(0, 1, -1, 0x0102, 0x0201, -32767, -32766);
-        Err err = segy_set_field_int( header, SEGY_TR_TRACE_ID, value );
+
+        segy_field_data fd;
+        fd.datatype = SEGY_SIGNED_SHORT_2_BYTE;
+        fd.value.i16 = value;
+        Err err = segy_set_field( header, SEGY_TR_TRACE_ID, fd );
         CHECK( err == Err::ok() );
 
         uint8_t b0 = header[SEGY_TR_TRACE_ID-0];
@@ -2080,9 +2086,17 @@ TEST_CASE("segy_set_field write invalid value",  "[c.segy]" ) {
 
     char header[ SEGY_TRACE_HEADER_SIZE ] = { 0 };
 
-    SECTION("test value outside of int16 range") {
+    SECTION("test value outside of int16 range for segy_set_field_int") {
         int32_t value = 0xFFFF + 1;
         Err err = segy_set_field_int( header, SEGY_TR_TRACE_ID, value );
         CHECK( err == Err::value() );
+    }
+
+     SECTION("test mismatched type") {
+        segy_field_data fd;
+        fd.value.i16 = 42;
+        fd.datatype = SEGY_SIGNED_INTEGER_4_BYTE;
+        Err err = segy_set_field( header, SEGY_TR_TRACE_ID, fd );
+        CHECK( err == Err::datatype() );
     }
 }

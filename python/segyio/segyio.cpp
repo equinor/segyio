@@ -1846,7 +1846,7 @@ PyObject* putfield( PyObject*, PyObject *args ) {
             return KeyError( "Field %d has unknown datatype %d", field, fd.datatype );
     }
 
-    int err = segy_set_field( buffer.buf< char >(), field, &fd );
+    int err = segy_set_field( buffer.buf< char >(), field, fd );
 
     switch( err ) {
         case SEGY_OK:
