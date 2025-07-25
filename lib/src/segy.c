@@ -833,50 +833,57 @@ int segy_init_field_data( int field, segy_field_data* fd ) {
     return SEGY_OK;
 }
 
-int segy_get_field( const char* header, segy_field_data* fd ) {
+int segy_get_field( const char* header, int field, segy_field_data* fd ) {
+    int err = segy_init_field_data( field, fd );
+    if( err != SEGY_OK ) return err;
+
+    int offset = field - 1;
+    if (offset >= SEGY_TEXT_HEADER_SIZE) {
+        offset -= SEGY_TEXT_HEADER_SIZE;
+    }
     uint64_t val;
     switch ( fd->datatype ) {
 
         case SEGY_SIGNED_INTEGER_8_BYTE:
-            memcpy( &(fd->value.i64), header + (fd->field_index -1), formatsize( fd->datatype ) );
+            memcpy( &(fd->value.i64), header + offset, formatsize( fd->datatype ) );
             fd->value.i64 = be64toh( fd->value.i64 );
             return SEGY_OK;
 
         case SEGY_SIGNED_INTEGER_4_BYTE:
-            memcpy( &(fd->value.i32), header + (fd->field_index -1), formatsize( fd->datatype ) );
+            memcpy( &(fd->value.i32), header + offset, formatsize( fd->datatype ) );
             fd->value.i32 = be32toh( fd->value.i32 );
             return SEGY_OK;
 
         case SEGY_SIGNED_SHORT_2_BYTE:
-            memcpy( &(fd->value.i16), header + (fd->field_index -1), formatsize( fd->datatype ) );
+            memcpy( &(fd->value.i16), header + offset, formatsize( fd->datatype ) );
             fd->value.i16 = be16toh( fd->value.i16 );
             return SEGY_OK;
 
         case SEGY_SIGNED_CHAR_1_BYTE:
-            memcpy( &(fd->value.i8), header + (fd->field_index -1), formatsize( fd->datatype ) );
+            memcpy( &(fd->value.i8), header + offset, formatsize( fd->datatype ) );
             return SEGY_OK;
 
         case SEGY_UNSIGNED_INTEGER_8_BYTE:
-            memcpy( &(fd->value.u64), header + (fd->field_index -1), formatsize( fd->datatype ) );
+            memcpy( &(fd->value.u64), header + offset, formatsize( fd->datatype ) );
             fd->value.u64 = be64toh( fd->value.u64 );
             return SEGY_OK;
 
         case SEGY_UNSIGNED_INTEGER_4_BYTE:
-            memcpy( &(fd->value.u32), header + (fd->field_index -1), formatsize( fd->datatype ) );
+            memcpy( &(fd->value.u32), header + offset, formatsize( fd->datatype ) );
             fd->value.u32 = be32toh( fd->value.u32 );
             return SEGY_OK;
 
         case SEGY_UNSIGNED_SHORT_2_BYTE:
-            memcpy( &(fd->value.u16), header + (fd->field_index -1), formatsize( fd->datatype ) );
+            memcpy( &(fd->value.u16), header + offset, formatsize( fd->datatype ) );
             fd->value.u16 = be16toh( fd->value.u16 );
             return SEGY_OK;
 
         case SEGY_UNSIGNED_CHAR_1_BYTE:
-            memcpy( &(fd->value.u8), header + (fd->field_index -1), formatsize( fd->datatype ) );
+            memcpy( &(fd->value.u8), header + offset, formatsize( fd->datatype ) );
             return SEGY_OK;
 
         case SEGY_IEEE_FLOAT_8_BYTE:
-            memcpy( &(fd->value.f64), header + (fd->field_index -1), formatsize( fd->datatype ) );
+            memcpy( &(fd->value.f64), header + offset, formatsize( fd->datatype ) );
             memcpy( &val, &(fd->value.f64), sizeof( uint64_t ) );
             val = be64toh( val );
             memcpy( &(fd->value.f64), &val, sizeof( uint64_t ) );
@@ -917,62 +924,64 @@ static int fd_get_int( const segy_field_data* fd, int* val ) {
 
 int segy_get_field_int( const char* header, int field, int* val ) {
     segy_field_data fd;
-    int err = segy_init_field_data( field, &fd );
-    if( err != SEGY_OK ) return err;
-
-    err = segy_get_field(header, &fd);
+    int err = segy_get_field(header, field, &fd);
     if ( err != SEGY_OK ) return err;
     return fd_get_int( &fd, val );
 }
 
-int segy_set_field( char* header, segy_field_data* fd ) {
+int segy_set_field( char* header, int field, segy_field_data* fd ) {
+    int offset = field - 1;
+    if (offset >= SEGY_TEXT_HEADER_SIZE) {
+        offset -= SEGY_TEXT_HEADER_SIZE;
+    }
+
     segy_field_value fv = fd->value;
     uint64_t val;
     switch ( fd->datatype ) {
 
         case SEGY_SIGNED_INTEGER_8_BYTE:
             fv.i64 = htobe64( fv.i64 );
-            memcpy( header + (fd->field_index - 1), &(fv.i64), formatsize( fd->datatype ));
+            memcpy( header + offset, &(fv.i64), formatsize( fd->datatype ));
             return SEGY_OK;
 
         case SEGY_SIGNED_INTEGER_4_BYTE:
             fv.i32 = htobe32( fv.i32 );
-            memcpy( header + (fd->field_index - 1), &(fv.i32), formatsize( fd->datatype ));
+            memcpy( header + offset, &(fv.i32), formatsize( fd->datatype ));
             return SEGY_OK;
 
         case SEGY_SIGNED_SHORT_2_BYTE:
             fv.i16 = htobe16( fv.i16 );
-            memcpy( header + (fd->field_index - 1), &(fv.i16), formatsize( fd->datatype ));
+            memcpy( header + offset, &(fv.i16), formatsize( fd->datatype ));
             return SEGY_OK;
 
         case SEGY_SIGNED_CHAR_1_BYTE:
-            memcpy( header + (fd->field_index - 1), &(fv.i8), formatsize( fd->datatype ));
+            memcpy( header + offset, &(fv.i8), formatsize( fd->datatype ));
             return SEGY_OK;
 
         case SEGY_UNSIGNED_INTEGER_8_BYTE:
             fv.u64 = htobe64( fv.u64 );
-            memcpy( header + (fd->field_index - 1), &(fv.u64), formatsize( fd->datatype ));
+            memcpy( header + offset, &(fv.u64), formatsize( fd->datatype ));
             return SEGY_OK;
 
         case SEGY_UNSIGNED_INTEGER_4_BYTE:
             fv.u32 = htobe32( fv.u32 );
-            memcpy( header + (fd->field_index - 1), &(fv.u32), formatsize( fd->datatype ));
+            memcpy( header + offset, &(fv.u32), formatsize( fd->datatype ));
             return SEGY_OK;
 
         case SEGY_UNSIGNED_SHORT_2_BYTE:
             fv.u16 = htobe16( fv.u16 );
-            memcpy( header + (fd->field_index - 1), &(fv.u16), formatsize( fd->datatype ));
+            memcpy( header + offset, &(fv.u16), formatsize( fd->datatype ));
             return SEGY_OK;
 
         case SEGY_UNSIGNED_CHAR_1_BYTE:
-            memcpy( header + (fd->field_index - 1), &(fv.u8), formatsize( fd->datatype ));
+            memcpy( header + offset, &(fv.u8), formatsize( fd->datatype ));
             return SEGY_OK;
 
         case SEGY_IEEE_FLOAT_8_BYTE:
             memcpy( &val, &(fv.f64), sizeof( uint64_t ) );
             val = htobe64( val );
             memcpy( &(fv.f64), &val, sizeof( uint64_t ) );
-            memcpy( header + (fd->field_index - 1), &(fv.f64), formatsize( fd->datatype ));
+            memcpy( header + offset, &(fv.f64), formatsize( fd->datatype ));
             return SEGY_OK;
 
         default:
@@ -1023,7 +1032,7 @@ int segy_set_field_int( char* header, const int field, const int val ) {
     err = fd_set_int( &fd, val );
     if( err != SEGY_OK ) return err;
 
-    return segy_set_field( header, &fd );
+    return segy_set_field( header, field, &fd );
 }
 
 static int slicelength( int start, int stop, int step ) {
@@ -1097,9 +1106,7 @@ int segy_field_forall( segy_datasource* ds,
         if( err != 0 ) return SEGY_DS_READ_ERROR;
 
         segy_field_data fd;
-        err = segy_init_field_data(field, &fd);
-        if ( err != SEGY_OK ) return err;
-        err = segy_get_field( header, &fd );
+        err = segy_get_field( header, field, &fd );
         if( err != 0 ) return err;
         err = fd_get_int( &fd, &f );
         if( err != 0 ) return err;

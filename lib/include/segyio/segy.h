@@ -204,8 +204,8 @@ int segy_set_endianness( segy_datasource*, int opt );
  */
 int segy_init_field_data(int field, segy_field_data* fd);
 
-int segy_get_field( const char* header, segy_field_data* fd );
-int segy_set_field( char* header, segy_field_data* fd );
+int segy_get_field( const char* header, int field, segy_field_data* fd );
+int segy_set_field( char* header, int field, segy_field_data* fd );
 
 int segy_get_field_int( const char* header, int field, int* f );
 int segy_set_field_int( char* header, const int field, const int val );
