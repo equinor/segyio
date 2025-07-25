@@ -132,9 +132,6 @@ typedef union {
 typedef struct {
     segy_field_value value;
     uint8_t datatype;
-    int32_t field_index;
-    int32_t field_offset;
-    int32_t error;
 } segy_field_data;
 
 segy_file* segy_open( const char* path, const char* mode );

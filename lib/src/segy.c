@@ -817,13 +817,9 @@ int segy_close( segy_datasource* ds ) {
 
 int segy_init_field_data( int field, segy_field_data* fd ) {
     if( field > 0 && field < SEGY_TRACE_HEADER_SIZE ) {
-        fd->field_index = field;
-        fd->field_offset = 0;
-        fd->datatype = tr_field_type[fd->field_index];
+        fd->datatype = tr_field_type[field];
     } else if( field > SEGY_TEXT_HEADER_SIZE && field < SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE ) {
-        fd->field_index = field - SEGY_TEXT_HEADER_SIZE;
-        fd->field_offset = SEGY_TEXT_HEADER_SIZE;
-        fd->datatype = bin_field_type[fd->field_index];
+        fd->datatype = bin_field_type[field - SEGY_TEXT_HEADER_SIZE];
     } else {
         return SEGY_INVALID_FIELD;
     }
