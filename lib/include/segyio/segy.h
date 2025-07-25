@@ -191,15 +191,11 @@ int segy_set_format( segy_datasource*, int format );
  */
 int segy_set_endianness( segy_datasource*, int opt );
 
-/* Initialize the segy_field_data structure using the field number
- *
- * If the field number is greater than SEGY_TEXT_HEADER_SIZE [3200]
- * the field is assumed to be a binary header field.
- * Binary header field: field_index = (field number)-3200, field_offset = 3200
- * Trace header field : field_index = field number,        field_offset = 0
- * Tables tr_field_type and bin_field_type are used to set the datatype.
+/* Gets field datatype from field id. Depending on field value, binary or trace
+ * mapping table would be used.
+ * The int returned is the field datatype, not an error code.
  */
-int segy_init_field_data(int field, segy_field_data* fd);
+int segy_field_datatype( int field );
 
 int segy_get_field( const char* header, int field, segy_field_data* fd );
 int segy_set_field( char* header, int field, segy_field_data* fd );

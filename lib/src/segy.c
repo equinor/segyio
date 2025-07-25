@@ -815,29 +815,24 @@ int segy_close( segy_datasource* ds ) {
     return SEGY_OK;
 }
 
-int segy_init_field_data( int field, segy_field_data* fd ) {
+int segy_field_datatype( int field ) {
     if( field > 0 && field < SEGY_TRACE_HEADER_SIZE ) {
-        fd->datatype = tr_field_type[field];
+        return tr_field_type[field];
     } else if( field > SEGY_TEXT_HEADER_SIZE && field < SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE ) {
-        fd->datatype = bin_field_type[field - SEGY_TEXT_HEADER_SIZE];
+        return bin_field_type[field - SEGY_TEXT_HEADER_SIZE];
     } else {
-        return SEGY_INVALID_FIELD;
+        return SEGY_UNDEFINED_FIELD;
     }
-
-    if( fd->datatype == SEGY_UNDEFINED_FIELD )
-        return SEGY_INVALID_FIELD;
-    return SEGY_OK;
 }
 
 int segy_get_field( const char* header, int field, segy_field_data* fd ) {
-    int err = segy_init_field_data( field, fd );
-    if( err != SEGY_OK ) return err;
-
     int offset = field - 1;
     if (offset >= SEGY_TEXT_HEADER_SIZE) {
         offset -= SEGY_TEXT_HEADER_SIZE;
     }
     uint64_t val;
+
+    fd->datatype = segy_field_datatype( field );
     switch ( fd->datatype ) {
 
         case SEGY_SIGNED_INTEGER_8_BYTE:
@@ -886,7 +881,7 @@ int segy_get_field( const char* header, int field, segy_field_data* fd ) {
             return SEGY_OK;
 
         default:
-            return SEGY_INVALID_FIELD_DATATYPE;
+            return SEGY_INVALID_FIELD;
     }
 }
 
@@ -981,7 +976,7 @@ int segy_set_field( char* header, int field, segy_field_data* fd ) {
             return SEGY_OK;
 
         default:
-            return SEGY_INVALID_FIELD_DATATYPE;
+            return SEGY_INVALID_FIELD;
     }
 }
 
@@ -1022,10 +1017,10 @@ static int fd_set_int( segy_field_data* fd, int val ) {
 
 int segy_set_field_int( char* header, const int field, const int val ) {
     segy_field_data fd;
-    int err = segy_init_field_data( field, &fd );
-    if( err != SEGY_OK ) return err;
+    fd.datatype = segy_field_datatype( field );
+    if ( fd.datatype == SEGY_UNDEFINED_FIELD ) return SEGY_INVALID_FIELD;
 
-    err = fd_set_int( &fd, val );
+    int err = fd_set_int( &fd, val );
     if( err != SEGY_OK ) return err;
 
     return segy_set_field( header, field, &fd );
