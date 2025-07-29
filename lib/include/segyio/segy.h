@@ -132,9 +132,6 @@ typedef union {
 typedef struct {
     segy_field_value value;
     uint8_t datatype;
-    int32_t field_index;
-    int32_t field_offset;
-    int32_t error;
 } segy_field_data;
 
 segy_file* segy_open( const char* path, const char* mode );
@@ -194,33 +191,17 @@ int segy_set_format( segy_datasource*, int format );
  */
 int segy_set_endianness( segy_datasource*, int opt );
 
-/* Initialize the segy_field_data structure using the field number
- *
- * If the field number is greater than SEGY_TEXT_HEADER_SIZE [3200]
- * the field is assumed to be a binary header field.
- * Binary header field: field_index = (field number)-3200, field_offset = 3200
- * Trace header field : field_index = field number,        field_offset = 0
- * Tables tr_field_type and bin_field_type are used to set the datatype.
+/* Gets field datatype from field id. Depending on field value, binary or trace
+ * mapping table would be used.
+ * The int returned is the field datatype, not an error code.
  */
-int segy_init_field_data(int field, segy_field_data* fd);
+int segy_field_datatype( int field );
 
-int segy_get_field_u8( const char* header, int field, uint8_t* val );
-int segy_get_field_u16( const char* header, int field, uint16_t* val );
-int segy_get_field_u64( const char* header, int field, uint64_t* val );
-int segy_get_field_i16( const char* header, int field, int16_t* val );
-int segy_get_field_i32( const char* header, int field, int32_t* val );
-int segy_get_field_f64( const char* header, int field, double* val );
+int segy_get_field( const char* header, int field, segy_field_data* fd );
+int segy_set_field( char* header, int field, segy_field_data fd );
+
 int segy_get_field_int( const char* header, int field, int* f );
-segy_field_data segy_get_field( const char* header, int field);
-int segy_field_data_to_int( const segy_field_data* fd, int* val );
-
-int segy_set_field_i16( char* header, const int field, const int16_t val );
-int segy_set_field_i32( char* header, const int field, const int32_t val );
-int segy_set_field_u16( char* header, const int field, const uint16_t val );
-int segy_set_field_u64( char* header, const int field, const uint64_t val );
-int segy_set_field_f64( char* header, const int field, const double val );
 int segy_set_field_int( char* header, const int field, const int val );
-int segy_set_field( char* header, segy_field_data* fd );
 
 int segy_field_forall( segy_datasource*,
                        int field,

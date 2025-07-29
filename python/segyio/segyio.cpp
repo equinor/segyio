@@ -1696,9 +1696,10 @@ PyObject* getfield( PyObject*, PyObject *args ) {
         buffer.len() != SEGY_TRACE_HEADER_SIZE )
         return BufferError( "buffer too small" );
 
-    segy_field_data fd = segy_get_field( buffer.buf< const char >(), field );
-    if( fd.error != SEGY_OK )
-        return KeyError( "Got error code %d when requesting field %d", fd.error, field );
+    segy_field_data fd;
+    int err = segy_get_field( buffer.buf< const char >(), field, &fd );
+    if( err != SEGY_OK )
+        return KeyError( "Got error code %d when requesting field %d", err, field );
 
     switch ( fd.datatype ) {
 
@@ -1745,10 +1746,7 @@ PyObject* putfield( PyObject*, PyObject *args ) {
     int field = (int)PyLong_AsLong(field_arg);
 
     segy_field_data fd;
-    int err = segy_init_field_data(field, &fd);
-
-    if( err != SEGY_OK )
-        return KeyError( "Failed to initialize field %d got error %d", field, err );
+    fd.datatype = segy_field_datatype(field);
 
     switch ( fd.datatype ) {
         case SEGY_UNSIGNED_INTEGER_8_BYTE:
@@ -1848,7 +1846,7 @@ PyObject* putfield( PyObject*, PyObject *args ) {
             return KeyError( "Field %d has unknown datatype %d", field, fd.datatype );
     }
 
-    err = segy_set_field( buffer.buf< char >(), &fd );
+    int err = segy_set_field( buffer.buf< char >(), field, fd );
 
     switch( err ) {
         case SEGY_OK:

@@ -77,6 +77,14 @@ typedef struct {
     const char* description;
 } binary_field_type;
 
+static void u64_to_buf(char *buf, size_t buflen, unsigned long long int value) {
+    snprintf(buf, buflen, "%llu", value);
+}
+
+static void i64_to_buf(char *buf, size_t buflen, long long int value) {
+    snprintf(buf, buflen, "%lld", value);
+}
+
 int main( int argc, char** argv ){
 
     if( argc == 1 ){
@@ -151,39 +159,51 @@ int main( int argc, char** argv ){
 
         int nr_fields = sizeof(field_data)/sizeof(binary_field_type);
         for( int c = 0; c < nr_fields; ++c ){
-            segy_field_data fd = segy_get_field( binheader, field_data[c].offset );
-            if ( fd.error ) return errmsg( fd.error, "Unable to read field" );
+            segy_field_data fd;
+            err = segy_get_field( binheader, field_data[c].offset, &fd );
+            if ( err ) return errmsg( err, "Unable to read field" );
 
-            int byte_offset = (field_data[c].offset - SEGY_TEXT_HEADER_SIZE);
-            const char* short_name = field_data[c].short_name;
-            const char* description = field_data[c].description;
+            bool value_is_zero = false;
+            char value_str[40]; // should be enough for all strings
 
-            if( fd.datatype == SEGY_UNSIGNED_INTEGER_8_BYTE ) {
-                unsigned long long int field = fd.value.u64;
-                if( opts.nonzero && field == 0) continue;
-                if( opts.description )
-                    printf( "%s\t%llu\t%d\t%s\n", short_name, field, byte_offset, description );
-                else
-                    printf( "%-10s\t%llu\n", short_name, field );
+            switch( fd.datatype ) {
+                case SEGY_UNSIGNED_INTEGER_8_BYTE: {
+                    u64_to_buf( value_str, sizeof( value_str ), fd.value.u64 );
+                } break;
+                case SEGY_UNSIGNED_SHORT_2_BYTE: {
+                    u64_to_buf( value_str, sizeof( value_str ), fd.value.u16 );
+                } break;
+                case SEGY_UNSIGNED_CHAR_1_BYTE: {
+                    u64_to_buf( value_str, sizeof( value_str ), fd.value.u8 );
+                } break;
+                case SEGY_SIGNED_INTEGER_4_BYTE: {
+                    i64_to_buf( value_str, sizeof( value_str ), fd.value.i32 );
+                } break;
+                case SEGY_SIGNED_SHORT_2_BYTE: {
+                    i64_to_buf( value_str, sizeof( value_str ), fd.value.i16 );
+                } break;
+                case SEGY_IEEE_FLOAT_8_BYTE: {
+                    double value = fd.value.f64;
+                    value_is_zero = (value == 0.0);
+                    snprintf( value_str, sizeof( value_str ), "%f", value );
+                } break;
+                default: {
+                    return errmsg( -1, "Unhandled field format" );
+                }
             }
-            else if( fd.datatype == SEGY_IEEE_FLOAT_8_BYTE ) {
-                double field = fd.value.f64;
-                if( opts.nonzero && field == 0.0) continue;
-                if( opts.description )
-                    printf( "%s\t%f\t%d\t%s\n", short_name, field, byte_offset, description );
-                else
-                    printf( "%-10s\t%f\n", short_name, field );
-            }
-            else {
-                int field;
-                err = segy_field_data_to_int( &fd, &field );
-                if( err ) return errmsg( err, "Unable to convert segy_field_data to int32" );
 
-                if( opts.nonzero && field == 0) continue;
-                if( opts.description )
-                    printf( "%s\t%d\t%d\t%s\n", short_name, field, byte_offset, description );
-                else
-                    printf( "%-10s\t%d\n", short_name, field );
+            if (strcmp( value_str, "0" ) == 0) {
+                value_is_zero = true;
+            }
+
+            if( opts.nonzero && value_is_zero ) continue;
+            if( opts.description ) {
+                int byte_offset = (field_data[c].offset - SEGY_TEXT_HEADER_SIZE);
+                const char* short_name = field_data[c].short_name;
+                const char* description = field_data[c].description;
+                printf( "%s\t%s\t%d\t%s\n", short_name, value_str, byte_offset, description );
+            } else {
+                printf( "%-10s\t%s\n", field_data[c].short_name, value_str );
             }
         }
         segy_close( fp );
