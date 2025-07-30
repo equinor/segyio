@@ -159,3 +159,34 @@ def pytest_addoption(parser):
         default="default",
         help="Known datasource in testing. Options: pyfile, pymemory, nativememory."
     )
+    parser.addoption(
+        "--readf",
+        action="append",
+        default=[],
+        help=("Files used for benchmark read tests. "
+              "Files size should be compatible with retrieved lines. "
+              "Option may be used multiple times.")
+    )
+
+    parser.addoption(
+        "--writef",
+        action="append",
+        default=[],
+        help=("Files used for benchmark write tests (files will get modified)."
+              "File size should be compatible with modified lines."
+              "Option may be be used multiple times.")
+    )
+
+def pytest_generate_tests(metafunc):
+    # default files are expected to be present at the run location if options are not overridden
+    if "read_file" in metafunc.fixturenames:
+        read_files = metafunc.config.getoption("readf")
+        if not read_files:
+            read_files = ['file.sgy', 'file-small.sgy']
+        metafunc.parametrize("read_file", read_files)
+
+    if "write_file" in metafunc.fixturenames:
+        write_files = metafunc.config.getoption("writef")
+        if not write_files:
+            write_files = ['file-small.sgy']
+        metafunc.parametrize("write_file", write_files)

@@ -10,11 +10,45 @@ on:
       commit_ref:
         description: "optional: compare to specific ref"
         required: false
+      run_on_default:
+        type: boolean
+        description: Run on default file
+        default: true
+      run_on_stream:
+        type: boolean
+        description: Run on pyfile stream
+        default: false
+      run_on_memory:
+        type: boolean
+        description: Run on memory datasource
+        default: false
+      compare_to_self:
+        description: "True: compare to older version of the same datasource. False: compare to standard C-file."
+        default: true
+        type: boolean
 
 jobs:
   benchmarks:
-    name: Benchmark scripts
+    name: Benchmark script on ${{ matrix.datasource }} datasource
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      # matrix set up to combine running manually and on PR
+      matrix:
+        datasource: [default, pyfile, nativememory]
+        run_on_default:
+          - ${{ github.event.inputs.run_on_default }}
+        run_on_stream:
+          - ${{ github.event.inputs.run_on_stream }}
+        run_on_memory:
+          - ${{ github.event.inputs.run_on_memory }}
+        exclude:
+          - datasource: default
+            run_on_default: "false"
+          - datasource: pyfile
+            run_on_stream: "false"
+          - datasource: nativememory
+            run_on_memory: "false"
 
     steps:
       - uses: actions/checkout@v4
@@ -30,19 +64,35 @@ jobs:
           python3 -m pip install -r requirements-dev.txt
 
       - name: Set default benchmark reference
-        run: echo "BENCHMARK_REF=142e45a2b941a1b603723c38882b193db1c1d968" >> $GITHUB_ENV
+        run: |
+          if [ "${{ matrix.datasource }}" = "default" ]; then
+            echo "BENCHMARK_REF=142e45a2b941a1b603723c38882b193db1c1d968" >> $GITHUB_ENV
+          else
+            echo "BENCHMARK_REF=2b3be755d8e1bd536275a9cbcf16c06717b30bd0" >> $GITHUB_ENV
+          fi
 
       - name: Set benchmark reference if defined by workflow_dispatch
         if: github.event.inputs.commit_ref != ''
         run: echo "BENCHMARK_REF=${{ github.event.inputs.commit_ref }}" >> $GITHUB_ENV
 
+      - name: Set base datasource for comparison
+        run: |
+          if [ "${{ github.event.inputs.compare_to_self }}" = "false" ]; then
+            echo "BASE_DATASOURCE=default" >> $GITHUB_ENV
+          else
+            # also the case when compare_to_self = "" because run is trigger by PR.
+            echo "BASE_DATASOURCE=${{ matrix.datasource }}" >> $GITHUB_ENV
+          fi
+
       - name: Benchmark old commit
         uses: "./.github/actions/benchmark"
         with:
           ref: ${{ env.BENCHMARK_REF }}
+          datasource: ${{ env.BASE_DATASOURCE }}
           compare: ""
 
       - name: Benchmark current commit and compare
         uses: "./.github/actions/benchmark"
         with:
           ref: ${{ github.sha }}
+          datasource: ${{ matrix.datasource }}
