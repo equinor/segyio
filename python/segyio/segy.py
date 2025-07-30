@@ -54,6 +54,7 @@ class SegyFile(object):
         self._fmt = metrics['format']
         self._tracecount = metrics['tracecount']
         self._ext_headers = metrics['ext_headers']
+        self._encoding = metrics['encoding']
 
         try:
             self._dtype = np.dtype({
@@ -843,6 +844,18 @@ class SegyFile(object):
         return fmt()
 
     @property
+    def encoding(self):
+        d = {
+            0: "ebcdic",
+            1: "ascii",
+        }
+
+        if not self._encoding in d:
+            return "Unknown encoding"
+
+        return d[self._encoding]
+
+    @property
     def readonly(self):
         """File is read-only
 
@@ -1011,3 +1024,4 @@ class spec(object):
         self.format = None
         self.sorting = None
         self.endian = 'big'
+        self.encoding = 'ebcdic'

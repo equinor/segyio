@@ -313,6 +313,7 @@ segy_datasource* create_py_stream_datasource(
     ds->minimize_requests_number = minimize_requests_number;
     ds->elemsize = 4;
     ds->lsb = false;
+    ds->encoding = SEGY_EBCDIC;
 
     /* keep additional reference to assure object does not get deleted before
      * segy_datasource is closed
@@ -433,6 +434,7 @@ int init( segyfd* self, PyObject* args, PyObject* kwargs ) {
     PyObject* stream = NULL;
     PyObject* memory_buffer = NULL;
     int endianness = -1;
+    int encoding = -1;
     int minimize_requests_number = -1;
 
     static const char* keywords[] = {
@@ -441,18 +443,20 @@ int init( segyfd* self, PyObject* args, PyObject* kwargs ) {
         "stream",
         "memory_buffer",
         "endianness",
+        "encoding",
         "minimize_requests_number",
         NULL
     };
 
     if( !PyArg_ParseTupleAndKeywords(
-            args, kwargs, "|ssOOip",
+            args, kwargs, "|ssOOiip",
             const_cast<char**>( keywords ),
             &filename,
             &mode,
             &stream,
             &memory_buffer,
             &endianness,
+            &encoding,
             &minimize_requests_number
         ) ) {
         ValueError( "could not parse arguments" );
@@ -461,6 +465,11 @@ int init( segyfd* self, PyObject* args, PyObject* kwargs ) {
 
     if( endianness != SEGY_MSB && endianness != SEGY_LSB ) {
         ValueError( "endianness must be set to a valid value" );
+        return -1;
+    }
+
+    if( encoding != -1 && encoding != SEGY_EBCDIC && encoding != SEGY_ASCII ) {
+        ValueError( "encoding must be set to a valid value" );
         return -1;
     }
 
@@ -524,9 +533,15 @@ int init( segyfd* self, PyObject* args, PyObject* kwargs ) {
         return -1;
     }
 
-    const int err = segy_set_endianness( ds, endianness );
+    int err = segy_set_endianness( ds, endianness );
     if( err ) {
         ValueError( "internal: error setting endianness, was %d", endianness );
+        return -1;
+    }
+
+    err = segy_set_encoding( ds, encoding );
+    if( err ) {
+        ValueError( "internal: error %d setting encoding, was %d", err, encoding );
         return -1;
     }
 
@@ -1077,12 +1092,15 @@ PyObject* metrics( segyfd* self ) {
     static const int text = SEGY_TEXT_HEADER_SIZE;
     static const int bin  = SEGY_BINARY_HEADER_SIZE;
     const int ext = (self->trace0 - (text + bin)) / text;
-    return Py_BuildValue( "{s:i, s:l, s:i, s:i, s:i, s:i}",
+    segy_datasource* ds = self->ds;
+    int encoding = ds->encoding;
+    return Py_BuildValue( "{s:i, s:l, s:i, s:i, s:i, s:i, s:i}",
                           "tracecount",  self->tracecount,
                           "trace0",      self->trace0,
                           "trace_bsize", self->trace_bsize,
                           "samplecount", self->samplecount,
                           "format",      self->format,
+                          "encoding",    encoding,
                           "ext_headers", ext );
 }
 

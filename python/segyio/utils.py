@@ -42,6 +42,19 @@ def c_endianness(endian):
 
     return endians[endian]
 
+def c_encoding(encoding):
+    encodings = {
+        None: -1,
+        'ebcdic': 0,
+        'ascii': 1,
+    }
+
+    if encoding not in encodings:
+        problem = 'unknown encoding {}, expected one of: '
+        opts = ' '.join(encodings.keys())
+        raise ValueError(problem.format(encoding) + opts)
+
+    return encodings[encoding]
 
 class FileDatasourceDescriptor():
     def __init__(self, filename, mode):
@@ -57,12 +70,13 @@ class FileDatasourceDescriptor():
     def readonly(self):
         return self.mode == 'rb' or self.mode == 'r'
 
-    def make_segyfile_descriptor(self, endian):
+    def make_segyfile_descriptor(self, endian, encoding=None):
         from . import _segyio
         fd = _segyio.segyfd(
             filename=str(self.filename),
             mode=self.mode,
-            endianness=c_endianness(endian)
+            endianness=c_endianness(endian),
+            encoding=c_encoding(encoding),
         )
         return fd
 
@@ -83,11 +97,12 @@ class StreamDatasourceDescriptor():
     def readonly(self):
         return not self.stream.writable()
 
-    def make_segyfile_descriptor(self, endian):
+    def make_segyfile_descriptor(self, endian, encoding):
         from . import _segyio
         fd = _segyio.segyfd(
             stream=self.stream,
             endianness=c_endianness(endian),
+            encoding=c_encoding(encoding),
             minimize_requests_number=self.minimize_requests_number,
         )
         return fd
@@ -108,9 +123,11 @@ class MemoryBufferDatasourceDescriptor():
     def readonly(self):
         return False
 
-    def make_segyfile_descriptor(self, endian):
+    def make_segyfile_descriptor(self, endian, encoding):
         from . import _segyio
         fd = _segyio.segyfd(
             memory_buffer=self.buffer,
-            endianness=c_endianness(endian))
+            endianness=c_endianness(endian),
+            encoding=c_encoding(encoding),
+        )
         return fd

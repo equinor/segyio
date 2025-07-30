@@ -185,6 +185,7 @@ def test_metadata():
     assert np.array_equal(spec.samples, smallspec.samples)
     assert spec.sorting == smallspec.sorting
     assert spec.format == int(smallspec.format)
+    assert spec.encoding == smallspec.encoding
 
 
 @tmpfiles(testdata / 'small.sgy')
