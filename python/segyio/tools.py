@@ -347,6 +347,7 @@ def metadata(f):
 
     spec.ext_headers = f.ext_headers
     spec.endian = f.endian
+    spec.encoding = f.encoding
 
     return spec
 
