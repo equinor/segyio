@@ -52,6 +52,7 @@ runs:
         python -c "import segyio; import inspect; print('after: segyio loaded from ' + inspect.getfile(segyio))"
 
     - name: Make segy file
+      if: ${{ inputs.datasource == 'default' }}
       shell: bash
       working-directory: python
       run: |
@@ -60,6 +61,7 @@ runs:
         else
           echo "file.sgy already exists"
         fi
+        ls -lh file.sgy
 
     - name: Make segy small file
       shell: bash
@@ -70,12 +72,6 @@ runs:
         else
           echo "file-small.sgy already exists"
         fi
-
-    - name: Print filesize
-      shell: bash
-      working-directory: python
-      run: |
-        ls -lh file.sgy
         ls -lh file-small.sgy
 
     - name: Run benchmark tests
