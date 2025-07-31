@@ -674,19 +674,27 @@ def test_read_text_sequence():
             assert text
 
         assert iter(f.text)
-        with pytest.deprecated_call():
-            str(f.text)
 
         # file is ebcdic encoded, but values are returned as ascii
         assert f.encoding == "ebcdic"
         assert len(f.text[0]) == 3200
         assert f.text[0][0] == 67  # "C" character in ASCII
 
+        decoded = f.text[0].decode('latin-1')
+        lines = list(map(''.join, zip(*[iter(decoded)] * 80)))
+        for line in lines:
+            assert line.startswith('C')
+
     with segyio.open(testdata / 'delay-scalar.sgy', ignore_geometry=True) as f:
         # file is ascii encoded and values are returned as ascii
         assert f.encoding == "ascii"
         assert len(f.text[0]) == 3200
         assert f.text[0][0] == 67
+
+        decoded = f.text[0].decode('ascii', errors='replace')
+        lines = list(map(''.join, zip(*[iter(decoded)] * 80)))
+        for line in lines:
+            assert line.startswith('C')
 
 
 @tmpfiles(testdata / 'multi-text.sgy')
