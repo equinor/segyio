@@ -93,6 +93,11 @@ struct segy_datasource {
      */
     bool lsb;
 
+    /* EBCDIC or ASCII encoding. All text-reading functions should consult this
+     * property to determine string encoding.
+     */
+    int encoding;
+
     /* Setting for trace algorithms.
      *
      * If true, unnecessary data would be read into memory/written to the
@@ -190,6 +195,12 @@ int segy_set_format( segy_datasource*, int format );
  * MSB, regardless of the properties of the underlying file.
  */
 int segy_set_endianness( segy_datasource*, int opt );
+
+/* sets file to be EBCDIC/ASCII encoded. If no valid encoding is provided, one
+ * is automatically decided by consulting first text header character. If in
+ * doubt, EBCDIC encoding is assumed.
+ */
+int segy_set_encoding( segy_datasource*, int opt );
 
 /* Gets field datatype from field id. Depending on field value, binary or trace
  * mapping table would be used.
@@ -731,6 +742,11 @@ typedef enum {
     SEGY_MSB = 0,
     SEGY_LSB = 1,
 } SEGY_ENDIANNESS;
+
+typedef enum {
+    SEGY_EBCDIC = 0,
+    SEGY_ASCII = 1,
+} SEGY_ENCODING;
 
 typedef enum {
     SEGY_UNKNOWN_SORTING = 0,

@@ -9,8 +9,8 @@ C 8
 C 9                                                                             
 C10                                                                             
 C11 TRACE HEADER POSITION:                                                      
-C12   INLINE BYTES 189-193    | OFFSET BYTES 037-041                            
-C13   CROSSLINE BYTES 193-197 |                                                 
+C12   INLINE BYTES 189-193    ¦ OFFSET BYTES 037-041                            
+C13   CROSSLINE BYTES 193-197 ¦                                                 
 C14                                                                             
 C15 END EBCDIC HEADER                                                           
 C16                                                                             

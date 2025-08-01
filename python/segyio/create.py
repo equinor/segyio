@@ -120,6 +120,8 @@ def create(filename, spec):
         ext_headers : int
         endian : str { 'big', 'msb', 'little', 'lsb' }
             defaults to 'big'
+        encoding : {'ebcdic', 'ascii'}
+            defaults to 'ebcdic'.
 
 
     Examples
@@ -229,7 +231,11 @@ def _create(datasource_descriptor, spec):
     if endian is None:
         endian = 'big'
 
-    fd = datasource_descriptor.make_segyfile_descriptor(endian)
+    encoding = spec.encoding if hasattr(spec, 'encoding') else 'ebcdic'
+    if encoding is None:
+        encoding = 'ebcdic'
+
+    fd = datasource_descriptor.make_segyfile_descriptor(endian, encoding)
     fd.segymake(
         samples = len(samples),
         tracecount = tracecount,

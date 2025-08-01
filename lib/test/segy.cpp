@@ -349,13 +349,17 @@ TEST_CASE_METHOD( smallbin,
 }
 
 TEST_CASE_METHOD( smallfix,
-                  "sample format/endianness can be overriden",
+                  "sample format/endianness/encoding can be overriden",
                   "[c.segy]" ) {
     Err err = segy_set_format( fp, SEGY_IEEE_FLOAT_4_BYTE );
     CHECK( err == Err::ok() );
 
     err = segy_set_endianness( fp, SEGY_LSB );
     CHECK( err == Err::ok() );
+
+    err = segy_set_encoding( fp, SEGY_ASCII );
+    CHECK( err == Err::ok() );
+    CHECK( fp->encoding == SEGY_ASCII );
 }
 
 TEST_CASE_METHOD( smallfix,
@@ -1468,8 +1472,8 @@ SCENARIO( "reading text header", "[c.segy]" ) {
 "C 9 3: INLINE 2500, CROSSLINE 1428, UTM-X 10021847.00, UTM-Y 9962849.00         "
 "C10 4: INLINE 2500, CROSSLINE 1440, UTM-X 10029348.00, UTM-Y 9975839.00         "
 "C11 TRACE HEADER POSITION:                                                      "
-"C12   INLINE BYTES 005-008    | OFFSET BYTES 037-040                            "
-"C13   CROSSLINE BYTES 021-024 | CMP UTM-X BYTES 181-184                         "
+"C12   INLINE BYTES 005-008    ""\xA6"" OFFSET BYTES 037-040                            "
+"C13   CROSSLINE BYTES 021-024 ""\xA6"" CMP UTM-X BYTES 181-184                         "
 "C14   CMP UTM-Y BYTES 185-188                                                   "
 "C15 END EBCDIC HEADER                                                           "
 "C16                                                                             "
@@ -1496,7 +1500,7 @@ SCENARIO( "reading text header", "[c.segy]" ) {
 "C37                                                                             "
 "C38                                                                             "
 "C39                                                                             "
-"C40                                                                            \x80";
+"C40                                                                            ""\x80";
 
         const char* file = "test-data/text.sgy";
 
@@ -1508,6 +1512,61 @@ SCENARIO( "reading text header", "[c.segy]" ) {
 
         CHECK( err == Err::ok() );
         CHECK( ascii == expected );
+}
+
+
+SCENARIO( "writing text header", "[c.segy]" ) {
+    std::string name = std::string( "write-text-header.sgy" );
+    copyfile( "test-data/small.sgy", name );
+    segy_file* fp = openfile( name, "r+b" );
+
+    const int size = 40;
+
+    const std::string exchanged_line =
+"C 1 Updated line: ""\xA2\xA6\xAC""      ""\xFF\x9F\xB5\xBB""    ![]^|";
+
+    // workaround: std::string seems to treat direct x00 as end of string and
+    // refuses to create further part of it. So xCC is never exepcted to appear
+    // in the final string and is used as a substitute for x00.
+    const std::string expected_line =
+"C 1 Updated line: ""\xA2\xA6\xAC""      ""\xCC\x9F\xCC\xCC""    !""\xCC\xCC\xCC""|";
+
+    REQUIRE( exchanged_line.size() == size );
+    REQUIRE( expected_line.size() == size );
+
+    char baseheader[SEGY_TEXT_HEADER_SIZE] = {};
+    Err err = segy_read_textheader( fp, baseheader );
+    CHECK( err == Err::ok() );
+
+    memcpy( baseheader, exchanged_line.data(), size );
+    err = segy_write_textheader( fp, 0, baseheader );
+    CHECK( err == Err::ok() );
+
+    char header[SEGY_TEXT_HEADER_SIZE] = {};
+    err = segy_read_textheader( fp, header );
+    CHECK( err == Err::ok() );
+
+    for( int i = 0; i < SEGY_TEXT_HEADER_SIZE; ++i ) {
+        if( i < size ) {
+            int actual = static_cast<int>( static_cast<unsigned char>( header[i] ) );
+            int expected = static_cast<int>( static_cast<unsigned char>( expected_line[i] ) );
+
+            INFO( "i = " << i
+                << ", header[i] = 0x" << std::hex << actual
+                << ", expected[i] = 0x" << std::hex << expected
+            );
+            if( expected == 0xCC ) {
+                // workarond for 0x00 being treated differently
+                CHECK( header[i] == 0x00 );
+            } else {
+                CHECK( header[i] == expected_line[i] );
+            }
+        } else {
+            CHECK( header[i] == baseheader[i] );
+        }
+    }
+
+    segy_close( fp );
 }
 
 TEST_CASE("open file with >32k traces", "[c.segy]") {

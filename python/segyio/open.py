@@ -40,7 +40,8 @@ def open(filename, mode="r", iline = 189,
                              xline = 193,
                              strict = True,
                              ignore_geometry = False,
-                             endian = 'big'):
+                             endian = 'big',
+                             encoding = None):
     """Open a segy file.
 
     Opens a segy file and tries to figure out its sorting, inline numbers,
@@ -95,6 +96,12 @@ def open(filename, mode="r", iline = 189,
 
     endian : {'big', 'msb', 'little', 'lsb'}
         File endianness, big/msb (default) or little/lsb
+
+    encoding : {None, 'ebcdic', 'ascii'}
+        Encoding for text and strings for the whole file: None - auto detection
+        (default), ebcdic or ascii. ebcdic encoded strings would be translated
+        into latin-1 encoding as per SEG-Y specification. For ascii encoding
+        data would be returned as is.
 
     Returns
     -------
@@ -154,7 +161,7 @@ def open(filename, mode="r", iline = 189,
 
     return _open(
         FileDatasourceDescriptor(filename, mode),
-        iline, xline, strict, ignore_geometry, endian
+        iline, xline, strict, ignore_geometry, endian, encoding
     )
 
 
@@ -164,6 +171,7 @@ def open_with(stream,
               strict=True,
               ignore_geometry=False,
               endian='big',
+              encoding=None,
               minimize_requests_number=True
               ):
     """
@@ -194,7 +202,7 @@ def open_with(stream,
             stream,
             minimize_requests_number
         ),
-        iline, xline, strict, ignore_geometry, endian
+        iline, xline, strict, ignore_geometry, endian, encoding
     )
 
 
@@ -203,7 +211,9 @@ def open_from_memory(memory_buffer,
                    xline=193,
                    strict=True,
                    ignore_geometry=False,
-                   endian='big'):
+                   endian='big',
+                   encoding=None,
+                   ):
     """
     Opens a segy file from memory.
 
@@ -224,7 +234,7 @@ def open_from_memory(memory_buffer,
         MemoryBufferDatasourceDescriptor(
             memory_buffer
         ),
-        iline, xline, strict, ignore_geometry, endian
+        iline, xline, strict, ignore_geometry, endian, encoding
     )
 
 
@@ -233,9 +243,11 @@ def _open(datasource_descriptor,
           xline=193,
           strict=True,
           ignore_geometry=False,
-          endian='big'):
+          endian='big',
+          encoding=None,
+          ):
 
-    fd = datasource_descriptor.make_segyfile_descriptor(endian)
+    fd = datasource_descriptor.make_segyfile_descriptor(endian, encoding)
     fd.segyopen()
     metrics = fd.metrics()
 
