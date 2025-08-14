@@ -54,7 +54,7 @@ class SegyFile(object):
         metrics = self.segyfd.metrics()
         self._fmt = metrics['format']
         self._tracecount = metrics['tracecount']
-        self._ext_headers = metrics['ext_headers']
+        self._ext_textheaders_count = metrics['ext_headers']
         self._encoding = metrics['encoding']
 
         try:
@@ -308,20 +308,41 @@ class SegyFile(object):
 
     @property
     def ext_headers(self):
-        """Extra text headers
+        """
+        DEPRECATED to avoid confusion with trace header extensions. Use
+        ext_text_headers_count instead.
 
         The number of extra text headers, given by the ``ExtendedHeaders``
         field in the binary header.
 
         Returns
         -------
-
         headers : int
             Number of extra text headers
 
+        .. deprecated:: 2.0
+            Use :attr:`ext_text_headers_count` instead.
         """
+        warnings.warn(
+            "The 'ext_headers' property is deprecated and will be removed in a future version. "
+            "Use 'ext_text_headers_count' instead.",
+            DeprecationWarning
+        )
+        return self._ext_textheaders_count
 
-        return self._ext_headers
+    @property
+    def ext_text_headers_count(self):
+        """Number of extended textual file header records.
+
+        The number of 3200-byte, extended textual file header records following
+        the binary header.
+
+        Returns
+        -------
+        headers : int
+            Number of extra text headers
+        """
+        return self._ext_textheaders_count
 
     @property
     def unstructured(self):
@@ -770,7 +791,7 @@ class SegyFile(object):
         -----
         .. versionadded:: 1.1
         """
-        return Text(self.segyfd, self._ext_headers + 1)
+        return Text(self.segyfd, self._ext_textheaders_count + 1)
 
     @property
     def bin(self):
