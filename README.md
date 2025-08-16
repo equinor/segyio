@@ -382,7 +382,7 @@ demos in this
 
 Small SEG-Y formatted files are included in the repository for test purposes.
 The data is non-sensical and made to be predictable, and it is reproducible by
-using segyio. The tests file are located in the test-data directory. To
+using segyio. The test files are located in the test-data directory. To
 reproduce the data file, build segyio and run the test program `make-file.py`,
 `make-ps-file.py`, and `make-rotated-copies.py` as such:
 
