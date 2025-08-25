@@ -680,6 +680,7 @@ segy_file* segy_open( const char* path, const char* mode ) {
     // on init assume a size of 4-bytes-per-element and big-endian
     ds->elemsize = 4;
     ds->lsb = false;
+    ds->encoding = SEGY_EBCDIC;
 
     ds->minimize_requests_number = true;
     ds->memory_speedup = false;
@@ -721,6 +722,7 @@ segy_datasource* segy_memopen( unsigned char* addr, size_t size ) {
     // on init assume a size of 4-bytes-per-element and big-endian
     ds->elemsize = 4;
     ds->lsb = false;
+    ds->encoding = SEGY_EBCDIC;
 
     ds->minimize_requests_number = false;
     ds->memory_speedup = true;
@@ -1223,6 +1225,29 @@ int segy_set_endianness( segy_datasource* ds, int endianness) {
     }
 
     ds->lsb = endianness;
+    return SEGY_OK;
+}
+
+int segy_set_encoding( segy_datasource* ds, int encoding ) {
+    switch( encoding ) {
+        case SEGY_EBCDIC:
+        case SEGY_ASCII:
+            break;
+        default: {
+            encoding = SEGY_EBCDIC;
+            int err = ds->seek( ds, 0, SEEK_SET );
+            if( err == 0 ) {
+                char c;
+                err = ds->read( ds, &c, 1 );
+                // fist symbol is supposed to be 'C', which ASCII code is 67
+                if( err == 0 && c == 67) {
+                    encoding = SEGY_ASCII;
+                }
+            }
+        }
+    }
+
+    ds->encoding = encoding;
     return SEGY_OK;
 }
 
@@ -2481,11 +2506,13 @@ int segy_read_ext_textheader( segy_datasource* ds, int pos, char *buf) {
     int err = ds->seek( ds, offset, SEEK_SET );
     if( err != 0 ) return SEGY_DS_SEEK_ERROR;
 
-    char localbuf[SEGY_TEXT_HEADER_SIZE + 1] = { 0 };
-    err = ds->read( ds, localbuf, SEGY_TEXT_HEADER_SIZE );
+    err = ds->read( ds, buf, SEGY_TEXT_HEADER_SIZE );
     if( err != 0 ) return SEGY_DS_READ_ERROR;
 
-    encode( buf, localbuf, e2a, SEGY_TEXT_HEADER_SIZE );
+    if( ds->encoding == SEGY_EBCDIC ) {
+        encode( buf, buf, e2a, SEGY_TEXT_HEADER_SIZE );
+    }
+
     return SEGY_OK;
 }
 
@@ -2497,7 +2524,11 @@ int segy_write_textheader( segy_datasource* ds, int pos, const char* buf ) {
 
     if( pos < 0 ) return SEGY_INVALID_ARGS;
 
-    encode( mbuf, buf, a2e, SEGY_TEXT_HEADER_SIZE );
+    if( ds->encoding == SEGY_EBCDIC ) {
+        encode( mbuf, buf, a2e, SEGY_TEXT_HEADER_SIZE );
+    } else {
+        memcpy( mbuf, buf, SEGY_TEXT_HEADER_SIZE );
+    }
 
     const long offset = pos == 0
                       ? 0

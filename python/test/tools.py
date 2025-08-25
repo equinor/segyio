@@ -83,6 +83,11 @@ def test_wrap_only_stringifies_content():
         s = segyio.tools.wrap(f.text[0].decode(errors = 'ignore'))
         assert s.startswith('C 1')
 
+    with segyio.open(testdata / 'delay-scalar.sgy', ignore_geometry=True) as f:
+        assert f.encoding == 'ascii'
+        s = segyio.tools.wrap(f.text[0].decode("ascii"))
+        assert s.startswith('C 1')
+
 
 def test_values_text_header_creation():
     lines = {i + 1: chr(64 + i) * 76 for i in range(40)}
@@ -185,6 +190,7 @@ def test_metadata():
     assert np.array_equal(spec.samples, smallspec.samples)
     assert spec.sorting == smallspec.sorting
     assert spec.format == int(smallspec.format)
+    assert spec.encoding == smallspec.encoding
 
 
 @tmpfiles(testdata / 'small.sgy')

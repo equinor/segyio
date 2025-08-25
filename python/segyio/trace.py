@@ -885,11 +885,14 @@ class Text(Sequence):
         Print a textual header line-by-line:
 
         >>> # using zip, from the zip documentation
-        >>> text = str(f.text[0])
+        >>> text = f.text[0].decode('ascii', errors='replace')
         >>> lines = map(''.join, zip( *[iter(text)] * 80))
         >>> for line in lines:
         ...     print(line)
         ...
+
+        Or use segyio.tools.wrap:
+        >>> text = segyio.tools.wrap(f.text[0].decode('latin-1'))
         """
         try:
             i = self.wrapindex(i)
@@ -959,9 +962,3 @@ class Text(Sequence):
                 if isinstance(text, Text):
                     text = text[0]
                 self.segyfd.puttext(i, text)
-
-
-    def __str__(self):
-        msg = 'str(text) is deprecated, use explicit format instead'
-        warnings.warn(msg, DeprecationWarning)
-        return '\n'.join(map(''.join, zip(*[iter(str(self[0]))] * 80)))

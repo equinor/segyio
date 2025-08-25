@@ -210,6 +210,7 @@ def test_file_info(openfn, kwargs):
         assert 1 == f.offsets
         assert 1 == int(f.format)
         assert np.single == f.dtype
+        assert 'ebcdic' == f.encoding
 
         xlines = list(range(20, 25))
         ilines = list(range(1, 6))
@@ -673,8 +674,27 @@ def test_read_text_sequence():
             assert text
 
         assert iter(f.text)
-        with pytest.deprecated_call():
-            str(f.text)
+
+        # file is ebcdic encoded, but values are returned as ascii
+        assert f.encoding == "ebcdic"
+        assert len(f.text[0]) == 3200
+        assert f.text[0][0] == 67  # "C" character in ASCII
+
+        decoded = f.text[0].decode('latin-1')
+        lines = list(map(''.join, zip(*[iter(decoded)] * 80)))
+        for line in lines:
+            assert line.startswith('C')
+
+    with segyio.open(testdata / 'delay-scalar.sgy', ignore_geometry=True) as f:
+        # file is ascii encoded and values are returned as ascii
+        assert f.encoding == "ascii"
+        assert len(f.text[0]) == 3200
+        assert f.text[0][0] == 67
+
+        decoded = f.text[0].decode('ascii', errors='replace')
+        lines = list(map(''.join, zip(*[iter(decoded)] * 80)))
+        for line in lines:
+            assert line.startswith('C')
 
 
 @tmpfiles(testdata / 'multi-text.sgy')
@@ -700,6 +720,46 @@ def test_put_text_sequence(tmpdir):
     with segyio.open(fname, ignore_geometry = True) as f:
         for text in f.text:
             assert text == ref
+
+
+def test_update_text_encoding(small):
+    lines = {1: 'first line', 10: 'last line'}
+    ref = bytes(segyio.tools.create_text_header(lines), 'ascii')
+
+    encodings = ['ascii', 'ebcdic']
+
+    for write_encoding in encodings:
+        with segyio.open(small, mode='r+', encoding=write_encoding) as f:
+            f.text[0] = ref
+
+        with segyio.open(small) as f:
+            assert f.text[0] == ref
+
+        for read_encoding in encodings:
+            with segyio.open(small, encoding=read_encoding) as f:
+                if read_encoding == write_encoding:
+                    assert f.text[0] == ref
+                else:
+                    assert f.text[0] != ref
+
+
+def test_create_ascii_text(tmpdir):
+    fresh = str(tmpdir / 'fresh.sgy')
+
+    lines = {1: 'first line', 10: 'last line'}
+    ref = bytes(segyio.tools.create_text_header(lines), 'ascii')
+
+    spec = segyio.tools.metadata(testdata / 'small-ps.sgy')
+    spec.encoding = "ascii"
+
+    with segyio.create(fresh, spec) as f:
+        for i in range(spec.tracecount):
+            f.trace[i] = np.zeros(len(spec.samples), dtype=np.single)
+        f.text[0] = ref
+
+    with segyio.open(fresh, ignore_geometry=True) as f:
+        assert f.text[0] == ref
+
 
 @pytest.mark.parametrize(('openfn', 'kwargs'), smallfiles)
 def test_header_getitem_intlikes(openfn, kwargs):

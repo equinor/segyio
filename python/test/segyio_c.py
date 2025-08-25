@@ -46,7 +46,7 @@ def test_open_flush_and_close_file():
     f.flush()
     f.close()
 
-    with pytest.raises(IOError):
+    with pytest.raises(ValueError):
         f.flush()
 
 
@@ -247,6 +247,7 @@ def test_metrics(mmap=False):
     assert metrics['offset_count'] == 1
     assert metrics['iline_count'] == 5
     assert metrics['xline_count'] == 5
+    assert metrics['encoding'] == 0
 
     f.close()
 

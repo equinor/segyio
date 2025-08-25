@@ -85,8 +85,8 @@ jobs:
         run: |
             cmake -S . -B build           \
             -DCMAKE_BUILD_TYPE=Debug      \
-            -DCMAKE_C_FLAGS_DEBUG="-O0"   \
-            -DCMAKE_CXX_FLAGS_DEBUG="-O0" \
+            -DCMAKE_C_FLAGS_DEBUG="-g -O0"   \
+            -DCMAKE_CXX_FLAGS_DEBUG="-g -O0" \
             -DBUILD_SHARED_LIBS=ON        \
             -DBUILD_PYTHON=OFF
             cmake --build build
