@@ -13,24 +13,217 @@
 extern "C" {
 #endif // __cplusplus
 
-/*
- * About signatures:
- * If a function returns `int` you can assume the return value is an error
- * code. 0 will always indicate success. If a function returns something else
- * than an int it's typically an operation that cannot fail assuming the passed
- * buffer is of the correct size. Any exceptions will be clearly stated.
- *
- * Function signatures are typically:
- * 1) input parameters
- * 2) output parameters
- * 3) low-level file structure information
- *
- * Output parameters are non-const pointers, input parameters are const
- * pointers or plain values. All functions are namespace-prefix'd with segy_.
- * Some functions return values, notably the family concerned with the binary
- * header such as segy_trace0, that should be used in consecutive segy function
- * calls that use the same name for one of its parameters.
- */
+typedef enum {
+    SEGY_UNDEFINED_FIELD = 0,
+    SEGY_IBM_FLOAT_4_BYTE = 1,
+    SEGY_SIGNED_INTEGER_4_BYTE = 2,
+    SEGY_SIGNED_SHORT_2_BYTE = 3,
+    SEGY_FIXED_POINT_WITH_GAIN_4_BYTE = 4, // Obsolete
+    SEGY_IEEE_FLOAT_4_BYTE = 5,
+    SEGY_IEEE_FLOAT_8_BYTE = 6,
+    SEGY_SIGNED_CHAR_3_BYTE = 7,
+    SEGY_SIGNED_INTEGER_3_BYTE = 7,
+    SEGY_SIGNED_CHAR_1_BYTE = 8,
+    SEGY_SIGNED_INTEGER_8_BYTE = 9,
+    SEGY_UNSIGNED_INTEGER_4_BYTE = 10,
+    SEGY_UNSIGNED_SHORT_2_BYTE = 11,
+    SEGY_UNSIGNED_INTEGER_8_BYTE = 12,
+    SEGY_UNSIGNED_INTEGER_3_BYTE = 15,
+    SEGY_UNSIGNED_CHAR_1_BYTE = 16,
+    SEGY_NOT_IN_USE_1 = 19,
+    SEGY_NOT_IN_USE_2 = 20,
+} SEGY_FORMAT;
+
+typedef enum {
+    SEGY_TR_SEQ_LINE                = 1,
+    SEGY_TR_SEQ_FILE                = 5,
+    SEGY_TR_FIELD_RECORD            = 9,
+    SEGY_TR_NUMBER_ORIG_FIELD       = 13,
+    SEGY_TR_ENERGY_SOURCE_POINT     = 17,
+    SEGY_TR_ENSEMBLE                = 21,
+    SEGY_TR_NUM_IN_ENSEMBLE         = 25,
+    SEGY_TR_TRACE_ID                = 29,
+    SEGY_TR_SUMMED_TRACES           = 31,
+    SEGY_TR_STACKED_TRACES          = 33,
+    SEGY_TR_DATA_USE                = 35,
+    SEGY_TR_OFFSET                  = 37,
+    SEGY_TR_RECV_GROUP_ELEV         = 41,
+    SEGY_TR_SOURCE_SURF_ELEV        = 45,
+    SEGY_TR_SOURCE_DEPTH            = 49,
+    SEGY_TR_RECV_DATUM_ELEV         = 53,
+    SEGY_TR_SOURCE_DATUM_ELEV       = 57,
+    SEGY_TR_SOURCE_WATER_DEPTH      = 61,
+    SEGY_TR_GROUP_WATER_DEPTH       = 65,
+    SEGY_TR_ELEV_SCALAR             = 69,
+    SEGY_TR_SOURCE_GROUP_SCALAR     = 71,
+    SEGY_TR_SOURCE_X                = 73,
+    SEGY_TR_SOURCE_Y                = 77,
+    SEGY_TR_GROUP_X                 = 81,
+    SEGY_TR_GROUP_Y                 = 85,
+    SEGY_TR_COORD_UNITS             = 89,
+    SEGY_TR_WEATHERING_VELO         = 91,
+    SEGY_TR_SUBWEATHERING_VELO      = 93,
+    SEGY_TR_SOURCE_UPHOLE_TIME      = 95,
+    SEGY_TR_GROUP_UPHOLE_TIME       = 97,
+    SEGY_TR_SOURCE_STATIC_CORR      = 99,
+    SEGY_TR_GROUP_STATIC_CORR       = 101,
+    SEGY_TR_TOT_STATIC_APPLIED      = 103,
+    SEGY_TR_LAG_A                   = 105,
+    SEGY_TR_LAG_B                   = 107,
+    SEGY_TR_DELAY_REC_TIME          = 109,
+    SEGY_TR_MUTE_TIME_START         = 111,
+    SEGY_TR_MUTE_TIME_END           = 113,
+    SEGY_TR_SAMPLE_COUNT            = 115,
+    SEGY_TR_SAMPLE_INTER            = 117,
+    SEGY_TR_GAIN_TYPE               = 119,
+    SEGY_TR_INSTR_GAIN_CONST        = 121,
+    SEGY_TR_INSTR_INIT_GAIN         = 123,
+    SEGY_TR_CORRELATED              = 125,
+    SEGY_TR_SWEEP_FREQ_START        = 127,
+    SEGY_TR_SWEEP_FREQ_END          = 129,
+    SEGY_TR_SWEEP_LENGTH            = 131,
+    SEGY_TR_SWEEP_TYPE              = 133,
+    SEGY_TR_SWEEP_TAPERLEN_START    = 135,
+    SEGY_TR_SWEEP_TAPERLEN_END      = 137,
+    SEGY_TR_TAPER_TYPE              = 139,
+    SEGY_TR_ALIAS_FILT_FREQ         = 141,
+    SEGY_TR_ALIAS_FILT_SLOPE        = 143,
+    SEGY_TR_NOTCH_FILT_FREQ         = 145,
+    SEGY_TR_NOTCH_FILT_SLOPE        = 147,
+    SEGY_TR_LOW_CUT_FREQ            = 149,
+    SEGY_TR_HIGH_CUT_FREQ           = 151,
+    SEGY_TR_LOW_CUT_SLOPE           = 153,
+    SEGY_TR_HIGH_CUT_SLOPE          = 155,
+    SEGY_TR_YEAR_DATA_REC           = 157,
+    SEGY_TR_DAY_OF_YEAR             = 159,
+    SEGY_TR_HOUR_OF_DAY             = 161,
+    SEGY_TR_MIN_OF_HOUR             = 163,
+    SEGY_TR_SEC_OF_MIN              = 165,
+    SEGY_TR_TIME_BASE_CODE          = 167,
+    SEGY_TR_WEIGHTING_FAC           = 169,
+    SEGY_TR_GEOPHONE_GROUP_ROLL1    = 171,
+    SEGY_TR_GEOPHONE_GROUP_FIRST    = 173,
+    SEGY_TR_GEOPHONE_GROUP_LAST     = 175,
+    SEGY_TR_GAP_SIZE                = 177,
+    SEGY_TR_OVER_TRAVEL             = 179,
+    SEGY_TR_CDP_X                   = 181,
+    SEGY_TR_CDP_Y                   = 185,
+    SEGY_TR_INLINE                  = 189,
+    SEGY_TR_CROSSLINE               = 193,
+    SEGY_TR_SHOT_POINT              = 197,
+    SEGY_TR_SHOT_POINT_SCALAR       = 201,
+    SEGY_TR_MEASURE_UNIT            = 203,
+    SEGY_TR_TRANSDUCTION_MANT       = 205,
+    SEGY_TR_TRANSDUCTION_EXP        = 209,
+    SEGY_TR_TRANSDUCTION_UNIT       = 211,
+    SEGY_TR_DEVICE_ID               = 213,
+    SEGY_TR_SCALAR_TRACE_HEADER     = 215,
+    SEGY_TR_SOURCE_TYPE             = 217,
+    SEGY_TR_SOURCE_ENERGY_DIR_VERT  = 219,
+    SEGY_TR_SOURCE_ENERGY_DIR_XLINE = 221,
+    SEGY_TR_SOURCE_ENERGY_DIR_ILINE = 223,
+    SEGY_TR_SOURCE_MEASURE_MANT     = 225,
+    SEGY_TR_SOURCE_MEASURE_EXP      = 229,
+    SEGY_TR_SOURCE_MEASURE_UNIT     = 231,
+    SEGY_TR_UNASSIGNED1             = 233,
+    SEGY_TR_UNASSIGNED2             = 237
+} SEGY_FIELD;
+
+typedef enum {
+    SEGY_BIN_JOB_ID                     = 3201,
+    SEGY_BIN_LINE_NUMBER                = 3205,
+    SEGY_BIN_REEL_NUMBER                = 3209,
+    SEGY_BIN_ENSEMBLE_TRACES            = 3213,
+    SEGY_BIN_AUX_ENSEMBLE_TRACES        = 3215,
+    SEGY_BIN_INTERVAL                   = 3217,
+    SEGY_BIN_INTERVAL_ORIG              = 3219,
+    SEGY_BIN_SAMPLES                    = 3221,
+    SEGY_BIN_SAMPLES_ORIG               = 3223,
+    SEGY_BIN_FORMAT                     = 3225,
+    SEGY_BIN_ENSEMBLE_FOLD              = 3227,
+    SEGY_BIN_SORTING_CODE               = 3229,
+    SEGY_BIN_VERTICAL_SUM               = 3231,
+    SEGY_BIN_SWEEP_FREQ_START           = 3233,
+    SEGY_BIN_SWEEP_FREQ_END             = 3235,
+    SEGY_BIN_SWEEP_LENGTH               = 3237,
+    SEGY_BIN_SWEEP                      = 3239,
+    SEGY_BIN_SWEEP_CHANNEL              = 3241,
+    SEGY_BIN_SWEEP_TAPER_START          = 3243,
+    SEGY_BIN_SWEEP_TAPER_END            = 3245,
+    SEGY_BIN_TAPER                      = 3247,
+    SEGY_BIN_CORRELATED_TRACES          = 3249,
+    SEGY_BIN_BIN_GAIN_RECOVERY          = 3251,
+    SEGY_BIN_AMPLITUDE_RECOVERY         = 3253,
+    SEGY_BIN_MEASUREMENT_SYSTEM         = 3255,
+    SEGY_BIN_IMPULSE_POLARITY           = 3257,
+    SEGY_BIN_VIBRATORY_POLARITY         = 3259,
+    SEGY_BIN_EXT_ENSEMBLE_TRACES        = 3261,
+    SEGY_BIN_EXT_AUX_ENSEMBLE_TRACES    = 3265,
+    SEGY_BIN_EXT_SAMPLES                = 3269,
+    SEGY_BIN_EXT_INTERVAL               = 3273,
+    SEGY_BIN_EXT_INTERVAL_ORIG          = 3281,
+    SEGY_BIN_EXT_SAMPLES_ORIG           = 3289,
+    SEGY_BIN_EXT_ENSEMBLE_FOLD          = 3293,
+    SEGY_BIN_INTEGER_CONSTANT           = 3297, // Expected value 16909060 (decimal). Used to detect order of bytes
+    SEGY_BIN_UNASSIGNED1                = 3301,
+    SEGY_BIN_SEGY_REVISION              = 3501,
+    SEGY_BIN_SEGY_REVISION_MINOR        = 3502,
+    SEGY_BIN_TRACE_FLAG                 = 3503,
+    SEGY_BIN_EXT_HEADERS                = 3505,
+    SEGY_BIN_MAX_ADDITIONAL_TR_HEADERS  = 3507,
+    SEGY_BIN_SURVEY_TYPE                = 3509,
+    SEGY_BIN_TIME_BASIS_CODE            = 3511,
+    SEGY_BIN_NR_TRACES_IN_STREAM        = 3513,
+    SEGY_BIN_FIRST_TRACE_OFFSET         = 3521,
+    SEGY_BIN_NR_TRAILER_RECORDS         = 3529,
+    SEGY_BIN_UNASSIGNED2                = 3533,
+} SEGY_BINFIELD;
+
+
+typedef enum {
+    SEGY_MSB = 0,
+    SEGY_LSB = 1,
+} SEGY_ENDIANNESS;
+
+typedef enum {
+    SEGY_EBCDIC = 0,
+    SEGY_ASCII = 1,
+} SEGY_ENCODING;
+
+typedef enum {
+    SEGY_UNKNOWN_SORTING = 0,
+    SEGY_CROSSLINE_SORTING = 1,
+    SEGY_INLINE_SORTING = 2,
+} SEGY_SORTING;
+
+typedef enum {
+    SEGY_OK = 0,
+    SEGY_FOPEN_ERROR,
+    SEGY_FSEEK_ERROR,
+    SEGY_FREAD_ERROR,
+    SEGY_FWRITE_ERROR,
+    SEGY_INVALID_FIELD,
+    SEGY_INVALID_FIELD_DATATYPE,
+    SEGY_INVALID_FIELD_VALUE,
+    SEGY_INVALID_SORTING,
+    SEGY_MISSING_LINE_INDEX,
+    SEGY_INVALID_OFFSETS,
+    SEGY_TRACE_SIZE_MISMATCH,
+    SEGY_INVALID_ARGS,
+    SEGY_MMAP_ERROR,
+    SEGY_MMAP_INVALID,
+    SEGY_READONLY,
+    SEGY_NOTFOUND,
+    SEGY_MEMORY_ERROR,
+    SEGY_DS_FLUSH_ERROR,
+    SEGY_DS_CLOSE_ERROR,
+    // values are duplicated until enum is properly cleaned
+    SEGY_DS_READ_ERROR = SEGY_FREAD_ERROR,
+    SEGY_DS_WRITE_ERROR = SEGY_FWRITE_ERROR,
+    SEGY_DS_SEEK_ERROR = SEGY_FSEEK_ERROR,
+    SEGY_DS_ERROR = SEGY_FREAD_ERROR,
+} SEGY_ERROR;
+
 
 /*
  * Represents an abstract data source which supports common file operations,
@@ -138,6 +331,26 @@ typedef struct {
     segy_field_value value;
     uint8_t datatype;
 } segy_field_data;
+
+
+/*
+ * About signatures:
+ * If a function returns `int` you can assume the return value is an error
+ * code. 0 will always indicate success. If a function returns something else
+ * than an int it's typically an operation that cannot fail assuming the passed
+ * buffer is of the correct size. Any exceptions will be clearly stated.
+ *
+ * Function signatures are typically:
+ * 1) input parameters
+ * 2) output parameters
+ * 3) low-level file structure information
+ *
+ * Output parameters are non-const pointers, input parameters are const
+ * pointers or plain values. All functions are namespace-prefix'd with segy_.
+ * Some functions return values, notably the family concerned with the binary
+ * header such as segy_trace0, that should be used in consecutive segy function
+ * calls that use the same name for one of its parameters.
+ */
 
 segy_file* segy_open( const char* path, const char* mode );
 int segy_mmap( segy_datasource* );
@@ -569,218 +782,6 @@ int segy_inline_stride( int sorting,
 int segy_crossline_stride( int sorting,
                            int crossline_count,
                            int* stride );
-
-
-typedef enum {
-    SEGY_UNDEFINED_FIELD = 0,
-    SEGY_IBM_FLOAT_4_BYTE = 1,
-    SEGY_SIGNED_INTEGER_4_BYTE = 2,
-    SEGY_SIGNED_SHORT_2_BYTE = 3,
-    SEGY_FIXED_POINT_WITH_GAIN_4_BYTE = 4, // Obsolete
-    SEGY_IEEE_FLOAT_4_BYTE = 5,
-    SEGY_IEEE_FLOAT_8_BYTE = 6,
-    SEGY_SIGNED_CHAR_3_BYTE = 7,
-    SEGY_SIGNED_INTEGER_3_BYTE = 7,
-    SEGY_SIGNED_CHAR_1_BYTE = 8,
-    SEGY_SIGNED_INTEGER_8_BYTE = 9,
-    SEGY_UNSIGNED_INTEGER_4_BYTE = 10,
-    SEGY_UNSIGNED_SHORT_2_BYTE = 11,
-    SEGY_UNSIGNED_INTEGER_8_BYTE = 12,
-    SEGY_UNSIGNED_INTEGER_3_BYTE = 15,
-    SEGY_UNSIGNED_CHAR_1_BYTE = 16,
-    SEGY_NOT_IN_USE_1 = 19,
-    SEGY_NOT_IN_USE_2 = 20,
-} SEGY_FORMAT;
-
-typedef enum {
-    SEGY_TR_SEQ_LINE                = 1,
-    SEGY_TR_SEQ_FILE                = 5,
-    SEGY_TR_FIELD_RECORD            = 9,
-    SEGY_TR_NUMBER_ORIG_FIELD       = 13,
-    SEGY_TR_ENERGY_SOURCE_POINT     = 17,
-    SEGY_TR_ENSEMBLE                = 21,
-    SEGY_TR_NUM_IN_ENSEMBLE         = 25,
-    SEGY_TR_TRACE_ID                = 29,
-    SEGY_TR_SUMMED_TRACES           = 31,
-    SEGY_TR_STACKED_TRACES          = 33,
-    SEGY_TR_DATA_USE                = 35,
-    SEGY_TR_OFFSET                  = 37,
-    SEGY_TR_RECV_GROUP_ELEV         = 41,
-    SEGY_TR_SOURCE_SURF_ELEV        = 45,
-    SEGY_TR_SOURCE_DEPTH            = 49,
-    SEGY_TR_RECV_DATUM_ELEV         = 53,
-    SEGY_TR_SOURCE_DATUM_ELEV       = 57,
-    SEGY_TR_SOURCE_WATER_DEPTH      = 61,
-    SEGY_TR_GROUP_WATER_DEPTH       = 65,
-    SEGY_TR_ELEV_SCALAR             = 69,
-    SEGY_TR_SOURCE_GROUP_SCALAR     = 71,
-    SEGY_TR_SOURCE_X                = 73,
-    SEGY_TR_SOURCE_Y                = 77,
-    SEGY_TR_GROUP_X                 = 81,
-    SEGY_TR_GROUP_Y                 = 85,
-    SEGY_TR_COORD_UNITS             = 89,
-    SEGY_TR_WEATHERING_VELO         = 91,
-    SEGY_TR_SUBWEATHERING_VELO      = 93,
-    SEGY_TR_SOURCE_UPHOLE_TIME      = 95,
-    SEGY_TR_GROUP_UPHOLE_TIME       = 97,
-    SEGY_TR_SOURCE_STATIC_CORR      = 99,
-    SEGY_TR_GROUP_STATIC_CORR       = 101,
-    SEGY_TR_TOT_STATIC_APPLIED      = 103,
-    SEGY_TR_LAG_A                   = 105,
-    SEGY_TR_LAG_B                   = 107,
-    SEGY_TR_DELAY_REC_TIME          = 109,
-    SEGY_TR_MUTE_TIME_START         = 111,
-    SEGY_TR_MUTE_TIME_END           = 113,
-    SEGY_TR_SAMPLE_COUNT            = 115,
-    SEGY_TR_SAMPLE_INTER            = 117,
-    SEGY_TR_GAIN_TYPE               = 119,
-    SEGY_TR_INSTR_GAIN_CONST        = 121,
-    SEGY_TR_INSTR_INIT_GAIN         = 123,
-    SEGY_TR_CORRELATED              = 125,
-    SEGY_TR_SWEEP_FREQ_START        = 127,
-    SEGY_TR_SWEEP_FREQ_END          = 129,
-    SEGY_TR_SWEEP_LENGTH            = 131,
-    SEGY_TR_SWEEP_TYPE              = 133,
-    SEGY_TR_SWEEP_TAPERLEN_START    = 135,
-    SEGY_TR_SWEEP_TAPERLEN_END      = 137,
-    SEGY_TR_TAPER_TYPE              = 139,
-    SEGY_TR_ALIAS_FILT_FREQ         = 141,
-    SEGY_TR_ALIAS_FILT_SLOPE        = 143,
-    SEGY_TR_NOTCH_FILT_FREQ         = 145,
-    SEGY_TR_NOTCH_FILT_SLOPE        = 147,
-    SEGY_TR_LOW_CUT_FREQ            = 149,
-    SEGY_TR_HIGH_CUT_FREQ           = 151,
-    SEGY_TR_LOW_CUT_SLOPE           = 153,
-    SEGY_TR_HIGH_CUT_SLOPE          = 155,
-    SEGY_TR_YEAR_DATA_REC           = 157,
-    SEGY_TR_DAY_OF_YEAR             = 159,
-    SEGY_TR_HOUR_OF_DAY             = 161,
-    SEGY_TR_MIN_OF_HOUR             = 163,
-    SEGY_TR_SEC_OF_MIN              = 165,
-    SEGY_TR_TIME_BASE_CODE          = 167,
-    SEGY_TR_WEIGHTING_FAC           = 169,
-    SEGY_TR_GEOPHONE_GROUP_ROLL1    = 171,
-    SEGY_TR_GEOPHONE_GROUP_FIRST    = 173,
-    SEGY_TR_GEOPHONE_GROUP_LAST     = 175,
-    SEGY_TR_GAP_SIZE                = 177,
-    SEGY_TR_OVER_TRAVEL             = 179,
-    SEGY_TR_CDP_X                   = 181,
-    SEGY_TR_CDP_Y                   = 185,
-    SEGY_TR_INLINE                  = 189,
-    SEGY_TR_CROSSLINE               = 193,
-    SEGY_TR_SHOT_POINT              = 197,
-    SEGY_TR_SHOT_POINT_SCALAR       = 201,
-    SEGY_TR_MEASURE_UNIT            = 203,
-    SEGY_TR_TRANSDUCTION_MANT       = 205,
-    SEGY_TR_TRANSDUCTION_EXP        = 209,
-    SEGY_TR_TRANSDUCTION_UNIT       = 211,
-    SEGY_TR_DEVICE_ID               = 213,
-    SEGY_TR_SCALAR_TRACE_HEADER     = 215,
-    SEGY_TR_SOURCE_TYPE             = 217,
-    SEGY_TR_SOURCE_ENERGY_DIR_VERT  = 219,
-    SEGY_TR_SOURCE_ENERGY_DIR_XLINE = 221,
-    SEGY_TR_SOURCE_ENERGY_DIR_ILINE = 223,
-    SEGY_TR_SOURCE_MEASURE_MANT     = 225,
-    SEGY_TR_SOURCE_MEASURE_EXP      = 229,
-    SEGY_TR_SOURCE_MEASURE_UNIT     = 231,
-    SEGY_TR_UNASSIGNED1             = 233,
-    SEGY_TR_UNASSIGNED2             = 237
-} SEGY_FIELD;
-
-typedef enum {
-    SEGY_BIN_JOB_ID                     = 3201,
-    SEGY_BIN_LINE_NUMBER                = 3205,
-    SEGY_BIN_REEL_NUMBER                = 3209,
-    SEGY_BIN_ENSEMBLE_TRACES            = 3213,
-    SEGY_BIN_AUX_ENSEMBLE_TRACES        = 3215,
-    SEGY_BIN_INTERVAL                   = 3217,
-    SEGY_BIN_INTERVAL_ORIG              = 3219,
-    SEGY_BIN_SAMPLES                    = 3221,
-    SEGY_BIN_SAMPLES_ORIG               = 3223,
-    SEGY_BIN_FORMAT                     = 3225,
-    SEGY_BIN_ENSEMBLE_FOLD              = 3227,
-    SEGY_BIN_SORTING_CODE               = 3229,
-    SEGY_BIN_VERTICAL_SUM               = 3231,
-    SEGY_BIN_SWEEP_FREQ_START           = 3233,
-    SEGY_BIN_SWEEP_FREQ_END             = 3235,
-    SEGY_BIN_SWEEP_LENGTH               = 3237,
-    SEGY_BIN_SWEEP                      = 3239,
-    SEGY_BIN_SWEEP_CHANNEL              = 3241,
-    SEGY_BIN_SWEEP_TAPER_START          = 3243,
-    SEGY_BIN_SWEEP_TAPER_END            = 3245,
-    SEGY_BIN_TAPER                      = 3247,
-    SEGY_BIN_CORRELATED_TRACES          = 3249,
-    SEGY_BIN_BIN_GAIN_RECOVERY          = 3251,
-    SEGY_BIN_AMPLITUDE_RECOVERY         = 3253,
-    SEGY_BIN_MEASUREMENT_SYSTEM         = 3255,
-    SEGY_BIN_IMPULSE_POLARITY           = 3257,
-    SEGY_BIN_VIBRATORY_POLARITY         = 3259,
-    SEGY_BIN_EXT_ENSEMBLE_TRACES        = 3261,
-    SEGY_BIN_EXT_AUX_ENSEMBLE_TRACES    = 3265,
-    SEGY_BIN_EXT_SAMPLES                = 3269,
-    SEGY_BIN_EXT_INTERVAL               = 3273,
-    SEGY_BIN_EXT_INTERVAL_ORIG          = 3281,
-    SEGY_BIN_EXT_SAMPLES_ORIG           = 3289,
-    SEGY_BIN_EXT_ENSEMBLE_FOLD          = 3293,
-    SEGY_BIN_INTEGER_CONSTANT           = 3297, // Expected value 16909060 (decimal). Used to detect order of bytes
-    SEGY_BIN_UNASSIGNED1                = 3301,
-    SEGY_BIN_SEGY_REVISION              = 3501,
-    SEGY_BIN_SEGY_REVISION_MINOR        = 3502,
-    SEGY_BIN_TRACE_FLAG                 = 3503,
-    SEGY_BIN_EXT_HEADERS                = 3505,
-    SEGY_BIN_MAX_ADDITIONAL_TR_HEADERS  = 3507,
-    SEGY_BIN_SURVEY_TYPE                = 3509,
-    SEGY_BIN_TIME_BASIS_CODE            = 3511,
-    SEGY_BIN_NR_TRACES_IN_STREAM        = 3513,
-    SEGY_BIN_FIRST_TRACE_OFFSET         = 3521,
-    SEGY_BIN_NR_TRAILER_RECORDS         = 3529,
-    SEGY_BIN_UNASSIGNED2                = 3533,
-} SEGY_BINFIELD;
-
-
-typedef enum {
-    SEGY_MSB = 0,
-    SEGY_LSB = 1,
-} SEGY_ENDIANNESS;
-
-typedef enum {
-    SEGY_EBCDIC = 0,
-    SEGY_ASCII = 1,
-} SEGY_ENCODING;
-
-typedef enum {
-    SEGY_UNKNOWN_SORTING = 0,
-    SEGY_CROSSLINE_SORTING = 1,
-    SEGY_INLINE_SORTING = 2,
-} SEGY_SORTING;
-
-typedef enum {
-    SEGY_OK = 0,
-    SEGY_FOPEN_ERROR,
-    SEGY_FSEEK_ERROR,
-    SEGY_FREAD_ERROR,
-    SEGY_FWRITE_ERROR,
-    SEGY_INVALID_FIELD,
-    SEGY_INVALID_FIELD_DATATYPE,
-    SEGY_INVALID_FIELD_VALUE,
-    SEGY_INVALID_SORTING,
-    SEGY_MISSING_LINE_INDEX,
-    SEGY_INVALID_OFFSETS,
-    SEGY_TRACE_SIZE_MISMATCH,
-    SEGY_INVALID_ARGS,
-    SEGY_MMAP_ERROR,
-    SEGY_MMAP_INVALID,
-    SEGY_READONLY,
-    SEGY_NOTFOUND,
-    SEGY_MEMORY_ERROR,
-    SEGY_DS_FLUSH_ERROR,
-    SEGY_DS_CLOSE_ERROR,
-    // values are duplicated until enum is properly cleaned
-    SEGY_DS_READ_ERROR = SEGY_FREAD_ERROR,
-    SEGY_DS_WRITE_ERROR = SEGY_FWRITE_ERROR,
-    SEGY_DS_SEEK_ERROR = SEGY_FSEEK_ERROR,
-    SEGY_DS_ERROR = SEGY_FREAD_ERROR,
-} SEGY_ERROR;
 
 #ifdef __cplusplus
 }
