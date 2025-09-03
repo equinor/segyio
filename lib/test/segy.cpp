@@ -498,6 +498,17 @@ TEST_CASE_METHOD( smallfields,
     CHECK( err == SEGY_INVALID_FIELD );
 }
 
+TEST_CASE_METHOD( smallfields,
+                  "out of bounds byte offsets are detected",
+                  "[c.segy]" ) {
+    int sorting;
+    Err err = segy_sorting( fp, 0, xl, of, &sorting, trace0, trace_bsize );
+    CHECK( err == SEGY_INVALID_FIELD );
+
+    err = segy_sorting( fp, il, SEGY_TRACE_HEADER_SIZE + 1, of, &sorting, trace0, trace_bsize );
+    CHECK( err == SEGY_INVALID_FIELD );
+}
+
 TEST_CASE_METHOD( smallsize,
                   "post-stack file offset-count is 1",
                   "[c.segy]" ) {

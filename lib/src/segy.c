@@ -1607,9 +1607,9 @@ int segy_sorting( segy_datasource* ds,
     int len = sizeof( fields ) / sizeof( int );
     for( int i = 0; i < len; ++i ) {
         const int f = fields[ i ];
-        if( f < 0 )
+        if( f < 1 )
             return SEGY_INVALID_FIELD;
-        if( f >= SEGY_TRACE_HEADER_SIZE )
+        if( f > SEGY_TRACE_HEADER_SIZE )
             return SEGY_INVALID_FIELD;
         if( traceheader_default_map[ f - 1 ].entry_type == SEGY_ENTRY_TYPE_UNDEFINED )
             return SEGY_INVALID_FIELD;
