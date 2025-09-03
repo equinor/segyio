@@ -760,7 +760,7 @@ PyObject* suopen( segyfd* self, PyObject* args ) {
         return IOError( "unable to read first trace header in SU file" );
 
     int32_t f;
-    segy_get_field_int( header, SEGY_TR_SAMPLE_COUNT, &f );
+    segy_get_tracefield_int( header, SEGY_TR_SAMPLE_COUNT, &f );
 
     const long trace0 = 0;
     const int samplecount = f;
@@ -1710,12 +1710,22 @@ PyObject* getfield( PyObject*, PyObject *args ) {
 
     if( !PyArg_ParseTuple( args, "s*i", &buffer, &field ) ) return NULL;
 
-    if( buffer.len() != SEGY_BINARY_HEADER_SIZE &&
-        buffer.len() != SEGY_TRACE_HEADER_SIZE )
-        return BufferError( "buffer too small" );
-
     segy_field_data fd;
-    int err = segy_get_field( buffer.buf< const char >(), field, &fd );
+    int err;
+    switch( buffer.len() ) {
+        case SEGY_BINARY_HEADER_SIZE:
+            err = segy_get_binfield(
+                buffer.buf<const char>(), field, &fd
+            );
+            break;
+        case SEGY_TRACE_HEADER_SIZE:
+            err = segy_get_tracefield(
+                buffer.buf<const char>(), field, &fd
+            );
+            break;
+        default:
+            return BufferError( "buffer too small" );
+    }
     if( err != SEGY_OK )
         return KeyError( "Got error code %d when requesting field %d", err, field );
 
@@ -1757,13 +1767,18 @@ PyObject* putfield( PyObject*, PyObject *args ) {
     if( !PyArg_Parse(buffer_arg, "w*", &buffer) )
         return NULL;
 
-    if( buffer.len() != SEGY_BINARY_HEADER_SIZE &&
-        buffer.len() != SEGY_TRACE_HEADER_SIZE )
-        return BufferError( "buffer too small" );
-
     int field = (int)PyLong_AsLong(field_arg);
-
     segy_field_data fd;
+
+    switch( buffer.len() ) {
+        case SEGY_BINARY_HEADER_SIZE:
+            break;
+        case SEGY_TRACE_HEADER_SIZE:
+            break;
+        default:
+            return BufferError( "buffer too small" );
+    }
+
     fd.datatype = segy_field_datatype(field);
 
     switch ( fd.datatype ) {
@@ -1864,7 +1879,21 @@ PyObject* putfield( PyObject*, PyObject *args ) {
             return KeyError( "Field %d has unknown datatype %d", field, fd.datatype );
     }
 
-    int err = segy_set_field( buffer.buf< char >(), field, fd );
+    int err;
+    switch (buffer.len()) {
+        case SEGY_BINARY_HEADER_SIZE:
+            err = segy_set_binfield(
+                buffer.buf<char>(), field, fd
+            );
+            break;
+        case SEGY_TRACE_HEADER_SIZE:
+            err = segy_set_tracefield(
+                buffer.buf<char>(), field, fd
+            );
+            break;
+        default:
+            return ValueError( "unhandled buffer type" );
+    }
 
     switch( err ) {
         case SEGY_OK:
