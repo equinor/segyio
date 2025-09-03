@@ -376,6 +376,13 @@ static const segy_entry_definition binheader_map[SEGY_BINARY_HEADER_SIZE] = {
     [ -3201 + SEGY_BIN_NR_TRAILER_RECORDS        ] = { SEGY_ENTRY_TYPE_INT4,   false },
 };
 
+const segy_entry_definition* segy_traceheader_default_map( void ) {
+    return traceheader_default_map;
+
+}
+const segy_entry_definition* segy_binheader_map( void ) {
+    return binheader_map;
+}
 
 /*
  * Determine the file size in bytes. If this function succeeds, the file
@@ -864,17 +871,18 @@ SEGY_FORMAT segy_entry_type_to_format( SEGY_ENTRY_TYPE entry_type ) {
     }
 }
 
-int segy_field_datatype( int field ) {
+int segy_field_datatype( int field, const segy_entry_definition* mapping ) {
     if( field > 0 && field < SEGY_TRACE_HEADER_SIZE ) {
-        return segy_entry_type_to_format( traceheader_default_map[field - 1].entry_type );
+        return segy_entry_type_to_format( mapping[field - 1].entry_type );
     } else if( field > SEGY_TEXT_HEADER_SIZE && field < SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE ) {
-        return segy_entry_type_to_format( binheader_map[field - SEGY_TEXT_HEADER_SIZE - 1].entry_type );
+        return segy_entry_type_to_format( mapping[field - SEGY_TEXT_HEADER_SIZE -1].entry_type );
     } else {
         return SEGY_UNDEFINED_FIELD;
     }
 }
 
 static int get_field( const char* header,
+                      const segy_entry_definition* mapping,
                       int field,
                       segy_field_data* fd ) {
 
@@ -884,7 +892,7 @@ static int get_field( const char* header,
     }
     uint64_t val;
 
-    fd->datatype = segy_field_datatype( field );
+    fd->datatype = segy_field_datatype( field, mapping );
     switch ( fd->datatype ) {
 
         case SEGY_SIGNED_INTEGER_8_BYTE:
@@ -938,11 +946,12 @@ static int get_field( const char* header,
 }
 
 static int get_field_int( const char* header,
+                          const segy_entry_definition* mapping,
                           int field,
                           int* val ) {
 
     segy_field_data fd;
-    int err = get_field( header, field, &fd );
+    int err = get_field( header, mapping, field, &fd );
     if ( err != SEGY_OK ) return err;
 
     switch( fd.datatype ) {
@@ -976,6 +985,7 @@ static int get_field_int( const char* header,
 }
 
 static int set_field( char* header,
+                      const segy_entry_definition* mapping,
                       int field,
                       segy_field_data fd ) {
 
@@ -987,7 +997,7 @@ static int set_field( char* header,
     segy_field_value fv = fd.value;
     uint64_t val;
 
-    uint8_t datatype = segy_field_datatype( field );
+    uint8_t datatype = segy_field_datatype( field, mapping );
     if (fd.datatype != datatype) {
         return SEGY_INVALID_FIELD_DATATYPE;
     }
@@ -1045,11 +1055,12 @@ static int set_field( char* header,
 }
 
 static int set_field_int( char* header,
+                          const segy_entry_definition* mapping,
                           int field,
                           int val ) {
 
     segy_field_data fd;
-    fd.datatype = segy_field_datatype( field );
+    fd.datatype = segy_field_datatype( field, mapping );
     if ( fd.datatype == SEGY_UNDEFINED_FIELD ) return SEGY_INVALID_FIELD;
 
     switch( fd.datatype ) {
@@ -1090,64 +1101,66 @@ static int set_field_int( char* header,
         default:
             return SEGY_INVALID_FIELD_DATATYPE;
     }
-    return set_field( header, field, fd );
+    return set_field( header, mapping, field, fd );
 }
 
 
 int segy_get_tracefield( const char* header,
+                         const segy_entry_definition* mapping,
                          int field,
                          segy_field_data* fd ) {
 
-    return get_field( header, field, fd);
+    return get_field( header, mapping, field, fd);
 }
 
 int segy_set_tracefield( char* header,
+                         const segy_entry_definition* mapping,
                          int field,
                          segy_field_data fd ) {
 
-    return set_field( header, field, fd);
+    return set_field( header, mapping, field, fd);
 }
 
 int segy_get_binfield( const char* header,
                        int field,
                        segy_field_data* fd ) {
 
-    return get_field( header, field, fd);
+    return get_field( header, binheader_map, field, fd);
 }
 
 int segy_set_binfield( char* header,
                        int field,
                        segy_field_data fd ) {
 
-    return set_field( header, field, fd);
+    return set_field( header, binheader_map, field, fd);
 }
 
 int segy_get_tracefield_int( const char* header,
                              int field,
                              int* f ) {
 
-    return get_field_int( header, field, f );
+    return get_field_int( header, traceheader_default_map, field, f );
 }
 
 int segy_set_tracefield_int( char* header,
                              int field,
                              int val ) {
 
-    return set_field_int( header, field, val );
+    return set_field_int( header, traceheader_default_map, field, val );
 }
 
 int segy_get_binfield_int( const char* header,
                            int field,
                            int* f ) {
 
-    return get_field_int( header, field, f );
+    return get_field_int( header, binheader_map, field, f );
 }
 
 int segy_set_binfield_int( char* header,
                            int field,
                            int val ) {
 
-    return set_field_int( header, field, val );
+    return set_field_int( header, binheader_map, field, val );
 }
 
 static int slicelength( int start, int stop, int step ) {

@@ -2059,7 +2059,9 @@ TEST_CASE("segy_get_tracefield reads values correctly",  "[c.segy]" ) {
         header[SEGY_TR_TRACE_ID-0] = b0;
 
         segy_field_data read_value;
-        Err err = segy_get_tracefield( header, SEGY_TR_TRACE_ID, &read_value );
+        Err err = segy_get_tracefield(
+            header, segy_traceheader_default_map(), SEGY_TR_TRACE_ID, &read_value
+        );
         CHECK( success( err ) );
         CHECK( read_value.datatype == SEGY_SIGNED_SHORT_2_BYTE );
         CHECK( read_value.value.i16 == value );
@@ -2076,7 +2078,9 @@ TEST_CASE("segy_set_tracefield write values correctly",  "[c.segy]" ) {
         segy_field_data fd;
         fd.datatype = SEGY_SIGNED_SHORT_2_BYTE;
         fd.value.i16 = value;
-        Err err = segy_set_tracefield( header, SEGY_TR_TRACE_ID, fd );
+        Err err = segy_set_tracefield(
+            header, segy_traceheader_default_map(), SEGY_TR_TRACE_ID, fd
+        );
         CHECK( err == Err::ok() );
 
         uint8_t b0 = header[SEGY_TR_TRACE_ID-0];
@@ -2100,7 +2104,9 @@ TEST_CASE("segy_set_tracefield write invalid value",  "[c.segy]" ) {
         segy_field_data fd;
         fd.value.i16 = 42;
         fd.datatype = SEGY_SIGNED_INTEGER_4_BYTE;
-        Err err = segy_set_tracefield( header, SEGY_TR_TRACE_ID, fd );
+        Err err = segy_set_tracefield(
+            header, segy_traceheader_default_map(), SEGY_TR_TRACE_ID, fd
+        );
         CHECK( err == Err::datatype() );
     }
 }
