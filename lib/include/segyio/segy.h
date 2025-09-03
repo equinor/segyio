@@ -35,6 +35,31 @@ typedef enum {
 } SEGY_FORMAT;
 
 typedef enum {
+    SEGY_ENTRY_TYPE_UNDEFINED   = 0,
+    SEGY_ENTRY_TYPE_INT2        = 1,
+    SEGY_ENTRY_TYPE_INT4        = 2,
+    SEGY_ENTRY_TYPE_INT8        = 3,
+    SEGY_ENTRY_TYPE_UINT1       = 4,
+    SEGY_ENTRY_TYPE_UINT2       = 5,
+    SEGY_ENTRY_TYPE_UINT4       = 6,
+    SEGY_ENTRY_TYPE_UINT8       = 7,
+    SEGY_ENTRY_TYPE_IBMFP       = 8,
+    SEGY_ENTRY_TYPE_IEEE32      = 9,
+    SEGY_ENTRY_TYPE_IEEE64      = 10,
+    SEGY_ENTRY_TYPE_LINETRC     = 11,
+    SEGY_ENTRY_TYPE_REELTRC     = 12,
+    SEGY_ENTRY_TYPE_LINETRC8    = 13,
+    SEGY_ENTRY_TYPE_REELTRC8    = 14,
+    SEGY_ENTRY_TYPE_COOR4       = 15,
+    SEGY_ENTRY_TYPE_ELEV4       = 16,
+    SEGY_ENTRY_TYPE_TIME2       = 17,
+    SEGY_ENTRY_TYPE_SPNUM4      = 18,
+    SEGY_ENTRY_TYPE_SCALE6_MANT = 19,
+    SEGY_ENTRY_TYPE_SCALE6_EXP  = 20,
+    SEGY_ENTRY_TYPE_STRING8     = 21,
+} SEGY_ENTRY_TYPE;
+
+typedef enum {
     SEGY_TR_SEQ_LINE                = 1,
     SEGY_TR_SEQ_FILE                = 5,
     SEGY_TR_FIELD_RECORD            = 9,
@@ -331,6 +356,11 @@ typedef struct {
     segy_field_value value;
     uint8_t datatype;
 } segy_field_data;
+
+typedef struct {
+    SEGY_ENTRY_TYPE entry_type;
+    bool requires_nonzero_value; //use only if field value is not zero
+} segy_entry_definition;
 
 
 /*
