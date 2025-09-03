@@ -887,39 +887,35 @@ int segy_get_field( const char* header, int field, segy_field_data* fd ) {
     }
 }
 
-static int fd_get_int( const segy_field_data* fd, int* val ) {
-    switch( fd->datatype ) {
+int segy_get_field_int( const char* header, int field, int* val ) {
+    segy_field_data fd;
+    int err = segy_get_field(header, field, &fd);
+    if ( err != SEGY_OK ) return err;
 
+    switch( fd.datatype ) {
         case SEGY_SIGNED_INTEGER_4_BYTE:
-            *val = fd->value.i32;
+            *val = fd.value.i32;
             return SEGY_OK;
 
         case SEGY_SIGNED_SHORT_2_BYTE:
-            *val = fd->value.i16;
+            *val = fd.value.i16;
             return SEGY_OK;
 
         case SEGY_SIGNED_CHAR_1_BYTE:
-            *val = fd->value.i8;
+            *val = fd.value.i8;
             return SEGY_OK;
 
         case SEGY_UNSIGNED_SHORT_2_BYTE:
-            *val = fd->value.u16;
+            *val = fd.value.u16;
             return SEGY_OK;
 
         case SEGY_UNSIGNED_CHAR_1_BYTE:
-            *val = fd->value.u8;
+            *val = fd.value.u8;
             return SEGY_OK;
 
         default:
             return SEGY_INVALID_FIELD_DATATYPE;
     }
-}
-
-int segy_get_field_int( const char* header, int field, int* val ) {
-    segy_field_data fd;
-    int err = segy_get_field(header, field, &fd);
-    if ( err != SEGY_OK ) return err;
-    return fd_get_int( &fd, val );
 }
 
 int segy_set_field( char* header, int field, segy_field_data fd ) {
@@ -988,49 +984,43 @@ int segy_set_field( char* header, int field, segy_field_data fd ) {
     }
 }
 
-static int fd_set_int( segy_field_data* fd, int val ) {
-    switch( fd->datatype ) {
-        case SEGY_SIGNED_INTEGER_4_BYTE:
-            fd->value.i32 = val;
-            return SEGY_OK;
-
-        case SEGY_SIGNED_SHORT_2_BYTE:
-            if ( val > INT16_MAX || val < INT16_MIN )
-                return SEGY_INVALID_FIELD_VALUE;
-            fd->value.i16 = (int16_t)val;
-            return SEGY_OK;
-
-        case SEGY_SIGNED_CHAR_1_BYTE:
-            if ( val > INT8_MAX || val < INT8_MIN )
-                return SEGY_INVALID_FIELD_VALUE;
-            fd->value.i8 = (int8_t)val;
-            return SEGY_OK;
-
-        case SEGY_UNSIGNED_SHORT_2_BYTE:
-            if ( val > UINT16_MAX || val < 0 )
-                return SEGY_INVALID_FIELD_VALUE;
-            fd->value.u16 = (uint16_t)val;
-            return SEGY_OK;
-
-        case SEGY_UNSIGNED_CHAR_1_BYTE:
-            if ( val > UINT8_MAX || val < 0 )
-                return SEGY_INVALID_FIELD_VALUE;
-            fd->value.u8 = (uint8_t)val;
-            return SEGY_OK;
-
-        default:
-            return SEGY_INVALID_FIELD_DATATYPE;
-    }
-}
-
 int segy_set_field_int( char* header, const int field, const int val ) {
     segy_field_data fd;
     fd.datatype = segy_field_datatype( field );
     if ( fd.datatype == SEGY_UNDEFINED_FIELD ) return SEGY_INVALID_FIELD;
 
-    int err = fd_set_int( &fd, val );
-    if( err != SEGY_OK ) return err;
+    switch( fd.datatype ) {
+        case SEGY_SIGNED_INTEGER_4_BYTE:
+            fd.value.i32 = val;
+            break;
 
+        case SEGY_SIGNED_SHORT_2_BYTE:
+            if ( val > INT16_MAX || val < INT16_MIN )
+                return SEGY_INVALID_FIELD_VALUE;
+            fd.value.i16 = (int16_t)val;
+            break;
+
+        case SEGY_SIGNED_CHAR_1_BYTE:
+            if ( val > INT8_MAX || val < INT8_MIN )
+                return SEGY_INVALID_FIELD_VALUE;
+            fd.value.i8 = (int8_t)val;
+            break;
+
+        case SEGY_UNSIGNED_SHORT_2_BYTE:
+            if ( val > UINT16_MAX || val < 0 )
+                return SEGY_INVALID_FIELD_VALUE;
+            fd.value.u16 = (uint16_t)val;
+            break;
+
+        case SEGY_UNSIGNED_CHAR_1_BYTE:
+            if ( val > UINT8_MAX || val < 0 )
+                return SEGY_INVALID_FIELD_VALUE;
+            fd.value.u8 = (uint8_t)val;
+            break;
+
+        default:
+            return SEGY_INVALID_FIELD_DATATYPE;
+    }
     return segy_set_field( header, field, fd );
 }
 
@@ -1104,12 +1094,11 @@ int segy_field_forall( segy_datasource* ds,
         err = ds->read( ds, header + zfield, sizeof( uint32_t ) );
         if( err != 0 ) return SEGY_DS_READ_ERROR;
 
-        segy_field_data fd;
-        err = segy_get_field( header, field, &fd );
+        // note: for the moment function still works only on ints
+        err = segy_get_field_int( header, field, &f );
         if( err != 0 ) return err;
-        err = fd_get_int( &fd, &f );
-        if( err != 0 ) return err;
-        if (ds->lsb) f = bswap_header_word(f, formatsize( fd.datatype ));
+        uint8_t datatype = tr_field_type[field];
+        if( ds->lsb ) f = bswap_header_word( f, formatsize( datatype ) );
         *buf = f;
     }
 
