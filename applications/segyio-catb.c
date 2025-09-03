@@ -160,7 +160,7 @@ int main( int argc, char** argv ){
         int nr_fields = sizeof(field_data)/sizeof(binary_field_type);
         for( int c = 0; c < nr_fields; ++c ){
             segy_field_data fd;
-            err = segy_get_field( binheader, field_data[c].offset, &fd );
+            err = segy_get_binfield( binheader, field_data[c].offset, &fd );
             if ( err ) return errmsg( err, "Unable to read field" );
 
             bool value_is_zero = false;

@@ -451,11 +451,36 @@ int segy_set_encoding( segy_datasource*, int opt );
  */
 int segy_field_datatype( int field );
 
-int segy_get_field( const char* header, int field, segy_field_data* fd );
-int segy_set_field( char* header, int field, segy_field_data fd );
+int segy_get_tracefield( const char* header,
+                         int field,
+                         segy_field_data* fd );
 
-int segy_get_field_int( const char* header, int field, int* f );
-int segy_set_field_int( char* header, const int field, const int val );
+int segy_set_tracefield( char* header,
+                         int field,
+                         segy_field_data fd );
+
+int segy_get_binfield( const char* header,
+                       int field,
+                       segy_field_data* fd );
+
+int segy_set_binfield( char* header,
+                       int field,
+                       segy_field_data fd );
+
+/* Legacy function compliant only with rev 1.0 specification. Intention is to
+ * deprecate it and remove it in the future. */
+int segy_get_tracefield_int( const char* header, int field, int* f );
+/* Legacy function compliant only with rev 1.0 specification. Intention is to
+ * deprecate it and remove it in the future. */
+int segy_set_tracefield_int( char* header, int field, int val );
+/* Legacy function compliant only with rev 1.0 specification. Intention is to
+ * deprecate it and remove it in the future. */
+int segy_get_binfield_int( const char* header, int field, int* f );
+/* Legacy function compliant only with rev 1.0 specification. Intention is to
+ * deprecate it and remove it in the future. */
+int segy_set_binfield_int( char* header, int field, int val );
+
+
 
 int segy_field_forall( segy_datasource*,
                        int field,

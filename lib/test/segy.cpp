@@ -276,7 +276,7 @@ TEST_CASE_METHOD( smallbin,
                   "[c.segy]" ) {
 
     int hdt = arbitrary_int();
-    segy_get_field_int( bin, SEGY_BIN_INTERVAL, &hdt );
+    segy_get_binfield_int( bin, SEGY_BIN_INTERVAL, &hdt );
     REQUIRE( hdt == 4000 );
 
     float dt = arbitrary_float();
@@ -417,7 +417,7 @@ TEST_CASE_METHOD( smallheader,
                   "[c.segy]" ) {
 
     int ilno;
-    Err err = segy_get_field_int( header, SEGY_TR_INLINE, &ilno );
+    Err err = segy_get_tracefield_int( header, SEGY_TR_INLINE, &ilno );
     CHECK( success( err ) );
     CHECK( ilno == 1 );
 }
@@ -427,7 +427,7 @@ TEST_CASE_METHOD( smallheader,
                   "[c.segy]" ) {
     const int input_value = arbitrary_int();
     auto value = input_value;
-    Err err = segy_get_field_int( header, 0, &value );
+    Err err = segy_get_tracefield_int( header, 0, &value );
 
     CHECK( err == Err::field() );
     CHECK( value == input_value );
@@ -438,7 +438,7 @@ TEST_CASE_METHOD( smallheader,
                   "[c.segy]" ) {
     const int input_value = arbitrary_int();
     auto value = input_value;
-    Err err = segy_get_field_int( header, -1, &value );
+    Err err = segy_get_tracefield_int( header, -1, &value );
 
     CHECK( err == Err::field() );
     CHECK( value == input_value );
@@ -449,7 +449,7 @@ TEST_CASE_METHOD( smallheader,
                   "[c.segy]" ) {
     const int input_value = arbitrary_int();
     auto value = input_value;
-    Err err = segy_get_field_int( header, SEGY_TR_INLINE + 1, &value );
+    Err err = segy_get_tracefield_int( header, SEGY_TR_INLINE + 1, &value );
 
     CHECK( err == Err::field() );
     CHECK( value == input_value );
@@ -460,7 +460,7 @@ TEST_CASE_METHOD( smallheader,
                   "[c.segy]" ) {
     const int32_t input_value = arbitrary_int();
     auto value = input_value;
-    Err err = segy_get_field_int( header, SEGY_TRACE_HEADER_SIZE + 10, &value );
+    Err err = segy_get_tracefield_int( header, SEGY_TRACE_HEADER_SIZE + 10, &value );
 
     CHECK( err == Err::field() );
     CHECK( value == input_value );
@@ -552,7 +552,7 @@ int field_read_size(const int field) {
     header.fill(0x01);
 
     int output;
-    segy_get_field_int(header.data(), field, &output);
+    segy_get_tracefield_int(header.data(), field, &output);
 
     if (output == 0x0101)     return 2;
     if (output == 0x01010101) return 4;
@@ -1307,7 +1307,7 @@ TEST_CASE( "setting unaligned header-field fails",
     char header[ SEGY_TRACE_HEADER_SIZE ];
     const int32_t v = arbitrary_int();
 
-    Err err = segy_set_field_int( header, SEGY_TR_INLINE + 1, v );
+    Err err = segy_set_tracefield_int( header, SEGY_TR_INLINE + 1, v );
     CHECK( err == Err::field() );
 }
 
@@ -1316,7 +1316,7 @@ TEST_CASE( "setting negative header-field fails",
     char header[ SEGY_TRACE_HEADER_SIZE ];
     const int32_t v = arbitrary_int();
 
-    Err err = segy_set_field_int( header, -1, v );
+    Err err = segy_set_tracefield_int( header, -1, v );
     CHECK( err == Err::field() );
 }
 
@@ -1325,7 +1325,7 @@ TEST_CASE( "setting too large header-field fails",
     char header[ SEGY_TRACE_HEADER_SIZE ];
     const int32_t v = arbitrary_int();
 
-    Err err = segy_set_field_int( header, SEGY_TRACE_HEADER_SIZE + 10, v );
+    Err err = segy_set_tracefield_int( header, SEGY_TRACE_HEADER_SIZE + 10, v );
     CHECK( err == Err::field() );
 }
 
@@ -1335,12 +1335,12 @@ TEST_CASE( "setting correct header fields succeeds",
     const int32_t input = 1;
     const int field = SEGY_TR_INLINE;
 
-    Err err = segy_set_field_int( header, field, input );
+    Err err = segy_set_tracefield_int( header, field, input );
     CHECK( success( err ) );
 
 
     int32_t output;
-    err = segy_get_field_int( header, field, &output );
+    err = segy_get_tracefield_int( header, field, &output );
     CHECK( success( err ) );
 
     CHECK( output == input );
@@ -1358,17 +1358,17 @@ SCENARIO( "modifying trace header", "[c.segy]" ) {
     WHEN( "writing iline no" ) {
         char header[ SEGY_TRACE_HEADER_SIZE ] = {};
 
-        Err err = segy_set_field_int( header, SEGY_TR_INLINE, 2 );
+        Err err = segy_set_tracefield_int( header, SEGY_TR_INLINE, 2 );
         CHECK( err == Err::ok() );
-        err = segy_set_field_int( header, SEGY_TR_SOURCE_GROUP_SCALAR, -100 );
+        err = segy_set_tracefield_int( header, SEGY_TR_SOURCE_GROUP_SCALAR, -100 );
         CHECK( err == Err::ok() );
 
         THEN( "the header buffer is updated") {
             int ilno = 0;
             int scale = 0;
-            err = segy_get_field_int( header, SEGY_TR_INLINE, &ilno );
+            err = segy_get_tracefield_int( header, SEGY_TR_INLINE, &ilno );
             CHECK( err == Err::ok() );
-            err = segy_get_field_int( header, SEGY_TR_SOURCE_GROUP_SCALAR, &scale );
+            err = segy_get_tracefield_int( header, SEGY_TR_SOURCE_GROUP_SCALAR, &scale );
             CHECK( err == Err::ok() );
 
             CHECK( ilno == 2 );
@@ -1398,9 +1398,9 @@ SCENARIO( "modifying trace header", "[c.segy]" ) {
             int scale = 0;
             err = segy_traceheader( fp, 5, fresh, trace0, trace_bsize );
             CHECK( err == Err::ok() );
-            err = segy_get_field_int( fresh, SEGY_TR_INLINE, &ilno );
+            err = segy_get_tracefield_int( fresh, SEGY_TR_INLINE, &ilno );
             CHECK( err == Err::ok() );
-            err = segy_get_field_int( fresh, SEGY_TR_SOURCE_GROUP_SCALAR, &scale );
+            err = segy_get_tracefield_int( fresh, SEGY_TR_SOURCE_GROUP_SCALAR, &scale );
             CHECK( err == Err::ok() );
 
             CHECK( ilno == 2 );
@@ -1874,18 +1874,18 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
             CHECK( err == Err::ok() );
 
             int ilno = 0;
-            err = segy_get_field_int( buf, SEGY_TR_INLINE, &ilno );
+            err = segy_get_tracefield_int( buf, SEGY_TR_INLINE, &ilno );
             CHECK( err == Err::ok() );
             CHECK( ilno == 111 );
         }
 
         GIVEN( "an invalid field" ) {
             int x = -1;
-            err = segy_get_field_int( buf, SEGY_TRACE_HEADER_SIZE + 10, &x );
+            err = segy_get_tracefield_int( buf, SEGY_TRACE_HEADER_SIZE + 10, &x );
             CHECK( err == Err::field() );
             CHECK( x == -1 );
 
-            err = segy_get_field_int( buf, SEGY_TR_INLINE + 1, &x );
+            err = segy_get_tracefield_int( buf, SEGY_TR_INLINE + 1, &x );
             CHECK( err == Err::field() );
             CHECK( x == -1 );
         }
@@ -2029,11 +2029,11 @@ TEST_CASE("1-byte header words are correctly read", "[c.segy]") {
     int one;
     int two;
 
-    Err err = segy_get_field_int(header.data(), SEGY_BIN_SEGY_REVISION, &one);
+    Err err = segy_get_binfield_int(header.data(), SEGY_BIN_SEGY_REVISION, &one);
     CHECK(err == Err::ok());
     CHECK(one == 0x01);
 
-    err = segy_get_field_int(header.data(), SEGY_BIN_SEGY_REVISION_MINOR, &two);
+    err = segy_get_binfield_int(header.data(), SEGY_BIN_SEGY_REVISION_MINOR, &two);
     CHECK(err == Err::ok());
     CHECK(two == 0x02);
 }
@@ -2058,7 +2058,7 @@ TEST_CASE("segy_samples uses ext-samples word", "[c.segy]") {
     }
 }
 
-TEST_CASE("segy_get_field reads values correctly",  "[c.segy]" ) {
+TEST_CASE("segy_get_tracefield reads values correctly",  "[c.segy]" ) {
 
     char header[ SEGY_TRACE_HEADER_SIZE ] = { 0 };
 
@@ -2070,14 +2070,14 @@ TEST_CASE("segy_get_field reads values correctly",  "[c.segy]" ) {
         header[SEGY_TR_TRACE_ID-0] = b0;
 
         segy_field_data read_value;
-        Err err = segy_get_field( header, SEGY_TR_TRACE_ID, &read_value );
+        Err err = segy_get_tracefield( header, SEGY_TR_TRACE_ID, &read_value );
         CHECK( success( err ) );
         CHECK( read_value.datatype == SEGY_SIGNED_SHORT_2_BYTE );
         CHECK( read_value.value.i16 == value );
     }
 }
 
-TEST_CASE("segy_set_field write values correctly",  "[c.segy]" ) {
+TEST_CASE("segy_set_tracefield write values correctly",  "[c.segy]" ) {
 
     char header[ SEGY_TRACE_HEADER_SIZE ] = { 0 };
 
@@ -2087,7 +2087,7 @@ TEST_CASE("segy_set_field write values correctly",  "[c.segy]" ) {
         segy_field_data fd;
         fd.datatype = SEGY_SIGNED_SHORT_2_BYTE;
         fd.value.i16 = value;
-        Err err = segy_set_field( header, SEGY_TR_TRACE_ID, fd );
+        Err err = segy_set_tracefield( header, SEGY_TR_TRACE_ID, fd );
         CHECK( err == Err::ok() );
 
         uint8_t b0 = header[SEGY_TR_TRACE_ID-0];
@@ -2097,13 +2097,13 @@ TEST_CASE("segy_set_field write values correctly",  "[c.segy]" ) {
     }
 }
 
-TEST_CASE("segy_set_field write invalid value",  "[c.segy]" ) {
+TEST_CASE("segy_set_tracefield write invalid value",  "[c.segy]" ) {
 
     char header[ SEGY_TRACE_HEADER_SIZE ] = { 0 };
 
-    SECTION("test value outside of int16 range for segy_set_field_int") {
+    SECTION("test value outside of int16 range for segy_set_tracefield_int") {
         int32_t value = 0xFFFF + 1;
-        Err err = segy_set_field_int( header, SEGY_TR_TRACE_ID, value );
+        Err err = segy_set_tracefield_int( header, SEGY_TR_TRACE_ID, value );
         CHECK( err == Err::value() );
     }
 
@@ -2111,7 +2111,7 @@ TEST_CASE("segy_set_field write invalid value",  "[c.segy]" ) {
         segy_field_data fd;
         fd.value.i16 = 42;
         fd.datatype = SEGY_SIGNED_INTEGER_4_BYTE;
-        Err err = segy_set_field( header, SEGY_TR_TRACE_ID, fd );
+        Err err = segy_set_tracefield( header, SEGY_TR_TRACE_ID, fd );
         CHECK( err == Err::datatype() );
     }
 }
