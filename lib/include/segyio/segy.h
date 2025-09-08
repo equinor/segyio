@@ -445,16 +445,12 @@ int segy_set_endianness( segy_datasource*, int opt );
  */
 int segy_set_encoding( segy_datasource*, int opt );
 
+/* Converts entry type to actual datatype and returns it (not an error code). */
+int segy_entry_type_to_datatype( uint8_t entry_type );
 /* Binary header layout map. Indicies (offsets) are 0-based. */
 const segy_entry_definition* segy_binheader_map( void );
 /* Default trace header layout map. Indicies (offsets) are 0-based. */
 const segy_entry_definition* segy_traceheader_default_map( void );
-
-/* Gets field datatype from field id. Depending on field value, binary or trace
- * mapping table would be used.
- * The int returned is the field datatype, not an error code.
- */
-int segy_field_datatype( int field, const segy_entry_definition* mapping );
 
 /* Reads one trace field data from given 0-based header. 0-based
  * offset-to-entry-definition mapping should correspond to provided header.

@@ -1770,13 +1770,31 @@ PyObject* putfield( PyObject*, PyObject *args ) {
     int field = (int)PyLong_AsLong(field_arg);
     segy_field_data fd;
 
+    /*
+     * We repeat some of internal logic here because Python does not keep type
+     * information the same way as C does. As we do not know the type of the
+     * data we have, we assume it to be the same as expected type in the
+     * mapping.
+     */
     switch( buffer.len() ) {
-        case SEGY_BINARY_HEADER_SIZE:
-            fd.datatype = segy_field_datatype( field, segy_binheader_map() );
+        case SEGY_BINARY_HEADER_SIZE: {
+            const int offset = field - SEGY_TEXT_HEADER_SIZE - 1;
+            if( offset < 0 || offset >= SEGY_BINARY_HEADER_SIZE ) {
+                return KeyError( "Invalid field %d", field );
+            }
+            const segy_entry_definition* map = segy_binheader_map();
+            fd.datatype = segy_entry_type_to_datatype(map[offset].entry_type);
             break;
-        case SEGY_TRACE_HEADER_SIZE:
-            fd.datatype = segy_field_datatype( field, segy_traceheader_default_map() );
+        }
+        case SEGY_TRACE_HEADER_SIZE: {
+            const int offset = field - 1;
+            if( offset < 0 || offset >= SEGY_TRACE_HEADER_SIZE ) {
+                return KeyError( "Invalid field %d", field );
+            }
+            const segy_entry_definition* map = segy_traceheader_default_map();
+            fd.datatype = segy_entry_type_to_datatype(map[offset].entry_type);
             break;
+        }
         default:
             return BufferError( "buffer too small" );
     }
