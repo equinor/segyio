@@ -1720,7 +1720,7 @@ PyObject* getfield( PyObject*, PyObject *args ) {
             break;
         case SEGY_TRACE_HEADER_SIZE:
             err = segy_get_tracefield(
-                buffer.buf<const char>(), field, &fd
+                buffer.buf<const char>(), segy_traceheader_default_map(), field, &fd
             );
             break;
         default:
@@ -1772,14 +1772,14 @@ PyObject* putfield( PyObject*, PyObject *args ) {
 
     switch( buffer.len() ) {
         case SEGY_BINARY_HEADER_SIZE:
+            fd.datatype = segy_field_datatype( field, segy_binheader_map() );
             break;
         case SEGY_TRACE_HEADER_SIZE:
+            fd.datatype = segy_field_datatype( field, segy_traceheader_default_map() );
             break;
         default:
             return BufferError( "buffer too small" );
     }
-
-    fd.datatype = segy_field_datatype(field);
 
     switch ( fd.datatype ) {
         case SEGY_UNSIGNED_INTEGER_8_BYTE:
@@ -1888,7 +1888,7 @@ PyObject* putfield( PyObject*, PyObject *args ) {
             break;
         case SEGY_TRACE_HEADER_SIZE:
             err = segy_set_tracefield(
-                buffer.buf<char>(), field, fd
+                buffer.buf<char>(), segy_traceheader_default_map(), field, fd
             );
             break;
         default:

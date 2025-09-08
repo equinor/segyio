@@ -445,24 +445,45 @@ int segy_set_endianness( segy_datasource*, int opt );
  */
 int segy_set_encoding( segy_datasource*, int opt );
 
+/* Binary header layout map. Indicies (offsets) are 0-based. */
+const segy_entry_definition* segy_binheader_map( void );
+/* Default trace header layout map. Indicies (offsets) are 0-based. */
+const segy_entry_definition* segy_traceheader_default_map( void );
+
 /* Gets field datatype from field id. Depending on field value, binary or trace
  * mapping table would be used.
  * The int returned is the field datatype, not an error code.
  */
-int segy_field_datatype( int field );
+int segy_field_datatype( int field, const segy_entry_definition* mapping );
 
+/* Reads one trace field data from given 0-based header. 0-based
+ * offset-to-entry-definition mapping should correspond to provided header.
+ * Field parameter should be 1-based offset, as in, e.g., SEGY_FIELD array.
+ */
 int segy_get_tracefield( const char* header,
+                         const segy_entry_definition* mapping,
                          int field,
                          segy_field_data* fd );
 
+/* Writes one trace field data to given 0-based header. 0-based
+ * offset-to-entry-definition mapping should correspond to provided header.
+ * Field parameter should be 1-based offset, as in, e.g., SEGY_FIELD array.
+ */
 int segy_set_tracefield( char* header,
+                         const segy_entry_definition* mapping,
                          int field,
                          segy_field_data fd );
 
+/* Reads one binary field data from given 0-based header. Field parameter should
+ * be 3201-based offset, as in SEGY_BINFIELD array.
+ */
 int segy_get_binfield( const char* header,
                        int field,
                        segy_field_data* fd );
 
+/* Writes one binary field data to given 0-based header. Field parameter should
+ * be 3201-based offset, as in SEGY_BINFIELD array.
+ */
 int segy_set_binfield( char* header,
                        int field,
                        segy_field_data fd );
