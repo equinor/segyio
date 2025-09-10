@@ -315,6 +315,19 @@ segy_datasource* create_py_stream_datasource(
     ds->lsb = false;
     ds->encoding = SEGY_EBCDIC;
 
+    segy_header_mapping* mapping = &ds->traceheader_mapping_standard;
+    memcpy(mapping->name, "SEG00000", 8);
+    memcpy(
+        mapping->name_to_offset,
+        segy_traceheader_default_name_map(),
+        sizeof(mapping->name_to_offset)
+    );
+    memcpy(
+        mapping->offset_to_entry_definion,
+        segy_traceheader_default_map(),
+        sizeof(mapping->offset_to_entry_definion)
+    );
+
     /* keep additional reference to assure object does not get deleted before
      * segy_datasource is closed
      */

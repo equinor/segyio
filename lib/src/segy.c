@@ -220,7 +220,6 @@ static void bswap16_mem( char* dst, const char* src ) {
     memcpy( dst, &v, 2 );
 }
 
-
 /*
  * Default traceheader offset-to-entry-definition map. May be overwritten by
  * mapping in the file. Possible mapping offsets are in range [0-240), with
@@ -376,12 +375,117 @@ static const segy_entry_definition binheader_map[SEGY_BINARY_HEADER_SIZE] = {
     [ -3201 + SEGY_BIN_NR_TRAILER_RECORDS        ] = { SEGY_ENTRY_TYPE_INT4,   false },
 };
 
+/*
+ * Default traceheader name-to-offset map. Both names and offsets are 1-based. May be
+ * overwritten by mapping in the file. Possible mapping names are in range
+ * [0-240), with first defined name being positioned at 1. All names not
+ * explicitly set are implicitly mapped to offset 0.
+ */
+static const uint8_t traceheader_default_name_map[SEGY_TRACE_HEADER_SIZE] = {
+    [ SEGY_TR_SEQ_LINE                ] = SEGY_TR_SEQ_LINE,
+    [ SEGY_TR_SEQ_FILE                ] = SEGY_TR_SEQ_FILE,
+    [ SEGY_TR_FIELD_RECORD            ] = SEGY_TR_FIELD_RECORD,
+    [ SEGY_TR_NUMBER_ORIG_FIELD       ] = SEGY_TR_NUMBER_ORIG_FIELD,
+    [ SEGY_TR_ENERGY_SOURCE_POINT     ] = SEGY_TR_ENERGY_SOURCE_POINT,
+    [ SEGY_TR_ENSEMBLE                ] = SEGY_TR_ENSEMBLE,
+    [ SEGY_TR_NUM_IN_ENSEMBLE         ] = SEGY_TR_NUM_IN_ENSEMBLE,
+    [ SEGY_TR_TRACE_ID                ] = SEGY_TR_TRACE_ID,
+    [ SEGY_TR_SUMMED_TRACES           ] = SEGY_TR_SUMMED_TRACES,
+    [ SEGY_TR_STACKED_TRACES          ] = SEGY_TR_STACKED_TRACES,
+    [ SEGY_TR_DATA_USE                ] = SEGY_TR_DATA_USE,
+    [ SEGY_TR_OFFSET                  ] = SEGY_TR_OFFSET,
+    [ SEGY_TR_RECV_GROUP_ELEV         ] = SEGY_TR_RECV_GROUP_ELEV,
+    [ SEGY_TR_SOURCE_SURF_ELEV        ] = SEGY_TR_SOURCE_SURF_ELEV,
+    [ SEGY_TR_SOURCE_DEPTH            ] = SEGY_TR_SOURCE_DEPTH,
+    [ SEGY_TR_RECV_DATUM_ELEV         ] = SEGY_TR_RECV_DATUM_ELEV,
+    [ SEGY_TR_SOURCE_DATUM_ELEV       ] = SEGY_TR_SOURCE_DATUM_ELEV,
+    [ SEGY_TR_SOURCE_WATER_DEPTH      ] = SEGY_TR_SOURCE_WATER_DEPTH,
+    [ SEGY_TR_GROUP_WATER_DEPTH       ] = SEGY_TR_GROUP_WATER_DEPTH,
+    [ SEGY_TR_ELEV_SCALAR             ] = SEGY_TR_ELEV_SCALAR,
+    [ SEGY_TR_SOURCE_GROUP_SCALAR     ] = SEGY_TR_SOURCE_GROUP_SCALAR,
+    [ SEGY_TR_SOURCE_X                ] = SEGY_TR_SOURCE_X,
+    [ SEGY_TR_SOURCE_Y                ] = SEGY_TR_SOURCE_Y,
+    [ SEGY_TR_GROUP_X                 ] = SEGY_TR_GROUP_X,
+    [ SEGY_TR_GROUP_Y                 ] = SEGY_TR_GROUP_Y,
+    [ SEGY_TR_COORD_UNITS             ] = SEGY_TR_COORD_UNITS,
+    [ SEGY_TR_WEATHERING_VELO         ] = SEGY_TR_WEATHERING_VELO,
+    [ SEGY_TR_SUBWEATHERING_VELO      ] = SEGY_TR_SUBWEATHERING_VELO,
+    [ SEGY_TR_SOURCE_UPHOLE_TIME      ] = SEGY_TR_SOURCE_UPHOLE_TIME,
+    [ SEGY_TR_GROUP_UPHOLE_TIME       ] = SEGY_TR_GROUP_UPHOLE_TIME,
+    [ SEGY_TR_SOURCE_STATIC_CORR      ] = SEGY_TR_SOURCE_STATIC_CORR,
+    [ SEGY_TR_GROUP_STATIC_CORR       ] = SEGY_TR_GROUP_STATIC_CORR,
+    [ SEGY_TR_TOT_STATIC_APPLIED      ] = SEGY_TR_TOT_STATIC_APPLIED,
+    [ SEGY_TR_LAG_A                   ] = SEGY_TR_LAG_A,
+    [ SEGY_TR_LAG_B                   ] = SEGY_TR_LAG_B,
+    [ SEGY_TR_DELAY_REC_TIME          ] = SEGY_TR_DELAY_REC_TIME,
+    [ SEGY_TR_MUTE_TIME_START         ] = SEGY_TR_MUTE_TIME_START,
+    [ SEGY_TR_MUTE_TIME_END           ] = SEGY_TR_MUTE_TIME_END,
+    [ SEGY_TR_SAMPLE_COUNT            ] = SEGY_TR_SAMPLE_COUNT,
+    [ SEGY_TR_SAMPLE_INTER            ] = SEGY_TR_SAMPLE_INTER,
+    [ SEGY_TR_GAIN_TYPE               ] = SEGY_TR_GAIN_TYPE,
+    [ SEGY_TR_INSTR_GAIN_CONST        ] = SEGY_TR_INSTR_GAIN_CONST,
+    [ SEGY_TR_INSTR_INIT_GAIN         ] = SEGY_TR_INSTR_INIT_GAIN,
+    [ SEGY_TR_CORRELATED              ] = SEGY_TR_CORRELATED,
+    [ SEGY_TR_SWEEP_FREQ_START        ] = SEGY_TR_SWEEP_FREQ_START,
+    [ SEGY_TR_SWEEP_FREQ_END          ] = SEGY_TR_SWEEP_FREQ_END,
+    [ SEGY_TR_SWEEP_LENGTH            ] = SEGY_TR_SWEEP_LENGTH,
+    [ SEGY_TR_SWEEP_TYPE              ] = SEGY_TR_SWEEP_TYPE,
+    [ SEGY_TR_SWEEP_TAPERLEN_START    ] = SEGY_TR_SWEEP_TAPERLEN_START,
+    [ SEGY_TR_SWEEP_TAPERLEN_END      ] = SEGY_TR_SWEEP_TAPERLEN_END,
+    [ SEGY_TR_TAPER_TYPE              ] = SEGY_TR_TAPER_TYPE,
+    [ SEGY_TR_ALIAS_FILT_FREQ         ] = SEGY_TR_ALIAS_FILT_FREQ,
+    [ SEGY_TR_ALIAS_FILT_SLOPE        ] = SEGY_TR_ALIAS_FILT_SLOPE,
+    [ SEGY_TR_NOTCH_FILT_FREQ         ] = SEGY_TR_NOTCH_FILT_FREQ,
+    [ SEGY_TR_NOTCH_FILT_SLOPE        ] = SEGY_TR_NOTCH_FILT_SLOPE,
+    [ SEGY_TR_LOW_CUT_FREQ            ] = SEGY_TR_LOW_CUT_FREQ,
+    [ SEGY_TR_HIGH_CUT_FREQ           ] = SEGY_TR_HIGH_CUT_FREQ,
+    [ SEGY_TR_LOW_CUT_SLOPE           ] = SEGY_TR_LOW_CUT_SLOPE,
+    [ SEGY_TR_HIGH_CUT_SLOPE          ] = SEGY_TR_HIGH_CUT_SLOPE,
+    [ SEGY_TR_YEAR_DATA_REC           ] = SEGY_TR_YEAR_DATA_REC,
+    [ SEGY_TR_DAY_OF_YEAR             ] = SEGY_TR_DAY_OF_YEAR,
+    [ SEGY_TR_HOUR_OF_DAY             ] = SEGY_TR_HOUR_OF_DAY,
+    [ SEGY_TR_MIN_OF_HOUR             ] = SEGY_TR_MIN_OF_HOUR,
+    [ SEGY_TR_SEC_OF_MIN              ] = SEGY_TR_SEC_OF_MIN,
+    [ SEGY_TR_TIME_BASE_CODE          ] = SEGY_TR_TIME_BASE_CODE,
+    [ SEGY_TR_WEIGHTING_FAC           ] = SEGY_TR_WEIGHTING_FAC,
+    [ SEGY_TR_GEOPHONE_GROUP_ROLL1    ] = SEGY_TR_GEOPHONE_GROUP_ROLL1,
+    [ SEGY_TR_GEOPHONE_GROUP_FIRST    ] = SEGY_TR_GEOPHONE_GROUP_FIRST,
+    [ SEGY_TR_GEOPHONE_GROUP_LAST     ] = SEGY_TR_GEOPHONE_GROUP_LAST,
+    [ SEGY_TR_GAP_SIZE                ] = SEGY_TR_GAP_SIZE,
+    [ SEGY_TR_OVER_TRAVEL             ] = SEGY_TR_OVER_TRAVEL,
+    [ SEGY_TR_CDP_X                   ] = SEGY_TR_CDP_X,
+    [ SEGY_TR_CDP_Y                   ] = SEGY_TR_CDP_Y,
+    [ SEGY_TR_INLINE                  ] = SEGY_TR_INLINE,
+    [ SEGY_TR_CROSSLINE               ] = SEGY_TR_CROSSLINE,
+    [ SEGY_TR_SHOT_POINT              ] = SEGY_TR_SHOT_POINT,
+    [ SEGY_TR_SHOT_POINT_SCALAR       ] = SEGY_TR_SHOT_POINT_SCALAR,
+    [ SEGY_TR_MEASURE_UNIT            ] = SEGY_TR_MEASURE_UNIT,
+    [ SEGY_TR_TRANSDUCTION_MANT       ] = SEGY_TR_TRANSDUCTION_MANT,
+    [ SEGY_TR_TRANSDUCTION_EXP        ] = SEGY_TR_TRANSDUCTION_EXP,
+    [ SEGY_TR_TRANSDUCTION_UNIT       ] = SEGY_TR_TRANSDUCTION_UNIT,
+    [ SEGY_TR_DEVICE_ID               ] = SEGY_TR_DEVICE_ID,
+    [ SEGY_TR_SCALAR_TRACE_HEADER     ] = SEGY_TR_SCALAR_TRACE_HEADER,
+    [ SEGY_TR_SOURCE_TYPE             ] = SEGY_TR_SOURCE_TYPE,
+    [ SEGY_TR_SOURCE_ENERGY_DIR_VERT  ] = SEGY_TR_SOURCE_ENERGY_DIR_VERT,
+    [ SEGY_TR_SOURCE_ENERGY_DIR_XLINE ] = SEGY_TR_SOURCE_ENERGY_DIR_XLINE,
+    [ SEGY_TR_SOURCE_ENERGY_DIR_ILINE ] = SEGY_TR_SOURCE_ENERGY_DIR_ILINE,
+    [ SEGY_TR_SOURCE_MEASURE_MANT     ] = SEGY_TR_SOURCE_MEASURE_MANT,
+    [ SEGY_TR_SOURCE_MEASURE_EXP      ] = SEGY_TR_SOURCE_MEASURE_EXP,
+    [ SEGY_TR_SOURCE_MEASURE_UNIT     ] = SEGY_TR_SOURCE_MEASURE_UNIT,
+    [ SEGY_TR_UNASSIGNED1             ] = SEGY_TR_UNASSIGNED1,
+    [ SEGY_TR_UNASSIGNED2             ] = SEGY_TR_UNASSIGNED2,
+};
+
 const segy_entry_definition* segy_traceheader_default_map( void ) {
     return traceheader_default_map;
-
 }
+
 const segy_entry_definition* segy_binheader_map( void ) {
     return binheader_map;
+}
+
+const uint8_t* segy_traceheader_default_name_map( void ) {
+    return traceheader_default_name_map;
 }
 
 /*
@@ -691,6 +795,19 @@ segy_file* segy_open( const char* path, const char* mode ) {
     ds->minimize_requests_number = true;
     ds->memory_speedup = false;
 
+    segy_header_mapping* mapping = &ds->traceheader_mapping_standard;
+    memcpy(mapping->name, "SEG00000", 8);
+    memcpy(
+        mapping->name_to_offset,
+        segy_traceheader_default_name_map(),
+        sizeof(mapping->name_to_offset)
+    );
+    memcpy(
+        mapping->offset_to_entry_definion,
+        segy_traceheader_default_map(),
+        sizeof(mapping->offset_to_entry_definion)
+    );
+
     return ds;
 }
 
@@ -732,6 +849,18 @@ segy_datasource* segy_memopen( unsigned char* addr, size_t size ) {
 
     ds->minimize_requests_number = false;
     ds->memory_speedup = true;
+    segy_header_mapping* mapping = &ds->traceheader_mapping_standard;
+    memcpy(mapping->name, "SEG00000", 8);
+    memcpy(
+        mapping->name_to_offset,
+        segy_traceheader_default_name_map(),
+        sizeof(mapping->name_to_offset)
+    );
+    memcpy(
+        mapping->offset_to_entry_definion,
+        segy_traceheader_default_map(),
+        sizeof(mapping->offset_to_entry_definion)
+    );
 
     return ds;
 }
