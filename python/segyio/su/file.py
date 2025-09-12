@@ -95,7 +95,7 @@ def _open(datasource_descriptor,
           endian='big'):
 
     fd = datasource_descriptor.make_segyfile_descriptor(endian)
-    fd.suopen()
+    fd.suopen(iline=int(iline), xline=int(xline))
     metrics = fd.metrics()
 
     f = sufile(

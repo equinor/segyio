@@ -248,7 +248,7 @@ def _open(datasource_descriptor,
           ):
 
     fd = datasource_descriptor.make_segyfile_descriptor(endian, encoding)
-    fd.segyopen()
+    fd.segyopen(iline=int(iline), xline=int(xline))
     metrics = fd.metrics()
 
     f = segyio.SegyFile(fd,

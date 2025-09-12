@@ -175,6 +175,13 @@ def test_read_binary_header_fields(mmap=False):
     f.close()
 
 
+def test_custom_iline_xline():
+    with pytest.raises(ValueError):
+        segyfile(str(testdata / 'small.sgy'), "r", 0).segyopen(iline=0)
+    with pytest.raises(ValueError):
+        segyfile(str(testdata / 'small.sgy'), "r", 0).segyopen(xline=241)
+
+
 def test_line_metrics_mmap():
     test_line_metrics(True)
 
