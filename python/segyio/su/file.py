@@ -115,4 +115,4 @@ def _open(datasource_descriptor,
     if ignore_geometry:
         return f
 
-    return infer_geometry(f, metrics, iline, xline, strict)
+    return infer_geometry(f, metrics, strict)

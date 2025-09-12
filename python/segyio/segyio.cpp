@@ -1204,20 +1204,22 @@ struct metrics_errmsg {
     }
 };
 
-PyObject* cube_metrics( segyfd* self, PyObject* args ) {
+PyObject* cube_metrics( segyfd* self ) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
 
-    int il;
-    int xl;
-    if( !PyArg_ParseTuple( args, "ii", &il, &xl ) ) return NULL;
+    segy_header_mapping& mapping = ds->traceheader_mapping_standard;
 
-    metrics_errmsg errmsg = { il, xl, SEGY_TR_OFFSET };
+    int il = mapping.name_to_offset[SEGY_TR_INLINE];
+    int xl = mapping.name_to_offset[SEGY_TR_CROSSLINE];
+    int offset = mapping.name_to_offset[SEGY_TR_OFFSET];
+
+    metrics_errmsg errmsg = { il, xl, offset };
 
     int sorting = -1;
     int err = segy_sorting( ds, il,
                                 xl,
-                                SEGY_TR_OFFSET,
+                                offset,
                                 &sorting,
                                 self->trace0,
                                 self->trace_bsize );
@@ -1255,7 +1257,7 @@ PyObject* cube_metrics( segyfd* self, PyObject* args ) {
                           "sorting",      sorting,
                           "iline_field",  il,
                           "xline_field",  xl,
-                          "offset_field", 37,
+                          "offset_field", offset,
                           "offset_count", offset_count,
                           "iline_count",  il_count,
                           "xline_count",  xl_count );
@@ -1721,7 +1723,7 @@ PyMethodDef methods [] = {
     { "rotation", (PyCFunction) fd::rotation, METH_VARARGS, "Get clockwise rotation."   },
 
     { "metrics",      (PyCFunction) fd::metrics,      METH_NOARGS,  "Metrics."         },
-    { "cube_metrics", (PyCFunction) fd::cube_metrics, METH_VARARGS, "Cube metrics."    },
+    { "cube_metrics", (PyCFunction) fd::cube_metrics, METH_NOARGS,  "Cube metrics."    },
     { "indices",      (PyCFunction) fd::indices,      METH_VARARGS, "Indices."         },
 
     { NULL }
