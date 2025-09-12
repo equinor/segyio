@@ -1770,7 +1770,28 @@ int segy_sample_interval( segy_datasource* ds, float fallback, float* dt ) {
     segy_get_binfield( bin_header, SEGY_BIN_INTERVAL, &fd );
     bindt = fd.value.i16;
 
-    segy_get_tracefield_int( trace_header, SEGY_TR_SAMPLE_INTER, &trdt );
+    segy_entry_definition* standard_map =
+        ds->traceheader_mapping_standard.offset_to_entry_definion;
+    const uint8_t* standard_name_map =
+        ds->traceheader_mapping_standard.name_to_offset;
+    const int sample_inter_offset = standard_name_map[SEGY_TR_SAMPLE_INTER];
+
+    err = segy_get_tracefield(
+        trace_header, standard_map, sample_inter_offset, &fd
+    );
+    if( err != SEGY_OK ) return err;
+
+    const uint8_t entry_type = standard_map[sample_inter_offset - 1].entry_type;
+    switch( entry_type ) {
+        case SEGY_ENTRY_TYPE_INT2:
+            trdt = fd.value.i16;
+            break;
+        case SEGY_ENTRY_TYPE_UINT2:
+            trdt = fd.value.u16;
+            break;
+        default:
+            return SEGY_INVALID_FIELD_DATATYPE;
+    }
 
     float binary_header_dt = (float) bindt;
     float trace_header_dt = (float) trdt;
