@@ -2904,34 +2904,95 @@ int segy_binheader_size( void ) {
     return SEGY_BINARY_HEADER_SIZE;
 }
 
-static int scaled_cdp( segy_datasource* ds,
-                       int traceno,
-                       float* cdpx,
-                       float* cdpy,
-                       long trace0,
-                       int trace_bsize ) {
-    int x, y;
+static int scaled_standard_header_cdp(
+    const char* header,
+    const segy_entry_definition* map,
+    int cdp_offset,
+    int scalar_offset,
+    float* cdp
+) {
+
+    segy_field_data fd = {0};
+    int err = segy_get_tracefield( header, map, cdp_offset, &fd );
+    if( err != SEGY_OK ) return err;
+
+    float raw_cdp;
+    const uint8_t entry_type = map[cdp_offset - 1].entry_type;
+
+    switch( entry_type ) {
+        case SEGY_ENTRY_TYPE_IBMFP:
+        case SEGY_ENTRY_TYPE_IEEE32:
+            *cdp = fd.value.f32;
+            return SEGY_OK;
+        case SEGY_ENTRY_TYPE_COOR4:
+        // breaks spec on purpose: scalar is applied anyway
+        case SEGY_ENTRY_TYPE_INT4:
+            raw_cdp = (float)fd.value.i32;
+            break;
+        // breaks spec on purpose: scalar is applied anyway
+        case SEGY_ENTRY_TYPE_UINT4:
+            raw_cdp = (float)fd.value.u32;
+            break;
+        default:
+            return SEGY_INVALID_FIELD_DATATYPE;
+    }
+
+    err = segy_get_tracefield( header, map, scalar_offset, &fd );
+    if( err != SEGY_OK ) return err;
+
     int scalar;
-    char trheader[ SEGY_TRACE_HEADER_SIZE ];
+    const uint8_t scalar_entry_type = map[scalar_offset - 1].entry_type;
+    switch( scalar_entry_type ) {
+        case SEGY_ENTRY_TYPE_INT2:
+            scalar = fd.value.i16;
+            break;
+        case SEGY_ENTRY_TYPE_UINT2:
+            scalar = fd.value.u16;
+            break;
+        default:
+            return SEGY_INVALID_FIELD_DATATYPE;
+    }
+
+    float scale = (float)scalar;
+    if( scalar == 0 ) scale = 1.0;
+    if( scalar < 0 ) scale = -1.0f / scale;
+    *cdp = raw_cdp * scale;
+    return SEGY_OK;
+}
+
+static int scaled_cdp(
+    segy_datasource* ds,
+    int traceno,
+    float* cdpx,
+    float* cdpy,
+    long trace0,
+    int trace_bsize
+) {
+
+    char trheader[SEGY_TRACE_HEADER_SIZE];
 
     int err = segy_traceheader( ds, traceno, trheader, trace0, trace_bsize );
     if( err != 0 ) return err;
 
-    err = segy_get_tracefield_int( trheader, SEGY_TR_CDP_X, &x );
-    if( err != 0 ) return err;
-    err = segy_get_tracefield_int( trheader, SEGY_TR_CDP_Y, &y );
-    if( err != 0 ) return err;
-    err = segy_get_tracefield_int( trheader, SEGY_TR_SOURCE_GROUP_SCALAR, &scalar );
-    if( err != 0 ) return err;
+    const segy_entry_definition* standard_map =
+        ds->traceheader_mapping_standard.offset_to_entry_definion;
 
-    float scale = (float) scalar;
-    if( scalar == 0 ) scale = 1.0;
-    if( scalar < 0 )  scale = -1.0f / scale;
+    const int cdp_x_offset =
+        ds->traceheader_mapping_standard.name_to_offset[SEGY_TR_CDP_X];
+    const int cdp_y_offset =
+        ds->traceheader_mapping_standard.name_to_offset[SEGY_TR_CDP_Y];
+    const int scalar_offset =
+        ds->traceheader_mapping_standard.name_to_offset[SEGY_TR_SOURCE_GROUP_SCALAR];
 
-    *cdpx = x * scale;
-    *cdpy = y * scale;
+    err = scaled_standard_header_cdp(
+        trheader, standard_map, cdp_x_offset, scalar_offset, cdpx
+    );
+    if( err != SEGY_OK ) return err;
 
-    return SEGY_OK;
+    err = scaled_standard_header_cdp(
+        trheader, standard_map, cdp_y_offset, scalar_offset, cdpy
+    );
+    return err;
 }
 
 int segy_rotation_cw( segy_datasource* ds,
