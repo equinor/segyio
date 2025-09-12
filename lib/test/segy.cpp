@@ -1932,13 +1932,51 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
 }
 
 SCENARIO( "checking sorting for wonky files", "[c.segy]" ) {
+    WHEN( "checking sorting when il, xl and offset are of unsupported type ") {
+        unique_segy ufp{ openfile( "test-data/small.sgy", "rb" ) };
+        auto fp = ufp.get();
+
+        char header[ SEGY_BINARY_HEADER_SIZE ];
+        REQUIRE( Err( segy_binheader( fp, header ) ) == Err::ok() );
+
+        long trace0 = segy_trace0( header );
+        int samples = segy_samples( header );
+        int format = segy_format( header );
+        int trace_bsize = segy_trsize( format, samples );
+
+        int sorting;
+        int err;
+
+        err = segy_sorting(
+            fp,
+            SEGY_TR_SEQ_LINE,
+            SEGY_TR_CROSSLINE,
+            SEGY_TR_OFFSET,
+            &sorting,
+            trace0,
+            trace_bsize
+        );
+        CHECK( err == SEGY_INVALID_FIELD_DATATYPE );
+
+        err = segy_sorting(
+            fp,
+            SEGY_TR_INLINE,
+            SEGY_TR_DAY_OF_YEAR,
+            SEGY_TR_OFFSET,
+            &sorting,
+            trace0,
+            trace_bsize
+        );
+        CHECK( err == SEGY_INVALID_FIELD_DATATYPE );
+    }
+
     WHEN( "checking sorting when il, xl and offset is all garbage ") {
         /*
          * In the case where all tracefields ( il, xl, offset ) = ( 0, 0, 0 )
          * the sorting detection should return 'SEGY_INVALID_SORTING'. To test
-         * this the traceheader field 'SEGY_TR_SEQ_LINE', which we know is zero
-         * in all traceheaders in file small.sgy, is passed to segy_sorting as
-         * il, xl and offset.
+         * this the traceheader field 'SEGY_TR_FIELD_RECORD', which we know is
+         * zero in all traceheaders in file small.sgy, is passed to segy_sorting
+         * as il, xl and offset.
          */
         unique_segy ufp{ openfile( "test-data/small.sgy", "rb" ) };
         auto fp = ufp.get();
@@ -1953,9 +1991,9 @@ SCENARIO( "checking sorting for wonky files", "[c.segy]" ) {
 
         int sorting;
             int err = segy_sorting( fp,
-                                    SEGY_TR_SEQ_LINE,
-                                    SEGY_TR_SEQ_LINE,
-                                    SEGY_TR_SEQ_LINE,
+                                    SEGY_TR_FIELD_RECORD,
+                                    SEGY_TR_FIELD_RECORD,
+                                    SEGY_TR_FIELD_RECORD,
                                     &sorting,
                                     trace0,
                                     trace_bsize );

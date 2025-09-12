@@ -1835,6 +1835,26 @@ int segy_sample_indices( segy_datasource* ds,
     return SEGY_OK;
 }
 
+/* Allows axis (iline, xline, standard offset) to be represented only by int4 or
+ * uint4. */
+static int field_data_to_axis(
+    uint8_t entry_type,
+    const segy_field_data* fd,
+    long* value
+) {
+    switch( entry_type ) {
+        case SEGY_ENTRY_TYPE_INT4:
+            *value = fd->value.i32;
+            break;
+        case SEGY_ENTRY_TYPE_UINT4:
+            *value = fd->value.u32;
+            break;
+        default:
+            return SEGY_INVALID_FIELD_DATATYPE;
+    }
+    return SEGY_OK;
+}
+
 /*
  * Determine how a file is sorted. Expects the following three fields from the
  * trace header to guide sorting: the inline number `il`, the crossline
@@ -1863,19 +1883,6 @@ int segy_sorting( segy_datasource* ds,
     err = segy_traceheader( ds, 0, traceheader, trace0, trace_bsize );
     if( err != SEGY_OK ) return err;
 
-    /* make sure field is valid, so we don't have to check errors later */
-    const int fields[] = { il, xl, tr_offset };
-    int len = sizeof( fields ) / sizeof( int );
-    for( int i = 0; i < len; ++i ) {
-        const int f = fields[ i ];
-        if( f < 1 )
-            return SEGY_INVALID_FIELD;
-        if( f > SEGY_TRACE_HEADER_SIZE )
-            return SEGY_INVALID_FIELD;
-        if( traceheader_default_map[ f - 1 ].entry_type == SEGY_ENTRY_TYPE_UNDEFINED )
-            return SEGY_INVALID_FIELD;
-    }
-
     int traces;
     err = segy_traces( ds, &traces, trace0, trace_bsize );
     if( err ) return err;
@@ -1885,13 +1892,32 @@ int segy_sorting( segy_datasource* ds,
         return SEGY_OK;
     }
 
-    int il_first = 0, il_next = 0, il_prev = 0;
-    int xl_first = 0, xl_next = 0, xl_prev = 0;
-    int of_first = 0, of_next = 0;
+    long il_first = 0, il_next = 0, il_prev = 0;
+    long xl_first = 0, xl_next = 0, xl_prev = 0;
+    long of_first = 0, of_next = 0;
 
-    segy_get_tracefield_int( traceheader, il, &il_first );
-    segy_get_tracefield_int( traceheader, xl, &xl_first );
-    segy_get_tracefield_int( traceheader, tr_offset, &of_first );
+    segy_field_data fd;
+    const segy_entry_definition* standard_map =
+        ds->traceheader_mapping_standard.offset_to_entry_definion;
+    const uint8_t il_entry_type = standard_map[il - 1].entry_type;
+    const uint8_t xl_entry_type = standard_map[xl - 1].entry_type;
+    const uint8_t of_entry_type = standard_map[tr_offset - 1].entry_type;
+
+    // check errors only once at the start to avoid loop check
+    err = segy_get_tracefield( traceheader, standard_map, il, &fd );
+    if( err != SEGY_OK ) return err;
+    err = field_data_to_axis( il_entry_type, &fd, &il_first );
+    if( err != SEGY_OK ) return err;
+
+    err = segy_get_tracefield( traceheader, standard_map, xl, &fd );
+    if( err != SEGY_OK ) return err;
+    err = field_data_to_axis( xl_entry_type, &fd, &xl_first );
+    if( err != SEGY_OK ) return err;
+
+    err = segy_get_tracefield( traceheader, standard_map, tr_offset, &fd );
+    if( err != SEGY_OK ) return err;
+    err = field_data_to_axis( of_entry_type, &fd, &of_first );
+    if( err != SEGY_OK ) return err;
 
     il_prev = il_first;
     xl_prev = xl_first;
@@ -1912,9 +1938,14 @@ int segy_sorting( segy_datasource* ds,
         if( err ) return err;
         ++traceno;
 
-        segy_get_tracefield_int( traceheader, il, &il_next );
-        segy_get_tracefield_int( traceheader, xl, &xl_next );
-        segy_get_tracefield_int( traceheader, tr_offset, &of_next );
+        segy_get_tracefield( traceheader, standard_map, il, &fd );
+        field_data_to_axis( il_entry_type, &fd, &il_next );
+
+        segy_get_tracefield( traceheader, standard_map, xl, &fd );
+        field_data_to_axis( xl_entry_type, &fd, &xl_next );
+
+        segy_get_tracefield( traceheader, standard_map, tr_offset, &fd );
+        field_data_to_axis( of_entry_type, &fd, &of_next );
 
         /* the exit condition - offset has wrapped around. */
         if( of_next == of_first ) {
@@ -1962,7 +1993,7 @@ int segy_offsets( segy_datasource* ds,
                   long trace0,
                   int trace_bsize ) {
     int err;
-    int il0 = 0, il1 = 0, xl0 = 0, xl1 = 0;
+    long il0 = 0, il1 = 0, xl0 = 0, xl1 = 0;
     char header[ SEGY_TRACE_HEADER_SIZE ];
     int offsets = 0;
 
@@ -1971,19 +2002,25 @@ int segy_offsets( segy_datasource* ds,
         return SEGY_OK;
     }
 
-    /*
-     * check that field value is sane, so that we don't have to check
-     * segy_get_field's error
-     */
-    if( traceheader_default_map[ il - 1 ].entry_type == SEGY_ENTRY_TYPE_UNDEFINED ||
-        traceheader_default_map[ xl - 1 ].entry_type == SEGY_ENTRY_TYPE_UNDEFINED )
-        return SEGY_INVALID_FIELD;
-
     err = segy_traceheader( ds, 0, header, trace0, trace_bsize );
     if( err != 0 ) return SEGY_FREAD_ERROR;
 
-    segy_get_tracefield_int( header, il, &il0 );
-    segy_get_tracefield_int( header, xl, &xl0 );
+    segy_field_data fd;
+    const segy_entry_definition* standard_map =
+        ds->traceheader_mapping_standard.offset_to_entry_definion;
+    const uint8_t il_entry_type = standard_map[il - 1].entry_type;
+    const uint8_t xl_entry_type = standard_map[xl - 1].entry_type;
+
+    // check errors only once at the start to avoid loop check
+    err = segy_get_tracefield( header, standard_map, il, &fd );
+    if( err != SEGY_OK ) return err;
+    err = field_data_to_axis( il_entry_type, &fd, &il0 );
+    if( err != SEGY_OK ) return err;
+
+    err = segy_get_tracefield( header, standard_map, xl, &fd );
+    if( err != SEGY_OK ) return err;
+    err = field_data_to_axis( xl_entry_type, &fd, &xl0 );
+    if( err != SEGY_OK ) return err;
 
     do {
         ++offsets;
@@ -1993,8 +2030,11 @@ int segy_offsets( segy_datasource* ds,
         err = segy_traceheader( ds, offsets, header, trace0, trace_bsize );
         if( err != 0 ) return err;
 
-        segy_get_tracefield_int( header, il, &il1 );
-        segy_get_tracefield_int( header, xl, &xl1 );
+        segy_get_tracefield( header, standard_map, il, &fd );
+        field_data_to_axis( il_entry_type, &fd, &il1 );
+
+        segy_get_tracefield( header, standard_map, xl, &fd );
+        field_data_to_axis( xl_entry_type, &fd, &xl1 );
     } while( il0 == il1 && xl0 == xl1 );
 
     *out = offsets;
@@ -2007,18 +2047,26 @@ int segy_offset_indices( segy_datasource* ds,
                          int* out,
                          long trace0,
                          int trace_bsize ) {
-    int32_t x = 0;
+    long x = 0;
     char header[ SEGY_TRACE_HEADER_SIZE ];
 
-    if( traceheader_default_map[ offset_field - 1 ].entry_type == SEGY_ENTRY_TYPE_UNDEFINED )
+    segy_field_data fd;
+    const segy_entry_definition* standard_map =
+        ds->traceheader_mapping_standard.offset_to_entry_definion;
+    const uint8_t offset_entry_type = standard_map[offset_field - 1].entry_type;
+
+    if( offset_entry_type == SEGY_ENTRY_TYPE_UNDEFINED )
         return SEGY_INVALID_FIELD;
 
     for( int i = 0; i < offsets; ++i ) {
-        const int err = segy_traceheader( ds, i, header, trace0, trace_bsize );
+        int err = segy_traceheader( ds, i, header, trace0, trace_bsize );
         if( err != SEGY_OK ) return err;
 
-        segy_get_tracefield_int( header, offset_field, &x );
-        *out++ = x;
+        err = segy_get_tracefield( header, standard_map, offset_field, &fd );
+        if( err != SEGY_OK ) return err;
+        err = field_data_to_axis( offset_entry_type, &fd, &x );
+        if( err != SEGY_OK ) return err;
+        *out++ = (int)x;
     }
 
     return SEGY_OK;
@@ -2055,13 +2103,27 @@ static int count_lines( segy_datasource* ds,
     err = segy_traceheader( ds, 0, header, trace0, trace_bsize );
     if( err != 0 ) return err;
 
-    int first_lineno, first_offset, ln = 0, off = 0;
+    long first_lineno, first_offset, ln = 0, off = 0;
 
-    err = segy_get_tracefield_int( header, field, &first_lineno );
-    if( err != 0 ) return err;
+    segy_field_data fd;
+    const segy_entry_definition* standard_map =
+        ds->traceheader_mapping_standard.offset_to_entry_definion;
+    const int offset_field =
+        ds->traceheader_mapping_standard.name_to_offset[SEGY_TR_OFFSET];
 
-    err = segy_get_tracefield_int( header, 37, &first_offset );
-    if( err != 0 ) return err;
+    const uint8_t offset_entry_type = standard_map[offset_field - 1].entry_type;
+    const uint8_t field_entry_type = standard_map[field - 1].entry_type;
+
+    // check errors only once at the start to avoid loop check
+    err = segy_get_tracefield( header, standard_map, field, &fd );
+    if( err != SEGY_OK ) return err;
+    err = field_data_to_axis( field_entry_type, &fd, &first_lineno );
+    if( err != SEGY_OK ) return err;
+
+    err = segy_get_tracefield( header, standard_map, offset_field, &fd );
+    if( err != SEGY_OK ) return err;
+    err = field_data_to_axis( offset_entry_type, &fd, &first_offset );
+    if( err != SEGY_OK ) return err;
 
     int lines = 1;
     int curr = offsets;
@@ -2073,8 +2135,11 @@ static int count_lines( segy_datasource* ds,
         err = segy_traceheader( ds, curr, header, trace0, trace_bsize );
         if( err != 0 ) return err;
 
-        segy_get_tracefield_int( header, field, &ln );
-        segy_get_tracefield_int( header, 37, &off );
+        segy_get_tracefield( header, standard_map, field, &fd );
+        field_data_to_axis( field_entry_type, &fd, &ln );
+
+        segy_get_tracefield( header, standard_map, offset_field, &fd );
+        field_data_to_axis( offset_entry_type, &fd, &off );
 
         if( first_offset == off && ln == first_lineno ) break;
 
