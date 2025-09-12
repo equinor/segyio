@@ -1453,8 +1453,11 @@ int segy_write_binheader( segy_datasource* ds, const char* buf ) {
 }
 
 int segy_format( const char* binheader ) {
+    segy_field_data fd;
+
     int format = 0;
-    segy_get_binfield_int( binheader, SEGY_BIN_FORMAT, &format );
+    segy_get_binfield( binheader, SEGY_BIN_FORMAT, &fd );
+    format = fd.value.i16;
     return format;
 }
 
@@ -1503,12 +1506,15 @@ int segy_set_encoding( segy_datasource* ds, int encoding ) {
 }
 
 int segy_samples( const char* binheader ) {
+    segy_field_data fd;
+
     int samples = 0;
-    segy_get_binfield_int( binheader, SEGY_BIN_SAMPLES, &samples );
-    samples = (int32_t)((uint16_t)samples);
+    segy_get_binfield( binheader, SEGY_BIN_SAMPLES, &fd );
+    samples = fd.value.u16;
 
     int ext_samples = 0;
-    segy_get_binfield_int(binheader, SEGY_BIN_EXT_SAMPLES, &ext_samples);
+    segy_get_binfield( binheader, SEGY_BIN_EXT_SAMPLES, &fd );
+    ext_samples = fd.value.i32;
 
     if (samples == 0 && ext_samples > 0)
         return ext_samples;
@@ -1525,7 +1531,8 @@ int segy_samples( const char* binheader ) {
      * values are ignored, as it's likely just noise.
      */
     int revision = 0;
-    segy_get_binfield_int(binheader, SEGY_BIN_SEGY_REVISION, &revision);
+    segy_get_binfield( binheader, SEGY_BIN_SEGY_REVISION, &fd );
+    revision = fd.value.u8;
     if (revision >= 2 && ext_samples > 0)
         return ext_samples;
 
@@ -1544,8 +1551,11 @@ int segy_trsize( int format, int samples ) {
 }
 
 long segy_trace0( const char* binheader ) {
+    segy_field_data fd;
+
     int extra_headers = 0;
-    segy_get_binfield_int( binheader, SEGY_BIN_EXT_HEADERS, &extra_headers );
+    segy_get_binfield( binheader, SEGY_BIN_EXT_HEADERS, &fd );
+    extra_headers = fd.value.i16;
 
     return SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE +
            SEGY_TEXT_HEADER_SIZE * extra_headers;
@@ -1755,7 +1765,11 @@ int segy_sample_interval( segy_datasource* ds, float fallback, float* dt ) {
     int bindt = 0;
     int trdt = 0;
 
-    segy_get_binfield_int( bin_header, SEGY_BIN_INTERVAL, &bindt );
+    segy_field_data fd;
+
+    segy_get_binfield( bin_header, SEGY_BIN_INTERVAL, &fd );
+    bindt = fd.value.i16;
+
     segy_get_tracefield_int( trace_header, SEGY_TR_SAMPLE_INTER, &trdt );
 
     float binary_header_dt = (float) bindt;
