@@ -200,7 +200,7 @@ def collect(itr):
 
     >>> with segyio.open('post-stack.sgy') as f:
     >>>     x = segyio.tools.collect(f.trace[:])
-    >>>     x = x.reshape((len(f.ilines), len(f.xlines), f.samples))
+    >>>     x = x.reshape((len(f.ilines), len(f.xlines), len(f.samples)))
     >>>     numpy.all(x == segyio.tools.cube(f))
 
     """
