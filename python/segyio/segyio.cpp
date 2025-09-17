@@ -1707,6 +1707,25 @@ PyObject* rotation( segyfd* self, PyObject* args ) {
     return PyFloat_FromDouble( rotation );
 }
 
+PyObject* stanza_names( segyfd* self ) {
+    PyObject* names = PyList_New( self->stanzas.size() );
+    if( !names ) {
+        PyErr_Print();
+        return NULL;
+    }
+    for( size_t i = 0; i < self->stanzas.size(); ++i ) {
+        const std::string& name = self->stanzas[i].name;
+        PyObject* py_name = PyUnicode_FromStringAndSize( name.c_str(), name.size() );
+        if( !py_name ) {
+            PyErr_Print();
+            Py_DECREF( names );
+            return NULL;
+        }
+        PyList_SET_ITEM( names, i, py_name );
+    }
+    return names;
+}
+
 PyMethodDef methods [] = {
     { "segyopen", (PyCFunction) fd::segyopen,
       METH_VARARGS | METH_KEYWORDS, "Open file." },
@@ -1746,6 +1765,8 @@ PyMethodDef methods [] = {
     { "metrics",      (PyCFunction) fd::metrics,      METH_NOARGS,  "Metrics."         },
     { "cube_metrics", (PyCFunction) fd::cube_metrics, METH_NOARGS,  "Cube metrics."    },
     { "indices",      (PyCFunction) fd::indices,      METH_VARARGS, "Indices."         },
+
+    { "stanza_names", (PyCFunction) fd::stanza_names, METH_NOARGS, "Stanza names in order." },
 
     { NULL }
 };
