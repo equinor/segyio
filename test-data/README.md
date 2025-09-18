@@ -100,5 +100,6 @@ Files are created manually.
 | mapping-invalid-root.sgy       | Root does not define standard header layout.                  |
 | mapping-invalid-value.sgy      | Last standard header entry byte is out of range.              |
 | mapping-multiple-stanzas.sgy   | Other stanzas are present before and after layout stanza.     |
+| mapping-shifted.sgy            | Default mapping with all offsets shifted by 1 byte.           |
 | mapping-unparsable.sgy         | XML is unparsable.                                            |
 
