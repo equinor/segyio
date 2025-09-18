@@ -191,6 +191,8 @@ def test_metadata():
     assert spec.sorting == smallspec.sorting
     assert spec.format == int(smallspec.format)
     assert spec.encoding == smallspec.encoding
+    assert spec.iline == 189
+    assert spec.xline == 193
 
 
 @tmpfiles(testdata / 'small.sgy')

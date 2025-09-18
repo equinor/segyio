@@ -778,6 +778,12 @@ PyObject* segycreate( segyfd* self, PyObject* args, PyObject* kwargs ) {
                 &ext_headers ) )
         return NULL;
 
+    std::vector<char> layout_stanza_data;
+    int err = set_traceheader_mappings(
+        self, layout_stanza_data, Py_None, Py_None
+    );
+    if( err ) return NULL;
+
     if( samples <= 0 )
         return ValueError( "expected samples > 0" );
 
@@ -1367,7 +1373,7 @@ PyObject* indices( segyfd* self, PyObject* args ) {
     const int sorting      = getitem( metrics, "sorting" );
     if( PyErr_Occurred() ) return NULL;
 
-    metrics_errmsg errmsg = { il_field, xl_field, SEGY_TR_OFFSET };
+    metrics_errmsg errmsg = { il_field, xl_field, offset_field };
 
     int err = segy_inline_indices( ds, il_field,
                                        sorting,

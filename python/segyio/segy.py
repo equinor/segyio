@@ -27,14 +27,15 @@ class SegyFile(object):
         self,
         fd,
         datasource_descriptor,
-        iline=189,
-        xline=193,
         endian='big'
     ):
 
         self._datasource_descriptor = datasource_descriptor
-        self._il = iline
-        self._xl = xline
+
+        self.traceheader_layout = fd.traceheader_layout()
+        standard_header_layout = self.traceheader_layout["SEG00000"]
+        self._il = standard_header_layout.get_by_name("iline").byte
+        self._xl = standard_header_layout.get_by_name("xline").byte
 
         # property value holders
         self._ilines = None
