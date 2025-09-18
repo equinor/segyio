@@ -522,7 +522,7 @@ int segy_field_forall( segy_datasource*,
                        int start,
                        int stop,
                        int step,
-                       int* buf,
+                       void* buf,
                        long trace0,
                        int trace_bsize );
 
@@ -793,7 +793,7 @@ int segy_inline_indices( segy_datasource*,
                          int inline_count,
                          int crossline_count,
                          int offsets,
-                         int* buf,
+                         void* buf,
                          long trace0,
                          int trace_bsize );
 
@@ -803,7 +803,7 @@ int segy_crossline_indices( segy_datasource*,
                             int inline_count,
                             int crossline_count,
                             int offsets,
-                            int* buf,
+                            void* buf,
                             long trace0,
                             int trace_bsize );
 

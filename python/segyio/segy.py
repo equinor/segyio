@@ -419,7 +419,8 @@ class SegyFile(object):
         .. versionadded:: 1.1
 
         """
-        return Attributes(field, self.segyfd, self.tracecount)
+        traceheader_layout = self.traceheader_layout["SEG00000"]
+        return Attributes(field, self.segyfd, traceheader_layout, self.tracecount)
 
     @property
     def trace(self):
