@@ -406,7 +406,7 @@ segyread tape=small.sgy ns=50 remap=tracr,cdp byte=189l,193l conv=1 format=1 \
 suswapbytes < small.su > small-lsb.su
 ```
 
-If you have have small data files with a free license, feel free to submit it
+If you have small data files with a free license, feel free to submit it
 to the project!
 
 ## Examples ##
@@ -517,7 +517,7 @@ with segyio.open(output_file, "r+") as src:
         src.iline[i] = 2 * src.iline[i]
 ```
 
-[Make segy file from sctrach](python/examples/make-file.py)
+[Make segy file from scratch](python/examples/make-file.py)
 
 ### MATLAB ###
 
