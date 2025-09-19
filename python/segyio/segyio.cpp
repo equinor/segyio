@@ -17,6 +17,8 @@
 #include <cstring>
 #include <sstream>
 #include <stdexcept>
+#include <string>
+#include <vector>
 
 #if PY_MAJOR_VERSION >= 3
 #define IS_PY3K
@@ -337,6 +339,38 @@ segy_datasource* create_py_stream_datasource(
 
 } // namespace ds
 
+struct stanza_header {
+    std::string name;
+    int headerindex;
+    int headercount;
+
+    stanza_header() = default;
+    stanza_header( std::string n, int i, int c )
+        : name( std::move( n ) ),
+          headerindex( i ),
+          headercount( c ) {}
+
+    std::string normalized_name() const {
+        std::string normalized;
+        for( auto c : this->name ) {
+            if( c != ' ' ) {
+                normalized += std::tolower( static_cast<unsigned char>( c ) );
+            }
+        }
+        return normalized;
+    }
+
+    int end_index() const { return headerindex + headercount; }
+
+    size_t header_length() const {
+        const size_t parentheses_count = 4;
+        return this->name.size() + parentheses_count;
+    }
+
+    size_t data_size() const {
+        return this->headercount * SEGY_TEXT_HEADER_SIZE - this->header_length();
+    }
+};
 
 struct buffer_guard {
     /* automate Py_buffer handling.
@@ -437,6 +471,8 @@ struct segyfd {
     int samplecount;
     int format;
     int elemsize;
+
+    std::vector<stanza_header> stanzas;
 };
 
 namespace {
@@ -444,6 +480,11 @@ namespace {
  * the user. Returns SEGY_OK if requested mapping override was successful, sets
  * error and returns error code otherwise. */
 int overwrite_mapping( segy_datasource* ds, PyObject* py_iline, PyObject* py_xline );
+
+/** Parse extended text headers, find out their number and determine the list of
+ * stanza headers. Updates stanzas field. */
+int parse_extended_text_headers( segyfd* self );
+
 } // namespace
 
 namespace fd {
@@ -598,6 +639,9 @@ PyObject* segyopen( segyfd* self, PyObject* args, PyObject* kwargs ) {
 
     char binary[ SEGY_BINARY_HEADER_SIZE ] = {};
     int err = segy_binheader( ds, binary );
+    if( err ) return Error( err );
+
+    err = parse_extended_text_headers( self );
     if( err ) return Error( err );
 
     err = overwrite_mapping( ds, py_iline, py_xline );
@@ -2112,6 +2156,44 @@ int overwrite_mapping( segy_datasource* ds, PyObject* py_iline, PyObject* py_xli
         uint8_t xl = static_cast<uint8_t>( xline );
         mapping.name_to_offset[SEGY_TR_CROSSLINE] = xl;
         mapping.offset_to_entry_definion[xl - 1].entry_type = SEGY_ENTRY_TYPE_INT4;
+    }
+    return SEGY_OK;
+}
+
+int parse_extended_text_headers( segyfd* self ) {
+    segy_datasource* ds = self->ds;
+
+    char binheader[SEGY_BINARY_HEADER_SIZE] = {};
+    int err = segy_binheader( ds, binheader );
+    if( err != SEGY_OK ) return err;
+
+    segy_field_data fd;
+    segy_get_binfield( binheader, SEGY_BIN_EXT_HEADERS, &fd );
+    const int extra_headers_count = fd.value.i16;
+
+    int i = 0;
+    while( extra_headers_count != i ) {
+        char* c_stanza_name = NULL;
+        size_t stanza_name_length;
+
+        err = segy_read_stanza_header(
+            ds, i, &c_stanza_name, &stanza_name_length
+        );
+        if( err != SEGY_OK ) return err;
+
+        if( stanza_name_length != 0 || self->stanzas.empty() ) {
+            self->stanzas.emplace_back(
+                std::string( c_stanza_name, stanza_name_length ),
+                i,
+                1
+            );
+        } else {
+            self->stanzas.back().headercount += 1;
+        }
+        if( c_stanza_name ) free( c_stanza_name );
+        if( self->stanzas.back().normalized_name() == "seg:endtext" ) break;
+
+        ++i;
     }
     return SEGY_OK;
 }

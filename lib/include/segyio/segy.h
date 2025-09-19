@@ -869,6 +869,28 @@ int segy_crossline_stride( int sorting,
                            int crossline_count,
                            int* stride );
 
+
+/*
+ * Retrieves stanza name and encoding from stanza header headerno (0-based
+ * starting from first extended text header). Memory is allocated for stanza
+ * name and must be freed by the caller.
+ */
+int segy_read_stanza_header( segy_datasource* ds,
+                             int headerno,
+                             char** stanza_name,
+                             size_t* stanza_name_length );
+
+/*
+ * Reads stanza data (without the name) from starting extended header
+ * `stanza_headerno` (0-based starting from first extended text header). Memory
+ * of stanza_data_size is expected to be already allocated under stanza_data.
+ */
+int segy_read_stanza_data( segy_datasource* ds,
+                           size_t stanza_header_length,
+                           int stanza_headerno,
+                           size_t stanza_data_size,
+                           char* stanza_data );
+
 #ifdef __cplusplus
 }
 #endif // __cplusplus

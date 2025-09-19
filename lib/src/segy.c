@@ -3033,3 +3033,138 @@ int segy_rotation_cw( segy_datasource* ds,
     *rotation = (float) radians;
     return SEGY_OK;
 }
+
+/** Parses stanza header ((stanza_name)) from the text.
+ *
+ * If header is found, stanza name and stanza name length is extracted and set.
+ * stanza_name memory is allocated on heap and it is user's responsibility to
+ * free it. If allocation fails, SEGY_MEMORY_ERROR is returned.
+ *
+ * If starting characters of the header are not found, text is assumed to be
+ * continuation of the previous stanza. Stanza name is set to NULL, stanza
+ * length is set to 0. SEGY_OK is returned as situation is valid.
+ *
+ * If starting character of the header are found, but ending characters are not,
+ * SEGY_NOT_FOUND is returned as situation is not valid.
+ */
+static int parse_stanza_header(
+    const char* text_start,
+    int text_size,
+    char** stanza_name,
+    size_t* stanza_name_length
+) {
+    // start char should be (, end char should be )
+    const int ascii_start = 40;
+    const int ascii_end = 41;
+    const int ebcdic_start = 77;
+    const int ebcdic_end = 93;
+
+    char end_char;
+    int encoding;
+    if( text_start[0] == ascii_start && text_start[1] == ascii_start ) {
+        end_char = ascii_end;
+        encoding = SEGY_ASCII;
+    } else if( text_start[0] == ebcdic_start && text_start[1] == ebcdic_start ) {
+        end_char = ebcdic_end;
+        encoding = SEGY_EBCDIC;
+    } else {
+        // block does not start with stanza name, so it must be a continuation
+        // of a previous block
+        *stanza_name_length = 0;
+        *stanza_name = NULL;
+        return SEGY_OK;
+    }
+
+    // skipping ((
+    text_start += 2;
+    text_size -= 2;
+
+    const char* end = NULL;
+    for( int offset = 0; offset < text_size - 1; ++offset ) {
+        if( text_start[offset] == end_char && text_start[offset + 1] == end_char ) {
+            end = text_start + offset;
+            break;
+        }
+    }
+    if( !end ) {
+        return SEGY_NOTFOUND;
+    }
+
+    *stanza_name_length = (size_t)( end - text_start );
+    *stanza_name = malloc( *stanza_name_length );
+    if( !*stanza_name ) {
+        return SEGY_MEMORY_ERROR;
+    }
+    memcpy( *stanza_name, text_start, *stanza_name_length );
+    if( encoding == SEGY_EBCDIC ) {
+        encode( *stanza_name, *stanza_name, e2a, *stanza_name_length );
+    }
+    return SEGY_OK;
+}
+
+/** Reads (parts of) text header from datasource and parses stanza header. */
+static int read_stanza_header(
+    segy_datasource* ds,
+    int headerno,
+    int read_size,
+    char** stanza_name,
+    size_t* stanza_name_length
+) {
+    int offset =
+        SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE + SEGY_TEXT_HEADER_SIZE * headerno;
+
+    char header[SEGY_TEXT_HEADER_SIZE];
+    memset( header, 0, SEGY_TEXT_HEADER_SIZE );
+
+    int err = ds->seek( ds, offset, 0 );
+    if( err != 0 ) return SEGY_DS_SEEK_ERROR;
+
+    err = ds->read( ds, header, read_size );
+    if( err != 0 ) return SEGY_DS_READ_ERROR;
+
+    return parse_stanza_header(
+        header, read_size, stanza_name, stanza_name_length
+    );
+}
+
+int segy_read_stanza_header(
+    segy_datasource* ds,
+    int headerno,
+    char** stanza_name,
+    size_t* stanza_name_length
+) {
+
+    if( !ds->minimize_requests_number ) {
+        const int initial_read_size = 128;
+        int err = read_stanza_header(
+            ds, headerno, initial_read_size, stanza_name, stanza_name_length
+        );
+        if( err != SEGY_NOTFOUND ) return err;
+    }
+    return read_stanza_header(
+        ds, headerno, SEGY_TEXT_HEADER_SIZE, stanza_name, stanza_name_length
+    );
+}
+
+int segy_read_stanza_data(
+    segy_datasource* ds,
+    size_t stanza_header_length,
+    int stanza_headerno,
+    size_t stanza_data_size,
+    char* stanza_data
+) {
+    if( stanza_headerno < 0 ) return SEGY_INVALID_ARGS;
+    if( !ds ) return SEGY_FSEEK_ERROR;
+
+    const long offset = SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE +
+                        SEGY_TEXT_HEADER_SIZE * stanza_headerno +
+                        (int)stanza_header_length;
+
+    int err = ds->seek( ds, offset, SEEK_SET );
+    if( err != 0 ) return SEGY_DS_SEEK_ERROR;
+
+    err = ds->read( ds, stanza_data, stanza_data_size );
+    if( err != 0 ) return SEGY_DS_READ_ERROR;
+
+    return SEGY_OK;
+}
