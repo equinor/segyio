@@ -439,6 +439,13 @@ struct segyfd {
     int elemsize;
 };
 
+namespace {
+/** Overwrite existing mapping with iline/xline values explicitly provided by
+ * the user. Returns SEGY_OK if requested mapping override was successful, sets
+ * error and returns error code otherwise. */
+int overwrite_mapping( segy_datasource* ds, PyObject* py_iline, PyObject* py_xline );
+} // namespace
+
 namespace fd {
 
 int init( segyfd* self, PyObject* args, PyObject* kwargs ) {
@@ -568,36 +575,6 @@ int init( segyfd* self, PyObject* args, PyObject* kwargs ) {
     return 0;
 }
 
-/** Overwrite existing mapping with iline/xline values explicitly provided by
- * the user. Returns SEGY_OK if requested mapping override was successful, sets
- * error and returns error code otherwise. */
-int overwrite_mapping( segy_datasource* ds, PyObject* py_iline, PyObject* py_xline ) {
-    segy_header_mapping& mapping = ds->traceheader_mapping_standard;
-
-    if( py_iline != Py_None ) {
-        long iline = PyLong_AsUnsignedLong( py_iline );
-        if( PyErr_Occurred() || iline < 1 || iline > SEGY_TRACE_HEADER_SIZE ) {
-            ValueError( "Custom iline offset out of range" );
-            return SEGY_INVALID_ARGS;
-        }
-        uint8_t il = static_cast<uint8_t>( iline );
-        mapping.name_to_offset[SEGY_TR_INLINE] = il;
-        mapping.offset_to_entry_definion[il - 1].entry_type = SEGY_ENTRY_TYPE_INT4;
-    }
-
-    if( py_xline != Py_None ) {
-        long xline = PyLong_AsUnsignedLong( py_xline );
-        if( PyErr_Occurred() || xline < 1 || xline > SEGY_TRACE_HEADER_SIZE ) {
-            ValueError( "Custom xline offset out of range" );
-            return SEGY_INVALID_ARGS;
-        }
-        uint8_t xl = static_cast<uint8_t>( xline );
-        mapping.name_to_offset[SEGY_TR_CROSSLINE] = xl;
-        mapping.offset_to_entry_definion[xl - 1].entry_type = SEGY_ENTRY_TYPE_INT4;
-    }
-    return SEGY_OK;
-}
-
 PyObject* segyopen( segyfd* self, PyObject* args, PyObject* kwargs ) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
@@ -619,14 +596,14 @@ PyObject* segyopen( segyfd* self, PyObject* args, PyObject* kwargs ) {
         return NULL;
     }
 
-    int err = overwrite_mapping( ds, py_iline, py_xline );
+    char binary[ SEGY_BINARY_HEADER_SIZE ] = {};
+    int err = segy_binheader( ds, binary );
+    if( err ) return Error( err );
+
+    err = overwrite_mapping( ds, py_iline, py_xline );
     if( err ) return NULL;
 
     int tracecount = 0;
-
-    char binary[ SEGY_BINARY_HEADER_SIZE ] = {};
-    err = segy_binheader( ds, binary );
-    if( err ) return Error( err );
 
     const long trace0 = segy_trace0( binary );
     const int samplecount = segy_samples( binary );
@@ -2110,6 +2087,36 @@ PyMethodDef SegyMethods[] = {
     { NULL }
 };
 
+namespace {
+
+int overwrite_mapping( segy_datasource* ds, PyObject* py_iline, PyObject* py_xline ) {
+    segy_header_mapping& mapping = ds->traceheader_mapping_standard;
+
+    if( py_iline != Py_None ) {
+        long iline = PyLong_AsUnsignedLong( py_iline );
+        if( PyErr_Occurred() || iline < 1 || iline > SEGY_TRACE_HEADER_SIZE ) {
+            ValueError( "Custom iline offset out of range" );
+            return SEGY_INVALID_ARGS;
+        }
+        uint8_t il = static_cast<uint8_t>( iline );
+        mapping.name_to_offset[SEGY_TR_INLINE] = il;
+        mapping.offset_to_entry_definion[il - 1].entry_type = SEGY_ENTRY_TYPE_INT4;
+    }
+
+    if( py_xline != Py_None ) {
+        long xline = PyLong_AsUnsignedLong( py_xline );
+        if( PyErr_Occurred() || xline < 1 || xline > SEGY_TRACE_HEADER_SIZE ) {
+            ValueError( "Custom xline offset out of range" );
+            return SEGY_INVALID_ARGS;
+        }
+        uint8_t xl = static_cast<uint8_t>( xline );
+        mapping.name_to_offset[SEGY_TR_CROSSLINE] = xl;
+        mapping.offset_to_entry_definion[xl - 1].entry_type = SEGY_ENTRY_TYPE_INT4;
+    }
+    return SEGY_OK;
+}
+
+} // namespace
 }
 
 /* module initialization */
