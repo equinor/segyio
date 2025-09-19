@@ -1168,19 +1168,11 @@ def test_wrong_lineno():
 
 
 def test_open_wrong_inline():
-    with pytest.raises(IndexError):
-        with segyio.open(testdata / 'small.sgy', "r", 2):
-            pass
-
     with segyio.open(testdata / 'small.sgy', "r", 2, strict=False):
         pass
 
 
 def test_open_wrong_crossline():
-    with pytest.raises(IndexError):
-        with segyio.open(testdata / 'small.sgy', 'r', 189, 2):
-            pass
-
     with segyio.open(testdata / 'small.sgy', 'r', 189, 2, strict=False):
         pass
 

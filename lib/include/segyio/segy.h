@@ -250,6 +250,17 @@ typedef enum {
 } SEGY_ERROR;
 
 
+typedef struct {
+    SEGY_ENTRY_TYPE entry_type;
+    bool requires_nonzero_value; //use only if field value is not zero
+} segy_entry_definition;
+
+typedef struct {
+    char name[8]; //not NULL-terminated
+    uint8_t name_to_offset[SEGY_TRACE_HEADER_SIZE];
+    segy_entry_definition offset_to_entry_definion[SEGY_TRACE_HEADER_SIZE];
+} segy_header_mapping;
+
 /*
  * Represents an abstract data source which supports common file operations,
  * described by function pointers and `writable` attribute.
@@ -333,6 +344,11 @@ struct segy_datasource {
      * certain operations.
      */
     bool memory_speedup;
+
+    /* Standard traceheader mapping. */
+    segy_header_mapping traceheader_mapping_standard;
+    /* Traceheader extension 1 mapping. */
+    //segy_header_mapping traceheader_mapping_extension1;
 };
 
 typedef struct segy_datasource segy_datasource;
@@ -356,11 +372,6 @@ typedef struct {
     segy_field_value value;
     uint8_t datatype;
 } segy_field_data;
-
-typedef struct {
-    SEGY_ENTRY_TYPE entry_type;
-    bool requires_nonzero_value; //use only if field value is not zero
-} segy_entry_definition;
 
 
 /*
@@ -451,6 +462,9 @@ int segy_entry_type_to_datatype( uint8_t entry_type );
 const segy_entry_definition* segy_binheader_map( void );
 /* Default trace header layout map. Indicies (offsets) are 0-based. */
 const segy_entry_definition* segy_traceheader_default_map( void );
+/* Default trace header name to 1-based offset map. ndicies (names) correspond
+ * to SEGY_FIELD enum. */
+const uint8_t* segy_traceheader_default_name_map( void );
 
 /* Reads one trace field data from given 0-based header. 0-based
  * offset-to-entry-definition mapping should correspond to provided header.

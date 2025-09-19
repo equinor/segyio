@@ -95,7 +95,7 @@ def _open(datasource_descriptor,
           endian='big'):
 
     fd = datasource_descriptor.make_segyfile_descriptor(endian)
-    fd.suopen()
+    fd.suopen(iline=int(iline), xline=int(xline))
     metrics = fd.metrics()
 
     f = sufile(
@@ -115,4 +115,4 @@ def _open(datasource_descriptor,
     if ignore_geometry:
         return f
 
-    return infer_geometry(f, metrics, iline, xline, strict)
+    return infer_geometry(f, metrics, strict)

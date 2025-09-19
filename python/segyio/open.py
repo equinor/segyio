@@ -8,9 +8,9 @@ from .utils import (
     MemoryBufferDatasourceDescriptor
 )
 
-def infer_geometry(f, metrics, iline, xline, strict):
+def infer_geometry(f, metrics, strict):
     try:
-        cube_metrics = f.segyfd.cube_metrics(iline, xline)
+        cube_metrics = f.segyfd.cube_metrics()
         f._sorting   = cube_metrics['sorting']
         iline_count  = cube_metrics['iline_count']
         xline_count  = cube_metrics['xline_count']
@@ -248,7 +248,7 @@ def _open(datasource_descriptor,
           ):
 
     fd = datasource_descriptor.make_segyfile_descriptor(endian, encoding)
-    fd.segyopen()
+    fd.segyopen(iline=int(iline), xline=int(xline))
     metrics = fd.metrics()
 
     f = segyio.SegyFile(fd,
@@ -276,4 +276,4 @@ def _open(datasource_descriptor,
     if ignore_geometry:
         return f
 
-    return infer_geometry(f, metrics, int(iline), int(xline), strict)
+    return infer_geometry(f, metrics, strict)

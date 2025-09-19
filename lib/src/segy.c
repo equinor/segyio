@@ -220,7 +220,6 @@ static void bswap16_mem( char* dst, const char* src ) {
     memcpy( dst, &v, 2 );
 }
 
-
 /*
  * Default traceheader offset-to-entry-definition map. May be overwritten by
  * mapping in the file. Possible mapping offsets are in range [0-240), with
@@ -376,12 +375,117 @@ static const segy_entry_definition binheader_map[SEGY_BINARY_HEADER_SIZE] = {
     [ -3201 + SEGY_BIN_NR_TRAILER_RECORDS        ] = { SEGY_ENTRY_TYPE_INT4,   false },
 };
 
+/*
+ * Default traceheader name-to-offset map. Both names and offsets are 1-based. May be
+ * overwritten by mapping in the file. Possible mapping names are in range
+ * [0-240), with first defined name being positioned at 1. All names not
+ * explicitly set are implicitly mapped to offset 0.
+ */
+static const uint8_t traceheader_default_name_map[SEGY_TRACE_HEADER_SIZE] = {
+    [ SEGY_TR_SEQ_LINE                ] = SEGY_TR_SEQ_LINE,
+    [ SEGY_TR_SEQ_FILE                ] = SEGY_TR_SEQ_FILE,
+    [ SEGY_TR_FIELD_RECORD            ] = SEGY_TR_FIELD_RECORD,
+    [ SEGY_TR_NUMBER_ORIG_FIELD       ] = SEGY_TR_NUMBER_ORIG_FIELD,
+    [ SEGY_TR_ENERGY_SOURCE_POINT     ] = SEGY_TR_ENERGY_SOURCE_POINT,
+    [ SEGY_TR_ENSEMBLE                ] = SEGY_TR_ENSEMBLE,
+    [ SEGY_TR_NUM_IN_ENSEMBLE         ] = SEGY_TR_NUM_IN_ENSEMBLE,
+    [ SEGY_TR_TRACE_ID                ] = SEGY_TR_TRACE_ID,
+    [ SEGY_TR_SUMMED_TRACES           ] = SEGY_TR_SUMMED_TRACES,
+    [ SEGY_TR_STACKED_TRACES          ] = SEGY_TR_STACKED_TRACES,
+    [ SEGY_TR_DATA_USE                ] = SEGY_TR_DATA_USE,
+    [ SEGY_TR_OFFSET                  ] = SEGY_TR_OFFSET,
+    [ SEGY_TR_RECV_GROUP_ELEV         ] = SEGY_TR_RECV_GROUP_ELEV,
+    [ SEGY_TR_SOURCE_SURF_ELEV        ] = SEGY_TR_SOURCE_SURF_ELEV,
+    [ SEGY_TR_SOURCE_DEPTH            ] = SEGY_TR_SOURCE_DEPTH,
+    [ SEGY_TR_RECV_DATUM_ELEV         ] = SEGY_TR_RECV_DATUM_ELEV,
+    [ SEGY_TR_SOURCE_DATUM_ELEV       ] = SEGY_TR_SOURCE_DATUM_ELEV,
+    [ SEGY_TR_SOURCE_WATER_DEPTH      ] = SEGY_TR_SOURCE_WATER_DEPTH,
+    [ SEGY_TR_GROUP_WATER_DEPTH       ] = SEGY_TR_GROUP_WATER_DEPTH,
+    [ SEGY_TR_ELEV_SCALAR             ] = SEGY_TR_ELEV_SCALAR,
+    [ SEGY_TR_SOURCE_GROUP_SCALAR     ] = SEGY_TR_SOURCE_GROUP_SCALAR,
+    [ SEGY_TR_SOURCE_X                ] = SEGY_TR_SOURCE_X,
+    [ SEGY_TR_SOURCE_Y                ] = SEGY_TR_SOURCE_Y,
+    [ SEGY_TR_GROUP_X                 ] = SEGY_TR_GROUP_X,
+    [ SEGY_TR_GROUP_Y                 ] = SEGY_TR_GROUP_Y,
+    [ SEGY_TR_COORD_UNITS             ] = SEGY_TR_COORD_UNITS,
+    [ SEGY_TR_WEATHERING_VELO         ] = SEGY_TR_WEATHERING_VELO,
+    [ SEGY_TR_SUBWEATHERING_VELO      ] = SEGY_TR_SUBWEATHERING_VELO,
+    [ SEGY_TR_SOURCE_UPHOLE_TIME      ] = SEGY_TR_SOURCE_UPHOLE_TIME,
+    [ SEGY_TR_GROUP_UPHOLE_TIME       ] = SEGY_TR_GROUP_UPHOLE_TIME,
+    [ SEGY_TR_SOURCE_STATIC_CORR      ] = SEGY_TR_SOURCE_STATIC_CORR,
+    [ SEGY_TR_GROUP_STATIC_CORR       ] = SEGY_TR_GROUP_STATIC_CORR,
+    [ SEGY_TR_TOT_STATIC_APPLIED      ] = SEGY_TR_TOT_STATIC_APPLIED,
+    [ SEGY_TR_LAG_A                   ] = SEGY_TR_LAG_A,
+    [ SEGY_TR_LAG_B                   ] = SEGY_TR_LAG_B,
+    [ SEGY_TR_DELAY_REC_TIME          ] = SEGY_TR_DELAY_REC_TIME,
+    [ SEGY_TR_MUTE_TIME_START         ] = SEGY_TR_MUTE_TIME_START,
+    [ SEGY_TR_MUTE_TIME_END           ] = SEGY_TR_MUTE_TIME_END,
+    [ SEGY_TR_SAMPLE_COUNT            ] = SEGY_TR_SAMPLE_COUNT,
+    [ SEGY_TR_SAMPLE_INTER            ] = SEGY_TR_SAMPLE_INTER,
+    [ SEGY_TR_GAIN_TYPE               ] = SEGY_TR_GAIN_TYPE,
+    [ SEGY_TR_INSTR_GAIN_CONST        ] = SEGY_TR_INSTR_GAIN_CONST,
+    [ SEGY_TR_INSTR_INIT_GAIN         ] = SEGY_TR_INSTR_INIT_GAIN,
+    [ SEGY_TR_CORRELATED              ] = SEGY_TR_CORRELATED,
+    [ SEGY_TR_SWEEP_FREQ_START        ] = SEGY_TR_SWEEP_FREQ_START,
+    [ SEGY_TR_SWEEP_FREQ_END          ] = SEGY_TR_SWEEP_FREQ_END,
+    [ SEGY_TR_SWEEP_LENGTH            ] = SEGY_TR_SWEEP_LENGTH,
+    [ SEGY_TR_SWEEP_TYPE              ] = SEGY_TR_SWEEP_TYPE,
+    [ SEGY_TR_SWEEP_TAPERLEN_START    ] = SEGY_TR_SWEEP_TAPERLEN_START,
+    [ SEGY_TR_SWEEP_TAPERLEN_END      ] = SEGY_TR_SWEEP_TAPERLEN_END,
+    [ SEGY_TR_TAPER_TYPE              ] = SEGY_TR_TAPER_TYPE,
+    [ SEGY_TR_ALIAS_FILT_FREQ         ] = SEGY_TR_ALIAS_FILT_FREQ,
+    [ SEGY_TR_ALIAS_FILT_SLOPE        ] = SEGY_TR_ALIAS_FILT_SLOPE,
+    [ SEGY_TR_NOTCH_FILT_FREQ         ] = SEGY_TR_NOTCH_FILT_FREQ,
+    [ SEGY_TR_NOTCH_FILT_SLOPE        ] = SEGY_TR_NOTCH_FILT_SLOPE,
+    [ SEGY_TR_LOW_CUT_FREQ            ] = SEGY_TR_LOW_CUT_FREQ,
+    [ SEGY_TR_HIGH_CUT_FREQ           ] = SEGY_TR_HIGH_CUT_FREQ,
+    [ SEGY_TR_LOW_CUT_SLOPE           ] = SEGY_TR_LOW_CUT_SLOPE,
+    [ SEGY_TR_HIGH_CUT_SLOPE          ] = SEGY_TR_HIGH_CUT_SLOPE,
+    [ SEGY_TR_YEAR_DATA_REC           ] = SEGY_TR_YEAR_DATA_REC,
+    [ SEGY_TR_DAY_OF_YEAR             ] = SEGY_TR_DAY_OF_YEAR,
+    [ SEGY_TR_HOUR_OF_DAY             ] = SEGY_TR_HOUR_OF_DAY,
+    [ SEGY_TR_MIN_OF_HOUR             ] = SEGY_TR_MIN_OF_HOUR,
+    [ SEGY_TR_SEC_OF_MIN              ] = SEGY_TR_SEC_OF_MIN,
+    [ SEGY_TR_TIME_BASE_CODE          ] = SEGY_TR_TIME_BASE_CODE,
+    [ SEGY_TR_WEIGHTING_FAC           ] = SEGY_TR_WEIGHTING_FAC,
+    [ SEGY_TR_GEOPHONE_GROUP_ROLL1    ] = SEGY_TR_GEOPHONE_GROUP_ROLL1,
+    [ SEGY_TR_GEOPHONE_GROUP_FIRST    ] = SEGY_TR_GEOPHONE_GROUP_FIRST,
+    [ SEGY_TR_GEOPHONE_GROUP_LAST     ] = SEGY_TR_GEOPHONE_GROUP_LAST,
+    [ SEGY_TR_GAP_SIZE                ] = SEGY_TR_GAP_SIZE,
+    [ SEGY_TR_OVER_TRAVEL             ] = SEGY_TR_OVER_TRAVEL,
+    [ SEGY_TR_CDP_X                   ] = SEGY_TR_CDP_X,
+    [ SEGY_TR_CDP_Y                   ] = SEGY_TR_CDP_Y,
+    [ SEGY_TR_INLINE                  ] = SEGY_TR_INLINE,
+    [ SEGY_TR_CROSSLINE               ] = SEGY_TR_CROSSLINE,
+    [ SEGY_TR_SHOT_POINT              ] = SEGY_TR_SHOT_POINT,
+    [ SEGY_TR_SHOT_POINT_SCALAR       ] = SEGY_TR_SHOT_POINT_SCALAR,
+    [ SEGY_TR_MEASURE_UNIT            ] = SEGY_TR_MEASURE_UNIT,
+    [ SEGY_TR_TRANSDUCTION_MANT       ] = SEGY_TR_TRANSDUCTION_MANT,
+    [ SEGY_TR_TRANSDUCTION_EXP        ] = SEGY_TR_TRANSDUCTION_EXP,
+    [ SEGY_TR_TRANSDUCTION_UNIT       ] = SEGY_TR_TRANSDUCTION_UNIT,
+    [ SEGY_TR_DEVICE_ID               ] = SEGY_TR_DEVICE_ID,
+    [ SEGY_TR_SCALAR_TRACE_HEADER     ] = SEGY_TR_SCALAR_TRACE_HEADER,
+    [ SEGY_TR_SOURCE_TYPE             ] = SEGY_TR_SOURCE_TYPE,
+    [ SEGY_TR_SOURCE_ENERGY_DIR_VERT  ] = SEGY_TR_SOURCE_ENERGY_DIR_VERT,
+    [ SEGY_TR_SOURCE_ENERGY_DIR_XLINE ] = SEGY_TR_SOURCE_ENERGY_DIR_XLINE,
+    [ SEGY_TR_SOURCE_ENERGY_DIR_ILINE ] = SEGY_TR_SOURCE_ENERGY_DIR_ILINE,
+    [ SEGY_TR_SOURCE_MEASURE_MANT     ] = SEGY_TR_SOURCE_MEASURE_MANT,
+    [ SEGY_TR_SOURCE_MEASURE_EXP      ] = SEGY_TR_SOURCE_MEASURE_EXP,
+    [ SEGY_TR_SOURCE_MEASURE_UNIT     ] = SEGY_TR_SOURCE_MEASURE_UNIT,
+    [ SEGY_TR_UNASSIGNED1             ] = SEGY_TR_UNASSIGNED1,
+    [ SEGY_TR_UNASSIGNED2             ] = SEGY_TR_UNASSIGNED2,
+};
+
 const segy_entry_definition* segy_traceheader_default_map( void ) {
     return traceheader_default_map;
-
 }
+
 const segy_entry_definition* segy_binheader_map( void ) {
     return binheader_map;
+}
+
+const uint8_t* segy_traceheader_default_name_map( void ) {
+    return traceheader_default_name_map;
 }
 
 /*
@@ -691,6 +795,19 @@ segy_file* segy_open( const char* path, const char* mode ) {
     ds->minimize_requests_number = true;
     ds->memory_speedup = false;
 
+    segy_header_mapping* mapping = &ds->traceheader_mapping_standard;
+    memcpy(mapping->name, "SEG00000", 8);
+    memcpy(
+        mapping->name_to_offset,
+        segy_traceheader_default_name_map(),
+        sizeof(mapping->name_to_offset)
+    );
+    memcpy(
+        mapping->offset_to_entry_definion,
+        segy_traceheader_default_map(),
+        sizeof(mapping->offset_to_entry_definion)
+    );
+
     return ds;
 }
 
@@ -732,6 +849,18 @@ segy_datasource* segy_memopen( unsigned char* addr, size_t size ) {
 
     ds->minimize_requests_number = false;
     ds->memory_speedup = true;
+    segy_header_mapping* mapping = &ds->traceheader_mapping_standard;
+    memcpy(mapping->name, "SEG00000", 8);
+    memcpy(
+        mapping->name_to_offset,
+        segy_traceheader_default_name_map(),
+        sizeof(mapping->name_to_offset)
+    );
+    memcpy(
+        mapping->offset_to_entry_definion,
+        segy_traceheader_default_map(),
+        sizeof(mapping->offset_to_entry_definion)
+    );
 
     return ds;
 }
@@ -1324,8 +1453,11 @@ int segy_write_binheader( segy_datasource* ds, const char* buf ) {
 }
 
 int segy_format( const char* binheader ) {
+    segy_field_data fd;
+
     int format = 0;
-    segy_get_binfield_int( binheader, SEGY_BIN_FORMAT, &format );
+    segy_get_binfield( binheader, SEGY_BIN_FORMAT, &fd );
+    format = fd.value.i16;
     return format;
 }
 
@@ -1374,12 +1506,15 @@ int segy_set_encoding( segy_datasource* ds, int encoding ) {
 }
 
 int segy_samples( const char* binheader ) {
+    segy_field_data fd;
+
     int samples = 0;
-    segy_get_binfield_int( binheader, SEGY_BIN_SAMPLES, &samples );
-    samples = (int32_t)((uint16_t)samples);
+    segy_get_binfield( binheader, SEGY_BIN_SAMPLES, &fd );
+    samples = fd.value.u16;
 
     int ext_samples = 0;
-    segy_get_binfield_int(binheader, SEGY_BIN_EXT_SAMPLES, &ext_samples);
+    segy_get_binfield( binheader, SEGY_BIN_EXT_SAMPLES, &fd );
+    ext_samples = fd.value.i32;
 
     if (samples == 0 && ext_samples > 0)
         return ext_samples;
@@ -1396,7 +1531,8 @@ int segy_samples( const char* binheader ) {
      * values are ignored, as it's likely just noise.
      */
     int revision = 0;
-    segy_get_binfield_int(binheader, SEGY_BIN_SEGY_REVISION, &revision);
+    segy_get_binfield( binheader, SEGY_BIN_SEGY_REVISION, &fd );
+    revision = fd.value.u8;
     if (revision >= 2 && ext_samples > 0)
         return ext_samples;
 
@@ -1415,8 +1551,11 @@ int segy_trsize( int format, int samples ) {
 }
 
 long segy_trace0( const char* binheader ) {
+    segy_field_data fd;
+
     int extra_headers = 0;
-    segy_get_binfield_int( binheader, SEGY_BIN_EXT_HEADERS, &extra_headers );
+    segy_get_binfield( binheader, SEGY_BIN_EXT_HEADERS, &fd );
+    extra_headers = fd.value.i16;
 
     return SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE +
            SEGY_TEXT_HEADER_SIZE * extra_headers;
@@ -1626,8 +1765,33 @@ int segy_sample_interval( segy_datasource* ds, float fallback, float* dt ) {
     int bindt = 0;
     int trdt = 0;
 
-    segy_get_binfield_int( bin_header, SEGY_BIN_INTERVAL, &bindt );
-    segy_get_tracefield_int( trace_header, SEGY_TR_SAMPLE_INTER, &trdt );
+    segy_field_data fd;
+
+    segy_get_binfield( bin_header, SEGY_BIN_INTERVAL, &fd );
+    bindt = fd.value.i16;
+
+    segy_entry_definition* standard_map =
+        ds->traceheader_mapping_standard.offset_to_entry_definion;
+    const uint8_t* standard_name_map =
+        ds->traceheader_mapping_standard.name_to_offset;
+    const int sample_inter_offset = standard_name_map[SEGY_TR_SAMPLE_INTER];
+
+    err = segy_get_tracefield(
+        trace_header, standard_map, sample_inter_offset, &fd
+    );
+    if( err != SEGY_OK ) return err;
+
+    const uint8_t entry_type = standard_map[sample_inter_offset - 1].entry_type;
+    switch( entry_type ) {
+        case SEGY_ENTRY_TYPE_INT2:
+            trdt = fd.value.i16;
+            break;
+        case SEGY_ENTRY_TYPE_UINT2:
+            trdt = fd.value.u16;
+            break;
+        default:
+            return SEGY_INVALID_FIELD_DATATYPE;
+    }
 
     float binary_header_dt = (float) bindt;
     float trace_header_dt = (float) trdt;
@@ -1671,6 +1835,26 @@ int segy_sample_indices( segy_datasource* ds,
     return SEGY_OK;
 }
 
+/* Allows axis (iline, xline, standard offset) to be represented only by int4 or
+ * uint4. */
+static int field_data_to_axis(
+    uint8_t entry_type,
+    const segy_field_data* fd,
+    long* value
+) {
+    switch( entry_type ) {
+        case SEGY_ENTRY_TYPE_INT4:
+            *value = fd->value.i32;
+            break;
+        case SEGY_ENTRY_TYPE_UINT4:
+            *value = fd->value.u32;
+            break;
+        default:
+            return SEGY_INVALID_FIELD_DATATYPE;
+    }
+    return SEGY_OK;
+}
+
 /*
  * Determine how a file is sorted. Expects the following three fields from the
  * trace header to guide sorting: the inline number `il`, the crossline
@@ -1699,19 +1883,6 @@ int segy_sorting( segy_datasource* ds,
     err = segy_traceheader( ds, 0, traceheader, trace0, trace_bsize );
     if( err != SEGY_OK ) return err;
 
-    /* make sure field is valid, so we don't have to check errors later */
-    const int fields[] = { il, xl, tr_offset };
-    int len = sizeof( fields ) / sizeof( int );
-    for( int i = 0; i < len; ++i ) {
-        const int f = fields[ i ];
-        if( f < 1 )
-            return SEGY_INVALID_FIELD;
-        if( f > SEGY_TRACE_HEADER_SIZE )
-            return SEGY_INVALID_FIELD;
-        if( traceheader_default_map[ f - 1 ].entry_type == SEGY_ENTRY_TYPE_UNDEFINED )
-            return SEGY_INVALID_FIELD;
-    }
-
     int traces;
     err = segy_traces( ds, &traces, trace0, trace_bsize );
     if( err ) return err;
@@ -1721,13 +1892,32 @@ int segy_sorting( segy_datasource* ds,
         return SEGY_OK;
     }
 
-    int il_first = 0, il_next = 0, il_prev = 0;
-    int xl_first = 0, xl_next = 0, xl_prev = 0;
-    int of_first = 0, of_next = 0;
+    long il_first = 0, il_next = 0, il_prev = 0;
+    long xl_first = 0, xl_next = 0, xl_prev = 0;
+    long of_first = 0, of_next = 0;
 
-    segy_get_tracefield_int( traceheader, il, &il_first );
-    segy_get_tracefield_int( traceheader, xl, &xl_first );
-    segy_get_tracefield_int( traceheader, tr_offset, &of_first );
+    segy_field_data fd;
+    const segy_entry_definition* standard_map =
+        ds->traceheader_mapping_standard.offset_to_entry_definion;
+    const uint8_t il_entry_type = standard_map[il - 1].entry_type;
+    const uint8_t xl_entry_type = standard_map[xl - 1].entry_type;
+    const uint8_t of_entry_type = standard_map[tr_offset - 1].entry_type;
+
+    // check errors only once at the start to avoid loop check
+    err = segy_get_tracefield( traceheader, standard_map, il, &fd );
+    if( err != SEGY_OK ) return err;
+    err = field_data_to_axis( il_entry_type, &fd, &il_first );
+    if( err != SEGY_OK ) return err;
+
+    err = segy_get_tracefield( traceheader, standard_map, xl, &fd );
+    if( err != SEGY_OK ) return err;
+    err = field_data_to_axis( xl_entry_type, &fd, &xl_first );
+    if( err != SEGY_OK ) return err;
+
+    err = segy_get_tracefield( traceheader, standard_map, tr_offset, &fd );
+    if( err != SEGY_OK ) return err;
+    err = field_data_to_axis( of_entry_type, &fd, &of_first );
+    if( err != SEGY_OK ) return err;
 
     il_prev = il_first;
     xl_prev = xl_first;
@@ -1748,9 +1938,14 @@ int segy_sorting( segy_datasource* ds,
         if( err ) return err;
         ++traceno;
 
-        segy_get_tracefield_int( traceheader, il, &il_next );
-        segy_get_tracefield_int( traceheader, xl, &xl_next );
-        segy_get_tracefield_int( traceheader, tr_offset, &of_next );
+        segy_get_tracefield( traceheader, standard_map, il, &fd );
+        field_data_to_axis( il_entry_type, &fd, &il_next );
+
+        segy_get_tracefield( traceheader, standard_map, xl, &fd );
+        field_data_to_axis( xl_entry_type, &fd, &xl_next );
+
+        segy_get_tracefield( traceheader, standard_map, tr_offset, &fd );
+        field_data_to_axis( of_entry_type, &fd, &of_next );
 
         /* the exit condition - offset has wrapped around. */
         if( of_next == of_first ) {
@@ -1798,7 +1993,7 @@ int segy_offsets( segy_datasource* ds,
                   long trace0,
                   int trace_bsize ) {
     int err;
-    int il0 = 0, il1 = 0, xl0 = 0, xl1 = 0;
+    long il0 = 0, il1 = 0, xl0 = 0, xl1 = 0;
     char header[ SEGY_TRACE_HEADER_SIZE ];
     int offsets = 0;
 
@@ -1807,19 +2002,25 @@ int segy_offsets( segy_datasource* ds,
         return SEGY_OK;
     }
 
-    /*
-     * check that field value is sane, so that we don't have to check
-     * segy_get_field's error
-     */
-    if( traceheader_default_map[ il - 1 ].entry_type == SEGY_ENTRY_TYPE_UNDEFINED ||
-        traceheader_default_map[ xl - 1 ].entry_type == SEGY_ENTRY_TYPE_UNDEFINED )
-        return SEGY_INVALID_FIELD;
-
     err = segy_traceheader( ds, 0, header, trace0, trace_bsize );
     if( err != 0 ) return SEGY_FREAD_ERROR;
 
-    segy_get_tracefield_int( header, il, &il0 );
-    segy_get_tracefield_int( header, xl, &xl0 );
+    segy_field_data fd;
+    const segy_entry_definition* standard_map =
+        ds->traceheader_mapping_standard.offset_to_entry_definion;
+    const uint8_t il_entry_type = standard_map[il - 1].entry_type;
+    const uint8_t xl_entry_type = standard_map[xl - 1].entry_type;
+
+    // check errors only once at the start to avoid loop check
+    err = segy_get_tracefield( header, standard_map, il, &fd );
+    if( err != SEGY_OK ) return err;
+    err = field_data_to_axis( il_entry_type, &fd, &il0 );
+    if( err != SEGY_OK ) return err;
+
+    err = segy_get_tracefield( header, standard_map, xl, &fd );
+    if( err != SEGY_OK ) return err;
+    err = field_data_to_axis( xl_entry_type, &fd, &xl0 );
+    if( err != SEGY_OK ) return err;
 
     do {
         ++offsets;
@@ -1829,8 +2030,11 @@ int segy_offsets( segy_datasource* ds,
         err = segy_traceheader( ds, offsets, header, trace0, trace_bsize );
         if( err != 0 ) return err;
 
-        segy_get_tracefield_int( header, il, &il1 );
-        segy_get_tracefield_int( header, xl, &xl1 );
+        segy_get_tracefield( header, standard_map, il, &fd );
+        field_data_to_axis( il_entry_type, &fd, &il1 );
+
+        segy_get_tracefield( header, standard_map, xl, &fd );
+        field_data_to_axis( xl_entry_type, &fd, &xl1 );
     } while( il0 == il1 && xl0 == xl1 );
 
     *out = offsets;
@@ -1843,18 +2047,26 @@ int segy_offset_indices( segy_datasource* ds,
                          int* out,
                          long trace0,
                          int trace_bsize ) {
-    int32_t x = 0;
+    long x = 0;
     char header[ SEGY_TRACE_HEADER_SIZE ];
 
-    if( traceheader_default_map[ offset_field - 1 ].entry_type == SEGY_ENTRY_TYPE_UNDEFINED )
+    segy_field_data fd;
+    const segy_entry_definition* standard_map =
+        ds->traceheader_mapping_standard.offset_to_entry_definion;
+    const uint8_t offset_entry_type = standard_map[offset_field - 1].entry_type;
+
+    if( offset_entry_type == SEGY_ENTRY_TYPE_UNDEFINED )
         return SEGY_INVALID_FIELD;
 
     for( int i = 0; i < offsets; ++i ) {
-        const int err = segy_traceheader( ds, i, header, trace0, trace_bsize );
+        int err = segy_traceheader( ds, i, header, trace0, trace_bsize );
         if( err != SEGY_OK ) return err;
 
-        segy_get_tracefield_int( header, offset_field, &x );
-        *out++ = x;
+        err = segy_get_tracefield( header, standard_map, offset_field, &fd );
+        if( err != SEGY_OK ) return err;
+        err = field_data_to_axis( offset_entry_type, &fd, &x );
+        if( err != SEGY_OK ) return err;
+        *out++ = (int)x;
     }
 
     return SEGY_OK;
@@ -1891,13 +2103,27 @@ static int count_lines( segy_datasource* ds,
     err = segy_traceheader( ds, 0, header, trace0, trace_bsize );
     if( err != 0 ) return err;
 
-    int first_lineno, first_offset, ln = 0, off = 0;
+    long first_lineno, first_offset, ln = 0, off = 0;
 
-    err = segy_get_tracefield_int( header, field, &first_lineno );
-    if( err != 0 ) return err;
+    segy_field_data fd;
+    const segy_entry_definition* standard_map =
+        ds->traceheader_mapping_standard.offset_to_entry_definion;
+    const int offset_field =
+        ds->traceheader_mapping_standard.name_to_offset[SEGY_TR_OFFSET];
 
-    err = segy_get_tracefield_int( header, 37, &first_offset );
-    if( err != 0 ) return err;
+    const uint8_t offset_entry_type = standard_map[offset_field - 1].entry_type;
+    const uint8_t field_entry_type = standard_map[field - 1].entry_type;
+
+    // check errors only once at the start to avoid loop check
+    err = segy_get_tracefield( header, standard_map, field, &fd );
+    if( err != SEGY_OK ) return err;
+    err = field_data_to_axis( field_entry_type, &fd, &first_lineno );
+    if( err != SEGY_OK ) return err;
+
+    err = segy_get_tracefield( header, standard_map, offset_field, &fd );
+    if( err != SEGY_OK ) return err;
+    err = field_data_to_axis( offset_entry_type, &fd, &first_offset );
+    if( err != SEGY_OK ) return err;
 
     int lines = 1;
     int curr = offsets;
@@ -1909,8 +2135,11 @@ static int count_lines( segy_datasource* ds,
         err = segy_traceheader( ds, curr, header, trace0, trace_bsize );
         if( err != 0 ) return err;
 
-        segy_get_tracefield_int( header, field, &ln );
-        segy_get_tracefield_int( header, 37, &off );
+        segy_get_tracefield( header, standard_map, field, &fd );
+        field_data_to_axis( field_entry_type, &fd, &ln );
+
+        segy_get_tracefield( header, standard_map, offset_field, &fd );
+        field_data_to_axis( offset_entry_type, &fd, &off );
 
         if( first_offset == off && ln == first_lineno ) break;
 
@@ -2675,34 +2904,95 @@ int segy_binheader_size( void ) {
     return SEGY_BINARY_HEADER_SIZE;
 }
 
-static int scaled_cdp( segy_datasource* ds,
-                       int traceno,
-                       float* cdpx,
-                       float* cdpy,
-                       long trace0,
-                       int trace_bsize ) {
-    int x, y;
+static int scaled_standard_header_cdp(
+    const char* header,
+    const segy_entry_definition* map,
+    int cdp_offset,
+    int scalar_offset,
+    float* cdp
+) {
+
+    segy_field_data fd = {0};
+    int err = segy_get_tracefield( header, map, cdp_offset, &fd );
+    if( err != SEGY_OK ) return err;
+
+    float raw_cdp;
+    const uint8_t entry_type = map[cdp_offset - 1].entry_type;
+
+    switch( entry_type ) {
+        case SEGY_ENTRY_TYPE_IBMFP:
+        case SEGY_ENTRY_TYPE_IEEE32:
+            *cdp = fd.value.f32;
+            return SEGY_OK;
+        case SEGY_ENTRY_TYPE_COOR4:
+        // breaks spec on purpose: scalar is applied anyway
+        case SEGY_ENTRY_TYPE_INT4:
+            raw_cdp = (float)fd.value.i32;
+            break;
+        // breaks spec on purpose: scalar is applied anyway
+        case SEGY_ENTRY_TYPE_UINT4:
+            raw_cdp = (float)fd.value.u32;
+            break;
+        default:
+            return SEGY_INVALID_FIELD_DATATYPE;
+    }
+
+    err = segy_get_tracefield( header, map, scalar_offset, &fd );
+    if( err != SEGY_OK ) return err;
+
     int scalar;
-    char trheader[ SEGY_TRACE_HEADER_SIZE ];
+    const uint8_t scalar_entry_type = map[scalar_offset - 1].entry_type;
+    switch( scalar_entry_type ) {
+        case SEGY_ENTRY_TYPE_INT2:
+            scalar = fd.value.i16;
+            break;
+        case SEGY_ENTRY_TYPE_UINT2:
+            scalar = fd.value.u16;
+            break;
+        default:
+            return SEGY_INVALID_FIELD_DATATYPE;
+    }
+
+    float scale = (float)scalar;
+    if( scalar == 0 ) scale = 1.0;
+    if( scalar < 0 ) scale = -1.0f / scale;
+    *cdp = raw_cdp * scale;
+    return SEGY_OK;
+}
+
+static int scaled_cdp(
+    segy_datasource* ds,
+    int traceno,
+    float* cdpx,
+    float* cdpy,
+    long trace0,
+    int trace_bsize
+) {
+
+    char trheader[SEGY_TRACE_HEADER_SIZE];
 
     int err = segy_traceheader( ds, traceno, trheader, trace0, trace_bsize );
     if( err != 0 ) return err;
 
-    err = segy_get_tracefield_int( trheader, SEGY_TR_CDP_X, &x );
-    if( err != 0 ) return err;
-    err = segy_get_tracefield_int( trheader, SEGY_TR_CDP_Y, &y );
-    if( err != 0 ) return err;
-    err = segy_get_tracefield_int( trheader, SEGY_TR_SOURCE_GROUP_SCALAR, &scalar );
-    if( err != 0 ) return err;
+    const segy_entry_definition* standard_map =
+        ds->traceheader_mapping_standard.offset_to_entry_definion;
 
-    float scale = (float) scalar;
-    if( scalar == 0 ) scale = 1.0;
-    if( scalar < 0 )  scale = -1.0f / scale;
+    const int cdp_x_offset =
+        ds->traceheader_mapping_standard.name_to_offset[SEGY_TR_CDP_X];
+    const int cdp_y_offset =
+        ds->traceheader_mapping_standard.name_to_offset[SEGY_TR_CDP_Y];
+    const int scalar_offset =
+        ds->traceheader_mapping_standard.name_to_offset[SEGY_TR_SOURCE_GROUP_SCALAR];
 
-    *cdpx = x * scale;
-    *cdpy = y * scale;
+    err = scaled_standard_header_cdp(
+        trheader, standard_map, cdp_x_offset, scalar_offset, cdpx
+    );
+    if( err != SEGY_OK ) return err;
 
-    return SEGY_OK;
+    err = scaled_standard_header_cdp(
+        trheader, standard_map, cdp_y_offset, scalar_offset, cdpy
+    );
+    return err;
 }
 
 int segy_rotation_cw( segy_datasource* ds,
