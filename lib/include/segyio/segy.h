@@ -253,11 +253,15 @@ typedef enum {
 typedef struct {
     SEGY_ENTRY_TYPE entry_type;
     bool requires_nonzero_value; //use only if field value is not zero
+    char* name; //NULL-terminated
 } segy_entry_definition;
 
 typedef struct {
     char name[8]; //not NULL-terminated
+
+    // SEGY_FIELD to offset (SEG-Y Standard names segyio is aware of)
     uint8_t name_to_offset[SEGY_TRACE_HEADER_SIZE];
+
     segy_entry_definition offset_to_entry_definion[SEGY_TRACE_HEADER_SIZE];
 } segy_header_mapping;
 

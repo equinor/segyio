@@ -2167,7 +2167,7 @@ int overwrite_mapping( segy_datasource* ds, PyObject* py_iline, PyObject* py_xli
         }
         uint8_t il = static_cast<uint8_t>( iline );
         mapping.name_to_offset[SEGY_TR_INLINE] = il;
-        mapping.offset_to_entry_definion[il - 1].entry_type = SEGY_ENTRY_TYPE_INT4;
+        mapping.offset_to_entry_definion[il - 1] = { SEGY_ENTRY_TYPE_INT4, false, NULL };
     }
 
     if( py_xline != Py_None ) {
@@ -2178,7 +2178,7 @@ int overwrite_mapping( segy_datasource* ds, PyObject* py_iline, PyObject* py_xli
         }
         uint8_t xl = static_cast<uint8_t>( xline );
         mapping.name_to_offset[SEGY_TR_CROSSLINE] = xl;
-        mapping.offset_to_entry_definion[xl - 1].entry_type = SEGY_ENTRY_TYPE_INT4;
+        mapping.offset_to_entry_definion[xl - 1] = { SEGY_ENTRY_TYPE_INT4, false, NULL };
     }
     return SEGY_OK;
 }
