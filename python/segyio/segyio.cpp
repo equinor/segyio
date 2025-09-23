@@ -1719,11 +1719,12 @@ PyObject* rotation( segyfd* self, PyObject* args ) {
         return NULL;
 
     float rotation;
+    int linenos_sz = static_cast<int>( linenos.len() / sizeof( int ) );
     int err = segy_rotation_cw( ds, line_length,
                                     stride,
                                     offsets,
                                     linenos.buf< const int >(),
-                                    linenos.len() / sizeof( int ),
+                                    linenos_sz,
                                     &rotation,
                                     self->trace0,
                                     self->trace_bsize );
@@ -1978,7 +1979,7 @@ PyObject* putfield( PyObject*, PyObject *args ) {
                 if( PyErr_Occurred() || val > UINT16_MAX ) {
                     return ValueError( "Value out of range for unsigned short at field %d", field );
                 }
-                fd.value.u16 = val;
+                fd.value.u16 = static_cast<uint16_t>( val );
             }
             break;
         case SEGY_UNSIGNED_CHAR_1_BYTE:
@@ -1987,7 +1988,7 @@ PyObject* putfield( PyObject*, PyObject *args ) {
                 if( PyErr_Occurred() || val > UINT8_MAX ) {
                     return ValueError( "Value out of range for unsigned char at field %d", field );
                 }
-                fd.value.u8 = val;
+                fd.value.u8 = static_cast<uint8_t>( val );
             }
             break;
 
@@ -2015,7 +2016,7 @@ PyObject* putfield( PyObject*, PyObject *args ) {
                 if( PyErr_Occurred() || val > INT16_MAX || val < INT16_MIN ) {
                     return ValueError( "Value out of range for signed short at field %d", field );
                 }
-                fd.value.i16 = val;
+                fd.value.i16 = static_cast<int16_t>( val );
             }
             break;
         case SEGY_SIGNED_CHAR_1_BYTE:
@@ -2024,7 +2025,7 @@ PyObject* putfield( PyObject*, PyObject *args ) {
                 if( PyErr_Occurred() || val > INT8_MAX || val < INT8_MIN ) {
                     return ValueError( "Value out of range for signed char at field %d", field );
                 }
-                fd.value.i8 = val;
+                fd.value.u8 = static_cast<uint8_t>( val );
             }
             break;
 
@@ -2039,7 +2040,7 @@ PyObject* putfield( PyObject*, PyObject *args ) {
             }
         case SEGY_IEEE_FLOAT_4_BYTE:
             {
-                float val = PyFloat_AsDouble( value_arg );
+                float val = static_cast<float>( PyFloat_AsDouble( value_arg ) );
                 if( PyErr_Occurred() ) {
                     return ValueError( "Value out of range for float at field %d", field );
                 }
@@ -2132,11 +2133,13 @@ PyObject* fread_trace0( PyObject* , PyObject* args ) {
         return NULL;
 
     int trace_no = 0;
+    int linenos_sz = static_cast<int>( indiceslen / sizeof( int ) );
     int err = segy_line_trace0( lineno,
                                 other_line_length,
                                 stride,
                                 offsets,
-                                indices, indiceslen / sizeof( int ),
+                                indices,
+                                linenos_sz,
                                 &trace_no );
 
     if( err == SEGY_MISSING_LINE_INDEX )
@@ -2156,7 +2159,7 @@ PyObject* format( PyObject* , PyObject* args ) {
 
     buffer_guard buffer( out, PyBUF_CONTIG );
 
-    const int len = buffer.len() / sizeof( float );
+    const int len = static_cast<int>( buffer.len() / sizeof( float ) );
     segy_to_native( format, len, buffer.buf() );
 
     Py_INCREF( out );
