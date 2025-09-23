@@ -370,7 +370,7 @@ typedef union {
 
 typedef struct {
     segy_field_value value;
-    uint8_t datatype;
+    uint8_t entry_type;
 } segy_field_data;
 
 

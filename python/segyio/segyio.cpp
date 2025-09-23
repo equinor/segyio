@@ -1855,7 +1855,8 @@ PyObject* getfield( PyObject*, PyObject *args ) {
     if( err != SEGY_OK )
         return KeyError( "Got error code %d when requesting field %d", err, field );
 
-    switch ( fd.datatype ) {
+    uint8_t datatype = segy_entry_type_to_datatype( fd.entry_type );
+    switch( datatype ) {
 
         case SEGY_SIGNED_INTEGER_8_BYTE:
             return PyLong_FromLongLong( fd.value.i64 );
@@ -1879,7 +1880,7 @@ PyObject* getfield( PyObject*, PyObject *args ) {
             return PyFloat_FromDouble( fd.value.f64 );
 
         default:
-            return KeyError( "Unhandled datatype %d for field %d", fd.datatype, field );
+            return KeyError( "Unhandled entry type %d for field %d", fd.entry_type, field );
     }
 }
 
@@ -1909,7 +1910,7 @@ PyObject* putfield( PyObject*, PyObject *args ) {
                 return KeyError( "Invalid field %d", field );
             }
             const segy_entry_definition* map = segy_binheader_map();
-            fd.datatype = segy_entry_type_to_datatype(map[offset].entry_type);
+            fd.entry_type = map[offset].entry_type;
             break;
         }
         case SEGY_TRACE_HEADER_SIZE: {
@@ -1918,14 +1919,15 @@ PyObject* putfield( PyObject*, PyObject *args ) {
                 return KeyError( "Invalid field %d", field );
             }
             const segy_entry_definition* map = segy_traceheader_default_map();
-            fd.datatype = segy_entry_type_to_datatype(map[offset].entry_type);
+            fd.entry_type = map[offset].entry_type;
             break;
         }
         default:
             return BufferError( "buffer too small" );
     }
 
-    switch ( fd.datatype ) {
+    uint8_t datatype = segy_entry_type_to_datatype( fd.entry_type );
+    switch( datatype ) {
         case SEGY_UNSIGNED_INTEGER_8_BYTE:
             {
                 unsigned long long val = PyLong_AsUnsignedLongLong( value_arg );
@@ -2020,7 +2022,7 @@ PyObject* putfield( PyObject*, PyObject *args ) {
             }
             break;
         default:
-            return KeyError( "Field %d has unknown datatype %d", field, fd.datatype );
+            return KeyError( "Field %d has unknown entry type %d", field, fd.entry_type );
     }
 
     int err;
