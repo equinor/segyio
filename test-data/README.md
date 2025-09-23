@@ -84,3 +84,18 @@ Dimensions are mentioned in the order from slowest to fastest changing.
 Files in the `multiformat` directory.
 
 `f3.sgy` converted to multiple formats, both big/little endian. Creations methods vary/unknown.
+
+## Mapping
+
+Files for testing SEGY-Y Rev 2.1 D8 functionality.
+Files are created manually.
+
+| File                           | Purpose                                                       |
+|--------------------------------|---------------------------------------------------------------|
+| mapping-default.sgy            | XML corresponds exactly to the default SEG-Y rev 2.1 mapping. |
+| mapping-invalid-attribute.sgy  | Last entry does not have 'byte' attribute.                    |
+| mapping-invalid-root.sgy       | Root does not define standard header layout.                  |
+| mapping-invalid-value.sgy      | Last standard header entry byte is out of range.              |
+| mapping-multiple-stanzas.sgy   | Other stanzas are present before and after layout stanza.     |
+| mapping-unparsable.sgy         | XML is unparsable.                                            |
+
