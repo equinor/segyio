@@ -44,7 +44,7 @@ jobs:
             --project=build/compile_commands.json           \
             --error-exitcode=1                              \
             --check-level=exhaustive
-  
+
   scan_build:
     runs-on: ubuntu-latest
     steps:
@@ -83,13 +83,13 @@ jobs:
 
       - name: Build segyio
         run: |
-            cmake -S . -B build           \
-            -DCMAKE_BUILD_TYPE=Debug      \
-            -DCMAKE_C_FLAGS_DEBUG="-g -O0"   \
-            -DCMAKE_CXX_FLAGS_DEBUG="-g -O0" \
-            -DBUILD_SHARED_LIBS=ON        \
-            -DBUILD_PYTHON=OFF
-            cmake --build build
+          cmake -S . -B build           \
+          -DCMAKE_BUILD_TYPE=Debug      \
+          -DCMAKE_C_FLAGS_DEBUG="-g -O0"   \
+          -DCMAKE_CXX_FLAGS_DEBUG="-g -O0" \
+          -DBUILD_SHARED_LIBS=ON        \
+          -DBUILD_PYTHON=OFF
+          cmake --build build
 
       - name: Run valgrind on C tests, file
         working-directory: build/lib
@@ -105,3 +105,44 @@ jobs:
         working-directory: build/lib
         run: |
           valgrind --leak-check=full --show-leak-kinds=all --error-exitcode=1 ./c.segy "[c++]"
+
+  valgrind-python-invalid-memory-access:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get -y install valgrind
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install build/test dependencies
+        working-directory: python
+        run: |
+          python -m pip install -r requirements-dev.txt
+
+      - name: Configure
+        run: |
+          cmake -S . -B build \
+            -DBUILD_PYTHON=ON \
+            -DBUILD_TESTING=OFF \
+            -DBUILD_BIN=OFF \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_C_FLAGS_DEBUG="-g -O0" \
+            -DCMAKE_CXX_FLAGS_DEBUG="-g -O0" \
+            -DBUILD_SHARED_LIBS=ON \
+
+      - name: Build
+        run: |
+          cmake --build build
+
+      - name: Run valgrind memcheck on default pytests
+        run: |
+          cd python
+          # test_no_16bit_overflow_tracecount is too large for valgrind, so skip
+          # only "invalid memory access" checks. "Memory leaks" would be caused by python anyway.
+          valgrind --tool=memcheck --error-exitcode=1 pytest -rPV -k 'not test_no_16bit_overflow_tracecount'
