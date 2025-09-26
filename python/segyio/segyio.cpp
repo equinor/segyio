@@ -622,75 +622,47 @@ PyObject* segyopen( segyfd* self, PyObject* args, PyObject* kwargs ) {
     int err = overwrite_mapping( ds, py_iline, py_xline );
     if( err ) return NULL;
 
-    int tracecount = 0;
+    int format, elemsize, samplecount, trace_bsize, tracecount;
+    long trace0;
 
-    char binary[ SEGY_BINARY_HEADER_SIZE ] = {};
-    err = segy_binheader( ds, binary );
-    if( err ) return Error( err );
+    int err_by;
+    err = segy_collect_metrics(
+        ds, &err_by, &format, &elemsize,
+        &trace0, &samplecount, &trace_bsize,
+        &tracecount
+    );
+    if( err == SEGY_OK ) {
+        self->format = format;
+        self->elemsize = elemsize;
+        self->trace0 = trace0;
+        self->samplecount = samplecount;
+        self->trace_bsize = trace_bsize;
+        self->tracecount = tracecount;
 
-    const long trace0 = segy_trace0( binary );
-    const int samplecount = segy_samples( binary );
-    const int format = segy_format( binary );
-    int trace_bsize = segy_trsize( format, samplecount );
-
-    /* fall back to assuming 4-byte ibm float if the format field is rubbish */
-    if( trace_bsize < 0 ) trace_bsize = segy_trace_bsize( samplecount );
-
-    /*
-     * if set_format errors, it's because the format-field in the binary header
-     * is 0 or some other garbage. if so, assume the file is 4-byte ibm float
-     */
-   segy_set_format( ds, format );
-   int elemsize = 4;
-
-    switch( format ) {
-        case SEGY_IBM_FLOAT_4_BYTE:             elemsize = 4; break;
-        case SEGY_SIGNED_INTEGER_4_BYTE:        elemsize = 4; break;
-        case SEGY_SIGNED_INTEGER_8_BYTE:        elemsize = 8; break;
-        case SEGY_SIGNED_SHORT_2_BYTE:          elemsize = 2; break;
-        case SEGY_FIXED_POINT_WITH_GAIN_4_BYTE: elemsize = 4; break;
-        case SEGY_IEEE_FLOAT_4_BYTE:            elemsize = 4; break;
-        case SEGY_IEEE_FLOAT_8_BYTE:            elemsize = 8; break;
-        case SEGY_SIGNED_CHAR_1_BYTE:           elemsize = 1; break;
-        case SEGY_UNSIGNED_CHAR_1_BYTE:         elemsize = 1; break;
-        case SEGY_UNSIGNED_INTEGER_4_BYTE:      elemsize = 4; break;
-        case SEGY_UNSIGNED_SHORT_2_BYTE:        elemsize = 2; break;
-        case SEGY_UNSIGNED_INTEGER_8_BYTE:      elemsize = 8; break;
-
-        case SEGY_NOT_IN_USE_1:
-        case SEGY_NOT_IN_USE_2:
-        default:
-            break;
+        Py_INCREF( self );
+        return (PyObject*)self;
     }
 
-    err = segy_traces( ds, &tracecount, trace0, trace_bsize );
-    switch( err ) {
-        case SEGY_OK: break;
+    // NO to another enum!!
+    // Adding to segy.h a purely technical enum with no domain meaning looks to me like a big design smell..-
+    if( err_by = 3 ) {
+        switch( err ) {
+            case SEGY_FSEEK_ERROR:
+                return IOErrno();
 
-        case SEGY_FSEEK_ERROR:
-            return IOErrno();
+            case SEGY_INVALID_ARGS:
+                return RuntimeError( "unable to count traces, "
+                                     "no data traces past headers" );
 
-        case SEGY_INVALID_ARGS:
-            return RuntimeError( "unable to count traces, "
-                                 "no data traces past headers" );
+            case SEGY_TRACE_SIZE_MISMATCH:
+                return RuntimeError( "trace count inconsistent with file size, "
+                                     "trace lengths possibly of non-uniform" );
 
-        case SEGY_TRACE_SIZE_MISMATCH:
-            return RuntimeError( "trace count inconsistent with file size, "
-                                 "trace lengths possibly of non-uniform" );
-
-        default:
-            return Error( err );
+            default:
+                return Error( err );
+        }
     }
-
-    self->trace0 = trace0;
-    self->trace_bsize = trace_bsize;
-    self->format = format;
-    self->elemsize = elemsize;
-    self->samplecount = samplecount;
-    self->tracecount = tracecount;
-
-    Py_INCREF( self );
-    return (PyObject*) self;
+    return Error( err );
 }
 
 PyObject* segycreate( segyfd* self, PyObject* args, PyObject* kwargs ) {

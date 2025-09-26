@@ -412,6 +412,25 @@ segy_file* segy_open( const char* path, const char* mode );
 int segy_mmap( segy_datasource* );
 segy_datasource* segy_memopen( unsigned char* addr, size_t size );
 
+/* Collects file's fixed metrics. Values are both returned to the user and set
+ * into segy_datasource.
+ * MUST be called after file is opened, so that other functions work correctly (temporal coupling...)
+ *
+ * Field error_by is set to help defining which of the functions failed. 0 is no err. 1 is binary header, 2 elemsize, 3 trace0, 4 ???
+ * Error still will be thrown if any of the values (even NULLed ones) can not be calculated correctly.
+ *
+ */
+int segy_collect_metrics(
+    segy_datasource* ds,
+    int* err_by,
+    int* format,
+    int* elemsize,
+    long* trace0,
+    int* samplecount,
+    int* trace_bsize,
+    int* tracecount
+);
+
 int segy_flush( segy_datasource* );
 int segy_close( segy_datasource* );
 

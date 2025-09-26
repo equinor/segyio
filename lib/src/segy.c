@@ -942,6 +942,58 @@ static int segy_seek( segy_datasource* ds,
     return SEGY_OK;
 }
 
+int segy_collect_metrics(
+    segy_datasource* ds,
+    int* err_by,
+    int* format_out,
+    int* elemsize_out,
+    long* trace0_out,
+    int* samplecount_out,
+    int* trace_bsize_out,
+    int* tracecount_out
+) {
+    if ( !err_by ) return SEGY_INVALID_ARGS;
+    *err_by = 0;
+
+    char binheader[SEGY_BINARY_HEADER_SIZE];
+    int err = segy_binheader( ds, binheader );
+    if( err ) {
+        *err_by = 1;
+        return err;
+    }
+
+    int format = segy_format( binheader );
+    if( format == 0 ) format = SEGY_IBM_FLOAT_4_BYTE;
+    if( format_out ) *format_out = format;
+
+    int elemsize = formatsize( format );
+    if( elemsize <= 0 ) {
+        *err_by = 2;
+        return SEGY_INVALID_ARGS;
+    }
+    ds->elemsize = elemsize;
+    if( elemsize_out ) *elemsize_out = elemsize;
+
+    long trace0 = segy_trace0( binheader );
+    if( trace0_out ) *trace0_out = trace0;
+
+    int samplecount = segy_samples( binheader );
+    if( samplecount_out ) *samplecount_out = samplecount;
+
+    int trace_bsize = samplecount * elemsize;
+    if( trace_bsize_out ) *trace_bsize_out = trace_bsize;
+
+    int tracecount;
+    err = segy_traces( ds, &tracecount, trace0, trace_bsize );
+    if( err ) {
+        *err_by = 3;
+        return err;
+    }
+    if (tracecount_out) *tracecount_out = tracecount;
+
+    return SEGY_OK;
+}
+
 int segy_close( segy_datasource* ds ) {
     int err = segy_flush( ds);
     if( err != SEGY_OK ) return err;
