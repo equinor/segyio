@@ -2017,6 +2017,24 @@ SCENARIO( "checking sorting for wonky files", "[c.segy]" ) {
         int format = segy_format( header );
         int trace_bsize = segy_trsize( format, samples );
 
+/*  In every single place where we create segy_datasource (segy_file) we would need to add
+
+        fp->trace_bsize = trace_bsize;
+        fp->trace0 = trace0;
+
+so that for example segy_sorting would work correctly now when those would no longer be passed as parameters.
+
+Code above is weird because now uses needs to know that they MUST set trace_bsize and trace0 parameters after open on their own, or functions won't work.
+Code already somewhat has this problem for "elemsize". "segy_set_format" function sets fp->elemsize. One magically needs to know it must be called
+before calling some other functions in the library (see for example "reading data without setting format" test)
+
+So idea is to at least combine all those into a new segy function, lets call it segy_collect_metrics, so that we have
+-- python bindings __init__  === segy_open            === "open the file without knowing much what we just opened"
+-- python bindings segyopen  === segy_collect_metrics === "discover that opened file is a SEG-Y and collect structual information"
+
+Even those two functions smell like "temporal coupling" anti-pattern, so maybe we need another way of solving it.
+ */
+
         int sorting;
         int err = segy_sorting( fp,
                                 SEGY_TR_INLINE,

@@ -316,6 +316,21 @@ struct segy_datasource {
     /* Size of each element in trace */
     int elemsize;
 
+/* Imagine we add those along elemsize and remove those from respective functions signatures.
+
+    long trace0;
+    int trace_bsize;
+
+We would also need to add a new parameter: number of traceheaders in each trace.
+
+    int traceheader_count;
+
+We might also would want to add "number of extended text headers", but not sure yet when it is needed.
+
+(Maybe it would make sense not to add all those directly to segy_datasource, but create a
+'metrics' struct with all this metrics stuff + samplecount, tracecount, etc )
+*/
+
     /* True if stream uses little-endian byte order, false if big-endian
      * (SEG-Y_r2.1 section "3.3. Number Formats"). Pairwise byte-swapped
      * ordering is not supported.
