@@ -51,23 +51,24 @@ int main(int argc, char* argv[]) {
         exit( err );
     }
 
-    const int format = segy_format( header );
-    const int samples = segy_samples( header );
-    const long trace0 = segy_trace0( header );
-    const int trace_bsize = segy_trace_bsize( samples );
+    int format, samples, trace_bsize, traces;
+    long trace0;
+    int err_by;
+    err = segy_collect_metrics (fp, &err_by, &format, NULL, &trace0, &samples, &trace_bsize, &traces);
+    if (err){
+        if (err_by == 3) {
+            perror( "Could not determine traces" );
+            exit( err );
+        }
+        perror( "Could not collect metrics" );
+        exit( err );
+    }
+
     int extended_headers;
     err = segy_get_binfield_int( header, SEGY_BIN_EXT_HEADERS, &extended_headers );
 
     if( err != 0 ) {
         perror( "Can't read 'extended headers' field from binary header" );
-        exit( err );
-    }
-
-    int traces;
-    err = segy_traces( fp, &traces, trace0, trace_bsize );
-
-    if( err != 0 ) {
-        perror( "Could not determine traces" );
         exit( err );
     }
 

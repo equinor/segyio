@@ -34,6 +34,7 @@ int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, 
     }
 
     spec->filename = copyString(file);
+    // MATLAB one has the same stuff and needs to be somehow updated similarly
     spec->sample_format = segy_format( header );
     spec->sample_count = segy_samples( header );
 

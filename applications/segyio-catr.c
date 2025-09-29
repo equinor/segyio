@@ -630,52 +630,32 @@ int main( int argc, char** argv ) {
     }
 
     char trheader[ TRHSIZE ];
-    char binheader[ BINSIZE ];
 
     segy_file* src = segy_open( opts.src, "r" );
     if( !src )
         exit( errmsg2( errno, "Unable to open src", strerror( errno ) ) );
 
-    int err = segy_binheader( src, binheader );
-    if( err ) exit( errmsg( errno, "Unable to read binheader" ) );
+    int format, samnr, trace_bsize, numtrh;
+    long trace0;
 
-    int samnr = segy_samples( binheader );
+    // should we create a Metrics struct then instead and use it inside DS???
+    // so we have easier way to add there stuff like traceheaders number
+    // err = segy_collect_metrics(src, &err_by?, &metrics);
+    int err_by;
+    int err = segy_collect_metrics(
+        src, &err_by, &format, NULL,
+        &trace0, &samnr, &trace_bsize,
+        &numtrh
+    );
 
-    int format = opts.format ? opts.format : segy_format( binheader );
-    switch( format ) {
-        /* all good */
-        case SEGY_IBM_FLOAT_4_BYTE:
-        case SEGY_SIGNED_INTEGER_4_BYTE:
-        case SEGY_SIGNED_SHORT_2_BYTE:
-        case SEGY_FIXED_POINT_WITH_GAIN_4_BYTE:
-        case SEGY_IEEE_FLOAT_4_BYTE:
-        case SEGY_SIGNED_CHAR_1_BYTE:
-            break;
-
-        /*
-         * assume this header field is just not set, silently fall back
-         * to 4-byte floats
-         */
-        case 0:
-            format = SEGY_IBM_FLOAT_4_BYTE;
-            break;
-
-        case SEGY_NOT_IN_USE_1:
-        case SEGY_NOT_IN_USE_2:
-        default:
-            errmsg( 1, "sample format field is garbage. "
-                        "falling back to 4-byte float. "
-                        "override with --format" );
-            format = SEGY_IBM_FLOAT_4_BYTE;
+    if( err != 0 ) {
+        if( err_by == 3 ) {
+            exit( errmsg( errno, "Unable to determine number of traces in file" ) );
+        } else if( err_by == 1 ) {
+            exit( errmsg( errno, "Unable to read binheader" ) );
+        }
+        exit( err );
     }
-
-    int trace_bsize = segy_trsize( format, samnr );
-    long trace0 = segy_trace0( binheader );
-
-    int numtrh;
-    err = segy_traces( src, &numtrh, trace0, trace_bsize );
-    if( err )
-        exit( errmsg( errno, "Unable to determine number of traces in file" ) );
 
     /*
      * If any range field is defaulted (= 0), expand the defaults into sane

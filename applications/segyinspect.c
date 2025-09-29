@@ -74,25 +74,22 @@ int main(int argc, char* argv[]) {
             fputs( "Could not mmap file. Using fstream fallback.", stderr );
     }
 
+    int format, samples, trace_bsize, traces;
+    long trace0;
 
-    char header[ SEGY_BINARY_HEADER_SIZE ];
-    err = segy_binheader( fp, header );
-
-    if( err != 0 ) {
-        perror( "Unable to read segy binary header" );
-        exit( err );
-    }
-
-    const int format = segy_format( header );
-    const int samples = segy_samples( header );
-    const long trace0 = segy_trace0( header );
-    const int trace_bsize = segy_trace_bsize( samples );
-
-    int traces;
-    err = segy_traces( fp, &traces, trace0, trace_bsize );
+    int err_by;
+    err = segy_collect_metrics(
+        fp, &err_by, &format, NULL,
+        &trace0, &samples, &trace_bsize,
+        &traces
+    );
 
     if( err != 0 ) {
-        perror( "Could not determine traces" );
+        if( err_by == 3 ) {
+            perror( "Could not determine traces" );
+        } else if( err_by == 1 ) {
+            perror( "Unable to read segy binary header" );
+        }
         exit( err );
     }
 

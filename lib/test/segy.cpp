@@ -1530,6 +1530,8 @@ TEST_CASE("open file with >32k traces", "[c.segy]") {
     unique_segy ufp(segy_open(file, "rb"));
     auto fp = ufp.get();
 
+    
+
     char bin[SEGY_BINARY_HEADER_SIZE];
     Err err = segy_binheader(fp, bin);
     REQUIRE(err == Err::ok());
@@ -1625,21 +1627,20 @@ void f3_in_format(int fmt) {
     auto* fp = ufp.get();
     REQUIRE(fp);
 
-    char header[SEGY_BINARY_HEADER_SIZE];
-    REQUIRE(Err(segy_binheader(fp, header)) == Err::ok());
+    int format, samples, trsize;
+    long trace0;
 
-    const int samples = segy_samples(header);
-    const long trace0 = segy_trace0(header);
-    const int format  = segy_format(header);
-    const int trsize  = segy_trsize(fmt, samples);
+    int err_by;
+    Err err = segy_collect_metrics(
+        fp, &err_by, &format, NULL,
+        &trace0, &samples, &trsize,
+        NULL
+    );
 
     CHECK(samples == 75);
     CHECK(trace0  == 3600);
     CHECK(format  == fmt);
     CHECK(trsize  == int(samples * sizeof(T)));
-
-    Err err = segy_set_format(fp, fmt);
-    REQUIRE(err == Err::ok());
 
     /* read f3 from 2-byte, expand, and compare */
     std::vector< T > fptrace(samples);
@@ -1738,12 +1739,15 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
     auto fp = ufp.get();
 
     WHEN( "finding traces initial byte offset and sizes" ) {
-        char header[ SEGY_BINARY_HEADER_SIZE ];
-        REQUIRE( Err( segy_binheader( fp, header ) ) == Err::ok() );
-        int samples = segy_samples( header );
-        long trace0 = segy_trace0( header );
-        int format = segy_format( header );
-        int trace_bsize = segy_trsize( format, samples );
+        int format, samples, trace_bsize;
+        long trace0;
+
+        int err_by;
+        segy_collect_metrics(
+            fp, &err_by, &format, NULL,
+            &trace0, &samples, &trace_bsize,
+            NULL
+        );
 
         THEN( "the correct values are inferred from the binary header" ) {
             CHECK( format      == SEGY_SIGNED_SHORT_2_BYTE );
@@ -1936,13 +1940,15 @@ SCENARIO( "checking sorting for wonky files", "[c.segy]" ) {
         unique_segy ufp{ openfile( "test-data/small.sgy", "rb" ) };
         auto fp = ufp.get();
 
-        char header[ SEGY_BINARY_HEADER_SIZE ];
-        REQUIRE( Err( segy_binheader( fp, header ) ) == Err::ok() );
+        int trace_bsize;
+        long trace0;
 
-        long trace0 = segy_trace0( header );
-        int samples = segy_samples( header );
-        int format = segy_format( header );
-        int trace_bsize = segy_trsize( format, samples );
+        int err_by;
+        segy_collect_metrics(
+            fp, &err_by, NULL, NULL,
+            &trace0, NULL, &trace_bsize,
+            NULL
+        );
 
         int sorting;
         int err;
@@ -1981,13 +1987,15 @@ SCENARIO( "checking sorting for wonky files", "[c.segy]" ) {
         unique_segy ufp{ openfile( "test-data/small.sgy", "rb" ) };
         auto fp = ufp.get();
 
-        char header[ SEGY_BINARY_HEADER_SIZE ];
-        REQUIRE( Err( segy_binheader( fp, header ) ) == Err::ok() );
+        int trace_bsize;
+        long trace0;
 
-        long trace0 = segy_trace0( header );
-        int samples = segy_samples( header );
-        int format = segy_format( header );
-        int trace_bsize = segy_trsize( format, samples );
+        int err_by;
+        segy_collect_metrics(
+            fp, &err_by, NULL, NULL,
+            &trace0, NULL, &trace_bsize,
+            NULL
+        );
 
         int sorting;
             int err = segy_sorting( fp,
@@ -2009,13 +2017,15 @@ SCENARIO( "checking sorting for wonky files", "[c.segy]" ) {
         auto fp = ufp.get();
         testcfg::config().mmap( fp );
 
-        char header[ SEGY_BINARY_HEADER_SIZE ];
-        REQUIRE( Err( segy_binheader( fp, header ) ) == Err::ok() );
+        int trace_bsize;
+        long trace0;
 
-        long trace0 = segy_trace0( header );
-        int samples = segy_samples( header );
-        int format = segy_format( header );
-        int trace_bsize = segy_trsize( format, samples );
+        int err_by;
+        segy_collect_metrics(
+            fp, &err_by, NULL, NULL,
+            &trace0, NULL, &trace_bsize,
+            NULL
+        );
 
 /*  In every single place where we create segy_datasource (segy_file) we would need to add
 
@@ -2058,10 +2068,15 @@ Even those two functions smell like "temporal coupling" anti-pattern, so maybe w
         char header[ SEGY_BINARY_HEADER_SIZE ];
         REQUIRE( Err( segy_binheader( fp, header ) ) == Err::ok() );
 
-        long trace0 = segy_trace0( header );
-        int samples = segy_samples( header );
-        int format = segy_format( header );
-        int trace_bsize = segy_trsize( format, samples );
+        int trace_bsize;
+        long trace0;
+
+        int err_by;
+        segy_collect_metrics(
+            fp, &err_by, NULL, NULL,
+            &trace0, NULL, &trace_bsize,
+            NULL
+        );
 
         int sorting;
         int err = segy_sorting( fp,

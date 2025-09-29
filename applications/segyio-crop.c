@@ -433,6 +433,8 @@ int main( int argc, char** argv ) {
 
     if( verbosity > 2 ) printf( "Found %d samples per trace\n", src_samples );
 
+    // this one does not use segy_file/segy_datasource
+
     int format = opts.format ? opts.format : segy_format( binheader );
     /* check that the format we get from the binary header isn't garbage */
     switch( format ) {
