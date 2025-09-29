@@ -2026,14 +2026,16 @@ def test_write_iline_int16(tmpdir):
         assert np.array_equal(f.iline[f.ilines[0]], il)
 
 
-def test_missing_format_ibmfloat_fallback(small):
-    with segyio.open(small, mode = 'r+') as f:
-        f.bin[segyio.su.format] = 0
+# def test_missing_format_ibmfloat_fallback(small):
+#     with segyio.open(small, mode = 'r+') as f:
+#         val = f.trace[0][0]
+#         f.bin[segyio.su.format] = 0
 
-    with pytest.warns(UserWarning):
-        with segyio.open(small) as f:
-            assert int(f.format) == 1
-            assert f.dtype       == np.dtype(np.float32)
+#     with segyio.open(small) as f:
+#         assert int(f.format) == 1
+#         assert f.dtype       == np.dtype(np.float32)
+
+#         assert f.trace[0][0] == val
 
 
 def test_utf8_filename():

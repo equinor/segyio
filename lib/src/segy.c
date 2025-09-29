@@ -963,7 +963,6 @@ int segy_collect_metrics(
     }
 
     int format = segy_format( binheader );
-    if( format == 0 ) format = SEGY_IBM_FLOAT_4_BYTE;
     if( format_out ) *format_out = format;
 
     int elemsize = formatsize( format );
