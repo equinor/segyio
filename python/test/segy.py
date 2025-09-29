@@ -2039,16 +2039,6 @@ def test_write_iline_int16(tmpdir):
         assert np.array_equal(f.iline[f.ilines[0]], il)
 
 
-def test_missing_format_ibmfloat_fallback(small):
-    with segyio.open(small, mode = 'r+') as f:
-        f.bin[segyio.su.format] = 0
-
-    with pytest.warns(UserWarning):
-        with segyio.open(small) as f:
-            assert int(f.format) == 1
-            assert f.dtype       == np.dtype(np.float32)
-
-
 def test_utf8_filename():
     with segyio.open(testdata / '小文件.sgy') as f:
         assert list(f.ilines) == [1, 2, 3, 4, 5]

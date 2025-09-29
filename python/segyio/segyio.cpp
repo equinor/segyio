@@ -679,7 +679,7 @@ PyObject* segyopen( segyfd* self, PyObject* args, PyObject* kwargs ) {
      */
    segy_set_format( ds, format );
    int elemsize = segy_formatsize( format );
-   if( elemsize < 0 ) elemsize = 4;
+   if( elemsize < 0 ) return NULL;
 
    err = segy_traces( ds, &tracecount, trace0, trace_bsize );
    switch( err ) {

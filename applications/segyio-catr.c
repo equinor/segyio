@@ -470,7 +470,6 @@ static struct options parse_options( int argc, char** argv ){
     static struct option long_options[] = {
         { "trace",          required_argument,  0, 't' },
         { "range",          required_argument,  0, 'r' },
-        { "format",         required_argument,  0, 'f' },
         { "segyio",         no_argument,        0, 'k' },
         { "strict",         no_argument,        0, 's' },
         { "non-strict",     no_argument,        0, 'S' },
@@ -504,23 +503,6 @@ static struct options parse_options( int argc, char** argv ){
            case 'd': opts.description = 1; break;
            case 'n': opts.nonzero = 1; break;
            case 'k': opts.labels = segyio_labels; break;
-           case 'f': if( strcmp( optarg, "ibm" ) == 0 )
-                         opts.format = SEGY_IBM_FLOAT_4_BYTE;
-                     if( strcmp( optarg, "ieee" ) == 0 )
-                         opts.format = SEGY_IEEE_FLOAT_4_BYTE;
-                     if( strcmp( optarg, "short" ) == 0 )
-                         opts.format = SEGY_SIGNED_SHORT_2_BYTE;
-                     if( strcmp( optarg, "long" ) == 0 )
-                         opts.format = SEGY_SIGNED_INTEGER_4_BYTE;
-                     if( strcmp( optarg, "char" ) == 0 )
-                         opts.format = SEGY_SIGNED_CHAR_1_BYTE;
-                     if( opts.format == 0 ) {
-                         opts.errmsg = "invalid format argument. valid formats: "
-                                       "ibm ieee short long char";
-                         return opts;
-                     }
-                     break;
-
            case 'r': // intentional fallthrough
            case 't': {
                 if( opts.rsize == rallocsize ) {
@@ -641,34 +623,7 @@ int main( int argc, char** argv ) {
 
     int samnr = segy_samples( binheader );
 
-    int format = opts.format ? opts.format : segy_format( binheader );
-    switch( format ) {
-        /* all good */
-        case SEGY_IBM_FLOAT_4_BYTE:
-        case SEGY_SIGNED_INTEGER_4_BYTE:
-        case SEGY_SIGNED_SHORT_2_BYTE:
-        case SEGY_FIXED_POINT_WITH_GAIN_4_BYTE:
-        case SEGY_IEEE_FLOAT_4_BYTE:
-        case SEGY_SIGNED_CHAR_1_BYTE:
-            break;
-
-        /*
-         * assume this header field is just not set, silently fall back
-         * to 4-byte floats
-         */
-        case 0:
-            format = SEGY_IBM_FLOAT_4_BYTE;
-            break;
-
-        case SEGY_NOT_IN_USE_1:
-        case SEGY_NOT_IN_USE_2:
-        default:
-            errmsg( 1, "sample format field is garbage. "
-                        "falling back to 4-byte float. "
-                        "override with --format" );
-            format = SEGY_IBM_FLOAT_4_BYTE;
-    }
-
+    int format = segy_format( binheader );
     int trace_bsize = segy_trsize( format, samnr );
     long trace0 = segy_trace0( binheader );
 
