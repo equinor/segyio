@@ -325,9 +325,9 @@ segy_datasource* create_py_stream_datasource(
         sizeof(mapping->name_to_offset)
     );
     memcpy(
-        mapping->offset_to_entry_definion,
+        mapping->offset_to_entry_definition,
         segy_traceheader_default_map(),
-        sizeof(mapping->offset_to_entry_definion)
+        sizeof(mapping->offset_to_entry_definition)
     );
 
     /* keep additional reference to assure object does not get deleted before
@@ -2198,7 +2198,7 @@ int overwrite_inline_xline(
         }
         uint8_t il = static_cast<uint8_t>( iline );
         mapping.name_to_offset[SEGY_TR_INLINE] = il;
-        mapping.offset_to_entry_definion[il - 1] = { SEGY_ENTRY_TYPE_INT4, false, NULL };
+        mapping.offset_to_entry_definition[il - 1] = { SEGY_ENTRY_TYPE_INT4, false, NULL };
     }
 
     if( py_xline != Py_None ) {
@@ -2209,7 +2209,7 @@ int overwrite_inline_xline(
         }
         uint8_t xl = static_cast<uint8_t>( xline );
         mapping.name_to_offset[SEGY_TR_CROSSLINE] = xl;
-        mapping.offset_to_entry_definion[xl - 1] = { SEGY_ENTRY_TYPE_INT4, false, NULL };
+        mapping.offset_to_entry_definition[xl - 1] = { SEGY_ENTRY_TYPE_INT4, false, NULL };
     }
     return SEGY_OK;
 }
@@ -2333,7 +2333,7 @@ int free_header_mappings_names(
     for( size_t i = 0; i < mappings_length; ++i ) {
         segy_header_mapping* mapping = &mappings[i];
         for( int j = 0; j < SEGY_TRACE_HEADER_SIZE; ++j ) {
-            char*& name = mapping->offset_to_entry_definion[j].name;
+            char*& name = mapping->offset_to_entry_definition[j].name;
             if( name ) {
                 delete[] name;
             }
@@ -2529,7 +2529,7 @@ int set_mapping_offset_to_entry_defintion(
         requires_nonzero_value,
         spec_entry_name_heap
     };
-    mapping->offset_to_entry_definion[byte - 1] = def;
+    mapping->offset_to_entry_definition[byte - 1] = def;
     return SEGY_OK;
 }
 

@@ -803,9 +803,9 @@ segy_file* segy_open( const char* path, const char* mode ) {
         sizeof(mapping->name_to_offset)
     );
     memcpy(
-        mapping->offset_to_entry_definion,
+        mapping->offset_to_entry_definition,
         segy_traceheader_default_map(),
-        sizeof(mapping->offset_to_entry_definion)
+        sizeof(mapping->offset_to_entry_definition)
     );
 
     return ds;
@@ -857,9 +857,9 @@ segy_datasource* segy_memopen( unsigned char* addr, size_t size ) {
         sizeof(mapping->name_to_offset)
     );
     memcpy(
-        mapping->offset_to_entry_definion,
+        mapping->offset_to_entry_definition,
         segy_traceheader_default_map(),
-        sizeof(mapping->offset_to_entry_definion)
+        sizeof(mapping->offset_to_entry_definition)
     );
 
     return ds;
@@ -1778,7 +1778,7 @@ int segy_sample_interval( segy_datasource* ds, float fallback, float* dt ) {
     bindt = fd.value.i16;
 
     const segy_entry_definition* standard_map =
-        ds->traceheader_mapping_standard.offset_to_entry_definion;
+        ds->traceheader_mapping_standard.offset_to_entry_definition;
     const uint8_t* standard_name_map =
         ds->traceheader_mapping_standard.name_to_offset;
     const int sample_inter_offset = standard_name_map[SEGY_TR_SAMPLE_INTER];
@@ -1903,7 +1903,7 @@ int segy_sorting( segy_datasource* ds,
 
     segy_field_data fd;
     const segy_entry_definition* standard_map =
-        ds->traceheader_mapping_standard.offset_to_entry_definion;
+        ds->traceheader_mapping_standard.offset_to_entry_definition;
 
     // check errors only once at the start to avoid loop check
     err = segy_get_tracefield( traceheader, standard_map, il, &fd );
@@ -2009,7 +2009,7 @@ int segy_offsets( segy_datasource* ds,
 
     segy_field_data fd;
     const segy_entry_definition* standard_map =
-        ds->traceheader_mapping_standard.offset_to_entry_definion;
+        ds->traceheader_mapping_standard.offset_to_entry_definition;
 
     // check errors only once at the start to avoid loop check
     err = segy_get_tracefield( header, standard_map, il, &fd );
@@ -2052,7 +2052,7 @@ int segy_offset_indices( segy_datasource* ds,
 
     segy_field_data fd;
     const segy_entry_definition* standard_map =
-        ds->traceheader_mapping_standard.offset_to_entry_definion;
+        ds->traceheader_mapping_standard.offset_to_entry_definition;
 
     for( int i = 0; i < offsets; ++i ) {
         int err = segy_traceheader( ds, i, header, trace0, trace_bsize );
@@ -2103,7 +2103,7 @@ static int count_lines( segy_datasource* ds,
 
     segy_field_data fd;
     const segy_entry_definition* standard_map =
-        ds->traceheader_mapping_standard.offset_to_entry_definion;
+        ds->traceheader_mapping_standard.offset_to_entry_definition;
     const int offset_field =
         ds->traceheader_mapping_standard.name_to_offset[SEGY_TR_OFFSET];
 
@@ -2965,7 +2965,7 @@ static int scaled_cdp(
     if( err != 0 ) return err;
 
     const segy_entry_definition* standard_map =
-        ds->traceheader_mapping_standard.offset_to_entry_definion;
+        ds->traceheader_mapping_standard.offset_to_entry_definition;
 
     const int cdp_x_offset =
         ds->traceheader_mapping_standard.name_to_offset[SEGY_TR_CDP_X];

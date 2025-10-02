@@ -262,7 +262,7 @@ typedef struct {
     // SEGY_FIELD to offset (SEG-Y Standard names segyio is aware of)
     uint8_t name_to_offset[SEGY_TRACE_HEADER_SIZE];
 
-    segy_entry_definition offset_to_entry_definion[SEGY_TRACE_HEADER_SIZE];
+    segy_entry_definition offset_to_entry_definition[SEGY_TRACE_HEADER_SIZE];
 } segy_header_mapping;
 
 /*
