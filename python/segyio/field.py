@@ -196,8 +196,8 @@ class Field(MutableMapping):
         self.buf = buf
         self.traceno = traceno
         self.segyfd = segyfd
-        self.getfield = segyio._segyio.getfield
-        self.putfield = segyio._segyio.putfield
+        self.getfield = self.segyfd.getfield
+        self.putfield = self.segyfd.putfield
 
         self.readonly = readonly
 
