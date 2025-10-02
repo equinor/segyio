@@ -1135,6 +1135,9 @@ PyObject* putth( segyfd* self, PyObject* args ) {
     }
 }
 
+PyObject* getfield( segyfd* self, PyObject* args );
+PyObject* putfield( segyfd* self, PyObject* args );
+
 PyObject* field_forall( segyfd* self, PyObject* args ) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
@@ -1755,6 +1758,9 @@ PyMethodDef methods [] = {
     { "getth", (PyCFunction) fd::getth, METH_VARARGS, "Get trace header." },
     { "putth", (PyCFunction) fd::putth, METH_VARARGS, "Put trace header." },
 
+    { "getfield", (PyCFunction) fd::getfield, METH_VARARGS, "Get a header field." },
+    { "putfield", (PyCFunction) fd::putfield, METH_VARARGS, "Put a header field." },
+
     { "field_forall",  (PyCFunction) fd::field_forall,  METH_VARARGS, "Field for-all."  },
     { "field_foreach", (PyCFunction) fd::field_foreach, METH_VARARGS, "Field for-each." },
 
@@ -1860,7 +1866,10 @@ PyObject* trbsize( PyObject*, PyObject* args ) {
     return PyLong_FromLong( segy_trace_bsize( sample_count ) );
 }
 
-PyObject* getfield( PyObject*, PyObject *args ) {
+namespace fd {
+
+PyObject* getfield( segyfd* self, PyObject* args ) {
+    (void)self;
     buffer_guard buffer;
     int field;
 
@@ -1914,7 +1923,8 @@ PyObject* getfield( PyObject*, PyObject *args ) {
     }
 }
 
-PyObject* putfield( PyObject*, PyObject *args ) {
+PyObject* putfield( segyfd* self, PyObject *args ) {
+    (void)self;
 
     PyObject *buffer_arg = PyTuple_GetItem(args, 0);
     PyObject *field_arg = PyTuple_GetItem(args, 1);
@@ -2079,6 +2089,8 @@ PyObject* putfield( PyObject*, PyObject *args ) {
     }
 }
 
+} // namespace fd
+
 PyObject* line_metrics( PyObject*, PyObject *args) {
     SEGY_SORTING sorting;
     int trace_count;
@@ -2185,9 +2197,6 @@ PyMethodDef SegyMethods[] = {
     { "textsize", (PyCFunction) textsize, METH_NOARGS, "Size of the text header."   },
 
     { "trace_bsize", (PyCFunction) trbsize, METH_VARARGS, "Size of a trace (in bytes)." },
-
-    { "getfield", (PyCFunction) getfield, METH_VARARGS, "Get a header field." },
-    { "putfield", (PyCFunction) putfield, METH_VARARGS, "Put a header field." },
 
     { "line_metrics", (PyCFunction) line_metrics,  METH_VARARGS, "Find the length and stride of lines." },
     { "fread_trace0", (PyCFunction) fread_trace0,  METH_VARARGS, "Find trace0 of a line."               },

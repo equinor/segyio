@@ -164,13 +164,13 @@ def test_read_binary_header_fields(mmap=False):
     binary_header = f.getbin()
 
     with pytest.raises(TypeError):
-        _ = _segyio.getfield([], 0)
+        _ = f.getfield([], 0)
 
     with pytest.raises(KeyError):
-        _ = _segyio.getfield(binary_header, -1)
+        _ = f.getfield(binary_header, -1)
 
-    assert _segyio.getfield(binary_header, 3225) == 1
-    assert _segyio.getfield(binary_header, 3221) == 50
+    assert f.getfield(binary_header, 3225) == 1
+    assert f.getfield(binary_header, 3221) == 50
 
     f.close()
 
@@ -361,31 +361,33 @@ def test_fread_trace0(mmap=False):
     f.close()
 
 
-def test_get_and_putfield():
+@tmpfiles(testdata / 'small.sgy')
+def test_get_and_putfield(tmpdir):
+    f = get_instance_segyfile(tmpdir)
     hdr = bytearray(_segyio.thsize())
 
     with pytest.raises(BufferError):
-        _segyio.getfield(".", 0)
+        f.getfield(".", 0)
 
     with pytest.raises(TypeError):
-        _segyio.getfield([], 0)
+        f.getfield([], 0)
 
     with pytest.raises(TypeError):
-        _segyio.putfield({}, 0, 1)
+        f.putfield({}, 0, 1)
 
     with pytest.raises(KeyError):
-        _segyio.getfield(hdr, 0)
+        f.getfield(hdr, 0)
 
     with pytest.raises(KeyError):
-        _segyio.putfield(hdr, 0, 1)
+        f.putfield(hdr, 0, 1)
 
-    _segyio.putfield(hdr, 1, 127)
-    _segyio.putfield(hdr, 5, 67)
-    _segyio.putfield(hdr, 9, 19)
+    f.putfield(hdr, 1, 127)
+    f.putfield(hdr, 5, 67)
+    f.putfield(hdr, 9, 19)
 
-    assert _segyio.getfield(hdr, 1) == 127
-    assert _segyio.getfield(hdr, 5) == 67
-    assert _segyio.getfield(hdr, 9) == 19
+    assert f.getfield(hdr, 1) == 127
+    assert f.getfield(hdr, 5) == 67
+    assert f.getfield(hdr, 9) == 19
 
 
 @tmpfiles(testdata / 'small.sgy')
@@ -418,23 +420,23 @@ def read_and_write_standard_traceheader(f, mmap):
 
     trace_header = f.getth(0, 0, mkempty())
 
-    assert _segyio.getfield(trace_header, ilb) == 1
-    assert _segyio.getfield(trace_header, xlb) == 20
+    assert f.getfield(trace_header, ilb) == 1
+    assert f.getfield(trace_header, xlb) == 20
 
     trace_header = f.getth(1, 0, mkempty())
 
-    assert _segyio.getfield(trace_header, ilb) == 1
-    assert _segyio.getfield(trace_header, xlb) == 21
+    assert f.getfield(trace_header, ilb) == 1
+    assert f.getfield(trace_header, xlb) == 21
 
-    _segyio.putfield(trace_header, ilb, 99)
-    _segyio.putfield(trace_header, xlb, 42)
+    f.putfield(trace_header, ilb, 99)
+    f.putfield(trace_header, xlb, 42)
 
     f.putth(0, 0, trace_header)
 
     trace_header = f.getth(0, 0, mkempty())
 
-    assert _segyio.getfield(trace_header, ilb) == 99
-    assert _segyio.getfield(trace_header, xlb) == 42
+    assert f.getfield(trace_header, ilb) == 99
+    assert f.getfield(trace_header, xlb) == 42
 
     f.close()
 
@@ -452,19 +454,19 @@ def test_read_and_write_traceheader(tmpdir):
     # when get-set field functions are updated.
 
     standard_th = f.getth(0, 0, mkempty())
-    assert _segyio.getfield(standard_th, field) == 286331153
+    assert f.getfield(standard_th, field) == 286331153
 
     extension1_th = f.getth(0, 1, mkempty())
-    assert _segyio.getfield(extension1_th, field) == 572662306
+    assert f.getfield(extension1_th, field) == 572662306
 
     proprietary_th = f.getth(0, 2, mkempty())
-    assert _segyio.getfield(proprietary_th, field) == 858993459
+    assert f.getfield(proprietary_th, field) == 858993459
 
-    _segyio.putfield(extension1_th, field, 42)
+    f.putfield(extension1_th, field, 42)
     f.putth(0, 1, extension1_th)
 
     extension1_th = f.getth(0, 1, mkempty())
-    assert _segyio.getfield(extension1_th, field) == 42
+    assert f.getfield(extension1_th, field) == 42
 
     f.close()
 
@@ -646,7 +648,7 @@ def test_datasource_little_endian(datasource):
         ).segyopen(endianness=1)
 
     binary_header = fd.getbin()
-    assert _segyio.getfield(binary_header, 3221) == 50
+    assert fd.getfield(binary_header, 3221) == 50
 
     fd.close()
 
@@ -665,7 +667,7 @@ def test_memory_buffer_memory_management():
     # internal code should still have reference to original "data" buffer, so
     # there should be no error
     binary_header = fd.getbin()
-    assert _segyio.getfield(binary_header, 3225) == 1
+    assert fd.getfield(binary_header, 3225) == 1
 
     fd.close()
 
