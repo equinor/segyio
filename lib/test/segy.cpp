@@ -354,9 +354,6 @@ TEST_CASE_METHOD( smallfix,
     Err err = segy_set_format( fp, SEGY_IEEE_FLOAT_4_BYTE );
     CHECK( err == Err::ok() );
 
-    err = segy_set_endianness( fp, SEGY_LSB );
-    CHECK( err == Err::ok() );
-
     err = segy_set_encoding( fp, SEGY_ASCII );
     CHECK( err == Err::ok() );
     CHECK( fp->encoding == SEGY_ASCII );
@@ -366,9 +363,6 @@ TEST_CASE_METHOD( smallfix,
                   "sample format/endianness fails on invalid format",
                   "[c.segy]" ) {
     Err err = segy_set_format( fp, 20 );
-    CHECK( err == Err::args() );
-
-    err = segy_set_endianness( fp, 20 );
     CHECK( err == Err::args() );
 }
 

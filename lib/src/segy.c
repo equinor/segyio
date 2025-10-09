@@ -1452,16 +1452,29 @@ int segy_set_format( segy_datasource* ds, int format ) {
     return SEGY_OK;
 }
 
-int segy_set_endianness( segy_datasource* ds, int endianness) {
-    switch( endianness ) {
-        case SEGY_LSB:
-        case SEGY_MSB:
+int segy_endianness( segy_datasource* ds, int* endianness ) {
+    char binheader[SEGY_BINARY_HEADER_SIZE];
+    // by default read as msb
+    int err = segy_binheader( ds, binheader );
+    if( err != SEGY_OK ) return err;
+
+    segy_field_data fd;
+    segy_get_binfield( binheader, SEGY_BIN_INTEGER_CONSTANT, &fd );
+    int val = fd.value.i32;
+    switch( val ) {
+        case 0:
+            *endianness = SEGY_MSB;
+            break;
+        case 16909060:
+            *endianness = SEGY_MSB;
+            break;
+        case 67305985:
+            *endianness = SEGY_LSB;
             break;
         default:
-            return SEGY_INVALID_ARGS;
+            // unknown or pair-wise endianness
+            return SEGY_INVALID_FIELD_VALUE;
     }
-
-    ds->lsb = endianness;
     return SEGY_OK;
 }
 

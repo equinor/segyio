@@ -447,16 +447,12 @@ int segy_format( const char* binheader );
  */
 int segy_set_format( segy_datasource*, int format );
 
-/* set file as LSB/MSB (little/big endian)
+/* Find out whether file is LSB/MSB (little/big endian).
  *
- * The binary header is not implicitly queried, because it's often broken and
- * unreliable with this information. This is subject to a change.
- *
- * By default, segyio assumes files are MSB. However, some files (seismic unix,
- * SEG-Y rev2) are LSB. *all* functions returning bytes in segyio will output
- * MSB, regardless of the properties of the underlying file.
+ * Note that *all* functions returning bytes in segyio will output MSB,
+ * regardless of the properties of the underlying file.
  */
-int segy_set_endianness( segy_datasource*, int opt );
+int segy_endianness( segy_datasource* ds, int* endianness );
 
 /* sets file to be EBCDIC/ASCII encoded. If no valid encoding is provided, one
  * is automatically decided by consulting first text header character. If in

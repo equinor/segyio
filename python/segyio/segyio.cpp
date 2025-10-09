@@ -616,13 +616,13 @@ int init( segyfd* self, PyObject* args, PyObject* kwargs ) {
         return -1;
     }
 
-    int err = segy_set_endianness( ds, endianness );
-    if( err ) {
-        ValueError( "internal: error setting endianness, was %d", endianness );
-        return -1;
+    if (endianness != SEGY_LSB && endianness != SEGY_MSB) {
+        int err = segy_endianness(ds, &endianness);
+        if( err != SEGY_OK ) return err;
     }
+    ds.ds->lsb = endianness;
 
-    err = segy_set_encoding( ds, encoding );
+    int err = segy_set_encoding( ds, encoding );
     if( err ) {
         ValueError( "internal: error %d setting encoding, was %d", err, encoding );
         return -1;
