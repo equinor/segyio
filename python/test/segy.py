@@ -1022,7 +1022,7 @@ def test_field_types_read(endian):
         dname = testdata / 'decrement.sgy'
         iname = testdata / 'increment.sgy'
 
-    with segyio.open(dname, "r", ignore_geometry=True, endian=endian) as f:
+    with segyio.open(dname, "r", ignore_geometry=True) as f:
         bdec = f.bin
         tdec = f.header[3]
 
@@ -1037,7 +1037,7 @@ def test_field_types_read(endian):
         assert tdec[TraceField.TRACE_SAMPLE_COUNT] == 65382
         assert tdec[TraceField.INLINE_3D] == 2147483355
 
-    with segyio.open(iname, "r", ignore_geometry=True, endian=endian) as f:
+    with segyio.open(iname, "r", ignore_geometry=True) as f:
         binc = f.bin
         tinc = f.header[3]
 

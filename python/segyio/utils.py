@@ -30,6 +30,7 @@ def castarray(x, dtype):
 
 def c_endianness(endian):
     endians = {
+        None: -1,
         'little': 1,
         'lsb': 1,
         'big': 0,

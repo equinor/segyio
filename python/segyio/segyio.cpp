@@ -546,11 +546,6 @@ int init( segyfd* self, PyObject* args, PyObject* kwargs ) {
         return -1;
     }
 
-    if( endianness != SEGY_MSB && endianness != SEGY_LSB ) {
-        ValueError( "endianness must be set to a valid value" );
-        return -1;
-    }
-
     if( encoding != -1 && encoding != SEGY_EBCDIC && encoding != SEGY_ASCII ) {
         ValueError( "encoding must be set to a valid value" );
         return -1;
