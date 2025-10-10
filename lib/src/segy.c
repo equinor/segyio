@@ -1478,26 +1478,19 @@ int segy_endianness( segy_datasource* ds, int* endianness ) {
     return SEGY_OK;
 }
 
-int segy_set_encoding( segy_datasource* ds, int encoding ) {
-    switch( encoding ) {
-        case SEGY_EBCDIC:
-        case SEGY_ASCII:
-            break;
-        default: {
-            encoding = SEGY_EBCDIC;
-            int err = ds->seek( ds, 0, SEEK_SET );
-            if( err == 0 ) {
-                char c;
-                err = ds->read( ds, &c, 1 );
-                // fist symbol is supposed to be 'C', which ASCII code is 67
-                if( err == 0 && c == 67) {
-                    encoding = SEGY_ASCII;
-                }
-            }
-        }
-    }
+int segy_encoding( segy_datasource* ds, int* encoding ) {
+    *encoding = SEGY_EBCDIC;
+    char c;
 
-    ds->encoding = encoding;
+    int err = ds->seek( ds, 0, SEEK_SET );
+    if( err != SEGY_OK ) return err;
+    err = ds->read( ds, &c, 1 );
+    if( err != SEGY_OK ) return err;
+
+    // first symbol is supposed to be 'C', which ASCII code is 67
+    if( c == 67 ) {
+        *encoding = SEGY_ASCII;
+    }
     return SEGY_OK;
 }
 

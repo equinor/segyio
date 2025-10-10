@@ -546,11 +546,6 @@ int init( segyfd* self, PyObject* args, PyObject* kwargs ) {
         return -1;
     }
 
-    if( encoding != -1 && encoding != SEGY_EBCDIC && encoding != SEGY_ASCII ) {
-        ValueError( "encoding must be set to a valid value" );
-        return -1;
-    }
-
     autods ds;
     if( stream ) {
         if (stream == Py_None) {
@@ -617,11 +612,11 @@ int init( segyfd* self, PyObject* args, PyObject* kwargs ) {
     }
     ds.ds->lsb = endianness;
 
-    int err = segy_set_encoding( ds, encoding );
-    if( err ) {
-        ValueError( "internal: error %d setting encoding, was %d", err, encoding );
-        return -1;
+    if( encoding != SEGY_EBCDIC && encoding != SEGY_ASCII ) {
+        int err = segy_encoding( ds, &encoding );
+        if( err != SEGY_OK ) encoding = SEGY_EBCDIC;
     }
+    ds.ds->encoding = encoding;
 
     /*
      * init can be called multiple times, which is treated as opening a new

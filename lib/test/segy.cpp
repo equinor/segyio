@@ -353,10 +353,6 @@ TEST_CASE_METHOD( smallfix,
                   "[c.segy]" ) {
     Err err = segy_set_format( fp, SEGY_IEEE_FLOAT_4_BYTE );
     CHECK( err == Err::ok() );
-
-    err = segy_set_encoding( fp, SEGY_ASCII );
-    CHECK( err == Err::ok() );
-    CHECK( fp->encoding == SEGY_ASCII );
 }
 
 TEST_CASE_METHOD( smallfix,

@@ -447,18 +447,18 @@ int segy_format( const char* binheader );
  */
 int segy_set_format( segy_datasource*, int format );
 
-/* Find out whether file is LSB/MSB (little/big endian).
+/* Finds out whether file is LSB or MSB (little/big endian).
  *
  * Note that *all* functions returning bytes in segyio will output MSB,
  * regardless of the properties of the underlying file.
  */
 int segy_endianness( segy_datasource* ds, int* endianness );
 
-/* sets file to be EBCDIC/ASCII encoded. If no valid encoding is provided, one
- * is automatically decided by consulting first text header character. If in
- * doubt, EBCDIC encoding is assumed.
+/* Finds out whether SEG-Y strings are encoded in EBCDIC or ASCII. If no valid
+ * encoding is provided, one is automatically decided by consulting first text
+ * header character. If in doubt, EBCDIC encoding is assumed.
  */
-int segy_set_encoding( segy_datasource*, int opt );
+int segy_encoding( segy_datasource*, int* encoding );
 
 /* Converts entry type to actual datatype and returns it (not an error code). */
 int segy_entry_type_to_datatype( uint8_t entry_type );
