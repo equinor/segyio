@@ -1444,14 +1444,6 @@ int segy_format( const char* binheader ) {
     return format;
 }
 
-int segy_set_format( segy_datasource* ds, int format ) {
-    const int elemsize = segy_formatsize( format );
-    if( elemsize <= 0 ) return SEGY_INVALID_ARGS;
-    ds->elemsize = elemsize;
-
-    return SEGY_OK;
-}
-
 int segy_endianness( segy_datasource* ds, int* endianness ) {
     char binheader[SEGY_BINARY_HEADER_SIZE];
     // by default read as msb

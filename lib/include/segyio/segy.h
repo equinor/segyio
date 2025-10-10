@@ -432,20 +432,6 @@ int segy_formatsize( int format );
 
 /* exception: the int returned is an enum, SEGY_FORMAT, not an error code */
 int segy_format( const char* binheader );
-/* override the assumed format of the samples.
- *
- * by default, segyio assumes a 4-byte float format (usually IBM float). The
- * to/from native functions take this parameter explicitly, but functions like
- * read_subtrace requires the size of each element.
- *
- * if this function is not called, for backwards compatibility reasons, the
- * format is always assumed to be IBM float.
- *
- * The binary header is not implicitly queried, because it's often broken and
- * unreliable with this information - however, if the header IS considered to
- * be reliable, the result of `segy_format` can be passed to this function.
- */
-int segy_set_format( segy_datasource*, int format );
 
 /* Finds out whether file is LSB or MSB (little/big endian).
  *

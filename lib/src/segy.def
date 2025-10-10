@@ -10,7 +10,6 @@ segy_write_binheader
 segy_samples
 segy_sample_interval
 segy_format
-segy_set_format
 segy_endianness
 segy_encoding
 segy_entry_type_to_datatype

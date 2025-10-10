@@ -677,9 +677,9 @@ PyObject* segyopen( segyfd* self, PyObject* args, PyObject* kwargs ) {
      * if set_format errors, it's because the format-field in the binary header
      * is 0 or some other garbage. if so, assume the file is 4-byte ibm float
      */
-   segy_set_format( ds, format );
    int elemsize = segy_formatsize( format );
    if( elemsize < 0 ) return NULL;
+   ds->elemsize = elemsize;
 
    err = segy_traces( ds, &tracecount, trace0, trace_bsize );
    switch( err ) {
@@ -791,8 +791,8 @@ PyObject* segycreate( segyfd* self, PyObject* args, PyObject* kwargs ) {
             return ValueError( "unknown format identifier" );
     }
 
-    segy_set_format( ds, format );
     int elemsize = segy_formatsize( format );
+    ds->elemsize = elemsize;
 
     self->trace0 = SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE +
                    SEGY_TEXT_HEADER_SIZE * ext_headers;
@@ -851,7 +851,7 @@ PyObject* suopen( segyfd* self, PyObject* args, PyObject* kwargs ) {
     );
     if( err ) return NULL;
 
-    err = segy_set_format( ds, SEGY_IEEE_FLOAT_4_BYTE );
+    ds->elemsize = segy_formatsize( SEGY_IEEE_FLOAT_4_BYTE );
 
     if( err )
         return RuntimeError( "internal: unable to set type to IEEE float " );

@@ -348,20 +348,6 @@ TEST_CASE_METHOD( smallbin,
     CHECK( trace_bsize == 50 * 4 );
 }
 
-TEST_CASE_METHOD( smallfix,
-                  "sample format/endianness/encoding can be overriden",
-                  "[c.segy]" ) {
-    Err err = segy_set_format( fp, SEGY_IEEE_FLOAT_4_BYTE );
-    CHECK( err == Err::ok() );
-}
-
-TEST_CASE_METHOD( smallfix,
-                  "sample format/endianness fails on invalid format",
-                  "[c.segy]" ) {
-    Err err = segy_set_format( fp, 20 );
-    CHECK( err == Err::args() );
-}
-
 TEST_CASE_METHOD( smallbasic,
                   "trace count is 25",
                   "[c.segy]" ) {
@@ -1628,12 +1614,11 @@ void f3_in_format(int fmt) {
     CHECK(format  == fmt);
     CHECK(trsize  == int(samples * sizeof(T)));
 
-    Err err = segy_set_format(fp, fmt);
-    REQUIRE(err == Err::ok());
+    fp->elemsize = segy_formatsize( fmt );
 
     /* read f3 from 2-byte, expand, and compare */
     std::vector< T > fptrace(samples);
-    err = segy_readtrace(fp,
+    Err err = segy_readtrace(fp,
             0,
             fptrace.data(),
             trace0,
@@ -1644,7 +1629,7 @@ void f3_in_format(int fmt) {
     unique_segy uf3{ openfile("test-data/f3.sgy", "rb") };
     auto* f3 = uf3.get();
     REQUIRE(f3);
-    segy_set_format(f3, f3fmt);
+    f3->elemsize = segy_formatsize( f3fmt );
 
     std::vector< std::int16_t > f3trace(samples);
     err = segy_readtrace(f3,
@@ -1741,20 +1726,6 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
             CHECK( samples     == 75 );
             CHECK( trace_bsize == 75 * 2 );
         }
-
-        WHEN( "the format is valid" ) {
-            THEN( "setting format succeeds" ) {
-                Err err = segy_set_format( fp, format );
-                CHECK( err == Err::ok() );
-            }
-        }
-
-        WHEN( "the format is invalid" ) {
-            THEN( "setting format fails" ) {
-                Err err = segy_set_format( fp, 50 );
-                CHECK( err == Err::args() );
-            }
-        }
     }
 
     const int format      = SEGY_SIGNED_SHORT_2_BYTE;
@@ -1785,8 +1756,8 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
         }
     }
 
-    Err err = segy_set_format( fp, format );
-    REQUIRE( err == Err::ok() );
+    fp->elemsize = segy_formatsize( format );
+    Err err = Err::ok();
 
     WHEN( "determining number of traces" ) {
         int traces = 0;
