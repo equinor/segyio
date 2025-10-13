@@ -54,20 +54,18 @@ int size_from_format( const std::string& fmt ) {
 }
 
 void flip_binary_header( char* xs ) {
-    std::vector< int > sizes;
-    sizes.insert( sizes.end(), 3, 4 );
-    sizes.insert( sizes.end(), 24, 2 );
-
-    for( auto size : sizes ) {
-        std::reverse( xs, xs + size );
-        xs += size;
-    }
-
-    xs += 240;
-
-    for( auto size : { 2, 2, 2 } ) {
-        std::reverse( xs, xs + size );
-        xs += size;
+    const segy_entry_definition* binmap = segy_binheader_map();
+    int offset = 0;
+    while( offset < SEGY_BINARY_HEADER_SIZE ) {
+        int size = segy_formatsize(
+            segy_entry_type_to_datatype( binmap[offset].entry_type )
+        );
+        if( size < 0 ) {
+            ++offset;
+            continue;
+        }
+        std::reverse( xs + offset, xs + offset + size );
+        offset += size;
     }
 }
 

@@ -1374,59 +1374,35 @@ int segy_field_forall( segy_datasource* ds,
     return SEGY_OK;
 }
 
-static int bswap_bin( char* xs, int lsb ) {
-    if( !lsb ) return SEGY_OK;
+static int bswap_bin( const segy_datasource* ds, char* xs ) {
+    if( !ds->lsb ) return SEGY_OK;
 
-    const int bytes4[] = {
-        SEGY_BIN_JOB_ID,
-        SEGY_BIN_LINE_NUMBER,
-        SEGY_BIN_REEL_NUMBER
-    };
-
-    const int bytes4_len = sizeof(bytes4) / sizeof(int);
-
-    for( int i = 0; i < bytes4_len; ++i ) {
-        const int offset = bytes4[ i ] - ( SEGY_TEXT_HEADER_SIZE + 1 );
-        bswap32_mem( xs + offset, xs + offset );
+    const segy_entry_definition* binmap = segy_binheader_map();
+    int offset = 0;
+    while( offset < SEGY_BINARY_HEADER_SIZE ) {
+        int datatype = segy_entry_type_to_datatype( binmap[offset].entry_type );
+        if( datatype == SEGY_UNDEFINED_FIELD ) {
+            ++offset;
+            continue;
+        }
+        int size = segy_formatsize( datatype );
+        switch( size ) {
+            case 8:
+                bswap64_mem( xs + offset, xs + offset );
+                break;
+            case 4:
+                bswap32_mem( xs + offset, xs + offset );
+                break;
+            case 2:
+                bswap16_mem( xs + offset, xs + offset );
+                break;
+            case 1:
+                break;
+            default:
+                return SEGY_INVALID_FIELD_DATATYPE;
+        }
+        offset += size;
     }
-
-    const int bytes2[] = {
-        SEGY_BIN_ENSEMBLE_TRACES,
-        SEGY_BIN_AUX_ENSEMBLE_TRACES,
-        SEGY_BIN_INTERVAL,
-        SEGY_BIN_INTERVAL_ORIG,
-        SEGY_BIN_SAMPLES,
-        SEGY_BIN_SAMPLES_ORIG,
-        SEGY_BIN_FORMAT,
-        SEGY_BIN_ENSEMBLE_FOLD,
-        SEGY_BIN_SORTING_CODE,
-        SEGY_BIN_VERTICAL_SUM,
-        SEGY_BIN_SWEEP_FREQ_START,
-        SEGY_BIN_SWEEP_FREQ_END,
-        SEGY_BIN_SWEEP_LENGTH,
-        SEGY_BIN_SWEEP,
-        SEGY_BIN_SWEEP_CHANNEL,
-        SEGY_BIN_SWEEP_TAPER_START,
-        SEGY_BIN_SWEEP_TAPER_END,
-        SEGY_BIN_TAPER,
-        SEGY_BIN_CORRELATED_TRACES,
-        SEGY_BIN_BIN_GAIN_RECOVERY,
-        SEGY_BIN_AMPLITUDE_RECOVERY,
-        SEGY_BIN_MEASUREMENT_SYSTEM,
-        SEGY_BIN_IMPULSE_POLARITY,
-        SEGY_BIN_VIBRATORY_POLARITY,
-        SEGY_BIN_SEGY_REVISION,
-        SEGY_BIN_TRACE_FLAG,
-        SEGY_BIN_EXT_HEADERS,
-    };
-
-    const int bytes2_len = sizeof( bytes2 ) / sizeof( int );
-
-    for( int i = 0; i < bytes2_len; ++i ) {
-        const int offset = bytes2[ i ] - ( SEGY_TEXT_HEADER_SIZE + 1 );
-        bswap16_mem( xs + offset, xs + offset );
-    }
-
     return SEGY_OK;
 }
 
@@ -1440,7 +1416,7 @@ int segy_binheader( segy_datasource* ds, char* buf ) {
     if( err != 0 ) return SEGY_DS_READ_ERROR;
 
     /* successful and file was lsb - swap to present as msb */
-    return bswap_bin( buf, ds->lsb );
+    return bswap_bin( ds, buf );
 }
 
 int segy_write_binheader( segy_datasource* ds, const char* buf ) {
@@ -1448,7 +1424,7 @@ int segy_write_binheader( segy_datasource* ds, const char* buf ) {
 
     char swapped[ SEGY_BINARY_HEADER_SIZE ];
     memcpy( swapped, buf, SEGY_BINARY_HEADER_SIZE );
-    bswap_bin( swapped, ds->lsb );
+    bswap_bin( ds, swapped );
 
     int err = ds->seek( ds, SEGY_TEXT_HEADER_SIZE, SEEK_SET );
     if( err != 0 ) return SEGY_DS_SEEK_ERROR;

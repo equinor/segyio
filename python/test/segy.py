@@ -1013,8 +1013,16 @@ def test_write_header_update_atomic(small):
         assert header == f.header[10]
 
 
-def test_field_types_read():
-    with segyio.open(testdata / 'decrement.sgy', "r", ignore_geometry=True) as f:
+@pytest.mark.parametrize('endian', ['msb', 'lsb'])
+def test_field_types_read(endian):
+    if endian == 'lsb':
+        dname = testdata / 'decrement-lsb.sgy'
+        iname = testdata / 'increment-lsb.sgy'
+    else:
+        dname = testdata / 'decrement.sgy'
+        iname = testdata / 'increment.sgy'
+
+    with segyio.open(dname, "r", ignore_geometry=True, endian=endian) as f:
         bdec = f.bin
         tdec = f.header[3]
 
@@ -1029,7 +1037,7 @@ def test_field_types_read():
         assert tdec[TraceField.TRACE_SAMPLE_COUNT] == 65382
         assert tdec[TraceField.INLINE_3D] == 2147483355
 
-    with segyio.open(testdata / 'increment.sgy', "r", ignore_geometry=True) as f:
+    with segyio.open(iname, "r", ignore_geometry=True, endian=endian) as f:
         binc = f.bin
         tinc = f.header[3]
 
@@ -1046,10 +1054,15 @@ def test_field_types_read():
 
 
 @tmpfiles(testdata / 'small.sgy')
-def test_field_types_write(tmpdir):
-    updpath = tmpdir / 'small.sgy'
+@tmpfiles(testdata / 'small-lsb.sgy')
+@pytest.mark.parametrize('endian', ['msb', 'lsb'])
+def test_field_types_write(tmpdir, endian):
+    if endian == 'lsb':
+        updpath = tmpdir / 'small-lsb.sgy'
+    else:
+        updpath = tmpdir / 'small.sgy'
 
-    with segyio.open(updpath, ignore_geometry=True) as f:
+    with segyio.open(updpath, ignore_geometry=True, endian=endian) as f:
         orig_binh = f.bin
         orig_trh = f.header[0]
 
@@ -1068,12 +1081,12 @@ def test_field_types_write(tmpdir):
         TraceField.INLINE_3D: -2147483648,
     }
 
-    with segyio.open(updpath, mode='r+', ignore_geometry=True) as f:
+    with segyio.open(updpath, mode='r+', ignore_geometry=True, endian=endian) as f:
         f.bin.update(bupd)
         f.header[0].update(tupd)
         f.flush()
 
-    with segyio.open(updpath, ignore_geometry=True) as f:
+    with segyio.open(updpath, ignore_geometry=True, endian=endian) as f:
         binh = f.bin
         trh = f.header[0]
 
