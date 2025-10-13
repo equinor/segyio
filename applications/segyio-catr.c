@@ -699,29 +699,35 @@ int main( int argc, char** argv ) {
                 exit( errmsg( errno, "Unable to read trace header" ) );
 
             for( int j = 0; j < 92; j++ ) {
-                int f;
-                segy_get_tracefield_int( trheader, fields[j], &f );
+                int buf;
+                segy_get_tracefield_int( trheader, fields[j], &buf );
+
+                long long f = buf;
                 if( opts.nonzero && !f ) continue;
 
                 /*
                  * convert cannot-be-negative values to unsigned int, as mandated by SEGY-Y
                  * rev2
                  */
-                switch (f) {
+                switch (fields[j]) {
                     case SEGY_TR_SAMPLE_COUNT:
-                        f = (int)((uint16_t)f);
+                        f = (uint16_t)buf;
+                        break;
+                    case SEGY_TR_SEQ_LINE:
+                    case SEGY_TR_SEQ_FILE:
+                        f = (uint32_t)buf;
                         break;
                 }
 
                 if( opts.description ) {
-                    printf( "%s\t%d\t%d\t%s\n",
+                    printf( "%s\t%lld\t%d\t%s\n",
                             labels[j],
                             f,
                             fields[ j ],
                             desc[ j ] );
                 }
                 else
-                    printf( "%s\t%d\n", labels[j], f );
+                    printf( "%s\t%lld\n", labels[j], f );
             }
         }
     }

@@ -71,6 +71,8 @@ def main():
             segyio.BinField.SEGYRevisionMinor,
             segyio.BinField.FirstTraceOffset,
             segyio.BinField.NrTracesInStream,
+            segyio.TraceField.TRACE_SEQUENCE_LINE,
+            segyio.TraceField.TRACE_SEQUENCE_FILE,
             segyio.TraceField.TRACE_SAMPLE_COUNT
         ]
         if value_sign < 0:
