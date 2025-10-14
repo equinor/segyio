@@ -105,6 +105,8 @@ before-build = [
         --target install \
         --config Release \
     """,
+]
+before-test = [
     """pip uninstall -y numpy && python3 -m pip install --no-binary=:all: numpy""",
 ]
 
