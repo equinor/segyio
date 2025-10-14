@@ -894,6 +894,20 @@ int segy_read_stanza_data( segy_datasource* ds,
                            int stanza_headerno,
                            size_t stanza_data_size,
                            char* stanza_data );
+/*
+ * Parses Trace Header Layout xml into mappings structure and outputs the
+ * results into `mappings` and `mappings_length` parameters. Note:
+ * - function is not implemented in the library as it was not decided on the
+ *   proper approach yet. For the moment implementation must be provided by the
+ *   user.
+ * - Mappings memory is represented via double pointer and should be allocated
+ *   by the function if operation succeeded. It also would be caller's
+ *   responsibility to free it.
+ */
+extern int segy_parse_layout_xml( const char* xml,
+                                  size_t xml_size,
+                                  segy_header_mapping** mappings,
+                                  size_t* mappings_length );
 
 #ifdef __cplusplus
 }

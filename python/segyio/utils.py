@@ -1,5 +1,6 @@
 import warnings
 import numpy as np
+import xml.etree.ElementTree as ET
 
 def castarray(x, dtype):
         try:
@@ -131,3 +132,54 @@ class MemoryBufferDatasourceDescriptor():
             encoding=c_encoding(encoding),
         )
         return fd
+
+
+class TraceHeaderLayoutEntry:
+    def __init__(self, name, byte, type, requires_nonzero_value):
+        self.name = name
+        self.byte = int(byte)
+        self.type = type
+        self.requires_nonzero_value = bool(int(requires_nonzero_value))
+
+    def __repr__(self):
+        msg = "TraceHeaderLayoutEntry(name='{}', byte={}, type='{}', requires_nonzero_value={})"
+        return msg.format(self.name, self.byte, self.type, self.requires_nonzero_value)
+
+
+def parse_trace_headers_layout(xml):
+    """
+    Parse an XML string into a dict of header name: TraceHeaderLayoutEntry.
+    """
+    try:
+        xml = xml.strip()
+        root = ET.fromstring(xml)
+    except ET.ParseError as e:
+        raise ValueError("Invalid XML: {}".format(e))
+
+    if root.tag != 'segy-layout':
+        msg = "Root must be 'segy-layout', found '{}'"
+        raise ValueError(msg.format(root.tag))
+
+    headers = [root]
+    headers.extend([child for child in root if child.tag == 'extension'])
+
+    layout = {}
+
+    for header in headers:
+        if header.tag == 'segy-layout':
+            name = 'SEG00000'
+        else:
+            name = header.get('name')
+            if not name:
+                raise ValueError("Extension header is missing name attribute")
+        entries = [
+            TraceHeaderLayoutEntry(
+                child.get('name'),
+                child.get('byte'),
+                child.get('type'),
+                child.get('if-non-zero', '0')
+            ) for child in header if child.tag == 'entry'
+        ]
+        layout[name] = entries
+
+    return layout

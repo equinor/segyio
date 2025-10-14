@@ -473,6 +473,7 @@ struct segyfd {
     int elemsize;
 
     std::vector<stanza_header> stanzas;
+    std::vector<segy_header_mapping> traceheader_mappings;
 };
 
 namespace {
@@ -484,6 +485,9 @@ int overwrite_mapping( segy_datasource* ds, PyObject* py_iline, PyObject* py_xli
 /** Parse extended text headers, find out their number and determine the list of
  * stanza headers. Updates stanzas field. */
 int parse_extended_text_headers( segyfd* self );
+
+/** Frees segy_header_mapping names allocated on heap. */
+int free_header_mappings_names( segy_header_mapping* mappings, size_t mappings_length );
 
 } // namespace
 
@@ -2221,6 +2225,360 @@ int parse_extended_text_headers( segyfd* self ) {
     return SEGY_OK;
 }
 
+int free_header_mappings_names(
+    segy_header_mapping* mappings,
+    size_t mappings_length
+) {
+    if( !mappings ) return SEGY_OK;
+
+    for( size_t i = 0; i < mappings_length; ++i ) {
+        segy_header_mapping* mapping = &mappings[i];
+        for( int j = 0; j < SEGY_TRACE_HEADER_SIZE; ++j ) {
+            char*& name = mapping->offset_to_entry_definion[j].name;
+            if( name ) {
+                delete[] name;
+            }
+            name = nullptr;
+        }
+    }
+    return SEGY_OK;
+}
+
+struct NameMapEntry {
+    std::string spec_entry_name;
+    int segyio_entry_name;
+};
+
+struct TypeMapEntry {
+    std::string spec_entry_type;
+    SEGY_ENTRY_TYPE segyio_entry_type;
+};
+
+/** D8 names to SEGY names. Contains all the known names, not only the ones used
+ * internally in the library. scale6 type entries are not fully supported as we
+ * have separate names for mantissa and exponent parts of the type. */
+static const NameMapEntry standard_name_map[] = {
+    { "linetrc",     SEGY_TR_SEQ_LINE                },
+    { "reeltrc",     SEGY_TR_SEQ_FILE                },
+    { "ffid",        SEGY_TR_FIELD_RECORD            },
+    { "chan",        SEGY_TR_NUMBER_ORIG_FIELD       },
+    { "espnum",      SEGY_TR_ENERGY_SOURCE_POINT     },
+    { "cdp",         SEGY_TR_ENSEMBLE                },
+    { "cdptrc",      SEGY_TR_NUM_IN_ENSEMBLE         },
+    { "trctype",     SEGY_TR_TRACE_ID                },
+    { "vstack",      SEGY_TR_SUMMED_TRACES           },
+    { "fold",        SEGY_TR_STACKED_TRACES          },
+    { "rectype",     SEGY_TR_DATA_USE                },
+    { "offset",      SEGY_TR_OFFSET                  },
+    { "relev",       SEGY_TR_RECV_GROUP_ELEV         },
+    { "selev",       SEGY_TR_SOURCE_SURF_ELEV        },
+    { "sdepth",      SEGY_TR_SOURCE_DEPTH            },
+    { "rdatum",      SEGY_TR_RECV_DATUM_ELEV         },
+    { "sdatum",      SEGY_TR_SOURCE_DATUM_ELEV       },
+    { "wdepthso",    SEGY_TR_SOURCE_WATER_DEPTH      },
+    { "wdepthrc",    SEGY_TR_GROUP_WATER_DEPTH       },
+    { "ed_scal",     SEGY_TR_ELEV_SCALAR             },
+    { "co_scal",     SEGY_TR_SOURCE_GROUP_SCALAR     },
+    { "sht_x",       SEGY_TR_SOURCE_X                },
+    { "sht_y",       SEGY_TR_SOURCE_Y                },
+    { "rec_x",       SEGY_TR_GROUP_X                 },
+    { "rec_y",       SEGY_TR_GROUP_Y                 },
+    { "coorunit",    SEGY_TR_COORD_UNITS             },
+    { "wvel",        SEGY_TR_WEATHERING_VELO         },
+    { "subwvel",     SEGY_TR_SUBWEATHERING_VELO      },
+    { "shuphole",    SEGY_TR_SOURCE_UPHOLE_TIME      },
+    { "rcuphole",    SEGY_TR_GROUP_UPHOLE_TIME       },
+    { "shstat",      SEGY_TR_SOURCE_STATIC_CORR      },
+    { "rcstat",      SEGY_TR_GROUP_STATIC_CORR       },
+    { "stapply",     SEGY_TR_TOT_STATIC_APPLIED      },
+    { "lagtimea",    SEGY_TR_LAG_A                   },
+    { "lagtimeb",    SEGY_TR_LAG_B                   },
+    { "delay",       SEGY_TR_DELAY_REC_TIME          },
+    { "mutestrt",    SEGY_TR_MUTE_TIME_START         },
+    { "muteend",     SEGY_TR_MUTE_TIME_END           },
+    { "nsamps",      SEGY_TR_SAMPLE_COUNT            },
+    { "dt",          SEGY_TR_SAMPLE_INTER            },
+    { "gaintype",    SEGY_TR_GAIN_TYPE               },
+    { "ingconst",    SEGY_TR_INSTR_GAIN_CONST        },
+    { "initgain",    SEGY_TR_INSTR_INIT_GAIN         },
+    { "corrflag",    SEGY_TR_CORRELATED              },
+    { "sweepsrt",    SEGY_TR_SWEEP_FREQ_START        },
+    { "sweepend",    SEGY_TR_SWEEP_FREQ_END          },
+    { "sweeplng",    SEGY_TR_SWEEP_LENGTH            },
+    { "sweeptyp",    SEGY_TR_SWEEP_TYPE              },
+    { "sweepstp",    SEGY_TR_SWEEP_TAPERLEN_START    },
+    { "sweepetp",    SEGY_TR_SWEEP_TAPERLEN_END      },
+    { "tapertyp",    SEGY_TR_TAPER_TYPE              },
+    { "aliasfil",    SEGY_TR_ALIAS_FILT_FREQ         },
+    { "aliaslop",    SEGY_TR_ALIAS_FILT_SLOPE        },
+    { "notchfil",    SEGY_TR_NOTCH_FILT_FREQ         },
+    { "notchslp",    SEGY_TR_NOTCH_FILT_SLOPE        },
+    { "lowcut",      SEGY_TR_LOW_CUT_FREQ            },
+    { "highcut",     SEGY_TR_HIGH_CUT_FREQ           },
+    { "lowcslop",    SEGY_TR_LOW_CUT_SLOPE           },
+    { "hicslop",     SEGY_TR_HIGH_CUT_SLOPE          },
+    { "year",        SEGY_TR_YEAR_DATA_REC           },
+    { "day",         SEGY_TR_DAY_OF_YEAR             },
+    { "hour",        SEGY_TR_HOUR_OF_DAY             },
+    { "minute",      SEGY_TR_MIN_OF_HOUR             },
+    { "second",      SEGY_TR_SEC_OF_MIN              },
+    { "timebase",    SEGY_TR_TIME_BASE_CODE          },
+    { "trweight",    SEGY_TR_WEIGHTING_FAC           },
+    { "rstaswp1",    SEGY_TR_GEOPHONE_GROUP_ROLL1    },
+    { "rstatrc1",    SEGY_TR_GEOPHONE_GROUP_FIRST    },
+    { "rstatrcn",    SEGY_TR_GEOPHONE_GROUP_LAST     },
+    { "gapsize",     SEGY_TR_GAP_SIZE                },
+    { "overtrvl",    SEGY_TR_OVER_TRAVEL             },
+    { "cdp_x",       SEGY_TR_CDP_X                   },
+    { "cdp_y",       SEGY_TR_CDP_Y                   },
+    { "iline",       SEGY_TR_INLINE                  },
+    { "xline",       SEGY_TR_CROSSLINE               },
+    { "sp",          SEGY_TR_SHOT_POINT              },
+    { "sp_scal",     SEGY_TR_SHOT_POINT_SCALAR       },
+    { "samp_unit",   SEGY_TR_MEASURE_UNIT            },
+    { "trans_const", SEGY_TR_TRANSDUCTION_MANT       }, // and SEGY_TR_TRANSDUCTION_EXP
+    { "trans_unit",  SEGY_TR_TRANSDUCTION_UNIT       },
+    { "dev_id",      SEGY_TR_DEVICE_ID               },
+    { "tm_scal",     SEGY_TR_SCALAR_TRACE_HEADER     },
+    { "src_type",    SEGY_TR_SOURCE_TYPE             },
+    { "src_dir1",    SEGY_TR_SOURCE_ENERGY_DIR_VERT  },
+    { "src_dir2",    SEGY_TR_SOURCE_ENERGY_DIR_XLINE },
+    { "src_dir3",    SEGY_TR_SOURCE_ENERGY_DIR_ILINE },
+    { "smeasure",    SEGY_TR_SOURCE_MEASURE_MANT     }, // and SEGY_TR_SOURCE_MEASURE_EXP
+    { "sm_unit",     SEGY_TR_SOURCE_MEASURE_UNIT     },
+};
+
+/** D8 entry type names to SEGY entry type names. scale6 type is not fully
+ * supported as we have separate types for mantissa and exponent. */
+static const TypeMapEntry entry_type_map[] = {
+    { "int2",     SEGY_ENTRY_TYPE_INT2        },
+    { "int4",     SEGY_ENTRY_TYPE_INT4        },
+    { "int8",     SEGY_ENTRY_TYPE_INT8        },
+    { "uint2",    SEGY_ENTRY_TYPE_UINT2       },
+    { "uint4",    SEGY_ENTRY_TYPE_UINT4       },
+    { "uint8",    SEGY_ENTRY_TYPE_UINT8       },
+    { "ibmfp",    SEGY_ENTRY_TYPE_IBMFP       },
+    { "ieee32",   SEGY_ENTRY_TYPE_IEEE32      },
+    { "ieee64",   SEGY_ENTRY_TYPE_IEEE64      },
+    { "linetrc",  SEGY_ENTRY_TYPE_LINETRC     },
+    { "reeltrc",  SEGY_ENTRY_TYPE_REELTRC     },
+    { "linetrc8", SEGY_ENTRY_TYPE_LINETRC8    },
+    { "reeltrc8", SEGY_ENTRY_TYPE_REELTRC8    },
+    { "coor4",    SEGY_ENTRY_TYPE_COOR4       },
+    { "elev4",    SEGY_ENTRY_TYPE_ELEV4       },
+    { "time2",    SEGY_ENTRY_TYPE_TIME2       },
+    { "spnum4",   SEGY_ENTRY_TYPE_SPNUM4      },
+    { "scale6",   SEGY_ENTRY_TYPE_SCALE6_MANT },
+};
+
+int set_mapping_name_to_offset(
+    segy_header_mapping* mapping,
+    std::string spec_entry_name,
+    int byte
+) {
+    NameMapEntry* entry_name_map;
+    size_t entry_name_map_size;
+    const char* header_name = mapping->name;
+
+    if( strncmp( header_name, "SEG00000", 8 ) == 0 ) {
+        entry_name_map = const_cast<NameMapEntry*>( standard_name_map );
+        entry_name_map_size = sizeof( standard_name_map ) / sizeof( standard_name_map[0] );
+    } else {
+        // no name maps for proprietary headers
+        entry_name_map = nullptr;
+        entry_name_map_size = 0;
+    }
+
+    int entry_name = -1;
+    for( size_t i = 0; i < entry_name_map_size; ++i ) {
+        if( spec_entry_name == entry_name_map[i].spec_entry_name ) {
+            entry_name = entry_name_map[i].segyio_entry_name;
+            break;
+        }
+    }
+    if( entry_name >= 0 ) {
+        mapping->name_to_offset[entry_name] = byte;
+    }
+
+    return SEGY_OK;
+}
+
+int set_mapping_offset_to_entry_defintion(
+    segy_header_mapping* mapping,
+    std::string spec_entry_name,
+    int byte,
+    std::string spec_entry_type,
+    bool requires_nonzero_value
+) {
+    size_t entry_type_map_size = sizeof( entry_type_map ) / sizeof( entry_type_map[0] );
+
+    char* spec_entry_name_heap = new char[spec_entry_name.size() + 1];
+    if( !spec_entry_name_heap ) return SEGY_MEMORY_ERROR;
+    std::strcpy( spec_entry_name_heap, spec_entry_name.c_str() );
+
+    SEGY_ENTRY_TYPE entry_type = SEGY_ENTRY_TYPE_UNDEFINED;
+    for( size_t i = 0; i < entry_type_map_size; ++i ) {
+        if( spec_entry_type == entry_type_map[i].spec_entry_type ) {
+            entry_type = entry_type_map[i].segyio_entry_type;
+            break;
+        }
+    }
+    if( entry_type == SEGY_ENTRY_TYPE_UNDEFINED ) return SEGY_INVALID_ARGS;
+
+    segy_entry_definition def = {
+        entry_type,
+        requires_nonzero_value,
+        spec_entry_name_heap
+    };
+    mapping->offset_to_entry_definion[byte - 1] = def;
+    return SEGY_OK;
+}
+
+int parse_py_TraceHeaderLayoutEntry_list( PyObject* entries, segy_header_mapping* mapping ) {
+    Py_ssize_t entries_length = PyList_Size( entries );
+    for( Py_ssize_t i = 0; i < entries_length; ++i ) {
+        PyObject* entry = PyList_GetItem( entries, i );
+        if( !entry ) return SEGY_INVALID_ARGS;
+
+        PyObject* name_obj = PyObject_GetAttrString( entry, "name" );
+        PyObject* byte_obj = PyObject_GetAttrString( entry, "byte" );
+        PyObject* type_obj = PyObject_GetAttrString( entry, "type" );
+        PyObject* zero_obj = PyObject_GetAttrString( entry, "requires_nonzero_value" );
+        if( !name_obj || !byte_obj || !type_obj || !zero_obj ) {
+            Py_XDECREF( name_obj );
+            Py_XDECREF( byte_obj );
+            Py_XDECREF( type_obj );
+            Py_XDECREF( zero_obj );
+            return SEGY_INVALID_ARGS;
+        }
+        std::string spec_entry_name( PyUnicode_AsUTF8( name_obj ) );
+        int byte = (int)PyLong_AsLong( byte_obj );
+        std::string spec_entry_type( PyUnicode_AsUTF8( type_obj ) );
+        bool requires_nonzero_value = PyObject_IsTrue( zero_obj );
+
+        Py_DECREF( name_obj );
+        Py_DECREF( byte_obj );
+        Py_DECREF( type_obj );
+        Py_DECREF( zero_obj );
+
+        if( byte < 1 || byte > SEGY_TRACE_HEADER_SIZE ) {
+            return SEGY_INVALID_ARGS;
+        }
+
+        int err = set_mapping_name_to_offset(
+            mapping, spec_entry_name, byte
+        );
+        if( err != SEGY_OK ) return err;
+
+        err = set_mapping_offset_to_entry_defintion(
+            mapping, spec_entry_name, byte, spec_entry_type, requires_nonzero_value
+        );
+        if( err != SEGY_OK ) return err;
+    }
+    return SEGY_OK;
+}
+
+int parse_py_traceheader_layout_dict(
+    PyObject* headers,
+    segy_header_mapping* mappings
+) {
+    PyObject *py_header_name, *py_header_entities;
+    Py_ssize_t pos = 0; // must be intialized to 0 per PyDict_Next docs
+
+    while( PyDict_Next( headers, &pos, &py_header_name, &py_header_entities ) ) {
+        if( !py_header_entities || !PyList_Check( py_header_entities ) ) {
+            return SEGY_INVALID_ARGS;
+        }
+        segy_header_mapping mapping = {};
+
+        Py_ssize_t header_size;
+        const char* header_name = PyUnicode_AsUTF8AndSize( py_header_name, &header_size );
+        if( !header_name || header_size > 8 ) {
+            return SEGY_INVALID_ARGS;
+        }
+        strncpy( mapping.name, header_name, 8 );
+
+        int err = parse_py_TraceHeaderLayoutEntry_list( py_header_entities, &mapping );
+        if( err != SEGY_OK ) return err;
+
+        mappings[pos - 1] = mapping;
+    }
+    return SEGY_OK;
+}
+
+extern "C" int segy_parse_layout_xml(
+    const char* xml,
+    size_t xml_size,
+    segy_header_mapping** mappings,
+    size_t* mappings_length
+) {
+
+    PyObject* module = PyImport_ImportModule( "segyio.utils" );
+    if( !module ) {
+        PyErr_Print();
+        return SEGY_NOTFOUND;
+    }
+
+    PyObject* parse_func = PyObject_GetAttrString( module, "parse_trace_headers_layout" );
+    if( !parse_func || !PyCallable_Check( parse_func ) ) {
+        PyErr_Print();
+        Py_DECREF( module );
+        return SEGY_NOTFOUND;
+    }
+
+    PyObject* py_xml = PyUnicode_FromStringAndSize( xml, xml_size );
+    if( !py_xml ) {
+        PyErr_Print();
+        Py_DECREF( parse_func );
+        Py_DECREF( module );
+        return SEGY_INVALID_ARGS;
+    }
+    PyObject* args = PyTuple_Pack( 1, py_xml );
+    if( !args ) {
+        PyErr_Print();
+        Py_DECREF( py_xml );
+        Py_DECREF( parse_func );
+        Py_DECREF( module );
+        return SEGY_INVALID_ARGS;
+    }
+
+    PyObject* headers = PyObject_CallObject( parse_func, args );
+
+    Py_DECREF( args );
+    Py_DECREF( py_xml );
+    Py_DECREF( parse_func );
+    Py_DECREF( module );
+
+    if( !headers || !PyDict_Check( headers ) ) {
+        if( PyErr_Occurred() ) {
+            PyErr_Print();
+        }
+        Py_XDECREF( headers );
+        return SEGY_INVALID_ARGS;
+    }
+
+    Py_ssize_t headers_number = PyDict_Size( headers );
+    *mappings_length = static_cast<size_t>( headers_number );
+    *mappings = new segy_header_mapping[*mappings_length]();
+    if( !*mappings ) {
+        return SEGY_MEMORY_ERROR;
+    }
+
+    const int err = parse_py_traceheader_layout_dict( headers, *mappings );
+    Py_DECREF( headers );
+    if( err != SEGY_OK ) {
+        if( *mappings ) {
+            free_header_mappings_names( *mappings, *mappings_length );
+            delete[] *mappings;
+        }
+        if( PyErr_Occurred() ) {
+            PyErr_Print();
+        }
+        return err;
+    }
+
+    return SEGY_OK;
+}
 } // namespace
 }
 
