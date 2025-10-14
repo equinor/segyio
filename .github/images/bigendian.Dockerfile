@@ -13,6 +13,6 @@ RUN /segyio/pyvenv/bin/python -m pip install --upgrade pip
 RUN /segyio/pyvenv/bin/python -m pip install -r python/requirements-dev.txt
 
 WORKDIR /segyio/build
-RUN cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Debug -DPYTHON_EXECUTABLE="/segyio/pyvenv/bin/python" ..
+RUN cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Debug -DPython_ROOT_DIR="/segyio/pyvenv/" ..
 RUN make -j4
 RUN ctest --verbose
