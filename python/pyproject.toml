@@ -117,6 +117,9 @@ test-requires = "pytest"
 test-command = [ "cd python", "pytest test" ]
 test-sources = [ "python/test", "python/pyproject.toml", "test-data" ]
 
+[tool.cibuildwheel.linux]
+manylinux-x86_64-image = "manylinux2014"
+
 [tool.cibuildwheel.macos]
 before-build = [
     """sudo cmake \
