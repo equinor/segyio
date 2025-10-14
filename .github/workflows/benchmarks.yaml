@@ -46,8 +46,6 @@ jobs:
       # using the "test-sources" feature in pyproject.toml
       - name: Update cibuildwheel for new commit
         run: |
-          #pip uninstall -y numpy
-          #python3 -m pip install --no-binary=:all: numpy
           python3 -m pip install --upgrade cibuildwheel
 
       - name: Benchmark current commit and compare

@@ -106,9 +106,6 @@ before-build = [
         --config Release \
     """,
 ]
-before-test = [
-    """pip uninstall -y numpy && python3 -m pip install --no-binary=:all: numpy""",
-]
 
 test-requires = "pytest"
 
@@ -119,6 +116,9 @@ test-requires = "pytest"
 # If not for powershell on windows we could simply run 'pytest test/*.py'.
 test-command = [ "cd python", "pytest test" ]
 test-sources = [ "python/test", "python/pyproject.toml", "test-data" ]
+
+[tool.cibuildwheel.linux]
+manylinux-x86_64-image = "manylinux2014"
 
 [tool.cibuildwheel.macos]
 before-build = [
