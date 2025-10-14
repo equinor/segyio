@@ -2861,7 +2861,7 @@ int segy_read_ext_textheader( segy_datasource* ds, int pos, char *buf) {
     err = ds->read( ds, buf, SEGY_TEXT_HEADER_SIZE );
     if( err != 0 ) return SEGY_DS_READ_ERROR;
 
-    if( ds->encoding == SEGY_EBCDIC ) {
+    if( pos == -1 && ds->encoding == SEGY_EBCDIC ) {
         encode( buf, buf, e2a, SEGY_TEXT_HEADER_SIZE );
     }
 
@@ -2876,7 +2876,7 @@ int segy_write_textheader( segy_datasource* ds, int pos, const char* buf ) {
 
     if( pos < 0 ) return SEGY_INVALID_ARGS;
 
-    if( ds->encoding == SEGY_EBCDIC ) {
+    if( pos == 0 && ds->encoding == SEGY_EBCDIC ) {
         encode( mbuf, buf, a2e, SEGY_TEXT_HEADER_SIZE );
     } else {
         memcpy( mbuf, buf, SEGY_TEXT_HEADER_SIZE );
