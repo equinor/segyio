@@ -507,6 +507,12 @@ int set_traceheader_mappings(
  * SEGY_OK both when data was successfully extracted or not found. */
 int extract_layout_stanza( segyfd* self, std::vector<char>& layout_stanza_data );
 
+/**
+ * Returns the dictionary {header_name: [TraceHeaderLayoutEntry] of traceheader
+ * mappings.}
+ */
+PyObject* traceheader_layout( segyfd* self );
+
 } // namespace
 
 namespace fd {
@@ -1812,6 +1818,8 @@ PyMethodDef methods [] = {
 
     { "stanza_names", (PyCFunction) fd::stanza_names, METH_NOARGS, "Stanza names in order." },
 
+    { "traceheader_layout", (PyCFunction) traceheader_layout, METH_VARARGS, "Layout of all traceheaders." },
+
     { NULL }
 };
 #ifdef IS_GCC
@@ -2770,6 +2778,127 @@ extern "C" int segy_parse_layout_xml(
     }
 
     return SEGY_OK;
+}
+
+int entry_defintion_to_py_TraceHeaderLayoutEntry(
+    PyObject* entries,
+    int offset,
+    const segy_entry_definition& def,
+    PyObject* entry_class
+) {
+    size_t entry_type_map_size = sizeof( entry_type_map ) / sizeof( entry_type_map[0] );
+
+    std::string entry_type;
+    for( size_t i = 0; i < entry_type_map_size; ++i ) {
+        if( def.entry_type == entry_type_map[i].segyio_entry_type ) {
+            entry_type = entry_type_map[i].spec_entry_type;
+            break;
+        }
+    }
+
+    char* name = NULL;
+    if( def.name != NULL ) {
+        name = def.name;
+    }
+
+    PyObject* args = Py_BuildValue(
+        "sisi",
+        name,
+        offset,
+        entry_type.c_str(),
+        def.requires_nonzero_value
+    );
+    if( !args ) {
+        return SEGY_INVALID_ARGS;
+    }
+
+    PyObject* entry = PyObject_CallObject( entry_class, args );
+    Py_DECREF( args );
+
+    if( !entry ) {
+        return SEGY_INVALID_ARGS;
+    }
+    PyList_Append( entries, entry );
+    Py_DECREF( entry );
+    return SEGY_OK;
+}
+
+int mapping_to_py_TraceHeaderLayout(
+    PyObject* layout_dict,
+    const segy_header_mapping& mapping,
+    PyObject* layout_class,
+    PyObject* entry_class
+) {
+    PyObject* header_name = PyUnicode_FromStringAndSize( mapping.name, strnlen( mapping.name, 8 ) );
+    if( !header_name ) return SEGY_INVALID_ARGS;
+
+    PyObject* entries = PyList_New( 0 );
+    if( !entries ) {
+        Py_DECREF( header_name );
+        return SEGY_INVALID_ARGS;
+    }
+
+    for( int i = 0; i < SEGY_TRACE_HEADER_SIZE; ++i ) {
+        const segy_entry_definition& def = mapping.offset_to_entry_definition[i];
+        if( def.entry_type == SEGY_ENTRY_TYPE_UNDEFINED ) continue;
+
+        int err = entry_defintion_to_py_TraceHeaderLayoutEntry( entries, i + 1, def, entry_class );
+        if( err != SEGY_OK ) {
+            Py_DECREF( header_name );
+            Py_DECREF( entries );
+            return err;
+        }
+    }
+
+    PyObject* trace_header_layout = PyObject_CallFunctionObjArgs( layout_class, entries, NULL );
+    if( !trace_header_layout ) {
+        Py_DECREF( header_name );
+        Py_DECREF( entries );
+        return SEGY_INVALID_ARGS;
+    }
+
+    PyDict_SetItem( layout_dict, header_name, trace_header_layout );
+    Py_DECREF( header_name );
+    Py_DECREF( entries );
+    Py_DECREF( trace_header_layout );
+
+    return SEGY_OK;
+}
+
+PyObject* traceheader_layout( segyfd* self ) {
+    PyObject* module = PyImport_ImportModule( "segyio.utils" );
+    if( !module ) {
+        return NULL;
+    }
+
+    PyObject* entry_class = PyObject_GetAttrString( module, "TraceHeaderLayoutEntry" );
+    PyObject* layout_class = PyObject_GetAttrString( module, "TraceHeaderLayout" );
+
+    Py_DECREF( module );
+    if( !entry_class || !layout_class ) {
+        return NULL;
+    }
+
+    if( !PyCallable_Check( entry_class ) || !PyCallable_Check( layout_class ) ) {
+        return NULL;
+    }
+
+    PyObject* layout_dict = PyDict_New();
+    if( !layout_dict ) return NULL;
+
+    for( const auto& mapping : self->traceheader_mappings ) {
+        int err = mapping_to_py_TraceHeaderLayout( layout_dict, mapping, layout_class, entry_class );
+        if( err != SEGY_OK ) {
+            Py_DECREF( layout_class );
+            Py_DECREF( entry_class );
+            Py_DECREF( layout_dict );
+            return NULL;
+        }
+    }
+
+    Py_DECREF( layout_class );
+    Py_DECREF( entry_class );
+    return layout_dict;
 }
 
 int extract_layout_stanza(

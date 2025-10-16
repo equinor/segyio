@@ -146,6 +146,25 @@ class TraceHeaderLayoutEntry:
         return msg.format(self.name, self.byte, self.type, self.requires_nonzero_value)
 
 
+class TraceHeaderLayout:
+    def __init__(self, entries):
+        self.entries = list(entries)
+        self.by_byte = {entry.byte: entry for entry in self.entries}
+        self.by_name = {entry.name: entry for entry in self.entries}
+
+    def get_by_byte(self, byte):
+        return self.by_byte.get(byte)
+
+    def get_by_name(self, name):
+        return self.by_name.get(name)
+
+    def __iter__(self):
+        return iter(self.entries)
+
+    def __len__(self):
+        return len(self.entries)
+
+
 def parse_trace_headers_layout(xml):
     """
     Parse an XML string into a dict of header name: TraceHeaderLayoutEntry.
