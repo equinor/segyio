@@ -2113,7 +2113,7 @@ TEST_CASE( "segy_get_field reads values correctly", "[c.segy]" ) {
             header, segy_traceheader_default_map(), SEGY_TR_TRACE_ID, &read_value
         );
         CHECK( success( err ) );
-        CHECK( read_value.datatype == SEGY_SIGNED_SHORT_2_BYTE );
+        CHECK( read_value.entry_type == SEGY_ENTRY_TYPE_INT2 );
         CHECK( read_value.value.i16 == value );
     }
 
@@ -2126,7 +2126,7 @@ TEST_CASE( "segy_get_field reads values correctly", "[c.segy]" ) {
             header, SEGY_BIN_SORTING_CODE, &read_value
         );
         CHECK( success( err ) );
-        CHECK( read_value.datatype == SEGY_SIGNED_SHORT_2_BYTE );
+        CHECK( read_value.entry_type == SEGY_ENTRY_TYPE_INT2 );
         CHECK( read_value.value.i16 == value );
     }
 }
@@ -2137,7 +2137,7 @@ TEST_CASE( "segy_set_field write values correctly", "[c.segy]" ) {
     int16_t value = GENERATE( 0, 1, -1, 0x0102, 0x0201, -32767, -32766 );
 
     segy_field_data fd;
-    fd.datatype = SEGY_SIGNED_SHORT_2_BYTE;
+    fd.entry_type = SEGY_ENTRY_TYPE_INT2;
     fd.value.i16 = value;
 
     SECTION( "test set trace field, edge cases int16" ) {
@@ -2178,7 +2178,7 @@ TEST_CASE( "segy_get/set_bin/tracefield errors", "[c.segy]" ) {
     SECTION( "test mismatched type for segy_set_tracefield" ) {
         segy_field_data fd;
         fd.value.i16 = 42;
-        fd.datatype = SEGY_SIGNED_INTEGER_4_BYTE;
+        fd.entry_type = SEGY_ENTRY_TYPE_INT4;
         Err err = segy_set_tracefield(
             header, segy_traceheader_default_map(), SEGY_TR_TRACE_ID, fd
         );

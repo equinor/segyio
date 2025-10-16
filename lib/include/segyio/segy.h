@@ -253,12 +253,16 @@ typedef enum {
 typedef struct {
     SEGY_ENTRY_TYPE entry_type;
     bool requires_nonzero_value; //use only if field value is not zero
+    char* name; //NULL-terminated
 } segy_entry_definition;
 
 typedef struct {
     char name[8]; //not NULL-terminated
+
+    // SEGY_FIELD to offset (SEG-Y Standard names segyio is aware of)
     uint8_t name_to_offset[SEGY_TRACE_HEADER_SIZE];
-    segy_entry_definition offset_to_entry_definion[SEGY_TRACE_HEADER_SIZE];
+
+    segy_entry_definition offset_to_entry_definition[SEGY_TRACE_HEADER_SIZE];
 } segy_header_mapping;
 
 /*
@@ -370,7 +374,7 @@ typedef union {
 
 typedef struct {
     segy_field_value value;
-    uint8_t datatype;
+    uint8_t entry_type;
 } segy_field_data;
 
 
@@ -868,6 +872,42 @@ int segy_inline_stride( int sorting,
 int segy_crossline_stride( int sorting,
                            int crossline_count,
                            int* stride );
+
+
+/*
+ * Retrieves stanza name and encoding from stanza header headerno (0-based
+ * starting from first extended text header). Memory is allocated for stanza
+ * name and must be freed by the caller.
+ */
+int segy_read_stanza_header( segy_datasource* ds,
+                             int headerno,
+                             char** stanza_name,
+                             size_t* stanza_name_length );
+
+/*
+ * Reads stanza data (without the name) from starting extended header
+ * `stanza_headerno` (0-based starting from first extended text header). Memory
+ * of stanza_data_size is expected to be already allocated under stanza_data.
+ */
+int segy_read_stanza_data( segy_datasource* ds,
+                           size_t stanza_header_length,
+                           int stanza_headerno,
+                           size_t stanza_data_size,
+                           char* stanza_data );
+/*
+ * Parses Trace Header Layout xml into mappings structure and outputs the
+ * results into `mappings` and `mappings_length` parameters. Note:
+ * - function is not implemented in the library as it was not decided on the
+ *   proper approach yet. For the moment implementation must be provided by the
+ *   user.
+ * - Mappings memory is represented via double pointer and should be allocated
+ *   by the function if operation succeeded. It also would be caller's
+ *   responsibility to free it.
+ */
+extern int segy_parse_layout_xml( const char* xml,
+                                  size_t xml_size,
+                                  segy_header_mapping** mappings,
+                                  size_t* mappings_length );
 
 #ifdef __cplusplus
 }

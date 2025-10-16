@@ -648,3 +648,33 @@ def test_memory_buffer_memory_management_on_uncaught_error():
     _ = [numpy.zeros(2500, dtype=numpy.single) for _ in range(100)]
 
     fd.putbin("Causing 'buffer too small' error")
+
+
+def test_stanza_names():
+    filename = str(testdata / 'small.sgy')
+    f = segyfile(filename, "r", 0).segyopen()
+    assert f.stanza_names() == []
+    f.close()
+
+    filename = str(testdata / 'multi-text.sgy')
+    f = segyfile(filename, "r", 0).segyopen()
+    assert f.stanza_names() == ['']
+    f.close()
+
+    filename = str(testdata / 'stanzas-known-count.sgy')
+    f = segyfile(filename, "r", 0)
+    f.mmap()
+    f.segyopen()
+    assert f.stanza_names() == [
+        'SEGYIO:TEST ASCII  DATA WITH CONTENTTYPE AND BYTES: application/vnd.openxmlformats-officedocument.wordprocessingml.document.glossary+xml:666',
+        'SEGYIO:Test EBCDIC data',
+        'SEGYIO: test ASCII data'
+    ]
+    f.close()
+
+    filename = str(testdata / 'stanzas-unknown-count.sgy')
+    f = segyfile(filename, "r", 0).segyopen()
+    assert f.stanza_names() == ['segyio: test ()(test1) ', '  seg: endTEXt  ']
+    assert f.gettext(1).strip() == bytes("((segyio: test ()(test1) ))first part", "ascii")
+    assert f.gettext(2).strip() == bytes("second part", "ascii")
+    f.close()

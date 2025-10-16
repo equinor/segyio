@@ -2193,3 +2193,24 @@ def test_groups_gather_equivalence():
 def test_delay_scalar_applied():
     with segyio.open(testdata / 'delay-scalar.sgy') as f:
         assert f.samples[0] == 1000
+
+
+def test_open_with_custom_mapping():
+    parse_error = "error parsing trace header mappings"
+    with pytest.raises(ValueError, match=parse_error):
+        segyio.open(testdata / 'mapping-unparsable.sgy')
+
+    with pytest.raises(ValueError, match=parse_error):
+        segyio.open(testdata / 'mapping-invalid-root.sgy')
+
+    with pytest.raises(ValueError, match=parse_error):
+        segyio.open(testdata / 'mapping-invalid-attribute.sgy')
+
+    with pytest.raises(ValueError, match=parse_error):
+        segyio.open(testdata / 'mapping-invalid-value.sgy')
+
+    with segyio.open(testdata / 'mapping-default.sgy') as f:
+        pass
+
+    with segyio.open(testdata / 'mapping-multiple-stanzas.sgy') as f:
+        pass

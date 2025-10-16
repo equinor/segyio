@@ -166,7 +166,8 @@ int main( int argc, char** argv ){
             bool value_is_zero = false;
             char value_str[40]; // should be enough for all strings
 
-            switch( fd.datatype ) {
+            uint8_t datatype = segy_entry_type_to_datatype( fd.entry_type );
+            switch( datatype ) {
                 case SEGY_UNSIGNED_INTEGER_8_BYTE: {
                     u64_to_buf( value_str, sizeof( value_str ), fd.value.u64 );
                 } break;

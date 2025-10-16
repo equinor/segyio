@@ -25,6 +25,8 @@ Due to changes in the scripts after the files were originally created, reproduci
 | small-lsb.sgy                  | small.sgy converted to little endian                                        | ./flip-endianness --samples 50 small.sgy small-ps.sgy |                                            |
 | small-ps.sgy                   | Pre-stack file with 2 offsets.                                              | python make-ps-file.py small-ps.sgy  10 1 5 1 4 1 3   |                                            |
 | small.sgy                      | Inline-sorted file with 50 samples, 5 inlines-xlines test file.             | make-file.py small.sgy 50 1 6 20 25                   | Basic file used in testing                 |
+| stanzas-known-count.sgy        | Contains 3 extended text headers. Count is given in the binary header.      | manual                                                |                                            |
+| stanzas-unknown-count.sgy      | Contains 3 extended text headers. Count is unknown, EndText is present.     | manual                                                | 1st and 2nd header belong to same stanza.  |
 | text-embed-null.sgy            | small.sgy but with one byte in text header exchanged with 00                |                                                       |                                            |
 | text.sgy                       | File with unique textual file header.                                       |                                                       | no traces                                  |
 | tiny.sgy                       | Inline-sorted file with 4 samples, 3 inlines, 2 xlines.                     | make-file.py small.sgy 4 1 4 20 22                    |                                            |
@@ -82,3 +84,18 @@ Dimensions are mentioned in the order from slowest to fastest changing.
 Files in the `multiformat` directory.
 
 `f3.sgy` converted to multiple formats, both big/little endian. Creations methods vary/unknown.
+
+## Mapping
+
+Files for testing SEGY-Y Rev 2.1 D8 functionality.
+Files are created manually.
+
+| File                           | Purpose                                                       |
+|--------------------------------|---------------------------------------------------------------|
+| mapping-default.sgy            | XML corresponds exactly to the default SEG-Y rev 2.1 mapping. |
+| mapping-invalid-attribute.sgy  | Last entry does not have 'byte' attribute.                    |
+| mapping-invalid-root.sgy       | Root does not define standard header layout.                  |
+| mapping-invalid-value.sgy      | Last standard header entry byte is out of range.              |
+| mapping-multiple-stanzas.sgy   | Other stanzas are present before and after layout stanza.     |
+| mapping-unparsable.sgy         | XML is unparsable.                                            |
+
