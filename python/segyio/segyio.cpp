@@ -2327,32 +2327,33 @@ static const TypeMapEntry entry_type_map[] = {
 };
 
 
-int overwrite_inline_xline(
+int overwrite_field_offset(
     segy_header_mapping& mapping,
-    PyObject* py_iline,
-    PyObject* py_xline
+    uint8_t segyio_field_name,
+    const char* spec_entry_name,
+    SEGY_ENTRY_TYPE entry_type,
+    PyObject* py_entry_byte
 ) {
-    if( py_iline != Py_None ) {
-        long iline = PyLong_AsUnsignedLong( py_iline );
-        if( PyErr_Occurred() || iline < 1 || iline > SEGY_TRACE_HEADER_SIZE ) {
-            ValueError( "Custom iline offset out of range" );
-            return SEGY_INVALID_ARGS;
-        }
-        uint8_t il = static_cast<uint8_t>( iline );
-        mapping.name_to_offset[SEGY_TR_INLINE] = il;
-        mapping.offset_to_entry_definition[il - 1] = { SEGY_ENTRY_TYPE_INT4, false, NULL };
-    }
+    if( py_entry_byte == Py_None ) return SEGY_OK;
 
-    if( py_xline != Py_None ) {
-        long xline = PyLong_AsUnsignedLong( py_xline );
-        if( PyErr_Occurred() || xline < 1 || xline > SEGY_TRACE_HEADER_SIZE ) {
-            ValueError( "Custom xline offset out of range" );
-            return SEGY_INVALID_ARGS;
-        }
-        uint8_t xl = static_cast<uint8_t>( xline );
-        mapping.name_to_offset[SEGY_TR_CROSSLINE] = xl;
-        mapping.offset_to_entry_definition[xl - 1] = { SEGY_ENTRY_TYPE_INT4, false, NULL };
+    unsigned long long raw_entry_byte = PyLong_AsUnsignedLongLong( py_entry_byte );
+    if( PyErr_Occurred() || raw_entry_byte < 1 || raw_entry_byte > SEGY_TRACE_HEADER_SIZE ) {
+        ValueError( "Custom field offset %llu out of range: ", raw_entry_byte );
+        return SEGY_INVALID_ARGS;
     }
+    uint8_t entry_byte = static_cast<uint8_t>( raw_entry_byte );
+    mapping.name_to_offset[segyio_field_name] = entry_byte;
+
+    segy_entry_definition& def = mapping.offset_to_entry_definition[entry_byte - 1];
+    def.entry_type = entry_type;
+    def.requires_nonzero_value = false;
+
+    if( def.name ) {
+        delete[] def.name;
+    }
+    def.name = new char[6];
+    std::strcpy( def.name, spec_entry_name );
+
     return SEGY_OK;
 }
 
@@ -2363,9 +2364,31 @@ int initialize_traceheader_mappings(
     segy_datasource* ds = self->ds;
 
     if( layout_stanza_data.empty() ) {
-        self->traceheader_mappings.insert(
-            self->traceheader_mappings.begin(), ds->traceheader_mapping_standard
-        );
+        segy_header_mapping mapping = ds->traceheader_mapping_standard;
+
+        /* Entry names provided by xml are of unknown length, so we must
+         * allocate them on heap and delete them afterwards. Default C maps have
+         * their names set to NULL. If we provided default names for entries
+         * inside of the C code, then:
+         * - we can't allocate them on heap statically, so there has to be a
+         *   separate function doing the job and user would have to deallocate
+         *   appropriately. This is complex and doesn't solve much.
+         * - if we allocated them as static strings, then we would have to
+         *   somehow keep track where strings were allocated to know if they
+         *   should be freed or not.
+         *
+         * So we allocate names only here, in C++, where we know they always
+         * will be freed.
+         **/
+        for( const auto& entry : standard_name_map ) {
+            int offset = mapping.name_to_offset[entry.segyio_entry_name];
+            if( offset != 0 ) {
+                char* name = new char[entry.spec_entry_name.size() + 1];
+                std::strcpy( name, entry.spec_entry_name.c_str() );
+                mapping.offset_to_entry_definition[offset - 1].name = name;
+            }
+        }
+        self->traceheader_mappings.insert( self->traceheader_mappings.begin(), mapping );
         return SEGY_OK;
     }
 
@@ -2415,7 +2438,15 @@ int set_traceheader_mappings(
         return err;
     }
 
-    err = overwrite_inline_xline( self->traceheader_mappings[0], py_iline, py_xline );
+    segy_header_mapping& mapping = self->traceheader_mappings[0];
+    err = overwrite_field_offset(
+        mapping, SEGY_TR_INLINE, "iline", SEGY_ENTRY_TYPE_INT4, py_iline
+    );
+    if( err != SEGY_OK ) return err;
+
+    err = overwrite_field_offset(
+        mapping, SEGY_TR_CROSSLINE, "xline", SEGY_ENTRY_TYPE_INT4, py_xline
+    );
     if( err != SEGY_OK ) return err;
 
     segy_datasource* ds = self->ds;
