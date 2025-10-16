@@ -2379,7 +2379,16 @@ int overwrite_inline_xline(
         }
         uint8_t il = static_cast<uint8_t>( iline );
         mapping.name_to_offset[SEGY_TR_INLINE] = il;
-        mapping.offset_to_entry_definition[il - 1] = { SEGY_ENTRY_TYPE_INT4, false, NULL };
+
+        segy_entry_definition& def = mapping.offset_to_entry_definition[il - 1];
+        def.entry_type = SEGY_ENTRY_TYPE_INT4;
+        def.requires_nonzero_value = false;
+
+        if( def.name ) {
+            delete[] def.name;
+        }
+        def.name = new char[6];
+        std::strcpy(def.name, "iline");
     }
 
     if( py_xline != Py_None ) {
@@ -2390,7 +2399,15 @@ int overwrite_inline_xline(
         }
         uint8_t xl = static_cast<uint8_t>( xline );
         mapping.name_to_offset[SEGY_TR_CROSSLINE] = xl;
-        mapping.offset_to_entry_definition[xl - 1] = { SEGY_ENTRY_TYPE_INT4, false, NULL };
+        segy_entry_definition& def = mapping.offset_to_entry_definition[xl - 1];
+        def.entry_type = SEGY_ENTRY_TYPE_INT4;
+        def.requires_nonzero_value = false;
+
+        if( def.name ) {
+            delete[] def.name;
+        }
+        def.name = new char[6];
+        std::strcpy(def.name, "xline");
     }
     return SEGY_OK;
 }
@@ -2402,9 +2419,31 @@ int initialize_traceheader_mappings(
     segy_datasource* ds = self->ds;
 
     if( layout_stanza_data.empty() ) {
-        self->traceheader_mappings.insert(
-            self->traceheader_mappings.begin(), ds->traceheader_mapping_standard
-        );
+        segy_header_mapping mapping = ds->traceheader_mapping_standard;
+
+        /* Entry names provided by xml are of unknown length, so we must
+         * allocate them on heap and delete them afterwards. Default C maps have
+         * their names set to NULL. If we provided default names for entries
+         * inside of the C code, then:
+         * - if we allocated them on heap, C library users would have to
+         *   deallocate the memory and for now we don't have good enough reason
+         *   to force users to call some dealloc function.
+         * - if we allocated them as static strings, then we would have to
+         *   somehow keep track where strings were allocated to know if they
+         *   should be freed or not.
+         *
+         * So we allocate names only here, in C++, where we know they always
+         * will be freed.
+         **/
+        for( const auto& entry : standard_name_map ) {
+            int offset = mapping.name_to_offset[entry.segyio_entry_name];
+            if( offset != 0 ) {
+                char* name = new char[entry.spec_entry_name.size() + 1];
+                std::strcpy( name, entry.spec_entry_name.c_str() );
+                mapping.offset_to_entry_definition[offset - 1].name = name;
+            }
+        }
+        self->traceheader_mappings.insert( self->traceheader_mappings.begin(), mapping );
         return SEGY_OK;
     }
 
