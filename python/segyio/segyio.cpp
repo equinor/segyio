@@ -24,6 +24,13 @@
 #define IS_PY3K
 #endif
 
+#if defined(__GNUC__) && !defined(__clang__)
+#define IS_GCC
+#endif
+#if defined(__clang__)
+#define IS_CLANG
+#endif
+
 namespace {
 
 std::string segy_errstr( int err ) {
@@ -1753,6 +1760,16 @@ PyObject* stanza_names( segyfd* self ) {
     return names;
 }
 
+#ifdef IS_CLANG
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcast-function-type"
+#pragma clang diagnostic ignored "-Wmissing-field-initializers"
+#endif
+#ifdef IS_GCC
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-function-type"
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#endif
 PyMethodDef methods [] = {
     { "segyopen", (PyCFunction) fd::segyopen,
       METH_VARARGS | METH_KEYWORDS, "Open file." },
@@ -1797,9 +1814,23 @@ PyMethodDef methods [] = {
 
     { NULL }
 };
+#ifdef IS_GCC
+#pragma GCC diagnostic pop
+#endif
+#ifdef IS_CLANG
+#pragma clang diagnostic pop
+#endif
 
 }
 
+#ifdef IS_CLANG
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmissing-field-initializers"
+#endif
+#ifdef IS_GCC
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#endif
 PyTypeObject Segyfd = {
     PyVarObject_HEAD_INIT( NULL, 0 )
     "_segyio.segyfd",               /* name */
@@ -1838,6 +1869,12 @@ PyTypeObject Segyfd = {
     0,                              /* tp_dictoffset */
     (initproc)fd::init,             /* tp_init */
 };
+#ifdef IS_GCC
+#pragma GCC diagnostic pop
+#endif
+#ifdef IS_CLANG
+#pragma clang diagnostic pop
+#endif
 
 PyObject* binsize( PyObject* ) {
     return PyLong_FromLong( segy_binheader_size() );
@@ -2166,6 +2203,16 @@ PyObject* format( PyObject* , PyObject* args ) {
     return out;
 }
 
+#ifdef IS_CLANG
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcast-function-type"
+#pragma clang diagnostic ignored "-Wmissing-field-initializers"
+#endif
+#ifdef IS_GCC
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-function-type"
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#endif
 PyMethodDef SegyMethods[] = {
     { "binsize",  (PyCFunction) binsize,  METH_NOARGS, "Size of the binary header." },
     { "thsize",   (PyCFunction) thsize,   METH_NOARGS, "Size of the trace header."  },
@@ -2182,6 +2229,12 @@ PyMethodDef SegyMethods[] = {
 
     { NULL }
 };
+#ifdef IS_GCC
+#pragma GCC diagnostic pop
+#endif
+#ifdef IS_CLANG
+#pragma clang diagnostic pop
+#endif
 
 namespace {
 
@@ -2709,6 +2762,14 @@ int extract_layout_stanza(
 
 /* module initialization */
 #ifdef IS_PY3K
+#ifdef IS_CLANG
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmissing-field-initializers"
+#endif
+#ifdef IS_GCC
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#endif
 static struct PyModuleDef segyio_module = {
         PyModuleDef_HEAD_INIT,
         "_segyio",   /* name of module */
@@ -2716,6 +2777,12 @@ static struct PyModuleDef segyio_module = {
         -1,  /* size of per-interpreter state of the module, or -1 if the module keeps state in global variables. */
         SegyMethods
 };
+#ifdef IS_GCC
+#pragma GCC diagnostic pop
+#endif
+#ifdef IS_CLANG
+#pragma clang diagnostic pop
+#endif
 
 PyMODINIT_FUNC
 PyInit__segyio(void) {

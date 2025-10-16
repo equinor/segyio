@@ -10,7 +10,7 @@ on:
 jobs:
   test:
     runs-on: ${{ matrix.os }}
-    name: Build and test ${{ matrix.build_type }} on ${{ matrix.os }} ${{ matrix.compiler }} ${{ matrix.cmake_generator }}
+    name: Build and test ${{ matrix.build_type }} on ${{ matrix.os }} ${{ matrix.compiler }} ${{ matrix.cmake_generator }} BUILD_PYTHON=${{ matrix.build_python }}
     strategy:
       fail-fast: false
       matrix:
@@ -19,37 +19,56 @@ jobs:
             cmake_generator: "-G \"Visual Studio 17 2022\" -A x64"
             build_type: "Release"
             compiler_flags: "-D_CRT_SECURE_NO_WARNINGS /EHsc"
+            build_python: "OFF"
           - os: windows-2022
             cmake_generator: "-G \"Visual Studio 17 2022\" -A x64"
             build_type: "Debug"
             compiler_flags: "-D_CRT_SECURE_NO_WARNINGS /EHsc"
+            build_python: "OFF"
           - os: windows-2022
             cmake_generator: "-G \"Visual Studio 17 2022\" -A Win32"
             build_type: "Release"
             compiler_flags: "-D_CRT_SECURE_NO_WARNINGS /EHsc"
+            build_python: "OFF"
           - os: ubuntu-latest
             privledges: "sudo"
             build_type: "Release"
+            build_python: "OFF"
           - os: ubuntu-latest
             privledges: "sudo"
             build_type: "Debug"
             compiler_flags: "-Wextra -Wall -pedantic"
+            build_python: "OFF"
+          - os: ubuntu-latest
+            privledges: "sudo"
+            build_type: "Debug"
+            compiler_flags: "-Wextra -Wall -pedantic"
+            build_python: "ON"
           - os: ubuntu-latest
             privledges: "sudo"
             compiler: "clang"
             mkdoc: "-DBUILD_DOC=ON -DSPHINX_ARGS=-WT"
             build_type: "Release"
+            build_python: "OFF"
           - os: ubuntu-latest
             privledges: "sudo"
             compiler: "clang"
             build_type: "Debug"
             compiler_flags: "-Wextra -Wall -pedantic"
+            build_python: "OFF"
           - os: macos-13
             privledges: "sudo"
             build_type: "Release"
+            build_python: "OFF"
           - os: macos-latest
             privledges: "sudo"
             build_type: "Release"
+            build_python: "OFF"
+          - os: macos-latest
+            privledges: "sudo"
+            build_type: "Debug"
+            compiler_flags: "-Wextra -Wall -pedantic"
+            build_python: "ON"
 
     steps:
       - uses: actions/checkout@v4
@@ -62,12 +81,24 @@ jobs:
             echo "CC=/usr/bin/clang"    >> $GITHUB_ENV
             echo "CXX=/usr/bin/clang++" >> $GITHUB_ENV
 
+      # Required to be able to install Python packages on MacOS
+      - uses: actions/setup-python@v6
+        if: ${{ matrix.build_python == 'ON' }}
+        with:
+          python-version: '3.13'
+
+      - name: Install build/test for Python dependencies
+        working-directory: python
+        if: ${{ matrix.build_python == 'ON' }}
+        run: |
+          python3 -m pip install -r requirements-dev.txt
+
       - name: Configure
         shell: bash
         run: |
           cmake -S . -B build \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-            -DBUILD_PYTHON=OFF \
+            -DBUILD_PYTHON=${{ matrix.build_python }} \
             -DBUILD_SHARED_LIBS=ON \
             -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
             -DCMAKE_COMPILE_WARNING_AS_ERROR=ON \
