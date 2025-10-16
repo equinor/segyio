@@ -2199,6 +2199,134 @@ PyMethodDef SegyMethods[] = {
 
 namespace {
 
+struct NameMapEntry {
+    std::string spec_entry_name;
+    int segyio_entry_name;
+};
+
+struct TypeMapEntry {
+    std::string spec_entry_type;
+    SEGY_ENTRY_TYPE segyio_entry_type;
+};
+
+/** D8 names to SEGY names. Contains all the known names, not only the ones used
+ * internally in the library. scale6 type entries are not fully supported as we
+ * have separate names for mantissa and exponent parts of the type. */
+static const NameMapEntry standard_name_map[] = {
+    { "linetrc",     SEGY_TR_SEQ_LINE                },
+    { "reeltrc",     SEGY_TR_SEQ_FILE                },
+    { "ffid",        SEGY_TR_FIELD_RECORD            },
+    { "chan",        SEGY_TR_NUMBER_ORIG_FIELD       },
+    { "espnum",      SEGY_TR_ENERGY_SOURCE_POINT     },
+    { "cdp",         SEGY_TR_ENSEMBLE                },
+    { "cdptrc",      SEGY_TR_NUM_IN_ENSEMBLE         },
+    { "trctype",     SEGY_TR_TRACE_ID                },
+    { "vstack",      SEGY_TR_SUMMED_TRACES           },
+    { "fold",        SEGY_TR_STACKED_TRACES          },
+    { "rectype",     SEGY_TR_DATA_USE                },
+    { "offset",      SEGY_TR_OFFSET                  },
+    { "relev",       SEGY_TR_RECV_GROUP_ELEV         },
+    { "selev",       SEGY_TR_SOURCE_SURF_ELEV        },
+    { "sdepth",      SEGY_TR_SOURCE_DEPTH            },
+    { "rdatum",      SEGY_TR_RECV_DATUM_ELEV         },
+    { "sdatum",      SEGY_TR_SOURCE_DATUM_ELEV       },
+    { "wdepthso",    SEGY_TR_SOURCE_WATER_DEPTH      },
+    { "wdepthrc",    SEGY_TR_GROUP_WATER_DEPTH       },
+    { "ed_scal",     SEGY_TR_ELEV_SCALAR             },
+    { "co_scal",     SEGY_TR_SOURCE_GROUP_SCALAR     },
+    { "sht_x",       SEGY_TR_SOURCE_X                },
+    { "sht_y",       SEGY_TR_SOURCE_Y                },
+    { "rec_x",       SEGY_TR_GROUP_X                 },
+    { "rec_y",       SEGY_TR_GROUP_Y                 },
+    { "coorunit",    SEGY_TR_COORD_UNITS             },
+    { "wvel",        SEGY_TR_WEATHERING_VELO         },
+    { "subwvel",     SEGY_TR_SUBWEATHERING_VELO      },
+    { "shuphole",    SEGY_TR_SOURCE_UPHOLE_TIME      },
+    { "rcuphole",    SEGY_TR_GROUP_UPHOLE_TIME       },
+    { "shstat",      SEGY_TR_SOURCE_STATIC_CORR      },
+    { "rcstat",      SEGY_TR_GROUP_STATIC_CORR       },
+    { "stapply",     SEGY_TR_TOT_STATIC_APPLIED      },
+    { "lagtimea",    SEGY_TR_LAG_A                   },
+    { "lagtimeb",    SEGY_TR_LAG_B                   },
+    { "delay",       SEGY_TR_DELAY_REC_TIME          },
+    { "mutestrt",    SEGY_TR_MUTE_TIME_START         },
+    { "muteend",     SEGY_TR_MUTE_TIME_END           },
+    { "nsamps",      SEGY_TR_SAMPLE_COUNT            },
+    { "dt",          SEGY_TR_SAMPLE_INTER            },
+    { "gaintype",    SEGY_TR_GAIN_TYPE               },
+    { "ingconst",    SEGY_TR_INSTR_GAIN_CONST        },
+    { "initgain",    SEGY_TR_INSTR_INIT_GAIN         },
+    { "corrflag",    SEGY_TR_CORRELATED              },
+    { "sweepsrt",    SEGY_TR_SWEEP_FREQ_START        },
+    { "sweepend",    SEGY_TR_SWEEP_FREQ_END          },
+    { "sweeplng",    SEGY_TR_SWEEP_LENGTH            },
+    { "sweeptyp",    SEGY_TR_SWEEP_TYPE              },
+    { "sweepstp",    SEGY_TR_SWEEP_TAPERLEN_START    },
+    { "sweepetp",    SEGY_TR_SWEEP_TAPERLEN_END      },
+    { "tapertyp",    SEGY_TR_TAPER_TYPE              },
+    { "aliasfil",    SEGY_TR_ALIAS_FILT_FREQ         },
+    { "aliaslop",    SEGY_TR_ALIAS_FILT_SLOPE        },
+    { "notchfil",    SEGY_TR_NOTCH_FILT_FREQ         },
+    { "notchslp",    SEGY_TR_NOTCH_FILT_SLOPE        },
+    { "lowcut",      SEGY_TR_LOW_CUT_FREQ            },
+    { "highcut",     SEGY_TR_HIGH_CUT_FREQ           },
+    { "lowcslop",    SEGY_TR_LOW_CUT_SLOPE           },
+    { "hicslop",     SEGY_TR_HIGH_CUT_SLOPE          },
+    { "year",        SEGY_TR_YEAR_DATA_REC           },
+    { "day",         SEGY_TR_DAY_OF_YEAR             },
+    { "hour",        SEGY_TR_HOUR_OF_DAY             },
+    { "minute",      SEGY_TR_MIN_OF_HOUR             },
+    { "second",      SEGY_TR_SEC_OF_MIN              },
+    { "timebase",    SEGY_TR_TIME_BASE_CODE          },
+    { "trweight",    SEGY_TR_WEIGHTING_FAC           },
+    { "rstaswp1",    SEGY_TR_GEOPHONE_GROUP_ROLL1    },
+    { "rstatrc1",    SEGY_TR_GEOPHONE_GROUP_FIRST    },
+    { "rstatrcn",    SEGY_TR_GEOPHONE_GROUP_LAST     },
+    { "gapsize",     SEGY_TR_GAP_SIZE                },
+    { "overtrvl",    SEGY_TR_OVER_TRAVEL             },
+    { "cdp_x",       SEGY_TR_CDP_X                   },
+    { "cdp_y",       SEGY_TR_CDP_Y                   },
+    { "iline",       SEGY_TR_INLINE                  },
+    { "xline",       SEGY_TR_CROSSLINE               },
+    { "sp",          SEGY_TR_SHOT_POINT              },
+    { "sp_scal",     SEGY_TR_SHOT_POINT_SCALAR       },
+    { "samp_unit",   SEGY_TR_MEASURE_UNIT            },
+    { "trans_const", SEGY_TR_TRANSDUCTION_MANT       }, // and SEGY_TR_TRANSDUCTION_EXP
+    { "trans_unit",  SEGY_TR_TRANSDUCTION_UNIT       },
+    { "dev_id",      SEGY_TR_DEVICE_ID               },
+    { "tm_scal",     SEGY_TR_SCALAR_TRACE_HEADER     },
+    { "src_type",    SEGY_TR_SOURCE_TYPE             },
+    { "src_dir1",    SEGY_TR_SOURCE_ENERGY_DIR_VERT  },
+    { "src_dir2",    SEGY_TR_SOURCE_ENERGY_DIR_XLINE },
+    { "src_dir3",    SEGY_TR_SOURCE_ENERGY_DIR_ILINE },
+    { "smeasure",    SEGY_TR_SOURCE_MEASURE_MANT     }, // and SEGY_TR_SOURCE_MEASURE_EXP
+    { "sm_unit",     SEGY_TR_SOURCE_MEASURE_UNIT     },
+};
+
+/** D8 entry type names to SEGY entry type names. scale6 type is not fully
+ * supported as we have separate types for mantissa and exponent. */
+static const TypeMapEntry entry_type_map[] = {
+    { "int2",     SEGY_ENTRY_TYPE_INT2        },
+    { "int4",     SEGY_ENTRY_TYPE_INT4        },
+    { "int8",     SEGY_ENTRY_TYPE_INT8        },
+    { "uint2",    SEGY_ENTRY_TYPE_UINT2       },
+    { "uint4",    SEGY_ENTRY_TYPE_UINT4       },
+    { "uint8",    SEGY_ENTRY_TYPE_UINT8       },
+    { "ibmfp",    SEGY_ENTRY_TYPE_IBMFP       },
+    { "ieee32",   SEGY_ENTRY_TYPE_IEEE32      },
+    { "ieee64",   SEGY_ENTRY_TYPE_IEEE64      },
+    { "linetrc",  SEGY_ENTRY_TYPE_LINETRC     },
+    { "reeltrc",  SEGY_ENTRY_TYPE_REELTRC     },
+    { "linetrc8", SEGY_ENTRY_TYPE_LINETRC8    },
+    { "reeltrc8", SEGY_ENTRY_TYPE_REELTRC8    },
+    { "coor4",    SEGY_ENTRY_TYPE_COOR4       },
+    { "elev4",    SEGY_ENTRY_TYPE_ELEV4       },
+    { "time2",    SEGY_ENTRY_TYPE_TIME2       },
+    { "spnum4",   SEGY_ENTRY_TYPE_SPNUM4      },
+    { "scale6",   SEGY_ENTRY_TYPE_SCALE6_MANT },
+};
+
+
 int overwrite_inline_xline(
     segy_header_mapping& mapping,
     PyObject* py_iline,
@@ -2356,133 +2484,6 @@ int free_header_mappings_names(
     }
     return SEGY_OK;
 }
-
-struct NameMapEntry {
-    std::string spec_entry_name;
-    int segyio_entry_name;
-};
-
-struct TypeMapEntry {
-    std::string spec_entry_type;
-    SEGY_ENTRY_TYPE segyio_entry_type;
-};
-
-/** D8 names to SEGY names. Contains all the known names, not only the ones used
- * internally in the library. scale6 type entries are not fully supported as we
- * have separate names for mantissa and exponent parts of the type. */
-static const NameMapEntry standard_name_map[] = {
-    { "linetrc",     SEGY_TR_SEQ_LINE                },
-    { "reeltrc",     SEGY_TR_SEQ_FILE                },
-    { "ffid",        SEGY_TR_FIELD_RECORD            },
-    { "chan",        SEGY_TR_NUMBER_ORIG_FIELD       },
-    { "espnum",      SEGY_TR_ENERGY_SOURCE_POINT     },
-    { "cdp",         SEGY_TR_ENSEMBLE                },
-    { "cdptrc",      SEGY_TR_NUM_IN_ENSEMBLE         },
-    { "trctype",     SEGY_TR_TRACE_ID                },
-    { "vstack",      SEGY_TR_SUMMED_TRACES           },
-    { "fold",        SEGY_TR_STACKED_TRACES          },
-    { "rectype",     SEGY_TR_DATA_USE                },
-    { "offset",      SEGY_TR_OFFSET                  },
-    { "relev",       SEGY_TR_RECV_GROUP_ELEV         },
-    { "selev",       SEGY_TR_SOURCE_SURF_ELEV        },
-    { "sdepth",      SEGY_TR_SOURCE_DEPTH            },
-    { "rdatum",      SEGY_TR_RECV_DATUM_ELEV         },
-    { "sdatum",      SEGY_TR_SOURCE_DATUM_ELEV       },
-    { "wdepthso",    SEGY_TR_SOURCE_WATER_DEPTH      },
-    { "wdepthrc",    SEGY_TR_GROUP_WATER_DEPTH       },
-    { "ed_scal",     SEGY_TR_ELEV_SCALAR             },
-    { "co_scal",     SEGY_TR_SOURCE_GROUP_SCALAR     },
-    { "sht_x",       SEGY_TR_SOURCE_X                },
-    { "sht_y",       SEGY_TR_SOURCE_Y                },
-    { "rec_x",       SEGY_TR_GROUP_X                 },
-    { "rec_y",       SEGY_TR_GROUP_Y                 },
-    { "coorunit",    SEGY_TR_COORD_UNITS             },
-    { "wvel",        SEGY_TR_WEATHERING_VELO         },
-    { "subwvel",     SEGY_TR_SUBWEATHERING_VELO      },
-    { "shuphole",    SEGY_TR_SOURCE_UPHOLE_TIME      },
-    { "rcuphole",    SEGY_TR_GROUP_UPHOLE_TIME       },
-    { "shstat",      SEGY_TR_SOURCE_STATIC_CORR      },
-    { "rcstat",      SEGY_TR_GROUP_STATIC_CORR       },
-    { "stapply",     SEGY_TR_TOT_STATIC_APPLIED      },
-    { "lagtimea",    SEGY_TR_LAG_A                   },
-    { "lagtimeb",    SEGY_TR_LAG_B                   },
-    { "delay",       SEGY_TR_DELAY_REC_TIME          },
-    { "mutestrt",    SEGY_TR_MUTE_TIME_START         },
-    { "muteend",     SEGY_TR_MUTE_TIME_END           },
-    { "nsamps",      SEGY_TR_SAMPLE_COUNT            },
-    { "dt",          SEGY_TR_SAMPLE_INTER            },
-    { "gaintype",    SEGY_TR_GAIN_TYPE               },
-    { "ingconst",    SEGY_TR_INSTR_GAIN_CONST        },
-    { "initgain",    SEGY_TR_INSTR_INIT_GAIN         },
-    { "corrflag",    SEGY_TR_CORRELATED              },
-    { "sweepsrt",    SEGY_TR_SWEEP_FREQ_START        },
-    { "sweepend",    SEGY_TR_SWEEP_FREQ_END          },
-    { "sweeplng",    SEGY_TR_SWEEP_LENGTH            },
-    { "sweeptyp",    SEGY_TR_SWEEP_TYPE              },
-    { "sweepstp",    SEGY_TR_SWEEP_TAPERLEN_START    },
-    { "sweepetp",    SEGY_TR_SWEEP_TAPERLEN_END      },
-    { "tapertyp",    SEGY_TR_TAPER_TYPE              },
-    { "aliasfil",    SEGY_TR_ALIAS_FILT_FREQ         },
-    { "aliaslop",    SEGY_TR_ALIAS_FILT_SLOPE        },
-    { "notchfil",    SEGY_TR_NOTCH_FILT_FREQ         },
-    { "notchslp",    SEGY_TR_NOTCH_FILT_SLOPE        },
-    { "lowcut",      SEGY_TR_LOW_CUT_FREQ            },
-    { "highcut",     SEGY_TR_HIGH_CUT_FREQ           },
-    { "lowcslop",    SEGY_TR_LOW_CUT_SLOPE           },
-    { "hicslop",     SEGY_TR_HIGH_CUT_SLOPE          },
-    { "year",        SEGY_TR_YEAR_DATA_REC           },
-    { "day",         SEGY_TR_DAY_OF_YEAR             },
-    { "hour",        SEGY_TR_HOUR_OF_DAY             },
-    { "minute",      SEGY_TR_MIN_OF_HOUR             },
-    { "second",      SEGY_TR_SEC_OF_MIN              },
-    { "timebase",    SEGY_TR_TIME_BASE_CODE          },
-    { "trweight",    SEGY_TR_WEIGHTING_FAC           },
-    { "rstaswp1",    SEGY_TR_GEOPHONE_GROUP_ROLL1    },
-    { "rstatrc1",    SEGY_TR_GEOPHONE_GROUP_FIRST    },
-    { "rstatrcn",    SEGY_TR_GEOPHONE_GROUP_LAST     },
-    { "gapsize",     SEGY_TR_GAP_SIZE                },
-    { "overtrvl",    SEGY_TR_OVER_TRAVEL             },
-    { "cdp_x",       SEGY_TR_CDP_X                   },
-    { "cdp_y",       SEGY_TR_CDP_Y                   },
-    { "iline",       SEGY_TR_INLINE                  },
-    { "xline",       SEGY_TR_CROSSLINE               },
-    { "sp",          SEGY_TR_SHOT_POINT              },
-    { "sp_scal",     SEGY_TR_SHOT_POINT_SCALAR       },
-    { "samp_unit",   SEGY_TR_MEASURE_UNIT            },
-    { "trans_const", SEGY_TR_TRANSDUCTION_MANT       }, // and SEGY_TR_TRANSDUCTION_EXP
-    { "trans_unit",  SEGY_TR_TRANSDUCTION_UNIT       },
-    { "dev_id",      SEGY_TR_DEVICE_ID               },
-    { "tm_scal",     SEGY_TR_SCALAR_TRACE_HEADER     },
-    { "src_type",    SEGY_TR_SOURCE_TYPE             },
-    { "src_dir1",    SEGY_TR_SOURCE_ENERGY_DIR_VERT  },
-    { "src_dir2",    SEGY_TR_SOURCE_ENERGY_DIR_XLINE },
-    { "src_dir3",    SEGY_TR_SOURCE_ENERGY_DIR_ILINE },
-    { "smeasure",    SEGY_TR_SOURCE_MEASURE_MANT     }, // and SEGY_TR_SOURCE_MEASURE_EXP
-    { "sm_unit",     SEGY_TR_SOURCE_MEASURE_UNIT     },
-};
-
-/** D8 entry type names to SEGY entry type names. scale6 type is not fully
- * supported as we have separate types for mantissa and exponent. */
-static const TypeMapEntry entry_type_map[] = {
-    { "int2",     SEGY_ENTRY_TYPE_INT2        },
-    { "int4",     SEGY_ENTRY_TYPE_INT4        },
-    { "int8",     SEGY_ENTRY_TYPE_INT8        },
-    { "uint2",    SEGY_ENTRY_TYPE_UINT2       },
-    { "uint4",    SEGY_ENTRY_TYPE_UINT4       },
-    { "uint8",    SEGY_ENTRY_TYPE_UINT8       },
-    { "ibmfp",    SEGY_ENTRY_TYPE_IBMFP       },
-    { "ieee32",   SEGY_ENTRY_TYPE_IEEE32      },
-    { "ieee64",   SEGY_ENTRY_TYPE_IEEE64      },
-    { "linetrc",  SEGY_ENTRY_TYPE_LINETRC     },
-    { "reeltrc",  SEGY_ENTRY_TYPE_REELTRC     },
-    { "linetrc8", SEGY_ENTRY_TYPE_LINETRC8    },
-    { "reeltrc8", SEGY_ENTRY_TYPE_REELTRC8    },
-    { "coor4",    SEGY_ENTRY_TYPE_COOR4       },
-    { "elev4",    SEGY_ENTRY_TYPE_ELEV4       },
-    { "time2",    SEGY_ENTRY_TYPE_TIME2       },
-    { "spnum4",   SEGY_ENTRY_TYPE_SPNUM4      },
-    { "scale6",   SEGY_ENTRY_TYPE_SCALE6_MANT },
-};
 
 int set_mapping_name_to_offset(
     segy_header_mapping* mapping,
