@@ -181,6 +181,19 @@ def test_custom_iline_xline():
     with pytest.raises(ValueError):
         segyfile(str(testdata / 'small.sgy'), "r").segyopen(xline=241)
 
+    f = segyfile(str(testdata / 'small.sgy'), "r").segyopen(iline=9, xline=17)
+    layouts = f.traceheader_layouts()
+
+    standard_header_layout = layouts["SEG00000"]
+    entry = standard_header_layout.entry_by_byte(9)
+    assert entry.name == "iline"
+
+    xline_entries = [e for e in standard_header_layout if e.name == "xline"]
+    # entry names do not get overwritten if new iline/xline are defined
+    assert len(xline_entries) == 2
+
+    f.close()
+
 
 def test_line_metrics_mmap():
     test_line_metrics(True)
