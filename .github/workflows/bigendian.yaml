@@ -1,4 +1,5 @@
 name: Test bigendian
+permissions: {}
 
 on:
   push:

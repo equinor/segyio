@@ -1,4 +1,5 @@
 name: Run large tests
+permissions: {}
 
 on:
   push:
