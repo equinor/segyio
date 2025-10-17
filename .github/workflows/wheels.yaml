@@ -1,4 +1,5 @@
 name: Wheels
+permissions: {}
 
 on:
   push:
