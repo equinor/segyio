@@ -353,12 +353,6 @@ struct segy_datasource {
     /* Is datasource writable */
     bool writable;
 
-    /* True if stream uses little-endian byte order, false if big-endian
-     * (SEG-Y_r2.1 section "3.3. Number Formats"). Pairwise byte-swapped
-     * ordering is not supported.
-     */
-    bool lsb;
-
     /* EBCDIC or ASCII encoding. All text-reading functions should consult this
      * property to determine string encoding.
      */

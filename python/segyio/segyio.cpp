@@ -320,7 +320,6 @@ segy_datasource* create_py_stream_datasource(
 
     ds->memory_speedup = false;
     ds->minimize_requests_number = minimize_requests_number;
-    ds->lsb = false;
     ds->encoding = SEGY_EBCDIC;
 
     ds->metadata.endianness = SEGY_MSB;
@@ -739,7 +738,7 @@ PyObject* segycreate( segyfd* self, PyObject* args, PyObject* kwargs ) {
         encoding = SEGY_EBCDIC;
     }
 
-    ds->lsb = endianness;
+    ds->metadata.endianness = endianness;
     ds->encoding = encoding;
 
     if( samples <= 0 )
@@ -829,7 +828,7 @@ PyObject* suopen( segyfd* self, PyObject* args, PyObject* kwargs ) {
         int err = segy_encoding( ds, &encoding );
         if( err != SEGY_OK ) return NULL;
     }
-    ds->lsb = endianness;
+    ds->metadata.endianness = endianness;
     ds->encoding = encoding;
 
     std::vector<char> layout_stanza_data;

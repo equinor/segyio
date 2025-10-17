@@ -787,7 +787,6 @@ segy_file* segy_open( const char* path, const char* mode ) {
     ds->close = fileclose;
     ds->writable = strstr( binary_mode, "+" ) || strstr( binary_mode, "w" );
 
-    ds->lsb = false;
     ds->encoding = SEGY_EBCDIC;
 
     ds->minimize_requests_number = true;
@@ -851,7 +850,6 @@ segy_datasource* segy_memopen( unsigned char* addr, size_t size ) {
 
     ds->writable = true;
 
-    ds->lsb = false;
     ds->encoding = SEGY_EBCDIC;
 
     ds->minimize_requests_number = false;
@@ -982,7 +980,6 @@ int segy_collect_metadata(
         if( err != SEGY_OK ) return err;
     }
     ds->metadata.endianness = endianness;
-    ds->lsb = endianness;
 
     if( encoding != SEGY_ASCII && encoding != SEGY_EBCDIC ) {
         int err = segy_encoding( ds, &encoding );
@@ -1443,7 +1440,9 @@ int segy_field_forall( segy_datasource* ds,
         if( err != 0 ) return err;
         const uint8_t entry_type = traceheader_default_map[zfield].entry_type;
         const uint8_t datatype = entry_type_to_datatype_map[entry_type];
-        if( ds->lsb ) f = bswap_header_word( f, segy_formatsize( datatype ) );
+        if( ds->metadata.endianness == SEGY_LSB) {
+            f = bswap_header_word( f, segy_formatsize( datatype ) );
+        }
         *buf = f;
     }
 
@@ -1451,7 +1450,7 @@ int segy_field_forall( segy_datasource* ds,
 }
 
 static int bswap_bin( const segy_datasource* ds, char* xs ) {
-    if( !ds->lsb ) return SEGY_OK;
+    if( ds->metadata.endianness != SEGY_LSB ) return SEGY_OK;
 
     const segy_entry_definition* binmap = segy_binheader_map();
     int offset = 0;
@@ -1746,7 +1745,7 @@ int segy_traceheader( segy_datasource* ds,
     err = ds->read( ds, buf, SEGY_TRACE_HEADER_SIZE );
     if( err != 0 ) return SEGY_DS_READ_ERROR;
 
-    return bswap_th( buf, ds->lsb );
+    return bswap_th( buf, ds->metadata.endianness );
 }
 
 int segy_write_traceheader( segy_datasource* ds,
@@ -1761,7 +1760,7 @@ int segy_write_traceheader( segy_datasource* ds,
 
     char swapped[SEGY_TRACE_HEADER_SIZE];
     memcpy( swapped, buf, SEGY_TRACE_HEADER_SIZE );
-    bswap_th( swapped, ds->lsb );
+    bswap_th( swapped, ds->metadata.endianness );
 
     err = ds->write( ds, swapped, SEGY_TRACE_HEADER_SIZE );
     if( err != 0 ) return SEGY_DS_WRITE_ERROR;
@@ -2430,6 +2429,7 @@ int segy_readsubtr( segy_datasource* ds,
 
     const int elems = abs( stop - start );
     const int elemsize = ds->metadata.elemsize;
+    bool lsb = ds->metadata.endianness == SEGY_LSB;
 
     int err = subtr_seek( ds, traceno, start, stop, elemsize, trace0, trace_bsize );
     if( err != SEGY_OK ) return err;
@@ -2439,7 +2439,7 @@ int segy_readsubtr( segy_datasource* ds,
         err = ds->read( ds, buf, elemsize * elems );
         if( err != 0 ) return SEGY_DS_READ_ERROR;
 
-        if( ds->lsb ) {
+        if( lsb ) {
             if( elemsize == 8 ) bswap64vec( buf, elems );
             if( elemsize == 4 ) bswap32vec( buf, elems );
             if( elemsize == 3 ) bswap24vec( buf, elems );
@@ -2480,7 +2480,7 @@ int segy_readsubtr( segy_datasource* ds,
             }
         }
 
-        if( ds->lsb ) {
+        if( lsb ) {
             if( elemsize == 8 ) bswap64vec( buf, slicelen );
             if( elemsize == 4 ) bswap32vec( buf, slicelen );
             if( elemsize == 3 ) bswap24vec( buf, slicelen );
@@ -2512,7 +2512,7 @@ int segy_readsubtr( segy_datasource* ds,
     for( int i = 0; i < slicelen; cur += step, ++i, dst += elemsize )
         memcpy( dst, cur, elemsize );
 
-    if( ds->lsb ) {
+    if( lsb ) {
         if( elemsize == 8 ) bswap64vec( buf, slicelen );
         if( elemsize == 4 ) bswap32vec( buf, slicelen );
         if( elemsize == 3 ) bswap24vec( buf, slicelen );
@@ -2549,12 +2549,13 @@ int segy_writesubtr( segy_datasource* ds,
     const int elems = abs( stop - start );
     const int elemsize = ds->metadata.elemsize;
     const size_t range = elems * elemsize;
+    bool lsb = ds->metadata.endianness == SEGY_LSB;
 
     int err = subtr_seek( ds, traceno, start, stop, elemsize, trace0, trace_bsize );
     if( err != SEGY_OK ) return err;
 
 
-    if( step == 1 && !ds->lsb ) {
+    if( step == 1 && !lsb ) {
         /*
          * most common case: step == 1, writing contiguously
          * -1 is not covered here as it would require reversing the input buffer
@@ -2572,7 +2573,7 @@ int segy_writesubtr( segy_datasource* ds,
      * contiguous, but require memory either because reversing, or byte
      * swapping
      */
-    if( ( step == 1 || step == -1 ) && ds->lsb ) {
+    if( ( step == 1 || step == -1 ) && lsb ) {
         void* tracebuf = rangebuf ? rangebuf : malloc( range );
         if (!tracebuf) return SEGY_MEMORY_ERROR;
         memcpy( tracebuf, buf, range );
@@ -2613,7 +2614,7 @@ int segy_writesubtr( segy_datasource* ds,
         err = ds->seek( ds, elemsize * defstart, SEEK_CUR );
         if( err != 0 ) return SEGY_DS_SEEK_ERROR;
 
-        if( !ds->lsb ) {
+        if( !lsb ) {
             // separate "memory" path is used for better performance
             if( ds->memory_speedup ) {
                 memfile* mp = (memfile*)ds->stream;
@@ -2663,7 +2664,7 @@ int segy_writesubtr( segy_datasource* ds,
     }
 
     char* cur = (char*)tracebuf + elemsize * defstart;
-    if( !ds->lsb ) {
+    if( !lsb ) {
         for( ; slicelen > 0; cur += step, --slicelen, src += elemsize ) {
             memcpy( cur, src, elemsize );
         }
