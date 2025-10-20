@@ -33,8 +33,6 @@ jobs:
             arch: i686
           # macos-latest runs on arm64 architecture and cibuildwheel cross
           # compiling for x86_64 fails
-          - os: macos-13
-            arch: x86_64
           - os: macos-latest
             arch: arm64
 
