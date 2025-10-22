@@ -265,6 +265,42 @@ typedef struct {
     segy_entry_definition offset_to_entry_definition[SEGY_TRACE_HEADER_SIZE];
 } segy_header_mapping;
 
+typedef struct {
+    /* SEGY_LSB if stream uses little-endian byte order, SEGY_MSB if big-endian
+     * (SEG-Y_r2.1 section "3.3. Number Formats"). Pairwise byte-swapped
+     * ordering is not supported.
+     */
+    int endianness;
+
+    /* SEGY_EBCDIC or SEGY_ASCII default strings encoding. */
+    int encoding;
+
+    /* Format of the trace data. */
+    int format;
+
+    /* Size of each element in trace (format size). */
+    int elemsize;
+
+    /* Number of extended textual file header records. */
+    int ext_textheader_count;
+
+    /* Byte offset of the first trace in the file. */
+    long trace0;
+
+    /* Number of samples in each trace. */
+    int samplecount;
+
+    /* Byte size of each trace (samplecount * elemsize). */
+    int trace_bsize;
+
+    /* Number of traceheaders describing each trace. */
+    int traceheader_count;
+
+    /* Number of traces in the file. */
+    int tracecount;
+} segy_metadata;
+
+
 /*
  * Represents an abstract data source which supports common file operations,
  * described by function pointers and `writable` attribute.
@@ -353,6 +389,8 @@ struct segy_datasource {
     segy_header_mapping traceheader_mapping_standard;
     /* Traceheader extension 1 mapping. */
     //segy_header_mapping traceheader_mapping_extension1;
+
+    segy_metadata metadata;
 };
 
 typedef struct segy_datasource segy_datasource;
@@ -403,6 +441,24 @@ segy_datasource* segy_memopen( unsigned char* addr, size_t size );
 
 int segy_flush( segy_datasource* );
 int segy_close( segy_datasource* );
+
+/* Reads file's fixed metadata. Function is expected to be called after segy_open
+ * for files opened for reading. Alternatively user must assure that .metadata in
+ * segy_datasource is set correctly before further use of the library.
+ *
+ * endianness and encoding parameters: if provided value is valid, it takes
+ * precedence over automatically detected value.
+ *
+ * ext_textheader_count: if provided value is non-negative, it takes precedence
+ * over automatically detected value. If automatically detected value is
+ * negative, error is returned.
+ */
+int segy_collect_metadata(
+    segy_datasource* ds,
+    int endianness,
+    int encoding,
+    int ext_textheader_count
+);
 
 /* binary header operations */
 /*

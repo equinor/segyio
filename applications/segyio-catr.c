@@ -612,25 +612,20 @@ int main( int argc, char** argv ) {
     }
 
     char trheader[ TRHSIZE ];
-    char binheader[ BINSIZE ];
 
     segy_file* src = segy_open( opts.src, "r" );
     if( !src )
         exit( errmsg2( errno, "Unable to open src", strerror( errno ) ) );
 
-    int err = segy_binheader( src, binheader );
-    if( err ) exit( errmsg( errno, "Unable to read binheader" ) );
+    int err = segy_collect_metadata( src, -1, -1, -1 );
+    if( err != SEGY_OK ) {
+        perror( "Could not collect metadata: %d" );
+        exit( err );
+    }
 
-    int samnr = segy_samples( binheader );
-
-    int format = segy_format( binheader );
-    int trace_bsize = segy_trsize( format, samnr );
-    long trace0 = segy_trace0( binheader );
-
-    int numtrh;
-    err = segy_traces( src, &numtrh, trace0, trace_bsize );
-    if( err )
-        exit( errmsg( errno, "Unable to determine number of traces in file" ) );
+    const long trace0 = src->metadata.trace0;
+    const long trace_bsize = src->metadata.trace_bsize;
+    const int numtrh = src->metadata.tracecount;
 
     /*
      * If any range field is defaulted (= 0), expand the defaults into sane

@@ -231,6 +231,28 @@ def test_open_ignore_geometry():
         with pytest.raises(ValueError):
             _ = f.iline[0]
 
+def test_open_broken_file():
+    metadata = {
+        "endianness": 0,
+        "encoding": 0,
+        "format": 1,
+        "elemsize": 4,
+        "ext_textheader_count": 2,
+        "trace0": 10000,
+        "samplecount": 4,
+        "trace_bsize": 16,
+        "traceheader_count": 1,
+        "tracecount": -1,
+    }
+    msg = (
+        "unable to gather basic metadata from the file, error segyio.trace.size.mismatch. " +
+        "Intermediate state:\n" +
+        "\n".join(f"  {k}={v}" for k, v in metadata.items())
+    )
+    with pytest.raises(RuntimeError, match=msg):
+        with segyio.open(testdata / 'broken.sgy') as f:
+            pass
+
 
 @pytest.mark.parametrize(('openfn', 'kwargs'), smallfiles)
 def test_traces_slicing(openfn, kwargs):

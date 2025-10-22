@@ -74,27 +74,17 @@ int main(int argc, char* argv[]) {
             fputs( "Could not mmap file. Using fstream fallback.", stderr );
     }
 
-
-    char header[ SEGY_BINARY_HEADER_SIZE ];
-    err = segy_binheader( fp, header );
-
-    if( err != 0 ) {
-        perror( "Unable to read segy binary header" );
+    err = segy_collect_metadata( fp, -1, -1, -1 );
+    if( err != SEGY_OK ) {
+        perror( "Could not collect metadata: %d" );
         exit( err );
     }
 
-    const int format = segy_format( header );
-    const int samples = segy_samples( header );
-    const long trace0 = segy_trace0( header );
-    const int trace_bsize = segy_trace_bsize( samples );
-
-    int traces;
-    err = segy_traces( fp, &traces, trace0, trace_bsize );
-
-    if( err != 0 ) {
-        perror( "Could not determine traces" );
-        exit( err );
-    }
+    const int format = fp->metadata.format;
+    const int samples = fp->metadata.samplecount;
+    const long trace0 = fp->metadata.trace0;
+    const long trace_bsize = fp->metadata.trace_bsize;
+    const int traces = fp->metadata.tracecount;
 
     int sorting;
     err = segy_sorting( fp, il_field,

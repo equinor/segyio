@@ -9,6 +9,7 @@
 #include <functional>
 #include <iterator>
 #include <memory>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
@@ -1152,70 +1153,29 @@ int  trace_meta_fromfile< T >::tracecount() const noexcept(true) {
 
 template< typename T >
 void trace_meta_fromfile< T >::operator()( segy_file* fp ) noexcept(false) {
-    char buffer[ SEGY_BINARY_HEADER_SIZE ] = {};
-    auto err = segy_binheader( fp, buffer );
-
-    switch( err ) {
-        case SEGY_OK: break;
-
-        case SEGY_FSEEK_ERROR:
-            throw errnomsg( "unable to seek to binary header" );
-
-        case SEGY_FREAD_ERROR:
-            throw errnomsg( "unable to read binary header" );
-
-        default:
-            throw unknown_error( err );
-    }
-
-    auto samplecount = segy_samples( buffer );
-    auto trace0      = segy_trace0( buffer );
-    auto format      = segyio::fmt{ segy_format( buffer ) };
-    auto trsize      = segy_trsize( int(format), samplecount );
-
-    /*
-        * TODO: move sanity-checking these properties to separate trait? To
-        * allow fall-back mechianisms
-        */
-
-    if( samplecount <= 0 )
-        throw std::invalid_argument( "expected samplecount >= 0 (was "
-                                    + std::to_string( samplecount ) + ")" );
-
-    if( trace0 < 0 )
-        throw std::invalid_argument( "expected trace0 >= 0 (was "
-                                    + std::to_string( trace0 ) + ")" );
-
-    int tracecount;
-    err = segy_traces( fp, &tracecount, trace0, trsize );
-
-    switch( err ) {
-        case SEGY_OK: break;
-
-        case SEGY_INVALID_ARGS:
-            throw std::runtime_error(
-                "first trace position computed after file, "
-                "extended textual header word corrupted "
-                "or file truncated"
-            );
-
-        case SEGY_TRACE_SIZE_MISMATCH:
-            throw std::runtime_error(
-                "file size does not evenly divide into traces, "
-                "either traces are of uneven length, "
-                "or trace0 is wrong (was " + std::to_string(trace0) + ")"
-            );
-
-        default:
-            throw unknown_error( err );
+    int err = segy_collect_metadata( fp, -1, -1, -1 );
+    if( err != SEGY_OK ) {
+        std::ostringstream msg;
+        msg << "unable to gather basic metadata from the file. Intermediate state:\n"
+            << "  endianness=" << fp->metadata.endianness << "\n"
+            << "  encoding=" << fp->metadata.encoding << "\n"
+            << "  format=" << fp->metadata.format << "\n"
+            << "  elemsize=" << fp->metadata.elemsize << "\n"
+            << "  ext_textheader_count=" << fp->metadata.ext_textheader_count << "\n"
+            << "  trace0=" << fp->metadata.trace0 << "\n"
+            << "  samplecount=" << fp->metadata.samplecount << "\n"
+            << "  trace_bsize=" << fp->metadata.trace_bsize << "\n"
+            << "  traceheader_count=" << fp->metadata.traceheader_count << "\n"
+            << "  tracecount=" << fp->metadata.tracecount;
+        throw std::runtime_error( msg.str() );
     }
 
     /* all good, so actually change state */
-    this->tr0    = trace0;
-    this->trsize = trsize;
-    this->smp    = samplecount;
-    this->traces = tracecount;
-    this->fmt    = segyio::fmt{ format };
+    this->tr0 = fp->metadata.trace0;
+    this->trsize = fp->metadata.trace_bsize;
+    this->smp = fp->metadata.samplecount;
+    this->traces = fp->metadata.tracecount;
+    this->fmt = segyio::fmt{ fp->metadata.format };
 }
 
 template< typename Derived >

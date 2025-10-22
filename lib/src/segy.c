@@ -795,6 +795,17 @@ segy_file* segy_open( const char* path, const char* mode ) {
     ds->minimize_requests_number = true;
     ds->memory_speedup = false;
 
+    ds->metadata.endianness = SEGY_MSB;
+    ds->metadata.encoding = SEGY_EBCDIC;
+    ds->metadata.format = SEGY_IBM_FLOAT_4_BYTE;
+    ds->metadata.elemsize = 4;
+    ds->metadata.ext_textheader_count = 0;
+    ds->metadata.trace0 = -1;
+    ds->metadata.samplecount = -1;
+    ds->metadata.trace_bsize = -1;
+    ds->metadata.traceheader_count = 1;
+    ds->metadata.tracecount = -1;
+
     segy_header_mapping* mapping = &ds->traceheader_mapping_standard;
     memcpy(mapping->name, "SEG00000", 8);
     memcpy(
@@ -849,6 +860,18 @@ segy_datasource* segy_memopen( unsigned char* addr, size_t size ) {
 
     ds->minimize_requests_number = false;
     ds->memory_speedup = true;
+
+    ds->metadata.endianness = SEGY_MSB;
+    ds->metadata.encoding = SEGY_EBCDIC;
+    ds->metadata.format = SEGY_IBM_FLOAT_4_BYTE;
+    ds->metadata.elemsize = 4;
+    ds->metadata.ext_textheader_count = 0;
+    ds->metadata.trace0 = -1;
+    ds->metadata.samplecount = -1;
+    ds->metadata.trace_bsize = -1;
+    ds->metadata.traceheader_count = 1;
+    ds->metadata.tracecount = -1;
+
     segy_header_mapping* mapping = &ds->traceheader_mapping_standard;
     memcpy(mapping->name, "SEG00000", 8);
     memcpy(
@@ -949,6 +972,64 @@ int segy_close( segy_datasource* ds ) {
     err = ds->close(ds);
     free( ds );
     if( err != 0 ) return SEGY_DS_CLOSE_ERROR;
+    return SEGY_OK;
+}
+
+int segy_collect_metadata(
+    segy_datasource* ds,
+    int endianness,
+    int encoding,
+    int ext_textheader_count
+) {
+    if( endianness != SEGY_LSB && endianness != SEGY_MSB ) {
+        int err = segy_endianness( ds, &endianness );
+        if( err != SEGY_OK ) return err;
+    }
+    ds->metadata.endianness = endianness;
+    ds->lsb = endianness;
+
+    if( encoding != SEGY_ASCII && encoding != SEGY_EBCDIC ) {
+        int err = segy_encoding( ds, &encoding );
+        if( err != SEGY_OK ) return err;
+    }
+    ds->metadata.encoding = encoding;
+    ds->encoding = encoding;
+
+    char binheader[SEGY_BINARY_HEADER_SIZE];
+    int err = segy_binheader( ds, binheader );
+    if( err ) {
+        return err;
+    }
+
+    ds->metadata.format = segy_format( binheader );
+    ds->metadata.elemsize = segy_formatsize( ds->metadata.format );
+    if( ds->metadata.elemsize <= 0 ) {
+        return SEGY_INVALID_ARGS;
+    }
+    ds->elemsize = ds->metadata.elemsize;
+
+    if( ext_textheader_count < 0 ) {
+        segy_field_data fd;
+        err = segy_get_binfield( binheader, SEGY_BIN_EXT_HEADERS, &fd );
+        if( err != SEGY_OK ) return err;
+
+        ext_textheader_count = fd.value.i16;
+        if( ext_textheader_count < 0 ) return SEGY_INVALID_FIELD_VALUE;
+    }
+    ds->metadata.ext_textheader_count = ext_textheader_count;
+
+    ds->metadata.trace0 = segy_trace0( binheader );
+    ds->metadata.samplecount = segy_samples( binheader );
+    ds->metadata.trace_bsize = ds->metadata.samplecount * ds->metadata.elemsize;
+
+    ds->metadata.traceheader_count = 1;
+
+    int tracecount;
+    err = segy_traces( ds, &tracecount, ds->metadata.trace0, ds->metadata.trace_bsize );
+    if( err ) {
+        return err;
+    }
+    ds->metadata.tracecount = tracecount;
     return SEGY_OK;
 }
 

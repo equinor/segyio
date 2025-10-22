@@ -104,9 +104,9 @@ PyObject* RuntimeError( int err ) {
     return RuntimeError( msg.c_str() );
 }
 
-template< typename T1, typename T2 >
-PyObject* RuntimeError( const char* msg, T1 t1, T2 t2 ) {
-    return PyErr_Format( PyExc_RuntimeError, msg, t1, t2 );
+template< typename... Args >
+PyObject* RuntimeError( const char* msg, Args... args ) {
+    return PyErr_Format( PyExc_RuntimeError, msg, args... );
 }
 
 PyObject* IOErrno() {
@@ -323,6 +323,17 @@ segy_datasource* create_py_stream_datasource(
     ds->elemsize = 4;
     ds->lsb = false;
     ds->encoding = SEGY_EBCDIC;
+
+    ds->metadata.endianness = SEGY_MSB;
+    ds->metadata.encoding = SEGY_EBCDIC;
+    ds->metadata.format = SEGY_IBM_FLOAT_4_BYTE;
+    ds->metadata.elemsize = 4;
+    ds->metadata.ext_textheader_count = 0;
+    ds->metadata.trace0 = -1;
+    ds->metadata.samplecount = -1;
+    ds->metadata.trace_bsize = -1;
+    ds->metadata.traceheader_count = 1;
+    ds->metadata.tracecount = -1;
 
     segy_header_mapping* mapping = &ds->traceheader_mapping_standard;
     memcpy(mapping->name, "SEG00000", 8);
@@ -637,18 +648,6 @@ PyObject* segyopen( segyfd* self, PyObject* args, PyObject* kwargs ) {
         return NULL;
     }
 
-    if (endianness != SEGY_LSB && endianness != SEGY_MSB) {
-        int err = segy_endianness(ds, &endianness);
-        if( err != SEGY_OK ) return NULL;
-    }
-    ds->lsb = endianness;
-
-    if( encoding != SEGY_EBCDIC && encoding != SEGY_ASCII ) {
-        int err = segy_encoding( ds, &encoding );
-        if( err != SEGY_OK ) return NULL;
-    }
-    ds->encoding = encoding;
-
     char binary[ SEGY_BINARY_HEADER_SIZE ] = {};
     int err = segy_binheader( ds, binary );
     if( err ) return Error( err );
@@ -663,53 +662,36 @@ PyObject* segyopen( segyfd* self, PyObject* args, PyObject* kwargs ) {
     err = set_traceheader_mappings( self, layout_stanza_data, py_iline, py_xline );
     if( err ) return NULL;
 
-    int tracecount = 0;
+    int ext_textheader_count =
+        self->stanzas.empty() ? 0 : self->stanzas.back().end_index();
 
-    const long trace0 = segy_trace0( binary );
-    const int samplecount = segy_samples( binary );
-    const int format = segy_format( binary );
-    int trace_bsize = segy_trsize( format, samplecount );
+    err = segy_collect_metadata( ds, endianness, encoding, ext_textheader_count );
+    if( err == SEGY_OK ) {
+        self->format = ds->metadata.format;
+        self->elemsize = ds->metadata.elemsize;
+        self->trace0 = ds->metadata.trace0;
+        self->samplecount = ds->metadata.samplecount;
+        self->trace_bsize = ds->metadata.trace_bsize;
+        self->tracecount = ds->metadata.tracecount;
 
-    /* fall back to assuming 4-byte ibm float if the format field is rubbish */
-    if( trace_bsize < 0 ) trace_bsize = segy_trace_bsize( samplecount );
+        Py_INCREF( self );
+        return (PyObject*)self;
+    }
 
-    /*
-     * if set_format errors, it's because the format-field in the binary header
-     * is 0 or some other garbage. if so, assume the file is 4-byte ibm float
-     */
-   int elemsize = segy_formatsize( format );
-   if( elemsize < 0 ) return NULL;
-   ds->elemsize = elemsize;
-
-   err = segy_traces( ds, &tracecount, trace0, trace_bsize );
-   switch( err ) {
-       case SEGY_OK:
-           break;
-
-       case SEGY_FSEEK_ERROR:
-           return IOErrno();
-
-       case SEGY_INVALID_ARGS:
-           return RuntimeError( "unable to count traces, "
-                                "no data traces past headers" );
-
-       case SEGY_TRACE_SIZE_MISMATCH:
-           return RuntimeError( "trace count inconsistent with file size, "
-                                "trace lengths possibly of non-uniform" );
-
-       default:
-           return Error( err );
-   }
-
-    self->trace0 = trace0;
-    self->trace_bsize = trace_bsize;
-    self->format = format;
-    self->elemsize = elemsize;
-    self->samplecount = samplecount;
-    self->tracecount = tracecount;
-
-    Py_INCREF( self );
-    return (PyObject*) self;
+    std::ostringstream msg;
+    msg << "unable to gather basic metadata from the file, error " << segy_errstr( err )
+        << ". Intermediate state:\n"
+        << "  endianness=" << ds->metadata.endianness << "\n"
+        << "  encoding=" << ds->metadata.encoding << "\n"
+        << "  format=" << ds->metadata.format << "\n"
+        << "  elemsize=" << ds->metadata.elemsize << "\n"
+        << "  ext_textheader_count=" << ds->metadata.ext_textheader_count << "\n"
+        << "  trace0=" << ds->metadata.trace0 << "\n"
+        << "  samplecount=" << ds->metadata.samplecount << "\n"
+        << "  trace_bsize=" << ds->metadata.trace_bsize << "\n"
+        << "  traceheader_count=" << ds->metadata.traceheader_count << "\n"
+        << "  tracecount=" << ds->metadata.tracecount;
+    return RuntimeError( msg.str().c_str() );
 }
 
 PyObject* segycreate( segyfd* self, PyObject* args, PyObject* kwargs ) {
@@ -794,9 +776,15 @@ PyObject* segycreate( segyfd* self, PyObject* args, PyObject* kwargs ) {
     int elemsize = segy_formatsize( format );
     ds->elemsize = elemsize;
 
-    self->trace0 = SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE +
-                   SEGY_TEXT_HEADER_SIZE * ext_headers;
-    self->trace_bsize = segy_trsize( format, samples );
+    ds->metadata.format = format;
+    ds->metadata.trace0 = SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE +
+                          SEGY_TEXT_HEADER_SIZE * ext_headers;
+    ds->metadata.samplecount = samples;
+    ds->metadata.trace_bsize = segy_trsize( format, samples );
+    ds->metadata.tracecount = tracecount;
+
+    self->trace0 = ds->metadata.trace0;
+    self->trace_bsize = ds->metadata.trace_bsize;
     self->format = format;
     self->elemsize = elemsize;
     self->samplecount = samples;
@@ -851,54 +839,57 @@ PyObject* suopen( segyfd* self, PyObject* args, PyObject* kwargs ) {
     );
     if( err ) return NULL;
 
-    ds->elemsize = segy_formatsize( SEGY_IEEE_FLOAT_4_BYTE );
+    ds->metadata.format = SEGY_IEEE_FLOAT_4_BYTE;
+    ds->metadata.elemsize = segy_formatsize( ds->metadata.format );
+    ds->metadata.trace0 = 0;
 
-    if( err )
-        return RuntimeError( "internal: unable to set type to IEEE float " );
-
-    char header[ SEGY_TRACE_HEADER_SIZE ] = {};
-
+    char header[SEGY_TRACE_HEADER_SIZE] = {};
     err = segy_traceheader( ds, 0, header, 0, 0 );
     if( err )
         return IOError( "unable to read first trace header in SU file" );
 
-    int32_t f;
-    segy_get_tracefield_int( header, SEGY_TR_SAMPLE_COUNT, &f );
+    segy_field_data fd;
+    segy_get_tracefield(
+        header,
+        ds->traceheader_mapping_standard.offset_to_entry_definition,
+        SEGY_TR_SAMPLE_COUNT,
+        &fd
+    );
+    ds->metadata.samplecount = fd.value.u16;
+    ds->metadata.trace_bsize = ds->metadata.samplecount * ds->metadata.elemsize;
 
-    const long trace0 = 0;
-    const int samplecount = f;
-    const int elemsize = sizeof( float );
-    int trace_bsize = elemsize * samplecount;
+    err = segy_traces(
+        ds,
+        &ds->metadata.tracecount,
+        ds->metadata.trace0,
+        ds->metadata.trace_bsize
+    );
 
-    int tracecount;
-    err = segy_traces( ds, &tracecount, trace0, trace_bsize );
-    switch( err ) {
-        case SEGY_OK: break;
-
-        case SEGY_FSEEK_ERROR:
-            return IOErrno();
-
-        case SEGY_INVALID_ARGS:
-            return RuntimeError( "unable to count traces, "
-                                 "no data traces past headers" );
-
-        case SEGY_TRACE_SIZE_MISMATCH:
-            return RuntimeError( "trace count inconsistent with file size, "
-                                 "trace lengths possibly of non-uniform" );
-
-        default:
-            return Error( err );
+    if( err == SEGY_OK ) {
+        self->format = ds->metadata.format;
+        self->elemsize = ds->metadata.elemsize;
+        self->trace0 = ds->metadata.trace0;
+        self->samplecount = ds->metadata.samplecount;
+        self->trace_bsize = ds->metadata.trace_bsize;
+        self->tracecount = ds->metadata.tracecount;
+        Py_INCREF( self );
+        return (PyObject*)self;
     }
 
-    self->trace0 = trace0;
-    self->trace_bsize = trace_bsize;
-    self->format = SEGY_IEEE_FLOAT_4_BYTE;
-    self->elemsize = elemsize;
-    self->samplecount = samplecount;
-    self->tracecount = tracecount;
-
-    Py_INCREF( self );
-    return (PyObject*) self;
+    std::ostringstream msg;
+    msg << "unable to gather basic metadata from the file, error " << segy_errstr( err )
+        << ". Intermediate state:\n"
+        << "  endianness=" << ds->metadata.endianness << "\n"
+        << "  encoding=" << ds->metadata.encoding << "\n"
+        << "  format=" << ds->metadata.format << "\n"
+        << "  elemsize=" << ds->metadata.elemsize << "\n"
+        << "  ext_textheader_count=" << ds->metadata.ext_textheader_count << "\n"
+        << "  trace0=" << ds->metadata.trace0 << "\n"
+        << "  samplecount=" << ds->metadata.samplecount << "\n"
+        << "  trace_bsize=" << ds->metadata.trace_bsize << "\n"
+        << "  traceheader_count=" << ds->metadata.traceheader_count << "\n"
+        << "  tracecount=" << ds->metadata.tracecount;
+    return RuntimeError( msg.str().c_str() );
 }
 
 void dealloc( segyfd* self ) {

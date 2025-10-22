@@ -4,6 +4,7 @@ segy_open
 segy_mmap
 segy_flush
 segy_close
+segy_collect_metadata
 segy_binheader_size
 segy_binheader
 segy_write_binheader

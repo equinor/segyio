@@ -42,8 +42,17 @@ segy_file* openfile( const std::string& path, const std::string& mode ) {
     unique_segy ptr( segy_open( p.c_str(), mode.c_str() ) );
     REQUIRE( ptr );
 
+    int endianness = testcfg::config().lsbit ? SEGY_LSB : SEGY_MSB;
+    int err = segy_collect_metadata( ptr.get(), endianness, -1, -1 );
+    REQUIRE( err == SEGY_OK );
+
     testcfg::config().apply( ptr.get() );
     return ptr.release();
+}
+
+segy_file* openfile( const std::string& path, const std::string& mode, int endianness ) {
+    testcfg::config().lsbit = endianness;
+    return openfile( path, mode );
 }
 
 const std::string& copyfile( const std::string& src, const std::string& dst ) {
@@ -1065,7 +1074,10 @@ struct writesubtr {
                          + std::string(testcfg::config().lsbit  ? "-lsb"  : "")
                          + "].sgy";
 
-        copyfile( "test-data/small.sgy", name );
+        std::string orig = testcfg::config().lsbit
+                               ? "test-data/small-lsb.sgy"
+                               : "test-data/small.sgy";
+        copyfile( orig, name );
 
         fp = openfile( name, "r+b" );
 
@@ -1491,7 +1503,7 @@ SCENARIO( "reading text header", "[c.segy]" ) {
 
         const char* file = "test-data/text.sgy";
 
-        unique_segy ufp{ openfile( file, "rb" ) };
+        unique_segy ufp{ openfile( file, "rb", SEGY_MSB ) };
         auto fp = ufp.get();
 
         char ascii[ SEGY_TEXT_HEADER_SIZE + 1 ] = {};
@@ -1733,10 +1745,12 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
     const int samples     = 75;
     const int trace_bsize = samples * 2;
 
-    WHEN( "reading data without setting format" ) {
+    WHEN( "reading data without collecting metadata" ) {
+        unique_segy ufp( segy_open( "test-data/f3.sgy", "rb" ) );
+        auto fp = ufp.get();
         /*
-         * explicitly zero this buffer - if set_format is called then this
-         * function should read 2 bytes, but now 4 is read instead.
+         * explicitly zero this buffer - if segy_collect_metadata is called then
+         * this function should read 2 bytes, but now 4 is read instead.
          */
         std::int16_t val[2] = { 0, 0 };
         Err err = segy_readsubtr( fp, 10,
