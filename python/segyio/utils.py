@@ -72,13 +72,11 @@ class FileDatasourceDescriptor():
     def readonly(self):
         return self.mode == 'rb' or self.mode == 'r'
 
-    def make_segyfile_descriptor(self, endian, encoding=None):
+    def make_segyfile_descriptor(self):
         from . import _segyio
         fd = _segyio.segyfd(
             filename=str(self.filename),
-            mode=self.mode,
-            endianness=c_endianness(endian),
-            encoding=c_encoding(encoding),
+            mode=self.mode
         )
         return fd
 
@@ -99,12 +97,10 @@ class StreamDatasourceDescriptor():
     def readonly(self):
         return not self.stream.writable()
 
-    def make_segyfile_descriptor(self, endian, encoding):
+    def make_segyfile_descriptor(self):
         from . import _segyio
         fd = _segyio.segyfd(
             stream=self.stream,
-            endianness=c_endianness(endian),
-            encoding=c_encoding(encoding),
             minimize_requests_number=self.minimize_requests_number,
         )
         return fd
@@ -125,12 +121,10 @@ class MemoryBufferDatasourceDescriptor():
     def readonly(self):
         return False
 
-    def make_segyfile_descriptor(self, endian, encoding):
+    def make_segyfile_descriptor(self):
         from . import _segyio
         fd = _segyio.segyfd(
             memory_buffer=self.buffer,
-            endianness=c_endianness(endian),
-            encoding=c_encoding(encoding),
         )
         return fd
 

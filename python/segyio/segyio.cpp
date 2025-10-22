@@ -516,8 +516,6 @@ int init( segyfd* self, PyObject* args, PyObject* kwargs ) {
     char* mode = NULL;
     PyObject* stream = NULL;
     PyObject* memory_buffer = NULL;
-    int endianness = -1;
-    int encoding = -1;
     int minimize_requests_number = -1;
 
     static const char* keywords[] = {
@@ -525,21 +523,17 @@ int init( segyfd* self, PyObject* args, PyObject* kwargs ) {
         "mode",
         "stream",
         "memory_buffer",
-        "endianness",
-        "encoding",
         "minimize_requests_number",
         NULL
     };
 
     if( !PyArg_ParseTupleAndKeywords(
-            args, kwargs, "|ssOOiip",
+            args, kwargs, "|ssOOp",
             const_cast<char**>( keywords ),
             &filename,
             &mode,
             &stream,
             &memory_buffer,
-            &endianness,
-            &encoding,
             &minimize_requests_number
         ) ) {
         ValueError( "could not parse arguments" );
@@ -606,18 +600,6 @@ int init( segyfd* self, PyObject* args, PyObject* kwargs ) {
         return -1;
     }
 
-    if (endianness != SEGY_LSB && endianness != SEGY_MSB) {
-        int err = segy_endianness(ds, &endianness);
-        if( err != SEGY_OK ) return err;
-    }
-    ds.ds->lsb = endianness;
-
-    if( encoding != SEGY_EBCDIC && encoding != SEGY_ASCII ) {
-        int err = segy_encoding( ds, &encoding );
-        if( err != SEGY_OK ) encoding = SEGY_EBCDIC;
-    }
-    ds.ds->encoding = encoding;
-
     /*
      * init can be called multiple times, which is treated as opening a new
      * file on the same object. That means the previous file handle must be
@@ -632,22 +614,40 @@ PyObject* segyopen( segyfd* self, PyObject* args, PyObject* kwargs ) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
 
+    int endianness = -1; // change to Py_None later
+    int encoding = -1;
     PyObject *py_iline = Py_None;
     PyObject *py_xline = Py_None;
     static const char* keywords[] = {
+        "endianness",
+        "encoding",
         "iline",
         "xline",
         NULL
     };
 
     if( !PyArg_ParseTupleAndKeywords(
-            args, kwargs, "|OO",
+            args, kwargs, "|iiOO",
             const_cast<char**>( keywords ),
+            &endianness,
+            &encoding,
             &py_iline,
             &py_xline
         ) ) {
         return NULL;
     }
+
+    if (endianness != SEGY_LSB && endianness != SEGY_MSB) {
+        int err = segy_endianness(ds, &endianness);
+        if( err != SEGY_OK ) return NULL;
+    }
+    ds->lsb = endianness;
+
+    if( encoding != SEGY_EBCDIC && encoding != SEGY_ASCII ) {
+        int err = segy_encoding( ds, &encoding );
+        if( err != SEGY_OK ) return NULL;
+    }
+    ds->encoding = encoding;
 
     char binary[ SEGY_BINARY_HEADER_SIZE ] = {};
     int err = segy_binheader( ds, binary );
@@ -716,6 +716,8 @@ PyObject* segycreate( segyfd* self, PyObject* args, PyObject* kwargs ) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
 
+    int endianness = -1;
+    int encoding = -1;
     int samples;
     int tracecount;
     int ext_headers = 0;
@@ -730,19 +732,34 @@ PyObject* segycreate( segyfd* self, PyObject* args, PyObject* kwargs ) {
     static const char* kwlist[] = {
         "samples",
         "tracecount",
+        "endianness",
+        "encoding",
         "format",
         "ext_headers",
         NULL,
     };
 
     if( !PyArg_ParseTupleAndKeywords( args, kwargs,
-                "ii|ii",
+                "ii|iiii",
                 const_cast< char** >(kwlist),
                 &samples,
                 &tracecount,
+                &endianness,
+                &encoding,
                 &format,
                 &ext_headers ) )
         return NULL;
+
+    if( endianness != SEGY_MSB && endianness != SEGY_LSB ) {
+        endianness = SEGY_MSB;
+    }
+
+    if( encoding != SEGY_EBCDIC && encoding != SEGY_ASCII ) {
+        encoding = SEGY_EBCDIC;
+    }
+
+    ds->lsb = endianness;
+    ds->encoding = encoding;
 
     if( samples <= 0 )
         return ValueError( "expected samples > 0" );
@@ -793,22 +810,40 @@ PyObject* suopen( segyfd* self, PyObject* args, PyObject* kwargs ) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
 
+    int endianness = -1;
+    int encoding = -1;
     PyObject *py_iline = Py_None;
     PyObject *py_xline = Py_None;
     static const char* keywords[] = {
+        "endianness",
+        "encoding",
         "iline",
         "xline",
         NULL
     };
 
     if( !PyArg_ParseTupleAndKeywords(
-            args, kwargs, "|OO",
+            args, kwargs, "|iiOO",
             const_cast<char**>( keywords ),
+            &endianness,
+            &encoding,
             &py_iline,
             &py_xline
         ) ) {
         return NULL;
     }
+
+    if( endianness != SEGY_MSB && endianness != SEGY_LSB ) {
+        ValueError( "endianness must be set to a valid value" );
+        return NULL;
+    }
+
+    if( encoding != SEGY_EBCDIC && encoding != SEGY_ASCII ) {
+        int err = segy_encoding( ds, &encoding );
+        if( err != SEGY_OK ) return NULL;
+    }
+    ds->lsb = endianness;
+    ds->encoding = encoding;
 
     std::vector<char> layout_stanza_data;
     int err = set_traceheader_mappings(

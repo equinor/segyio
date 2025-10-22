@@ -5,7 +5,9 @@ import segyio
 from .utils import (
     FileDatasourceDescriptor,
     StreamDatasourceDescriptor,
-    MemoryBufferDatasourceDescriptor
+    MemoryBufferDatasourceDescriptor,
+    c_endianness,
+    c_encoding
 )
 
 def infer_geometry(f, metrics, strict):
@@ -248,8 +250,13 @@ def _open(datasource_descriptor,
           encoding=None,
           ):
 
-    fd = datasource_descriptor.make_segyfile_descriptor(endian, encoding)
-    fd.segyopen(iline=int(iline), xline=int(xline))
+    fd = datasource_descriptor.make_segyfile_descriptor()
+    fd.segyopen(
+        endianness=c_endianness(endian),
+        encoding=c_encoding(encoding),
+        iline=int(iline),
+        xline=int(xline)
+    )
     metrics = fd.metrics()
 
     f = segyio.SegyFile(fd,

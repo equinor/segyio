@@ -6,6 +6,8 @@ from . import TraceSortingFormat
 from .utils import (
     FileDatasourceDescriptor,
     StreamDatasourceDescriptor,
+    c_endianness,
+    c_encoding
 )
 
 def default_text_header(iline, xline, offset):
@@ -235,10 +237,12 @@ def _create(datasource_descriptor, spec):
     if encoding is None:
         encoding = 'ebcdic'
 
-    fd = datasource_descriptor.make_segyfile_descriptor(endian, encoding)
+    fd = datasource_descriptor.make_segyfile_descriptor()
     fd.segymake(
         samples = len(samples),
         tracecount = tracecount,
+        endianness=c_endianness(endian),
+        encoding=c_encoding(encoding),
         format = int(spec.format),
         ext_headers = int(ext_headers),
     )
