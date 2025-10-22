@@ -34,8 +34,8 @@ class SegyFile(object):
 
         self.traceheader_layout = fd.traceheader_layout()
         standard_header_layout = self.traceheader_layout["SEG00000"]
-        self._il = standard_header_layout.get_by_name("iline").byte
-        self._xl = standard_header_layout.get_by_name("xline").byte
+        self._il = standard_header_layout.entry_by_name("iline").byte
+        self._xl = standard_header_layout.entry_by_name("xline").byte
 
         # property value holders
         self._ilines = None

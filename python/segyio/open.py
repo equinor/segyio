@@ -81,15 +81,15 @@ def open(filename, mode="r", iline = None,
 
     iline : int or segyio.TraceField
         Overrides inline field offset in the trace headers. If no value is set,
-        value defined in xml mapping or standard-defined 189 would be used. By
-        setting this value user takes over responsibility of assuring parsing
-        can be done correctly.
+        value defined in xml mapping is used and if this one is absent the
+        standard-defined value 189 is used. By setting this value user takes
+        over responsibility of assuring parsing can be done correctly.
 
     xline : int or segyio.TraceField
-        Overrides crossline field offset in the trace headers.  If no value is
-        set, value defined in xml mapping or standard-defined 193 would be used.
-        By setting this value user takes over responsibility of assuring parsing
-        can be done correctly.
+        Overrides crossline field offset in the trace headers. If no value is
+        set, value defined in xml mapping is used and if this one is absent the
+        standard-defined value 193 is used. By setting this value user takes
+        over responsibility of assuring parsing can be done correctly.
 
     strict : bool, optional
         Abort if a geometry cannot be inferred. Defaults to True.
