@@ -320,7 +320,6 @@ segy_datasource* create_py_stream_datasource(
 
     ds->memory_speedup = false;
     ds->minimize_requests_number = minimize_requests_number;
-    ds->elemsize = 4;
     ds->lsb = false;
     ds->encoding = SEGY_EBCDIC;
 
@@ -774,7 +773,7 @@ PyObject* segycreate( segyfd* self, PyObject* args, PyObject* kwargs ) {
     }
 
     int elemsize = segy_formatsize( format );
-    ds->elemsize = elemsize;
+    ds->metadata.elemsize = elemsize;
 
     ds->metadata.format = format;
     ds->metadata.trace0 = SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE +

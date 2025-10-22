@@ -1626,8 +1626,6 @@ void f3_in_format(int fmt) {
     CHECK(format  == fmt);
     CHECK(trsize  == int(samples * sizeof(T)));
 
-    fp->elemsize = segy_formatsize( fmt );
-
     /* read f3 from 2-byte, expand, and compare */
     std::vector< T > fptrace(samples);
     Err err = segy_readtrace(fp,
@@ -1641,7 +1639,6 @@ void f3_in_format(int fmt) {
     unique_segy uf3{ openfile("test-data/f3.sgy", "rb") };
     auto* f3 = uf3.get();
     REQUIRE(f3);
-    f3->elemsize = segy_formatsize( f3fmt );
 
     std::vector< std::int16_t > f3trace(samples);
     err = segy_readtrace(f3,
@@ -1770,7 +1767,6 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
         }
     }
 
-    fp->elemsize = segy_formatsize( format );
     Err err = Err::ok();
 
     WHEN( "determining number of traces" ) {

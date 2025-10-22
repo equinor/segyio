@@ -787,8 +787,6 @@ segy_file* segy_open( const char* path, const char* mode ) {
     ds->close = fileclose;
     ds->writable = strstr( binary_mode, "+" ) || strstr( binary_mode, "w" );
 
-    // on init assume a size of 4-bytes-per-element and big-endian
-    ds->elemsize = 4;
     ds->lsb = false;
     ds->encoding = SEGY_EBCDIC;
 
@@ -853,8 +851,6 @@ segy_datasource* segy_memopen( unsigned char* addr, size_t size ) {
 
     ds->writable = true;
 
-    // on init assume a size of 4-bytes-per-element and big-endian
-    ds->elemsize = 4;
     ds->lsb = false;
     ds->encoding = SEGY_EBCDIC;
 
@@ -1006,7 +1002,6 @@ int segy_collect_metadata(
     if( ds->metadata.elemsize <= 0 ) {
         return SEGY_INVALID_ARGS;
     }
-    ds->elemsize = ds->metadata.elemsize;
 
     if( ext_textheader_count < 0 ) {
         segy_field_data fd;
@@ -2369,7 +2364,7 @@ int segy_readtrace( segy_datasource* ds,
                     void* buf,
                     long trace0,
                     int trace_bsize ) {
-    const int stop = trace_bsize / ds->elemsize;
+    const int stop = trace_bsize / ds->metadata.elemsize;
     return segy_readsubtr( ds, traceno, 0, stop, 1, buf, NULL, trace0, trace_bsize );
 }
 
@@ -2434,7 +2429,7 @@ int segy_readsubtr( segy_datasource* ds,
                     int trace_bsize ) {
 
     const int elems = abs( stop - start );
-    const int elemsize = ds->elemsize;
+    const int elemsize = ds->metadata.elemsize;
 
     int err = subtr_seek( ds, traceno, start, stop, elemsize, trace0, trace_bsize );
     if( err != SEGY_OK ) return err;
@@ -2445,10 +2440,10 @@ int segy_readsubtr( segy_datasource* ds,
         if( err != 0 ) return SEGY_DS_READ_ERROR;
 
         if( ds->lsb ) {
-            if( ds->elemsize == 8 ) bswap64vec( buf, elems );
-            if( ds->elemsize == 4 ) bswap32vec( buf, elems );
-            if( ds->elemsize == 3 ) bswap24vec( buf, elems );
-            if( ds->elemsize == 2 ) bswap16vec( buf, elems );
+            if( elemsize == 8 ) bswap64vec( buf, elems );
+            if( elemsize == 4 ) bswap32vec( buf, elems );
+            if( elemsize == 3 ) bswap24vec( buf, elems );
+            if( elemsize == 2 ) bswap16vec( buf, elems );
         }
 
         if( step == -1 ) reverse( buf, elems, elemsize );
@@ -2486,10 +2481,10 @@ int segy_readsubtr( segy_datasource* ds,
         }
 
         if( ds->lsb ) {
-            if( ds->elemsize == 8 ) bswap64vec( buf, slicelen );
-            if( ds->elemsize == 4 ) bswap32vec( buf, slicelen );
-            if( ds->elemsize == 3 ) bswap24vec( buf, slicelen );
-            if( ds->elemsize == 2 ) bswap16vec( buf, slicelen );
+            if( elemsize == 8 ) bswap64vec( buf, slicelen );
+            if( elemsize == 4 ) bswap32vec( buf, slicelen );
+            if( elemsize == 3 ) bswap24vec( buf, slicelen );
+            if( elemsize == 2 ) bswap16vec( buf, slicelen );
         }
 
         return SEGY_OK;
@@ -2518,10 +2513,10 @@ int segy_readsubtr( segy_datasource* ds,
         memcpy( dst, cur, elemsize );
 
     if( ds->lsb ) {
-        if( ds->elemsize == 8 ) bswap64vec( buf, slicelen );
-        if( ds->elemsize == 4 ) bswap32vec( buf, slicelen );
-        if( ds->elemsize == 3 ) bswap24vec( buf, slicelen );
-        if( ds->elemsize == 2 ) bswap16vec( buf, slicelen );
+        if( elemsize == 8 ) bswap64vec( buf, slicelen );
+        if( elemsize == 4 ) bswap32vec( buf, slicelen );
+        if( elemsize == 3 ) bswap24vec( buf, slicelen );
+        if( elemsize == 2 ) bswap16vec( buf, slicelen );
     }
 
     if( !rangebuf ) free( tracebuf );
@@ -2534,7 +2529,7 @@ int segy_writetrace( segy_datasource* ds,
                      long trace0,
                      int trace_bsize ) {
 
-    const int stop = trace_bsize / ds->elemsize;
+    const int stop = trace_bsize / ds->metadata.elemsize;
     return segy_writesubtr( ds, traceno, 0, stop, 1, buf, NULL, trace0, trace_bsize );
 }
 
@@ -2552,7 +2547,7 @@ int segy_writesubtr( segy_datasource* ds,
     if( !ds->writable ) return SEGY_READONLY;
 
     const int elems = abs( stop - start );
-    const int elemsize = ds->elemsize;
+    const int elemsize = ds->metadata.elemsize;
     const size_t range = elems * elemsize;
 
     int err = subtr_seek( ds, traceno, start, stop, elemsize, trace0, trace_bsize );
@@ -2583,10 +2578,10 @@ int segy_writesubtr( segy_datasource* ds,
         memcpy( tracebuf, buf, range );
 
         if( step == -1 ) reverse( tracebuf, elems, elemsize );
-        if( ds->elemsize == 8 ) bswap64vec( tracebuf, elems );
-        if( ds->elemsize == 4 ) bswap32vec( tracebuf, elems );
-        if( ds->elemsize == 3 ) bswap24vec( tracebuf, elems );
-        if( ds->elemsize == 2 ) bswap16vec( tracebuf, elems );
+        if( elemsize == 8 ) bswap64vec( tracebuf, elems );
+        if( elemsize == 4 ) bswap32vec( tracebuf, elems );
+        if( elemsize == 3 ) bswap24vec( tracebuf, elems );
+        if( elemsize == 2 ) bswap16vec( tracebuf, elems );
 
         err = ds->write( ds, tracebuf, range );
         if( !rangebuf ) free( tracebuf );
