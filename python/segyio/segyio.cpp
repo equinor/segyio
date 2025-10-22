@@ -688,46 +688,28 @@ PyObject* segyopen( segyfd* self, PyObject* args, PyObject* kwargs ) {
      * is 0 or some other garbage. if so, assume the file is 4-byte ibm float
      */
    segy_set_format( ds, format );
-   int elemsize = 4;
+   int elemsize = segy_formatsize( format );
+   if( elemsize < 0 ) elemsize = 4;
 
-    switch( format ) {
-        case SEGY_IBM_FLOAT_4_BYTE:             elemsize = 4; break;
-        case SEGY_SIGNED_INTEGER_4_BYTE:        elemsize = 4; break;
-        case SEGY_SIGNED_INTEGER_8_BYTE:        elemsize = 8; break;
-        case SEGY_SIGNED_SHORT_2_BYTE:          elemsize = 2; break;
-        case SEGY_FIXED_POINT_WITH_GAIN_4_BYTE: elemsize = 4; break;
-        case SEGY_IEEE_FLOAT_4_BYTE:            elemsize = 4; break;
-        case SEGY_IEEE_FLOAT_8_BYTE:            elemsize = 8; break;
-        case SEGY_SIGNED_CHAR_1_BYTE:           elemsize = 1; break;
-        case SEGY_UNSIGNED_CHAR_1_BYTE:         elemsize = 1; break;
-        case SEGY_UNSIGNED_INTEGER_4_BYTE:      elemsize = 4; break;
-        case SEGY_UNSIGNED_SHORT_2_BYTE:        elemsize = 2; break;
-        case SEGY_UNSIGNED_INTEGER_8_BYTE:      elemsize = 8; break;
+   err = segy_traces( ds, &tracecount, trace0, trace_bsize );
+   switch( err ) {
+       case SEGY_OK:
+           break;
 
-        case SEGY_NOT_IN_USE_1:
-        case SEGY_NOT_IN_USE_2:
-        default:
-            break;
-    }
+       case SEGY_FSEEK_ERROR:
+           return IOErrno();
 
-    err = segy_traces( ds, &tracecount, trace0, trace_bsize );
-    switch( err ) {
-        case SEGY_OK: break;
+       case SEGY_INVALID_ARGS:
+           return RuntimeError( "unable to count traces, "
+                                "no data traces past headers" );
 
-        case SEGY_FSEEK_ERROR:
-            return IOErrno();
+       case SEGY_TRACE_SIZE_MISMATCH:
+           return RuntimeError( "trace count inconsistent with file size, "
+                                "trace lengths possibly of non-uniform" );
 
-        case SEGY_INVALID_ARGS:
-            return RuntimeError( "unable to count traces, "
-                                 "no data traces past headers" );
-
-        case SEGY_TRACE_SIZE_MISMATCH:
-            return RuntimeError( "trace count inconsistent with file size, "
-                                 "trace lengths possibly of non-uniform" );
-
-        default:
-            return Error( err );
-    }
+       default:
+           return Error( err );
+   }
 
     self->trace0 = trace0;
     self->trace_bsize = trace_bsize;
@@ -802,42 +784,8 @@ PyObject* segycreate( segyfd* self, PyObject* args, PyObject* kwargs ) {
             return ValueError( "unknown format identifier" );
     }
 
-    segy_set_format(ds, format);
-    int elemsize = 4;
-    switch( format ) {
-        case SEGY_SIGNED_INTEGER_8_BYTE:
-        case SEGY_IEEE_FLOAT_8_BYTE:
-        case SEGY_UNSIGNED_INTEGER_8_BYTE:
-            elemsize = 8;
-            break;
-
-         case SEGY_IBM_FLOAT_4_BYTE:
-        case SEGY_SIGNED_INTEGER_4_BYTE:
-        case SEGY_FIXED_POINT_WITH_GAIN_4_BYTE:
-        case SEGY_IEEE_FLOAT_4_BYTE:
-        case SEGY_UNSIGNED_INTEGER_4_BYTE:
-            elemsize = 4;
-            break;
-
-        case SEGY_SIGNED_CHAR_3_BYTE:
-        case SEGY_UNSIGNED_INTEGER_3_BYTE:
-            elemsize = 3;
-            break;
-
-        case SEGY_SIGNED_SHORT_2_BYTE:
-        case SEGY_UNSIGNED_SHORT_2_BYTE:
-            elemsize = 2;
-            break;
-
-        case SEGY_SIGNED_CHAR_1_BYTE:
-        case SEGY_UNSIGNED_CHAR_1_BYTE:
-            elemsize = 1;
-            break;
-
-        default:
-            assert(false || "format should already be checked" );
-            break;
-    }
+    segy_set_format( ds, format );
+    int elemsize = segy_formatsize( format );
 
     self->trace0 = SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE +
                    SEGY_TEXT_HEADER_SIZE * ext_headers;

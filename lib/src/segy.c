@@ -699,7 +699,7 @@ static int memclose( segy_datasource* self ) {
     return SEGY_OK;
 }
 
-static int formatsize( int format ) {
+int segy_formatsize( int format ) {
     switch( format ) {
         case SEGY_IBM_FLOAT_4_BYTE:             return 4;
         case SEGY_SIGNED_INTEGER_4_BYTE:        return 4;
@@ -994,7 +994,7 @@ static int get_field( const char* header,
 
     fd->entry_type = mapping[offset].entry_type;
     uint8_t datatype = entry_type_to_datatype_map[fd->entry_type];
-    int vsize = formatsize( datatype );
+    int vsize = segy_formatsize( datatype );
 
     uint64_t val;
     switch ( datatype ) {
@@ -1106,7 +1106,7 @@ static int set_field( char* header,
 
     segy_field_value fv = fd.value;
     uint8_t datatype = entry_type_to_datatype_map[entry_type];
-    int vsize = formatsize( datatype );
+    int vsize = segy_formatsize( datatype );
 
     uint64_t val;
     switch( datatype ) {
@@ -1367,7 +1367,7 @@ int segy_field_forall( segy_datasource* ds,
         if( err != 0 ) return err;
         const uint8_t entry_type = traceheader_default_map[zfield].entry_type;
         const uint8_t datatype = entry_type_to_datatype_map[entry_type];
-        if( ds->lsb ) f = bswap_header_word( f, formatsize( datatype ) );
+        if( ds->lsb ) f = bswap_header_word( f, segy_formatsize( datatype ) );
         *buf = f;
     }
 
@@ -1469,7 +1469,7 @@ int segy_format( const char* binheader ) {
 }
 
 int segy_set_format( segy_datasource* ds, int format ) {
-    const int elemsize = formatsize( format );
+    const int elemsize = segy_formatsize( format );
     if( elemsize <= 0 ) return SEGY_INVALID_ARGS;
     ds->elemsize = elemsize;
 
@@ -1552,7 +1552,7 @@ int segy_trace_bsize( int samples ) {
 }
 
 int segy_trsize( int format, int samples ) {
-    const int elemsize = formatsize( format );
+    const int elemsize = segy_formatsize( format );
     if( elemsize < 0 ) return -1;
     return samples * elemsize;
 }
@@ -2656,7 +2656,7 @@ int segy_writesubtr( segy_datasource* ds,
 static int segy_native_byteswap(int format, long long size, void* buf) {
 
     if (HOST_LSB) {
-        const int elemsize = formatsize( format );
+        const int elemsize = segy_formatsize( format );
 
         switch (elemsize) {
             case 8: bswap64vec(buf, size); break;
@@ -2674,7 +2674,7 @@ int segy_to_native( int format,
                     long long size,
                     void* buf ) {
 
-    const int elemsize = formatsize( format );
+    const int elemsize = segy_formatsize( format );
     if( elemsize < 0 ) return SEGY_INVALID_ARGS;
 
     segy_native_byteswap( format, size, buf );
@@ -2692,7 +2692,7 @@ int segy_from_native( int format,
                       long long size,
                       void* buf ) {
 
-    const int elemsize = formatsize( format );
+    const int elemsize = segy_formatsize( format );
     if( elemsize < 0 ) return SEGY_INVALID_ARGS;
 
     char* dst = (char*)buf;

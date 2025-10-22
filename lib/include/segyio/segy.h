@@ -426,6 +426,10 @@ int segy_samples( const char* binheader );
  */
 int segy_sample_interval( segy_datasource*, float fallback , float* dt );
 
+/* exception: returned int is elemsize of the format, not an error code. -1
+means unknown format.*/
+int segy_formatsize( int format );
+
 /* exception: the int returned is an enum, SEGY_FORMAT, not an error code */
 int segy_format( const char* binheader );
 /* override the assumed format of the samples.
