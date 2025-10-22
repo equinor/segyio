@@ -1,7 +1,7 @@
 from ..open import infer_geometry
 from ..segy import SegyFile
 from . import words
-from ..utils import FileDatasourceDescriptor, c_endianness
+from ..utils import FileDatasourceDescriptor, to_c_endianness
 
 import numpy
 
@@ -96,7 +96,7 @@ def _open(datasource_descriptor,
 
     fd = datasource_descriptor.make_segyfile_descriptor()
     fd.suopen(
-        endianness=c_endianness(endian),
+        endianness=to_c_endianness(endian),
         iline=int(iline),
         xline=int(xline)
     )

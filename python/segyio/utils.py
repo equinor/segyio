@@ -28,7 +28,7 @@ def castarray(x, dtype):
         # reasonably fast.
         return np.require(x, dtype = dtype, requirements = 'CAW')
 
-def c_endianness(endian):
+def to_c_endianness(endian):
     endians = {
         None: -1,
         'little': 1,
@@ -44,7 +44,7 @@ def c_endianness(endian):
 
     return endians[endian]
 
-def c_encoding(encoding):
+def to_c_encoding(encoding):
     encodings = {
         None: -1,
         'ebcdic': 0,

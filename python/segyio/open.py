@@ -6,8 +6,8 @@ from .utils import (
     FileDatasourceDescriptor,
     StreamDatasourceDescriptor,
     MemoryBufferDatasourceDescriptor,
-    c_endianness,
-    c_encoding
+    to_c_endianness,
+    to_c_encoding
 )
 
 def infer_geometry(f, metrics, strict):
@@ -252,8 +252,8 @@ def _open(datasource_descriptor,
 
     fd = datasource_descriptor.make_segyfile_descriptor()
     fd.segyopen(
-        endianness=c_endianness(endian),
-        encoding=c_encoding(encoding),
+        endianness=to_c_endianness(endian),
+        encoding=to_c_encoding(encoding),
         iline=int(iline),
         xline=int(xline)
     )
