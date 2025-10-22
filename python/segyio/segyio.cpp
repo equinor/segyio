@@ -320,7 +320,6 @@ segy_datasource* create_py_stream_datasource(
 
     ds->memory_speedup = false;
     ds->minimize_requests_number = minimize_requests_number;
-    ds->encoding = SEGY_EBCDIC;
 
     ds->metadata.endianness = SEGY_MSB;
     ds->metadata.encoding = SEGY_EBCDIC;
@@ -739,7 +738,7 @@ PyObject* segycreate( segyfd* self, PyObject* args, PyObject* kwargs ) {
     }
 
     ds->metadata.endianness = endianness;
-    ds->encoding = encoding;
+    ds->metadata.encoding = encoding;
 
     if( samples <= 0 )
         return ValueError( "expected samples > 0" );
@@ -829,7 +828,7 @@ PyObject* suopen( segyfd* self, PyObject* args, PyObject* kwargs ) {
         if( err != SEGY_OK ) return NULL;
     }
     ds->metadata.endianness = endianness;
-    ds->encoding = encoding;
+    ds->metadata.encoding = encoding;
 
     std::vector<char> layout_stanza_data;
     int err = set_traceheader_mappings(
@@ -1189,7 +1188,7 @@ PyObject* metrics( segyfd* self ) {
     static const int bin  = SEGY_BINARY_HEADER_SIZE;
     const int ext = (self->trace0 - (text + bin)) / text;
     segy_datasource* ds = self->ds;
-    int encoding = ds->encoding;
+    int encoding = ds->metadata.encoding;
     return Py_BuildValue( "{s:i, s:l, s:i, s:i, s:i, s:i, s:i}",
                           "tracecount",  self->tracecount,
                           "trace0",      self->trace0,

@@ -353,11 +353,6 @@ struct segy_datasource {
     /* Is datasource writable */
     bool writable;
 
-    /* EBCDIC or ASCII encoding. All text-reading functions should consult this
-     * property to determine string encoding.
-     */
-    int encoding;
-
     /* Setting for trace algorithms.
      *
      * If true, unnecessary data would be read into memory/written to the

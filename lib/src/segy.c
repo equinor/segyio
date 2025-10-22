@@ -787,8 +787,6 @@ segy_file* segy_open( const char* path, const char* mode ) {
     ds->close = fileclose;
     ds->writable = strstr( binary_mode, "+" ) || strstr( binary_mode, "w" );
 
-    ds->encoding = SEGY_EBCDIC;
-
     ds->minimize_requests_number = true;
     ds->memory_speedup = false;
 
@@ -849,8 +847,6 @@ segy_datasource* segy_memopen( unsigned char* addr, size_t size ) {
     ds->close = memclose;
 
     ds->writable = true;
-
-    ds->encoding = SEGY_EBCDIC;
 
     ds->minimize_requests_number = false;
     ds->memory_speedup = true;
@@ -986,7 +982,6 @@ int segy_collect_metadata(
         if( err != SEGY_OK ) return err;
     }
     ds->metadata.encoding = encoding;
-    ds->encoding = encoding;
 
     char binheader[SEGY_BINARY_HEADER_SIZE];
     int err = segy_binheader( ds, binheader );
@@ -2905,7 +2900,7 @@ int segy_read_ext_textheader( segy_datasource* ds, int pos, char *buf) {
     err = ds->read( ds, buf, SEGY_TEXT_HEADER_SIZE );
     if( err != 0 ) return SEGY_DS_READ_ERROR;
 
-    if( pos == -1 && ds->encoding == SEGY_EBCDIC ) {
+    if( pos == -1 && ds->metadata.encoding == SEGY_EBCDIC ) {
         encode( buf, buf, e2a, SEGY_TEXT_HEADER_SIZE );
     }
 
@@ -2920,7 +2915,7 @@ int segy_write_textheader( segy_datasource* ds, int pos, const char* buf ) {
 
     if( pos < 0 ) return SEGY_INVALID_ARGS;
 
-    if( pos == 0 && ds->encoding == SEGY_EBCDIC ) {
+    if( pos == 0 && ds->metadata.encoding == SEGY_EBCDIC ) {
         encode( mbuf, buf, a2e, SEGY_TEXT_HEADER_SIZE );
     } else {
         memcpy( mbuf, buf, SEGY_TEXT_HEADER_SIZE );
