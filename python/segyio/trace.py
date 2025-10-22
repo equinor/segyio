@@ -806,7 +806,7 @@ class Attributes(Sequence):
         self.segyfd = segyfd
         self.tracecount = tracecount
 
-        entry = traceheader_layout.get_by_byte(field)
+        entry = traceheader_layout.entry_by_byte(field)
         self.dtype = Attributes.ENTRY_TYPE_TO_NUMPY[entry.type]
 
     def __iter__(self):
