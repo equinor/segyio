@@ -149,14 +149,14 @@ class TraceHeaderLayoutEntry:
 class TraceHeaderLayout:
     def __init__(self, entries):
         self.entries = list(entries)
-        self.by_byte = {entry.byte: entry for entry in self.entries}
-        self.by_name = {entry.name: entry for entry in self.entries}
+        self._by_byte = {entry.byte: entry for entry in self.entries}
+        self._by_name = {entry.name: entry for entry in self.entries}
 
-    def get_by_byte(self, byte):
-        return self.by_byte.get(byte)
+    def entry_by_byte(self, byte):
+        return self._by_byte.get(byte)
 
-    def get_by_name(self, name):
-        return self.by_name.get(name)
+    def entry_by_name(self, name):
+        return self._by_name.get(name)
 
     def __iter__(self):
         return iter(self.entries)

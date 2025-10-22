@@ -18,6 +18,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #if PY_MAJOR_VERSION >= 3
@@ -508,8 +509,7 @@ int set_traceheader_mappings(
 int extract_layout_stanza( segyfd* self, std::vector<char>& layout_stanza_data );
 
 /**
- * Returns the dictionary {header_name: [TraceHeaderLayoutEntry] of traceheader
- * mappings.}
+ * Returns the dictionary {header_name: TraceHeaderLayout.}
  */
 PyObject* traceheader_layout( segyfd* self );
 
@@ -2379,6 +2379,21 @@ static const TypeMapEntry entry_type_map[] = {
     { "scale6",   SEGY_ENTRY_TYPE_SCALE6_MANT },
 };
 
+static const std::unordered_map<SEGY_ENTRY_TYPE, std::string> segytype_to_spectype_map = [] {
+    std::unordered_map<SEGY_ENTRY_TYPE, std::string> map;
+    for( const auto& e : entry_type_map ) {
+        map[e.segyio_entry_type] = e.spec_entry_type;
+    }
+    return map;
+}();
+
+static const std::unordered_map<std::string, SEGY_ENTRY_TYPE> spectype_to_segytype_map = [] {
+    std::unordered_map<std::string, SEGY_ENTRY_TYPE> map;
+    for( const auto& e : entry_type_map ) {
+        map[e.spec_entry_type] = e.segyio_entry_type;
+    }
+    return map;
+}();
 
 int overwrite_inline_xline(
     segy_header_mapping& mapping,
@@ -2616,18 +2631,13 @@ int set_mapping_offset_to_entry_defintion(
     std::string spec_entry_type,
     bool requires_nonzero_value
 ) {
-    size_t entry_type_map_size = sizeof( entry_type_map ) / sizeof( entry_type_map[0] );
-
     char* spec_entry_name_heap = new char[spec_entry_name.size() + 1];
     if( !spec_entry_name_heap ) return SEGY_MEMORY_ERROR;
     std::strcpy( spec_entry_name_heap, spec_entry_name.c_str() );
 
     SEGY_ENTRY_TYPE entry_type = SEGY_ENTRY_TYPE_UNDEFINED;
-    for( size_t i = 0; i < entry_type_map_size; ++i ) {
-        if( spec_entry_type == entry_type_map[i].spec_entry_type ) {
-            entry_type = entry_type_map[i].segyio_entry_type;
-            break;
-        }
+    if( spectype_to_segytype_map.count( spec_entry_type ) ) {
+        entry_type = spectype_to_segytype_map.at( spec_entry_type );
     }
     if( entry_type == SEGY_ENTRY_TYPE_UNDEFINED ) return SEGY_INVALID_ARGS;
 
@@ -2792,14 +2802,9 @@ int entry_defintion_to_py_TraceHeaderLayoutEntry(
     const segy_entry_definition& def,
     PyObject* entry_class
 ) {
-    size_t entry_type_map_size = sizeof( entry_type_map ) / sizeof( entry_type_map[0] );
-
     std::string entry_type;
-    for( size_t i = 0; i < entry_type_map_size; ++i ) {
-        if( def.entry_type == entry_type_map[i].segyio_entry_type ) {
-            entry_type = entry_type_map[i].spec_entry_type;
-            break;
-        }
+    if( segytype_to_spectype_map.count( def.entry_type ) ) {
+        entry_type = segytype_to_spectype_map.at( def.entry_type );
     }
 
     char* name = NULL;

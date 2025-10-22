@@ -185,7 +185,7 @@ def test_custom_iline_xline():
     layout = f.traceheader_layout()
 
     standard_header_layout = layout["SEG00000"]
-    entry = standard_header_layout.get_by_byte(9)
+    entry = standard_header_layout.entry_by_byte(9)
     assert entry.name == "iline"
 
     xline_entries = [e for e in standard_header_layout if e.name == "xline"]
