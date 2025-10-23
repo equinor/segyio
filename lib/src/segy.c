@@ -1010,7 +1010,11 @@ int segy_collect_metadata(
     }
     ds->metadata.ext_textheader_count = ext_textheader_count;
 
-    ds->metadata.trace0 = segy_trace0( binheader );
+    unsigned long long trace0;
+    err = segy_trace0( binheader, &trace0, ext_textheader_count );
+    if( err != SEGY_OK ) return err;
+    ds->metadata.trace0 = trace0;
+
     ds->metadata.samplecount = segy_samples( binheader );
     ds->metadata.trace_bsize = ds->metadata.samplecount * ds->metadata.elemsize;
 
@@ -1607,6 +1611,16 @@ int segy_encoding( segy_datasource* ds, int* encoding ) {
     return SEGY_OK;
 }
 
+static int segy_revision( const char* binheader, int* revision ) {
+    segy_field_data fd;
+
+    int err = segy_get_binfield( binheader, SEGY_BIN_SEGY_REVISION, &fd );
+    if( err != SEGY_OK ) return err;
+
+    *revision = fd.value.u8;
+    return SEGY_OK;
+}
+
 int segy_samples( const char* binheader ) {
     segy_field_data fd;
 
@@ -1633,8 +1647,7 @@ int segy_samples( const char* binheader ) {
      * values are ignored, as it's likely just noise.
      */
     int revision = 0;
-    segy_get_binfield( binheader, SEGY_BIN_SEGY_REVISION, &fd );
-    revision = fd.value.u8;
+    segy_revision( binheader, &revision );
     if (revision >= 2 && ext_samples > 0)
         return ext_samples;
 
@@ -1652,15 +1665,37 @@ int segy_trsize( int format, int samples ) {
     return samples * elemsize;
 }
 
-long segy_trace0( const char* binheader ) {
+int segy_trace0(
+    const char* binheader,
+    unsigned long long* trace0,
+    int ext_textheader_count
+) {
     segy_field_data fd;
 
-    int extra_headers = 0;
-    segy_get_binfield( binheader, SEGY_BIN_EXT_HEADERS, &fd );
-    extra_headers = fd.value.i16;
+    int revision;
+    int err = segy_revision( binheader, &revision );
+    if( err != SEGY_OK ) return err;
 
-    return SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE +
-           SEGY_TEXT_HEADER_SIZE * extra_headers;
+    if( revision >= 2 ) {
+        err = segy_get_binfield( binheader, SEGY_BIN_FIRST_TRACE_OFFSET, &fd );
+        if( err != SEGY_OK ) return err;
+
+        *trace0 = fd.value.u64;
+        if( *trace0 > 0 ) return SEGY_OK;
+    }
+
+    if( ext_textheader_count < 0 ) {
+        err = segy_get_binfield( binheader, SEGY_BIN_EXT_HEADERS, &fd );
+        if( err != SEGY_OK ) return err;
+
+        ext_textheader_count = fd.value.i16;
+        if( ext_textheader_count < 0 ) return SEGY_INVALID_FIELD_VALUE;
+    }
+
+    *trace0 = SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE +
+              SEGY_TEXT_HEADER_SIZE * ext_textheader_count;
+
+    return SEGY_OK;
 }
 
 static int bswap_th( char* xs, int lsb ) {

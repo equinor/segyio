@@ -48,7 +48,11 @@ int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, 
         goto CLEANUP;
     }
 
-    const long trace0 = segy_trace0( header );
+    unsigned long long trace0;
+    errc = segy_trace0( header, &trace0, -1 );
+    if (errc != 0) {
+        goto CLEANUP;
+    }
 
     spec->trace_bsize = segy_trace_bsize( segy_samples( header ) );
     int traces;
@@ -106,7 +110,7 @@ int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, 
         goto CLEANUP;
     }
 
-    spec->first_trace_pos = segy_trace0( header );
+    spec->first_trace_pos = trace0;
 
     errc = segy_inline_stride(spec->trace_sorting_format, spec->inline_count, &spec->il_stride);
     if (errc != 0) {
@@ -174,7 +178,7 @@ struct segy_file_format buffmt( const char* binary ) {
     struct segy_file_format fmt;
     fmt.samples = segy_samples( binary );
     fmt.trace_bsize = segy_trace_bsize( fmt.samples );
-    fmt.trace0 = segy_trace0( binary );
+    segy_trace0( binary, &fmt.trace0, -1 );
     fmt.format = segy_format( binary );
     fmt.traces = 0;
 

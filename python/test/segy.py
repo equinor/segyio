@@ -718,6 +718,9 @@ def test_read_text_sequence():
         for line in lines:
             assert line.startswith('C')
 
+    with segyio.open(testdata / 'stanzas-unknown-count.sgy') as f:
+        assert f.tracecount == 6
+
 
 @tmpfiles(testdata / 'multi-text.sgy')
 def test_put_text_sequence(tmpdir):

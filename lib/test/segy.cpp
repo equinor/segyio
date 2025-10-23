@@ -348,13 +348,9 @@ TEST_CASE( "use bin interval when trace is negative",
 TEST_CASE_METHOD( smallbin,
                   "samples+positions from binary header are correct",
                   "[c.segy]" ) {
-    int samples = segy_samples( bin );
-    long trace0 = segy_trace0( bin );
-    int trace_bsize = segy_trsize( SEGY_IBM_FLOAT_4_BYTE, samples );
-
-    CHECK( trace0      == 3600 );
-    CHECK( samples     == 50 );
-    CHECK( trace_bsize == 50 * 4 );
+    CHECK( fp->metadata.trace0 == 3600 );
+    CHECK( fp->metadata.samplecount == 50 );
+    CHECK( fp->metadata.trace_bsize == 50 * 4 );
 }
 
 TEST_CASE_METHOD( smallbasic,
@@ -1572,10 +1568,10 @@ void f3_in_format(int fmt) {
     char header[SEGY_BINARY_HEADER_SIZE];
     REQUIRE(Err(segy_binheader(fp, header)) == Err::ok());
 
-    const int samples = segy_samples(header);
-    const long trace0 = segy_trace0(header);
-    const int format  = segy_format(header);
-    const int trsize  = segy_trsize(fmt, samples);
+    const int samples = fp->metadata.samplecount;
+    const unsigned long long trace0 = fp->metadata.trace0;
+    const int format  = fp->metadata.format;
+    const int trsize  = fp->metadata.trace_bsize;
 
     CHECK(samples == 75);
     CHECK(trace0  == 3600);
@@ -1676,10 +1672,10 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
     WHEN( "finding traces initial byte offset and sizes" ) {
         char header[ SEGY_BINARY_HEADER_SIZE ];
         REQUIRE( Err( segy_binheader( fp, header ) ) == Err::ok() );
-        int samples = segy_samples( header );
-        long trace0 = segy_trace0( header );
-        int format = segy_format( header );
-        int trace_bsize = segy_trsize( format, samples );
+        int samples = fp->metadata.samplecount;
+        unsigned long long trace0 = fp->metadata.trace0;
+        int format = fp->metadata.format;
+        int trace_bsize = fp->metadata.trace_bsize;
 
         THEN( "the correct values are inferred from the binary header" ) {
             CHECK( format      == SEGY_SIGNED_SHORT_2_BYTE );

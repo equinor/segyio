@@ -481,7 +481,7 @@ int autods::close() {
 struct segyfd {
     PyObject_HEAD
     autods ds;
-    long trace0;
+    unsigned long long trace0;
     int trace_bsize;
     int tracecount;
     int samplecount;
@@ -1187,7 +1187,7 @@ PyObject* metrics( segyfd* self ) {
     const int ext = (self->trace0 - (text + bin)) / text;
     segy_datasource* ds = self->ds;
     int encoding = ds->metadata.encoding;
-    return Py_BuildValue( "{s:i, s:l, s:i, s:i, s:i, s:i, s:i}",
+    return Py_BuildValue( "{s:i, s:K, s:i, s:i, s:i, s:i, s:i}",
                           "tracecount",  self->tracecount,
                           "trace0",      self->trace0,
                           "trace_bsize", self->trace_bsize,
