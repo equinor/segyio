@@ -42,8 +42,17 @@ segy_file* openfile( const std::string& path, const std::string& mode ) {
     unique_segy ptr( segy_open( p.c_str(), mode.c_str() ) );
     REQUIRE( ptr );
 
+    int endianness = testcfg::config().lsbit ? SEGY_LSB : SEGY_MSB;
+    int err = segy_collect_metadata( ptr.get(), endianness, -1, -1 );
+    REQUIRE( err == SEGY_OK );
+
     testcfg::config().apply( ptr.get() );
     return ptr.release();
+}
+
+segy_file* openfile( const std::string& path, const std::string& mode, int endianness ) {
+    testcfg::config().lsbit = endianness;
+    return openfile( path, mode );
 }
 
 const std::string& copyfile( const std::string& src, const std::string& dst ) {
@@ -346,30 +355,6 @@ TEST_CASE_METHOD( smallbin,
     CHECK( trace0      == 3600 );
     CHECK( samples     == 50 );
     CHECK( trace_bsize == 50 * 4 );
-}
-
-TEST_CASE_METHOD( smallfix,
-                  "sample format/endianness/encoding can be overriden",
-                  "[c.segy]" ) {
-    Err err = segy_set_format( fp, SEGY_IEEE_FLOAT_4_BYTE );
-    CHECK( err == Err::ok() );
-
-    err = segy_set_endianness( fp, SEGY_LSB );
-    CHECK( err == Err::ok() );
-
-    err = segy_set_encoding( fp, SEGY_ASCII );
-    CHECK( err == Err::ok() );
-    CHECK( fp->encoding == SEGY_ASCII );
-}
-
-TEST_CASE_METHOD( smallfix,
-                  "sample format/endianness fails on invalid format",
-                  "[c.segy]" ) {
-    Err err = segy_set_format( fp, 20 );
-    CHECK( err == Err::args() );
-
-    err = segy_set_endianness( fp, 20 );
-    CHECK( err == Err::args() );
 }
 
 TEST_CASE_METHOD( smallbasic,
@@ -1089,7 +1074,10 @@ struct writesubtr {
                          + std::string(testcfg::config().lsbit  ? "-lsb"  : "")
                          + "].sgy";
 
-        copyfile( "test-data/small.sgy", name );
+        std::string orig = testcfg::config().lsbit
+                               ? "test-data/small-lsb.sgy"
+                               : "test-data/small.sgy";
+        copyfile( orig, name );
 
         fp = openfile( name, "r+b" );
 
@@ -1515,7 +1503,7 @@ SCENARIO( "reading text header", "[c.segy]" ) {
 
         const char* file = "test-data/text.sgy";
 
-        unique_segy ufp{ openfile( file, "rb" ) };
+        unique_segy ufp{ openfile( file, "rb", SEGY_MSB ) };
         auto fp = ufp.get();
 
         char ascii[ SEGY_TEXT_HEADER_SIZE + 1 ] = {};
@@ -1638,12 +1626,9 @@ void f3_in_format(int fmt) {
     CHECK(format  == fmt);
     CHECK(trsize  == int(samples * sizeof(T)));
 
-    Err err = segy_set_format(fp, fmt);
-    REQUIRE(err == Err::ok());
-
     /* read f3 from 2-byte, expand, and compare */
     std::vector< T > fptrace(samples);
-    err = segy_readtrace(fp,
+    Err err = segy_readtrace(fp,
             0,
             fptrace.data(),
             trace0,
@@ -1654,7 +1639,6 @@ void f3_in_format(int fmt) {
     unique_segy uf3{ openfile("test-data/f3.sgy", "rb") };
     auto* f3 = uf3.get();
     REQUIRE(f3);
-    segy_set_format(f3, f3fmt);
 
     std::vector< std::int16_t > f3trace(samples);
     err = segy_readtrace(f3,
@@ -1751,20 +1735,6 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
             CHECK( samples     == 75 );
             CHECK( trace_bsize == 75 * 2 );
         }
-
-        WHEN( "the format is valid" ) {
-            THEN( "setting format succeeds" ) {
-                Err err = segy_set_format( fp, format );
-                CHECK( err == Err::ok() );
-            }
-        }
-
-        WHEN( "the format is invalid" ) {
-            THEN( "setting format fails" ) {
-                Err err = segy_set_format( fp, 50 );
-                CHECK( err == Err::args() );
-            }
-        }
     }
 
     const int format      = SEGY_SIGNED_SHORT_2_BYTE;
@@ -1772,10 +1742,12 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
     const int samples     = 75;
     const int trace_bsize = samples * 2;
 
-    WHEN( "reading data without setting format" ) {
+    WHEN( "reading data without collecting metadata" ) {
+        unique_segy ufp( segy_open( "test-data/f3.sgy", "rb" ) );
+        auto fp = ufp.get();
         /*
-         * explicitly zero this buffer - if set_format is called then this
-         * function should read 2 bytes, but now 4 is read instead.
+         * explicitly zero this buffer - if segy_collect_metadata is called then
+         * this function should read 2 bytes, but now 4 is read instead.
          */
         std::int16_t val[2] = { 0, 0 };
         Err err = segy_readsubtr( fp, 10,
@@ -1795,8 +1767,7 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
         }
     }
 
-    Err err = segy_set_format( fp, format );
-    REQUIRE( err == Err::ok() );
+    Err err = Err::ok();
 
     WHEN( "determining number of traces" ) {
         int traces = 0;

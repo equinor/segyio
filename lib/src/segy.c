@@ -699,7 +699,7 @@ static int memclose( segy_datasource* self ) {
     return SEGY_OK;
 }
 
-static int formatsize( int format ) {
+int segy_formatsize( int format ) {
     switch( format ) {
         case SEGY_IBM_FLOAT_4_BYTE:             return 4;
         case SEGY_SIGNED_INTEGER_4_BYTE:        return 4;
@@ -787,13 +787,19 @@ segy_file* segy_open( const char* path, const char* mode ) {
     ds->close = fileclose;
     ds->writable = strstr( binary_mode, "+" ) || strstr( binary_mode, "w" );
 
-    // on init assume a size of 4-bytes-per-element and big-endian
-    ds->elemsize = 4;
-    ds->lsb = false;
-    ds->encoding = SEGY_EBCDIC;
-
     ds->minimize_requests_number = true;
     ds->memory_speedup = false;
+
+    ds->metadata.endianness = SEGY_MSB;
+    ds->metadata.encoding = SEGY_EBCDIC;
+    ds->metadata.format = SEGY_IBM_FLOAT_4_BYTE;
+    ds->metadata.elemsize = 4;
+    ds->metadata.ext_textheader_count = 0;
+    ds->metadata.trace0 = -1;
+    ds->metadata.samplecount = -1;
+    ds->metadata.trace_bsize = -1;
+    ds->metadata.traceheader_count = 1;
+    ds->metadata.tracecount = -1;
 
     segy_header_mapping* mapping = &ds->traceheader_mapping_standard;
     memcpy(mapping->name, "SEG00000", 8);
@@ -842,13 +848,20 @@ segy_datasource* segy_memopen( unsigned char* addr, size_t size ) {
 
     ds->writable = true;
 
-    // on init assume a size of 4-bytes-per-element and big-endian
-    ds->elemsize = 4;
-    ds->lsb = false;
-    ds->encoding = SEGY_EBCDIC;
-
     ds->minimize_requests_number = false;
     ds->memory_speedup = true;
+
+    ds->metadata.endianness = SEGY_MSB;
+    ds->metadata.encoding = SEGY_EBCDIC;
+    ds->metadata.format = SEGY_IBM_FLOAT_4_BYTE;
+    ds->metadata.elemsize = 4;
+    ds->metadata.ext_textheader_count = 0;
+    ds->metadata.trace0 = -1;
+    ds->metadata.samplecount = -1;
+    ds->metadata.trace_bsize = -1;
+    ds->metadata.traceheader_count = 1;
+    ds->metadata.tracecount = -1;
+
     segy_header_mapping* mapping = &ds->traceheader_mapping_standard;
     memcpy(mapping->name, "SEG00000", 8);
     memcpy(
@@ -952,6 +965,61 @@ int segy_close( segy_datasource* ds ) {
     return SEGY_OK;
 }
 
+int segy_collect_metadata(
+    segy_datasource* ds,
+    int endianness,
+    int encoding,
+    int ext_textheader_count
+) {
+    if( endianness != SEGY_LSB && endianness != SEGY_MSB ) {
+        int err = segy_endianness( ds, &endianness );
+        if( err != SEGY_OK ) return err;
+    }
+    ds->metadata.endianness = endianness;
+
+    if( encoding != SEGY_ASCII && encoding != SEGY_EBCDIC ) {
+        int err = segy_encoding( ds, &encoding );
+        if( err != SEGY_OK ) return err;
+    }
+    ds->metadata.encoding = encoding;
+
+    char binheader[SEGY_BINARY_HEADER_SIZE];
+    int err = segy_binheader( ds, binheader );
+    if( err ) {
+        return err;
+    }
+
+    ds->metadata.format = segy_format( binheader );
+    ds->metadata.elemsize = segy_formatsize( ds->metadata.format );
+    if( ds->metadata.elemsize <= 0 ) {
+        return SEGY_INVALID_ARGS;
+    }
+
+    if( ext_textheader_count < 0 ) {
+        segy_field_data fd;
+        err = segy_get_binfield( binheader, SEGY_BIN_EXT_HEADERS, &fd );
+        if( err != SEGY_OK ) return err;
+
+        ext_textheader_count = fd.value.i16;
+        if( ext_textheader_count < 0 ) return SEGY_INVALID_FIELD_VALUE;
+    }
+    ds->metadata.ext_textheader_count = ext_textheader_count;
+
+    ds->metadata.trace0 = segy_trace0( binheader );
+    ds->metadata.samplecount = segy_samples( binheader );
+    ds->metadata.trace_bsize = ds->metadata.samplecount * ds->metadata.elemsize;
+
+    ds->metadata.traceheader_count = 1;
+
+    int tracecount;
+    err = segy_traces( ds, &tracecount, ds->metadata.trace0, ds->metadata.trace_bsize );
+    if( err ) {
+        return err;
+    }
+    ds->metadata.tracecount = tracecount;
+    return SEGY_OK;
+}
+
 /* Converts entry type to more general datatype.  */
 static const uint8_t entry_type_to_datatype_map[22] = {
     [ SEGY_ENTRY_TYPE_UNDEFINED   ] = SEGY_UNDEFINED_FIELD,
@@ -994,7 +1062,7 @@ static int get_field( const char* header,
 
     fd->entry_type = mapping[offset].entry_type;
     uint8_t datatype = entry_type_to_datatype_map[fd->entry_type];
-    int vsize = formatsize( datatype );
+    int vsize = segy_formatsize( datatype );
 
     uint64_t val;
     switch ( datatype ) {
@@ -1106,7 +1174,7 @@ static int set_field( char* header,
 
     segy_field_value fv = fd.value;
     uint8_t datatype = entry_type_to_datatype_map[entry_type];
-    int vsize = formatsize( datatype );
+    int vsize = segy_formatsize( datatype );
 
     uint64_t val;
     switch( datatype ) {
@@ -1367,66 +1435,44 @@ int segy_field_forall( segy_datasource* ds,
         if( err != 0 ) return err;
         const uint8_t entry_type = traceheader_default_map[zfield].entry_type;
         const uint8_t datatype = entry_type_to_datatype_map[entry_type];
-        if( ds->lsb ) f = bswap_header_word( f, formatsize( datatype ) );
+        if( ds->metadata.endianness == SEGY_LSB) {
+            f = bswap_header_word( f, segy_formatsize( datatype ) );
+        }
         *buf = f;
     }
 
     return SEGY_OK;
 }
 
-static int bswap_bin( char* xs, int lsb ) {
-    if( !lsb ) return SEGY_OK;
+static int bswap_bin( const segy_datasource* ds, char* xs ) {
+    if( ds->metadata.endianness != SEGY_LSB ) return SEGY_OK;
 
-    const int bytes4[] = {
-        SEGY_BIN_JOB_ID,
-        SEGY_BIN_LINE_NUMBER,
-        SEGY_BIN_REEL_NUMBER
-    };
-
-    const int bytes4_len = sizeof(bytes4) / sizeof(int);
-
-    for( int i = 0; i < bytes4_len; ++i ) {
-        const int offset = bytes4[ i ] - ( SEGY_TEXT_HEADER_SIZE + 1 );
-        bswap32_mem( xs + offset, xs + offset );
+    const segy_entry_definition* binmap = segy_binheader_map();
+    int offset = 0;
+    while( offset < SEGY_BINARY_HEADER_SIZE ) {
+        int datatype = segy_entry_type_to_datatype( binmap[offset].entry_type );
+        if( datatype == SEGY_UNDEFINED_FIELD ) {
+            ++offset;
+            continue;
+        }
+        int size = segy_formatsize( datatype );
+        switch( size ) {
+            case 8:
+                bswap64_mem( xs + offset, xs + offset );
+                break;
+            case 4:
+                bswap32_mem( xs + offset, xs + offset );
+                break;
+            case 2:
+                bswap16_mem( xs + offset, xs + offset );
+                break;
+            case 1:
+                break;
+            default:
+                return SEGY_INVALID_FIELD_DATATYPE;
+        }
+        offset += size;
     }
-
-    const int bytes2[] = {
-        SEGY_BIN_ENSEMBLE_TRACES,
-        SEGY_BIN_AUX_ENSEMBLE_TRACES,
-        SEGY_BIN_INTERVAL,
-        SEGY_BIN_INTERVAL_ORIG,
-        SEGY_BIN_SAMPLES,
-        SEGY_BIN_SAMPLES_ORIG,
-        SEGY_BIN_FORMAT,
-        SEGY_BIN_ENSEMBLE_FOLD,
-        SEGY_BIN_SORTING_CODE,
-        SEGY_BIN_VERTICAL_SUM,
-        SEGY_BIN_SWEEP_FREQ_START,
-        SEGY_BIN_SWEEP_FREQ_END,
-        SEGY_BIN_SWEEP_LENGTH,
-        SEGY_BIN_SWEEP,
-        SEGY_BIN_SWEEP_CHANNEL,
-        SEGY_BIN_SWEEP_TAPER_START,
-        SEGY_BIN_SWEEP_TAPER_END,
-        SEGY_BIN_TAPER,
-        SEGY_BIN_CORRELATED_TRACES,
-        SEGY_BIN_BIN_GAIN_RECOVERY,
-        SEGY_BIN_AMPLITUDE_RECOVERY,
-        SEGY_BIN_MEASUREMENT_SYSTEM,
-        SEGY_BIN_IMPULSE_POLARITY,
-        SEGY_BIN_VIBRATORY_POLARITY,
-        SEGY_BIN_SEGY_REVISION,
-        SEGY_BIN_TRACE_FLAG,
-        SEGY_BIN_EXT_HEADERS,
-    };
-
-    const int bytes2_len = sizeof( bytes2 ) / sizeof( int );
-
-    for( int i = 0; i < bytes2_len; ++i ) {
-        const int offset = bytes2[ i ] - ( SEGY_TEXT_HEADER_SIZE + 1 );
-        bswap16_mem( xs + offset, xs + offset );
-    }
-
     return SEGY_OK;
 }
 
@@ -1440,7 +1486,7 @@ int segy_binheader( segy_datasource* ds, char* buf ) {
     if( err != 0 ) return SEGY_DS_READ_ERROR;
 
     /* successful and file was lsb - swap to present as msb */
-    return bswap_bin( buf, ds->lsb );
+    return bswap_bin( ds, buf );
 }
 
 int segy_write_binheader( segy_datasource* ds, const char* buf ) {
@@ -1448,7 +1494,7 @@ int segy_write_binheader( segy_datasource* ds, const char* buf ) {
 
     char swapped[ SEGY_BINARY_HEADER_SIZE ];
     memcpy( swapped, buf, SEGY_BINARY_HEADER_SIZE );
-    bswap_bin( swapped, ds->lsb );
+    bswap_bin( ds, swapped );
 
     int err = ds->seek( ds, SEGY_TEXT_HEADER_SIZE, SEEK_SET );
     if( err != 0 ) return SEGY_DS_SEEK_ERROR;
@@ -1468,47 +1514,45 @@ int segy_format( const char* binheader ) {
     return format;
 }
 
-int segy_set_format( segy_datasource* ds, int format ) {
-    const int elemsize = formatsize( format );
-    if( elemsize <= 0 ) return SEGY_INVALID_ARGS;
-    ds->elemsize = elemsize;
+int segy_endianness( segy_datasource* ds, int* endianness ) {
+    char binheader[SEGY_BINARY_HEADER_SIZE];
+    // by default read as msb
+    int err = segy_binheader( ds, binheader );
+    if( err != SEGY_OK ) return err;
 
-    return SEGY_OK;
-}
-
-int segy_set_endianness( segy_datasource* ds, int endianness) {
-    switch( endianness ) {
-        case SEGY_LSB:
-        case SEGY_MSB:
+    segy_field_data fd;
+    segy_get_binfield( binheader, SEGY_BIN_INTEGER_CONSTANT, &fd );
+    int val = fd.value.i32;
+    switch( val ) {
+        case 0:
+            *endianness = SEGY_MSB;
+            break;
+        case 16909060:
+            *endianness = SEGY_MSB;
+            break;
+        case 67305985:
+            *endianness = SEGY_LSB;
             break;
         default:
-            return SEGY_INVALID_ARGS;
+            // unknown or pair-wise endianness
+            return SEGY_INVALID_FIELD_VALUE;
     }
-
-    ds->lsb = endianness;
     return SEGY_OK;
 }
 
-int segy_set_encoding( segy_datasource* ds, int encoding ) {
-    switch( encoding ) {
-        case SEGY_EBCDIC:
-        case SEGY_ASCII:
-            break;
-        default: {
-            encoding = SEGY_EBCDIC;
-            int err = ds->seek( ds, 0, SEEK_SET );
-            if( err == 0 ) {
-                char c;
-                err = ds->read( ds, &c, 1 );
-                // fist symbol is supposed to be 'C', which ASCII code is 67
-                if( err == 0 && c == 67) {
-                    encoding = SEGY_ASCII;
-                }
-            }
-        }
-    }
+int segy_encoding( segy_datasource* ds, int* encoding ) {
+    *encoding = SEGY_EBCDIC;
+    char c;
 
-    ds->encoding = encoding;
+    int err = ds->seek( ds, 0, SEEK_SET );
+    if( err != SEGY_OK ) return err;
+    err = ds->read( ds, &c, 1 );
+    if( err != SEGY_OK ) return err;
+
+    // first symbol is supposed to be 'C', which ASCII code is 67
+    if( c == 67 ) {
+        *encoding = SEGY_ASCII;
+    }
     return SEGY_OK;
 }
 
@@ -1552,7 +1596,7 @@ int segy_trace_bsize( int samples ) {
 }
 
 int segy_trsize( int format, int samples ) {
-    const int elemsize = formatsize( format );
+    const int elemsize = segy_formatsize( format );
     if( elemsize < 0 ) return -1;
     return samples * elemsize;
 }
@@ -1696,7 +1740,7 @@ int segy_traceheader( segy_datasource* ds,
     err = ds->read( ds, buf, SEGY_TRACE_HEADER_SIZE );
     if( err != 0 ) return SEGY_DS_READ_ERROR;
 
-    return bswap_th( buf, ds->lsb );
+    return bswap_th( buf, ds->metadata.endianness );
 }
 
 int segy_write_traceheader( segy_datasource* ds,
@@ -1711,7 +1755,7 @@ int segy_write_traceheader( segy_datasource* ds,
 
     char swapped[SEGY_TRACE_HEADER_SIZE];
     memcpy( swapped, buf, SEGY_TRACE_HEADER_SIZE );
-    bswap_th( swapped, ds->lsb );
+    bswap_th( swapped, ds->metadata.endianness );
 
     err = ds->write( ds, swapped, SEGY_TRACE_HEADER_SIZE );
     if( err != 0 ) return SEGY_DS_WRITE_ERROR;
@@ -2314,7 +2358,7 @@ int segy_readtrace( segy_datasource* ds,
                     void* buf,
                     long trace0,
                     int trace_bsize ) {
-    const int stop = trace_bsize / ds->elemsize;
+    const int stop = trace_bsize / ds->metadata.elemsize;
     return segy_readsubtr( ds, traceno, 0, stop, 1, buf, NULL, trace0, trace_bsize );
 }
 
@@ -2379,7 +2423,8 @@ int segy_readsubtr( segy_datasource* ds,
                     int trace_bsize ) {
 
     const int elems = abs( stop - start );
-    const int elemsize = ds->elemsize;
+    const int elemsize = ds->metadata.elemsize;
+    bool lsb = ds->metadata.endianness == SEGY_LSB;
 
     int err = subtr_seek( ds, traceno, start, stop, elemsize, trace0, trace_bsize );
     if( err != SEGY_OK ) return err;
@@ -2389,11 +2434,11 @@ int segy_readsubtr( segy_datasource* ds,
         err = ds->read( ds, buf, elemsize * elems );
         if( err != 0 ) return SEGY_DS_READ_ERROR;
 
-        if( ds->lsb ) {
-            if( ds->elemsize == 8 ) bswap64vec( buf, elems );
-            if( ds->elemsize == 4 ) bswap32vec( buf, elems );
-            if( ds->elemsize == 3 ) bswap24vec( buf, elems );
-            if( ds->elemsize == 2 ) bswap16vec( buf, elems );
+        if( lsb ) {
+            if( elemsize == 8 ) bswap64vec( buf, elems );
+            if( elemsize == 4 ) bswap32vec( buf, elems );
+            if( elemsize == 3 ) bswap24vec( buf, elems );
+            if( elemsize == 2 ) bswap16vec( buf, elems );
         }
 
         if( step == -1 ) reverse( buf, elems, elemsize );
@@ -2430,11 +2475,11 @@ int segy_readsubtr( segy_datasource* ds,
             }
         }
 
-        if( ds->lsb ) {
-            if( ds->elemsize == 8 ) bswap64vec( buf, slicelen );
-            if( ds->elemsize == 4 ) bswap32vec( buf, slicelen );
-            if( ds->elemsize == 3 ) bswap24vec( buf, slicelen );
-            if( ds->elemsize == 2 ) bswap16vec( buf, slicelen );
+        if( lsb ) {
+            if( elemsize == 8 ) bswap64vec( buf, slicelen );
+            if( elemsize == 4 ) bswap32vec( buf, slicelen );
+            if( elemsize == 3 ) bswap24vec( buf, slicelen );
+            if( elemsize == 2 ) bswap16vec( buf, slicelen );
         }
 
         return SEGY_OK;
@@ -2462,11 +2507,11 @@ int segy_readsubtr( segy_datasource* ds,
     for( int i = 0; i < slicelen; cur += step, ++i, dst += elemsize )
         memcpy( dst, cur, elemsize );
 
-    if( ds->lsb ) {
-        if( ds->elemsize == 8 ) bswap64vec( buf, slicelen );
-        if( ds->elemsize == 4 ) bswap32vec( buf, slicelen );
-        if( ds->elemsize == 3 ) bswap24vec( buf, slicelen );
-        if( ds->elemsize == 2 ) bswap16vec( buf, slicelen );
+    if( lsb ) {
+        if( elemsize == 8 ) bswap64vec( buf, slicelen );
+        if( elemsize == 4 ) bswap32vec( buf, slicelen );
+        if( elemsize == 3 ) bswap24vec( buf, slicelen );
+        if( elemsize == 2 ) bswap16vec( buf, slicelen );
     }
 
     if( !rangebuf ) free( tracebuf );
@@ -2479,7 +2524,7 @@ int segy_writetrace( segy_datasource* ds,
                      long trace0,
                      int trace_bsize ) {
 
-    const int stop = trace_bsize / ds->elemsize;
+    const int stop = trace_bsize / ds->metadata.elemsize;
     return segy_writesubtr( ds, traceno, 0, stop, 1, buf, NULL, trace0, trace_bsize );
 }
 
@@ -2497,14 +2542,15 @@ int segy_writesubtr( segy_datasource* ds,
     if( !ds->writable ) return SEGY_READONLY;
 
     const int elems = abs( stop - start );
-    const int elemsize = ds->elemsize;
+    const int elemsize = ds->metadata.elemsize;
     const size_t range = elems * elemsize;
+    bool lsb = ds->metadata.endianness == SEGY_LSB;
 
     int err = subtr_seek( ds, traceno, start, stop, elemsize, trace0, trace_bsize );
     if( err != SEGY_OK ) return err;
 
 
-    if( step == 1 && !ds->lsb ) {
+    if( step == 1 && !lsb ) {
         /*
          * most common case: step == 1, writing contiguously
          * -1 is not covered here as it would require reversing the input buffer
@@ -2522,16 +2568,16 @@ int segy_writesubtr( segy_datasource* ds,
      * contiguous, but require memory either because reversing, or byte
      * swapping
      */
-    if( ( step == 1 || step == -1 ) && ds->lsb ) {
+    if( ( step == 1 || step == -1 ) && lsb ) {
         void* tracebuf = rangebuf ? rangebuf : malloc( range );
         if (!tracebuf) return SEGY_MEMORY_ERROR;
         memcpy( tracebuf, buf, range );
 
         if( step == -1 ) reverse( tracebuf, elems, elemsize );
-        if( ds->elemsize == 8 ) bswap64vec( tracebuf, elems );
-        if( ds->elemsize == 4 ) bswap32vec( tracebuf, elems );
-        if( ds->elemsize == 3 ) bswap24vec( tracebuf, elems );
-        if( ds->elemsize == 2 ) bswap16vec( tracebuf, elems );
+        if( elemsize == 8 ) bswap64vec( tracebuf, elems );
+        if( elemsize == 4 ) bswap32vec( tracebuf, elems );
+        if( elemsize == 3 ) bswap24vec( tracebuf, elems );
+        if( elemsize == 2 ) bswap16vec( tracebuf, elems );
 
         err = ds->write( ds, tracebuf, range );
         if( !rangebuf ) free( tracebuf );
@@ -2563,7 +2609,7 @@ int segy_writesubtr( segy_datasource* ds,
         err = ds->seek( ds, elemsize * defstart, SEEK_CUR );
         if( err != 0 ) return SEGY_DS_SEEK_ERROR;
 
-        if( !ds->lsb ) {
+        if( !lsb ) {
             // separate "memory" path is used for better performance
             if( ds->memory_speedup ) {
                 memfile* mp = (memfile*)ds->stream;
@@ -2613,7 +2659,7 @@ int segy_writesubtr( segy_datasource* ds,
     }
 
     char* cur = (char*)tracebuf + elemsize * defstart;
-    if( !ds->lsb ) {
+    if( !lsb ) {
         for( ; slicelen > 0; cur += step, --slicelen, src += elemsize ) {
             memcpy( cur, src, elemsize );
         }
@@ -2656,7 +2702,7 @@ int segy_writesubtr( segy_datasource* ds,
 static int segy_native_byteswap(int format, long long size, void* buf) {
 
     if (HOST_LSB) {
-        const int elemsize = formatsize( format );
+        const int elemsize = segy_formatsize( format );
 
         switch (elemsize) {
             case 8: bswap64vec(buf, size); break;
@@ -2674,7 +2720,7 @@ int segy_to_native( int format,
                     long long size,
                     void* buf ) {
 
-    const int elemsize = formatsize( format );
+    const int elemsize = segy_formatsize( format );
     if( elemsize < 0 ) return SEGY_INVALID_ARGS;
 
     segy_native_byteswap( format, size, buf );
@@ -2692,7 +2738,7 @@ int segy_from_native( int format,
                       long long size,
                       void* buf ) {
 
-    const int elemsize = formatsize( format );
+    const int elemsize = segy_formatsize( format );
     if( elemsize < 0 ) return SEGY_INVALID_ARGS;
 
     char* dst = (char*)buf;
@@ -2854,7 +2900,7 @@ int segy_read_ext_textheader( segy_datasource* ds, int pos, char *buf) {
     err = ds->read( ds, buf, SEGY_TEXT_HEADER_SIZE );
     if( err != 0 ) return SEGY_DS_READ_ERROR;
 
-    if( pos == -1 && ds->encoding == SEGY_EBCDIC ) {
+    if( pos == -1 && ds->metadata.encoding == SEGY_EBCDIC ) {
         encode( buf, buf, e2a, SEGY_TEXT_HEADER_SIZE );
     }
 
@@ -2869,7 +2915,7 @@ int segy_write_textheader( segy_datasource* ds, int pos, const char* buf ) {
 
     if( pos < 0 ) return SEGY_INVALID_ARGS;
 
-    if( pos == 0 && ds->encoding == SEGY_EBCDIC ) {
+    if( pos == 0 && ds->metadata.encoding == SEGY_EBCDIC ) {
         encode( mbuf, buf, a2e, SEGY_TEXT_HEADER_SIZE );
     } else {
         memcpy( mbuf, buf, SEGY_TEXT_HEADER_SIZE );

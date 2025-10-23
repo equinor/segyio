@@ -265,6 +265,42 @@ typedef struct {
     segy_entry_definition offset_to_entry_definition[SEGY_TRACE_HEADER_SIZE];
 } segy_header_mapping;
 
+typedef struct {
+    /* SEGY_LSB if stream uses little-endian byte order, SEGY_MSB if big-endian
+     * (SEG-Y_r2.1 section "3.3. Number Formats"). Pairwise byte-swapped
+     * ordering is not supported.
+     */
+    int endianness;
+
+    /* SEGY_EBCDIC or SEGY_ASCII default strings encoding. */
+    int encoding;
+
+    /* Format of the trace data. */
+    int format;
+
+    /* Size of each element in trace (format size). */
+    int elemsize;
+
+    /* Number of extended textual file header records. */
+    int ext_textheader_count;
+
+    /* Byte offset of the first trace in the file. */
+    long trace0;
+
+    /* Number of samples in each trace. */
+    int samplecount;
+
+    /* Byte size of each trace (samplecount * elemsize). */
+    int trace_bsize;
+
+    /* Number of traceheaders describing each trace. */
+    int traceheader_count;
+
+    /* Number of traces in the file. */
+    int tracecount;
+} segy_metadata;
+
+
 /*
  * Represents an abstract data source which supports common file operations,
  * described by function pointers and `writable` attribute.
@@ -317,20 +353,6 @@ struct segy_datasource {
     /* Is datasource writable */
     bool writable;
 
-    /* Size of each element in trace */
-    int elemsize;
-
-    /* True if stream uses little-endian byte order, false if big-endian
-     * (SEG-Y_r2.1 section "3.3. Number Formats"). Pairwise byte-swapped
-     * ordering is not supported.
-     */
-    bool lsb;
-
-    /* EBCDIC or ASCII encoding. All text-reading functions should consult this
-     * property to determine string encoding.
-     */
-    int encoding;
-
     /* Setting for trace algorithms.
      *
      * If true, unnecessary data would be read into memory/written to the
@@ -353,6 +375,8 @@ struct segy_datasource {
     segy_header_mapping traceheader_mapping_standard;
     /* Traceheader extension 1 mapping. */
     //segy_header_mapping traceheader_mapping_extension1;
+
+    segy_metadata metadata;
 };
 
 typedef struct segy_datasource segy_datasource;
@@ -404,6 +428,24 @@ segy_datasource* segy_memopen( unsigned char* addr, size_t size );
 int segy_flush( segy_datasource* );
 int segy_close( segy_datasource* );
 
+/* Reads file's fixed metadata. Function is expected to be called after segy_open
+ * for files opened for reading. Alternatively user must assure that .metadata in
+ * segy_datasource is set correctly before further use of the library.
+ *
+ * endianness and encoding parameters: if provided value is valid, it takes
+ * precedence over automatically detected value.
+ *
+ * ext_textheader_count: if provided value is non-negative, it takes precedence
+ * over automatically detected value. If automatically detected value is
+ * negative, error is returned.
+ */
+int segy_collect_metadata(
+    segy_datasource* ds,
+    int endianness,
+    int encoding,
+    int ext_textheader_count
+);
+
 /* binary header operations */
 /*
  * The binheader buffer passed to these functions must be of *at least*
@@ -426,39 +468,25 @@ int segy_samples( const char* binheader );
  */
 int segy_sample_interval( segy_datasource*, float fallback , float* dt );
 
+/* exception: returned int is elemsize of the format, not an error code. -1
+means unknown format.*/
+int segy_formatsize( int format );
+
 /* exception: the int returned is an enum, SEGY_FORMAT, not an error code */
 int segy_format( const char* binheader );
-/* override the assumed format of the samples.
- *
- * by default, segyio assumes a 4-byte float format (usually IBM float). The
- * to/from native functions take this parameter explicitly, but functions like
- * read_subtrace requires the size of each element.
- *
- * if this function is not called, for backwards compatibility reasons, the
- * format is always assumed to be IBM float.
- *
- * The binary header is not implicitly queried, because it's often broken and
- * unreliable with this information - however, if the header IS considered to
- * be reliable, the result of `segy_format` can be passed to this function.
- */
-int segy_set_format( segy_datasource*, int format );
 
-/* set file as LSB/MSB (little/big endian)
+/* Finds out whether file is LSB or MSB (little/big endian).
  *
- * The binary header is not implicitly queried, because it's often broken and
- * unreliable with this information. This is subject to a change.
- *
- * By default, segyio assumes files are MSB. However, some files (seismic unix,
- * SEG-Y rev2) are LSB. *all* functions returning bytes in segyio will output
- * MSB, regardless of the properties of the underlying file.
+ * Note that *all* functions returning bytes in segyio will output MSB,
+ * regardless of the properties of the underlying file.
  */
-int segy_set_endianness( segy_datasource*, int opt );
+int segy_endianness( segy_datasource* ds, int* endianness );
 
-/* sets file to be EBCDIC/ASCII encoded. If no valid encoding is provided, one
- * is automatically decided by consulting first text header character. If in
- * doubt, EBCDIC encoding is assumed.
+/* Finds out whether SEG-Y strings are encoded in EBCDIC or ASCII. If no valid
+ * encoding is provided, one is automatically decided by consulting first text
+ * header character. If in doubt, EBCDIC encoding is assumed.
  */
-int segy_set_encoding( segy_datasource*, int opt );
+int segy_encoding( segy_datasource*, int* encoding );
 
 /* Converts entry type to actual datatype and returns it (not an error code). */
 int segy_entry_type_to_datatype( uint8_t entry_type );

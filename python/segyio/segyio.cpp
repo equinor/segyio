@@ -104,9 +104,9 @@ PyObject* RuntimeError( int err ) {
     return RuntimeError( msg.c_str() );
 }
 
-template< typename T1, typename T2 >
-PyObject* RuntimeError( const char* msg, T1 t1, T2 t2 ) {
-    return PyErr_Format( PyExc_RuntimeError, msg, t1, t2 );
+template< typename... Args >
+PyObject* RuntimeError( const char* msg, Args... args ) {
+    return PyErr_Format( PyExc_RuntimeError, msg, args... );
 }
 
 PyObject* IOErrno() {
@@ -320,9 +320,17 @@ segy_datasource* create_py_stream_datasource(
 
     ds->memory_speedup = false;
     ds->minimize_requests_number = minimize_requests_number;
-    ds->elemsize = 4;
-    ds->lsb = false;
-    ds->encoding = SEGY_EBCDIC;
+
+    ds->metadata.endianness = SEGY_MSB;
+    ds->metadata.encoding = SEGY_EBCDIC;
+    ds->metadata.format = SEGY_IBM_FLOAT_4_BYTE;
+    ds->metadata.elemsize = 4;
+    ds->metadata.ext_textheader_count = 0;
+    ds->metadata.trace0 = -1;
+    ds->metadata.samplecount = -1;
+    ds->metadata.trace_bsize = -1;
+    ds->metadata.traceheader_count = 1;
+    ds->metadata.tracecount = -1;
 
     segy_header_mapping* mapping = &ds->traceheader_mapping_standard;
     memcpy(mapping->name, "SEG00000", 8);
@@ -516,8 +524,6 @@ int init( segyfd* self, PyObject* args, PyObject* kwargs ) {
     char* mode = NULL;
     PyObject* stream = NULL;
     PyObject* memory_buffer = NULL;
-    int endianness = -1;
-    int encoding = -1;
     int minimize_requests_number = -1;
 
     static const char* keywords[] = {
@@ -525,34 +531,20 @@ int init( segyfd* self, PyObject* args, PyObject* kwargs ) {
         "mode",
         "stream",
         "memory_buffer",
-        "endianness",
-        "encoding",
         "minimize_requests_number",
         NULL
     };
 
     if( !PyArg_ParseTupleAndKeywords(
-            args, kwargs, "|ssOOiip",
+            args, kwargs, "|ssOOp",
             const_cast<char**>( keywords ),
             &filename,
             &mode,
             &stream,
             &memory_buffer,
-            &endianness,
-            &encoding,
             &minimize_requests_number
         ) ) {
         ValueError( "could not parse arguments" );
-        return -1;
-    }
-
-    if( endianness != SEGY_MSB && endianness != SEGY_LSB ) {
-        ValueError( "endianness must be set to a valid value" );
-        return -1;
-    }
-
-    if( encoding != -1 && encoding != SEGY_EBCDIC && encoding != SEGY_ASCII ) {
-        ValueError( "encoding must be set to a valid value" );
         return -1;
     }
 
@@ -616,18 +608,6 @@ int init( segyfd* self, PyObject* args, PyObject* kwargs ) {
         return -1;
     }
 
-    int err = segy_set_endianness( ds, endianness );
-    if( err ) {
-        ValueError( "internal: error setting endianness, was %d", endianness );
-        return -1;
-    }
-
-    err = segy_set_encoding( ds, encoding );
-    if( err ) {
-        ValueError( "internal: error %d setting encoding, was %d", err, encoding );
-        return -1;
-    }
-
     /*
      * init can be called multiple times, which is treated as opening a new
      * file on the same object. That means the previous file handle must be
@@ -642,17 +622,23 @@ PyObject* segyopen( segyfd* self, PyObject* args, PyObject* kwargs ) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
 
+    int endianness = -1; // change to Py_None later
+    int encoding = -1;
     PyObject *py_iline = Py_None;
     PyObject *py_xline = Py_None;
     static const char* keywords[] = {
+        "endianness",
+        "encoding",
         "iline",
         "xline",
         NULL
     };
 
     if( !PyArg_ParseTupleAndKeywords(
-            args, kwargs, "|OO",
+            args, kwargs, "|iiOO",
             const_cast<char**>( keywords ),
+            &endianness,
+            &encoding,
             &py_iline,
             &py_xline
         ) ) {
@@ -673,77 +659,44 @@ PyObject* segyopen( segyfd* self, PyObject* args, PyObject* kwargs ) {
     err = set_traceheader_mappings( self, layout_stanza_data, py_iline, py_xline );
     if( err ) return NULL;
 
-    int tracecount = 0;
+    int ext_textheader_count =
+        self->stanzas.empty() ? 0 : self->stanzas.back().end_index();
 
-    const long trace0 = segy_trace0( binary );
-    const int samplecount = segy_samples( binary );
-    const int format = segy_format( binary );
-    int trace_bsize = segy_trsize( format, samplecount );
+    err = segy_collect_metadata( ds, endianness, encoding, ext_textheader_count );
+    if( err == SEGY_OK ) {
+        self->format = ds->metadata.format;
+        self->elemsize = ds->metadata.elemsize;
+        self->trace0 = ds->metadata.trace0;
+        self->samplecount = ds->metadata.samplecount;
+        self->trace_bsize = ds->metadata.trace_bsize;
+        self->tracecount = ds->metadata.tracecount;
 
-    /* fall back to assuming 4-byte ibm float if the format field is rubbish */
-    if( trace_bsize < 0 ) trace_bsize = segy_trace_bsize( samplecount );
-
-    /*
-     * if set_format errors, it's because the format-field in the binary header
-     * is 0 or some other garbage. if so, assume the file is 4-byte ibm float
-     */
-   segy_set_format( ds, format );
-   int elemsize = 4;
-
-    switch( format ) {
-        case SEGY_IBM_FLOAT_4_BYTE:             elemsize = 4; break;
-        case SEGY_SIGNED_INTEGER_4_BYTE:        elemsize = 4; break;
-        case SEGY_SIGNED_INTEGER_8_BYTE:        elemsize = 8; break;
-        case SEGY_SIGNED_SHORT_2_BYTE:          elemsize = 2; break;
-        case SEGY_FIXED_POINT_WITH_GAIN_4_BYTE: elemsize = 4; break;
-        case SEGY_IEEE_FLOAT_4_BYTE:            elemsize = 4; break;
-        case SEGY_IEEE_FLOAT_8_BYTE:            elemsize = 8; break;
-        case SEGY_SIGNED_CHAR_1_BYTE:           elemsize = 1; break;
-        case SEGY_UNSIGNED_CHAR_1_BYTE:         elemsize = 1; break;
-        case SEGY_UNSIGNED_INTEGER_4_BYTE:      elemsize = 4; break;
-        case SEGY_UNSIGNED_SHORT_2_BYTE:        elemsize = 2; break;
-        case SEGY_UNSIGNED_INTEGER_8_BYTE:      elemsize = 8; break;
-
-        case SEGY_NOT_IN_USE_1:
-        case SEGY_NOT_IN_USE_2:
-        default:
-            break;
+        Py_INCREF( self );
+        return (PyObject*)self;
     }
 
-    err = segy_traces( ds, &tracecount, trace0, trace_bsize );
-    switch( err ) {
-        case SEGY_OK: break;
-
-        case SEGY_FSEEK_ERROR:
-            return IOErrno();
-
-        case SEGY_INVALID_ARGS:
-            return RuntimeError( "unable to count traces, "
-                                 "no data traces past headers" );
-
-        case SEGY_TRACE_SIZE_MISMATCH:
-            return RuntimeError( "trace count inconsistent with file size, "
-                                 "trace lengths possibly of non-uniform" );
-
-        default:
-            return Error( err );
-    }
-
-    self->trace0 = trace0;
-    self->trace_bsize = trace_bsize;
-    self->format = format;
-    self->elemsize = elemsize;
-    self->samplecount = samplecount;
-    self->tracecount = tracecount;
-
-    Py_INCREF( self );
-    return (PyObject*) self;
+    std::ostringstream msg;
+    msg << "unable to gather basic metadata from the file, error " << segy_errstr( err )
+        << ". Intermediate state:\n"
+        << "  endianness=" << ds->metadata.endianness << "\n"
+        << "  encoding=" << ds->metadata.encoding << "\n"
+        << "  format=" << ds->metadata.format << "\n"
+        << "  elemsize=" << ds->metadata.elemsize << "\n"
+        << "  ext_textheader_count=" << ds->metadata.ext_textheader_count << "\n"
+        << "  trace0=" << ds->metadata.trace0 << "\n"
+        << "  samplecount=" << ds->metadata.samplecount << "\n"
+        << "  trace_bsize=" << ds->metadata.trace_bsize << "\n"
+        << "  traceheader_count=" << ds->metadata.traceheader_count << "\n"
+        << "  tracecount=" << ds->metadata.tracecount;
+    return RuntimeError( msg.str().c_str() );
 }
 
 PyObject* segycreate( segyfd* self, PyObject* args, PyObject* kwargs ) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
 
+    int endianness = -1;
+    int encoding = -1;
     int samples;
     int tracecount;
     int ext_headers = 0;
@@ -758,19 +711,34 @@ PyObject* segycreate( segyfd* self, PyObject* args, PyObject* kwargs ) {
     static const char* kwlist[] = {
         "samples",
         "tracecount",
+        "endianness",
+        "encoding",
         "format",
         "ext_headers",
         NULL,
     };
 
     if( !PyArg_ParseTupleAndKeywords( args, kwargs,
-                "ii|ii",
+                "ii|iiii",
                 const_cast< char** >(kwlist),
                 &samples,
                 &tracecount,
+                &endianness,
+                &encoding,
                 &format,
                 &ext_headers ) )
         return NULL;
+
+    if( endianness != SEGY_MSB && endianness != SEGY_LSB ) {
+        endianness = SEGY_MSB;
+    }
+
+    if( encoding != SEGY_EBCDIC && encoding != SEGY_ASCII ) {
+        encoding = SEGY_EBCDIC;
+    }
+
+    ds->metadata.endianness = endianness;
+    ds->metadata.encoding = encoding;
 
     if( samples <= 0 )
         return ValueError( "expected samples > 0" );
@@ -802,46 +770,18 @@ PyObject* segycreate( segyfd* self, PyObject* args, PyObject* kwargs ) {
             return ValueError( "unknown format identifier" );
     }
 
-    segy_set_format(ds, format);
-    int elemsize = 4;
-    switch( format ) {
-        case SEGY_SIGNED_INTEGER_8_BYTE:
-        case SEGY_IEEE_FLOAT_8_BYTE:
-        case SEGY_UNSIGNED_INTEGER_8_BYTE:
-            elemsize = 8;
-            break;
+    int elemsize = segy_formatsize( format );
+    ds->metadata.elemsize = elemsize;
 
-         case SEGY_IBM_FLOAT_4_BYTE:
-        case SEGY_SIGNED_INTEGER_4_BYTE:
-        case SEGY_FIXED_POINT_WITH_GAIN_4_BYTE:
-        case SEGY_IEEE_FLOAT_4_BYTE:
-        case SEGY_UNSIGNED_INTEGER_4_BYTE:
-            elemsize = 4;
-            break;
+    ds->metadata.format = format;
+    ds->metadata.trace0 = SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE +
+                          SEGY_TEXT_HEADER_SIZE * ext_headers;
+    ds->metadata.samplecount = samples;
+    ds->metadata.trace_bsize = segy_trsize( format, samples );
+    ds->metadata.tracecount = tracecount;
 
-        case SEGY_SIGNED_CHAR_3_BYTE:
-        case SEGY_UNSIGNED_INTEGER_3_BYTE:
-            elemsize = 3;
-            break;
-
-        case SEGY_SIGNED_SHORT_2_BYTE:
-        case SEGY_UNSIGNED_SHORT_2_BYTE:
-            elemsize = 2;
-            break;
-
-        case SEGY_SIGNED_CHAR_1_BYTE:
-        case SEGY_UNSIGNED_CHAR_1_BYTE:
-            elemsize = 1;
-            break;
-
-        default:
-            assert(false || "format should already be checked" );
-            break;
-    }
-
-    self->trace0 = SEGY_TEXT_HEADER_SIZE + SEGY_BINARY_HEADER_SIZE +
-                   SEGY_TEXT_HEADER_SIZE * ext_headers;
-    self->trace_bsize = segy_trsize( format, samples );
+    self->trace0 = ds->metadata.trace0;
+    self->trace_bsize = ds->metadata.trace_bsize;
     self->format = format;
     self->elemsize = elemsize;
     self->samplecount = samples;
@@ -855,22 +795,40 @@ PyObject* suopen( segyfd* self, PyObject* args, PyObject* kwargs ) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
 
+    int endianness = -1;
+    int encoding = -1;
     PyObject *py_iline = Py_None;
     PyObject *py_xline = Py_None;
     static const char* keywords[] = {
+        "endianness",
+        "encoding",
         "iline",
         "xline",
         NULL
     };
 
     if( !PyArg_ParseTupleAndKeywords(
-            args, kwargs, "|OO",
+            args, kwargs, "|iiOO",
             const_cast<char**>( keywords ),
+            &endianness,
+            &encoding,
             &py_iline,
             &py_xline
         ) ) {
         return NULL;
     }
+
+    if( endianness != SEGY_MSB && endianness != SEGY_LSB ) {
+        ValueError( "endianness must be set to a valid value" );
+        return NULL;
+    }
+
+    if( encoding != SEGY_EBCDIC && encoding != SEGY_ASCII ) {
+        int err = segy_encoding( ds, &encoding );
+        if( err != SEGY_OK ) return NULL;
+    }
+    ds->metadata.endianness = endianness;
+    ds->metadata.encoding = encoding;
 
     std::vector<char> layout_stanza_data;
     int err = set_traceheader_mappings(
@@ -878,54 +836,57 @@ PyObject* suopen( segyfd* self, PyObject* args, PyObject* kwargs ) {
     );
     if( err ) return NULL;
 
-    err = segy_set_format( ds, SEGY_IEEE_FLOAT_4_BYTE );
+    ds->metadata.format = SEGY_IEEE_FLOAT_4_BYTE;
+    ds->metadata.elemsize = segy_formatsize( ds->metadata.format );
+    ds->metadata.trace0 = 0;
 
-    if( err )
-        return RuntimeError( "internal: unable to set type to IEEE float " );
-
-    char header[ SEGY_TRACE_HEADER_SIZE ] = {};
-
+    char header[SEGY_TRACE_HEADER_SIZE] = {};
     err = segy_traceheader( ds, 0, header, 0, 0 );
     if( err )
         return IOError( "unable to read first trace header in SU file" );
 
-    int32_t f;
-    segy_get_tracefield_int( header, SEGY_TR_SAMPLE_COUNT, &f );
+    segy_field_data fd;
+    segy_get_tracefield(
+        header,
+        ds->traceheader_mapping_standard.offset_to_entry_definition,
+        SEGY_TR_SAMPLE_COUNT,
+        &fd
+    );
+    ds->metadata.samplecount = fd.value.u16;
+    ds->metadata.trace_bsize = ds->metadata.samplecount * ds->metadata.elemsize;
 
-    const long trace0 = 0;
-    const int samplecount = f;
-    const int elemsize = sizeof( float );
-    int trace_bsize = elemsize * samplecount;
+    err = segy_traces(
+        ds,
+        &ds->metadata.tracecount,
+        ds->metadata.trace0,
+        ds->metadata.trace_bsize
+    );
 
-    int tracecount;
-    err = segy_traces( ds, &tracecount, trace0, trace_bsize );
-    switch( err ) {
-        case SEGY_OK: break;
-
-        case SEGY_FSEEK_ERROR:
-            return IOErrno();
-
-        case SEGY_INVALID_ARGS:
-            return RuntimeError( "unable to count traces, "
-                                 "no data traces past headers" );
-
-        case SEGY_TRACE_SIZE_MISMATCH:
-            return RuntimeError( "trace count inconsistent with file size, "
-                                 "trace lengths possibly of non-uniform" );
-
-        default:
-            return Error( err );
+    if( err == SEGY_OK ) {
+        self->format = ds->metadata.format;
+        self->elemsize = ds->metadata.elemsize;
+        self->trace0 = ds->metadata.trace0;
+        self->samplecount = ds->metadata.samplecount;
+        self->trace_bsize = ds->metadata.trace_bsize;
+        self->tracecount = ds->metadata.tracecount;
+        Py_INCREF( self );
+        return (PyObject*)self;
     }
 
-    self->trace0 = trace0;
-    self->trace_bsize = trace_bsize;
-    self->format = SEGY_IEEE_FLOAT_4_BYTE;
-    self->elemsize = elemsize;
-    self->samplecount = samplecount;
-    self->tracecount = tracecount;
-
-    Py_INCREF( self );
-    return (PyObject*) self;
+    std::ostringstream msg;
+    msg << "unable to gather basic metadata from the file, error " << segy_errstr( err )
+        << ". Intermediate state:\n"
+        << "  endianness=" << ds->metadata.endianness << "\n"
+        << "  encoding=" << ds->metadata.encoding << "\n"
+        << "  format=" << ds->metadata.format << "\n"
+        << "  elemsize=" << ds->metadata.elemsize << "\n"
+        << "  ext_textheader_count=" << ds->metadata.ext_textheader_count << "\n"
+        << "  trace0=" << ds->metadata.trace0 << "\n"
+        << "  samplecount=" << ds->metadata.samplecount << "\n"
+        << "  trace_bsize=" << ds->metadata.trace_bsize << "\n"
+        << "  traceheader_count=" << ds->metadata.traceheader_count << "\n"
+        << "  tracecount=" << ds->metadata.tracecount;
+    return RuntimeError( msg.str().c_str() );
 }
 
 void dealloc( segyfd* self ) {
@@ -1227,7 +1188,7 @@ PyObject* metrics( segyfd* self ) {
     static const int bin  = SEGY_BINARY_HEADER_SIZE;
     const int ext = (self->trace0 - (text + bin)) / text;
     segy_datasource* ds = self->ds;
-    int encoding = ds->encoding;
+    int encoding = ds->metadata.encoding;
     return Py_BuildValue( "{s:i, s:l, s:i, s:i, s:i, s:i, s:i}",
                           "tracecount",  self->tracecount,
                           "trace0",      self->trace0,

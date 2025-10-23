@@ -32,7 +32,7 @@ exthdt    	-1125899906842594.000000
 extdto    	-1125899906842593.000000
 extnso    	-2147483616
 extfold   	-2147483615
-intconst  	-2147483614
+intconst  	16909060
 rev       	36
 revmin    	37
 trflag    	-32730

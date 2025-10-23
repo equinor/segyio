@@ -231,6 +231,28 @@ def test_open_ignore_geometry():
         with pytest.raises(ValueError):
             _ = f.iline[0]
 
+def test_open_broken_file():
+    metadata = {
+        "endianness": 0,
+        "encoding": 0,
+        "format": 1,
+        "elemsize": 4,
+        "ext_textheader_count": 2,
+        "trace0": 10000,
+        "samplecount": 4,
+        "trace_bsize": 16,
+        "traceheader_count": 1,
+        "tracecount": -1,
+    }
+    msg = (
+        "unable to gather basic metadata from the file, error segyio.trace.size.mismatch. " +
+        "Intermediate state:\n" +
+        "\n".join(f"  {k}={v}" for k, v in metadata.items())
+    )
+    with pytest.raises(RuntimeError, match=msg):
+        with segyio.open(testdata / 'broken.sgy') as f:
+            pass
+
 
 @pytest.mark.parametrize(('openfn', 'kwargs'), smallfiles)
 def test_traces_slicing(openfn, kwargs):
@@ -1013,8 +1035,16 @@ def test_write_header_update_atomic(small):
         assert header == f.header[10]
 
 
-def test_field_types_read():
-    with segyio.open(testdata / 'decrement.sgy', "r", ignore_geometry=True) as f:
+@pytest.mark.parametrize('endian', ['msb', 'lsb'])
+def test_field_types_read(endian):
+    if endian == 'lsb':
+        dname = testdata / 'decrement-lsb.sgy'
+        iname = testdata / 'increment-lsb.sgy'
+    else:
+        dname = testdata / 'decrement.sgy'
+        iname = testdata / 'increment.sgy'
+
+    with segyio.open(dname, "r", ignore_geometry=True) as f:
         bdec = f.bin
         tdec = f.header[3]
 
@@ -1029,7 +1059,7 @@ def test_field_types_read():
         assert tdec[TraceField.TRACE_SAMPLE_COUNT] == 65382
         assert tdec[TraceField.INLINE_3D] == 2147483355
 
-    with segyio.open(testdata / 'increment.sgy', "r", ignore_geometry=True) as f:
+    with segyio.open(iname, "r", ignore_geometry=True) as f:
         binc = f.bin
         tinc = f.header[3]
 
@@ -1046,10 +1076,15 @@ def test_field_types_read():
 
 
 @tmpfiles(testdata / 'small.sgy')
-def test_field_types_write(tmpdir):
-    updpath = tmpdir / 'small.sgy'
+@tmpfiles(testdata / 'small-lsb.sgy')
+@pytest.mark.parametrize('endian', ['msb', 'lsb'])
+def test_field_types_write(tmpdir, endian):
+    if endian == 'lsb':
+        updpath = tmpdir / 'small-lsb.sgy'
+    else:
+        updpath = tmpdir / 'small.sgy'
 
-    with segyio.open(updpath, ignore_geometry=True) as f:
+    with segyio.open(updpath, ignore_geometry=True, endian=endian) as f:
         orig_binh = f.bin
         orig_trh = f.header[0]
 
@@ -1068,12 +1103,12 @@ def test_field_types_write(tmpdir):
         TraceField.INLINE_3D: -2147483648,
     }
 
-    with segyio.open(updpath, mode='r+', ignore_geometry=True) as f:
+    with segyio.open(updpath, mode='r+', ignore_geometry=True, endian=endian) as f:
         f.bin.update(bupd)
         f.header[0].update(tupd)
         f.flush()
 
-    with segyio.open(updpath, ignore_geometry=True) as f:
+    with segyio.open(updpath, ignore_geometry=True, endian=endian) as f:
         binh = f.bin
         trh = f.header[0]
 
@@ -2024,16 +2059,6 @@ def test_write_iline_int16(tmpdir):
 
     with segyio.open(tmpdir / 'f3.sgy') as f:
         assert np.array_equal(f.iline[f.ilines[0]], il)
-
-
-def test_missing_format_ibmfloat_fallback(small):
-    with segyio.open(small, mode = 'r+') as f:
-        f.bin[segyio.su.format] = 0
-
-    with pytest.warns(UserWarning):
-        with segyio.open(small) as f:
-            assert int(f.format) == 1
-            assert f.dtype       == np.dtype(np.float32)
 
 
 def test_utf8_filename():

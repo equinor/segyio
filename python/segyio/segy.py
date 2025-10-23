@@ -73,10 +73,7 @@ class SegyFile(object):
             }[self._fmt])
         except KeyError:
             problem = 'Unknown trace value format {}'.format(self._fmt)
-            solution = 'falling back to ibm float'
-            warnings.warn(', '.join((problem, solution)))
-            self._fmt = 1
-            self._dtype = np.dtype(np.float32)
+            raise RuntimeError(problem)
 
         self._trace = Trace(self.segyfd,
                             self.dtype,

@@ -42,34 +42,13 @@ int main(int argc, char* argv[]) {
             fputs( "Could not mmap file. Using fstream fallback.", stderr );
     }
 
-    int err;
-    char header[ SEGY_BINARY_HEADER_SIZE ];
-    err = segy_binheader( fp, header );
-
-    if( err != 0 ) {
-        perror( "Unable to read segy binary header:" );
-        exit( err );
-    }
-
-    const int format = segy_format( header );
-    const int samples = segy_samples( header );
-    const long trace0 = segy_trace0( header );
-    const int trace_bsize = segy_trace_bsize( samples );
-    int extended_headers;
-    err = segy_get_binfield_int( header, SEGY_BIN_EXT_HEADERS, &extended_headers );
-
-    if( err != 0 ) {
-        perror( "Can't read 'extended headers' field from binary header" );
-        exit( err );
-    }
-
-    int traces;
-    err = segy_traces( fp, &traces, trace0, trace_bsize );
-
-    if( err != 0 ) {
-        perror( "Could not determine traces" );
-        exit( err );
-    }
+    int err = segy_collect_metadata( fp, -1, -1, -1 );
+    const int format = fp->metadata.format;
+    const int samples = fp->metadata.samplecount;
+    const long trace0 = fp->metadata.trace0;
+    const long trace_bsize = fp->metadata.trace_bsize;
+    const int extended_headers = fp->metadata.ext_textheader_count;
+    const int traces = fp->metadata.tracecount;
 
     printf( "Sample format: %d\n", format );
     printf( "Samples per trace: %d\n", samples );
@@ -77,6 +56,10 @@ int main(int argc, char* argv[]) {
     printf("Extended text header count: %d\n", extended_headers );
     puts("");
 
+    if (err != SEGY_OK) {
+        perror( "Could not collect metadata" );
+        exit( err );
+    }
 
     char traceh[ SEGY_TRACE_HEADER_SIZE ];
     err = segy_traceheader( fp, 0, traceh, trace0, trace_bsize );

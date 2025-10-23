@@ -14,8 +14,8 @@ import segyio
 import segyio._segyio as _segyio
 
 
-def segyfile(filename, mode, endianness):
-    return _segyio.segyfd(filename=filename, mode=mode, endianness=endianness)
+def segyfile(filename, mode):
+    return _segyio.segyfd(filename=filename, mode=mode)
 
 
 def test_binary_header_size():
@@ -28,7 +28,7 @@ def test_textheader_size():
 
 def test_open_non_existing_file():
     with pytest.raises(IOError):
-        _ = segyfile("non-existing", "r", 0)
+        _ = segyfile("non-existing", "r")
 
 
 def test_close_non_existing_file():
@@ -37,12 +37,12 @@ def test_close_non_existing_file():
 
 
 def test_open_and_close_file():
-    f = segyfile(str(testdata / 'small.sgy'), "r", 0)
+    f = segyfile(str(testdata / 'small.sgy'), "r")
     f.close()
 
 
 def test_open_flush_and_close_file():
-    f = segyfile(str(testdata / 'small.sgy'), "r", 0)
+    f = segyfile(str(testdata / 'small.sgy'), "r")
     f.flush()
     f.close()
 
@@ -55,7 +55,7 @@ def test_read_text_header_mmap():
 
 
 def test_read_text_header(mmap=False):
-    f = segyfile(str(testdata / 'small.sgy'), "r", 0)
+    f = segyfile(str(testdata / 'small.sgy'), "r")
     if mmap:
         f.mmap()
 
@@ -122,9 +122,9 @@ def get_instance_segyfile(tmpdir,
     f = os.path.join(path, file_name)
 
     if samples is not None:
-        return segyfile(f, mode, 0).segymake(samples, tracecount)
+        return segyfile(f, mode).segymake(samples, tracecount)
     else:
-        return segyfile(f, mode, 0).segyopen()
+        return segyfile(f, mode).segyopen()
 
 
 @tmpfiles(testdata / 'small.sgy')
@@ -157,7 +157,7 @@ def test_read_binary_header_fields_mmap():
 
 
 def test_read_binary_header_fields(mmap=False):
-    f = segyfile(str(testdata / 'small.sgy'), "r", 0)
+    f = segyfile(str(testdata / 'small.sgy'), "r")
     if mmap:
         f.mmap()
 
@@ -177,9 +177,9 @@ def test_read_binary_header_fields(mmap=False):
 
 def test_custom_iline_xline():
     with pytest.raises(ValueError):
-        segyfile(str(testdata / 'small.sgy'), "r", 0).segyopen(iline=0)
+        segyfile(str(testdata / 'small.sgy'), "r").segyopen(iline=0)
     with pytest.raises(ValueError):
-        segyfile(str(testdata / 'small.sgy'), "r", 0).segyopen(xline=241)
+        segyfile(str(testdata / 'small.sgy'), "r").segyopen(xline=241)
 
 
 def test_line_metrics_mmap():
@@ -187,7 +187,7 @@ def test_line_metrics_mmap():
 
 
 def test_line_metrics(mmap=False):
-    f = segyfile(str(testdata / 'small.sgy'), "r", 0).segyopen()
+    f = segyfile(str(testdata / 'small.sgy'), "r").segyopen()
     if mmap:
         f.mmap()
 
@@ -229,7 +229,7 @@ def test_metrics_mmap():
 
 
 def test_metrics(mmap=False):
-    f = segyfile(str(testdata / 'small.sgy'), "r", 0).segyopen()
+    f = segyfile(str(testdata / 'small.sgy'), "r").segyopen()
     if mmap:
         f.mmap()
 
@@ -255,7 +255,7 @@ def test_indices_mmap():
 
 
 def test_indices(mmap=False):
-    f = segyfile(str(testdata / 'small.sgy'), "r", 0).segyopen()
+    f = segyfile(str(testdata / 'small.sgy'), "r").segyopen()
     if mmap:
         f.mmap()
 
@@ -307,7 +307,7 @@ def test_fread_trace0_mmap():
 
 
 def test_fread_trace0(mmap=False):
-    f = segyfile(str(testdata / 'small.sgy'), "r", 0).segyopen()
+    f = segyfile(str(testdata / 'small.sgy'), "r").segyopen()
     if mmap:
         f.mmap()
 
@@ -427,7 +427,7 @@ def read_and_write_traceheader(f, mmap):
 
 
 def test_read_traceheaders():
-    f = segyfile(str(testdata / 'small.sgy'), "r", 0).segyopen()
+    f = segyfile(str(testdata / 'small.sgy'), "r").segyopen()
     read_traceheaders_forall(f, False)
     read_traceheaders_forall(f, True)
 
@@ -548,7 +548,7 @@ def read_line(f, metrics, iline_idx, xline_idx):
 
 
 def read_small(mmap=False):
-    f = segyfile(str(testdata / 'small.sgy'), "r", 0).segyopen()
+    f = segyfile(str(testdata / 'small.sgy'), "r").segyopen()
 
     if mmap:
         f.mmap()
@@ -592,17 +592,15 @@ def test_datasource_little_endian(datasource):
         stream = open(testdata / "small-lsb.sgy", "rb")
         fd = _segyio.segyfd(
             stream=stream,
-            endianness=1,
             minimize_requests_number=False
-        ).segyopen()
+        ).segyopen(endianness=1)
     else:
         with open(testdata / "small-lsb.sgy", "rb") as f:
             data = bytearray(f.read())
         fd = _segyio.segyfd(
             memory_buffer=data,
-            endianness=1,
             minimize_requests_number=False
-        ).segyopen()
+        ).segyopen(endianness=1)
 
     binary_header = fd.getbin()
     assert _segyio.getfield(binary_header, 3221) == 50
@@ -613,7 +611,7 @@ def test_datasource_little_endian(datasource):
 def test_memory_buffer_memory_management():
     with open(testdata / "small.sgy", "rb") as f:
         data = bytearray(f.read())
-    fd = _segyio.segyfd(memory_buffer=data, endianness=0).segyopen()
+    fd = _segyio.segyfd(memory_buffer=data).segyopen()
     # assure test code owns no "data" reference, so it can be garbage collected
     del data
     gc.collect()
@@ -639,7 +637,7 @@ def test_memory_buffer_memory_management():
 def test_memory_buffer_memory_management_on_uncaught_error():
     with open(testdata / "small.sgy", "rb") as f:
         data = bytearray(f.read())
-    fd = _segyio.segyfd(memory_buffer=data, endianness=0).segyopen()
+    fd = _segyio.segyfd(memory_buffer=data).segyopen()
     # assure test code owns no "data" reference, so it can be garbage collected
     del data
     gc.collect()
@@ -652,17 +650,17 @@ def test_memory_buffer_memory_management_on_uncaught_error():
 
 def test_stanza_names():
     filename = str(testdata / 'small.sgy')
-    f = segyfile(filename, "r", 0).segyopen()
+    f = segyfile(filename, "r").segyopen()
     assert f.stanza_names() == []
     f.close()
 
     filename = str(testdata / 'multi-text.sgy')
-    f = segyfile(filename, "r", 0).segyopen()
+    f = segyfile(filename, "r").segyopen()
     assert f.stanza_names() == ['']
     f.close()
 
     filename = str(testdata / 'stanzas-known-count.sgy')
-    f = segyfile(filename, "r", 0)
+    f = segyfile(filename, "r")
     f.mmap()
     f.segyopen()
     assert f.stanza_names() == [
@@ -673,7 +671,7 @@ def test_stanza_names():
     f.close()
 
     filename = str(testdata / 'stanzas-unknown-count.sgy')
-    f = segyfile(filename, "r", 0).segyopen()
+    f = segyfile(filename, "r").segyopen()
     assert f.stanza_names() == ['segyio: test ()(test1) ', '  seg: endTEXt  ']
     assert f.gettext(1).strip() == bytes("((segyio: test ()(test1) ))first part", "ascii")
     assert f.gettext(2).strip() == bytes("second part", "ascii")

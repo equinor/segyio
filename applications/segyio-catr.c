@@ -470,7 +470,6 @@ static struct options parse_options( int argc, char** argv ){
     static struct option long_options[] = {
         { "trace",          required_argument,  0, 't' },
         { "range",          required_argument,  0, 'r' },
-        { "format",         required_argument,  0, 'f' },
         { "segyio",         no_argument,        0, 'k' },
         { "strict",         no_argument,        0, 's' },
         { "non-strict",     no_argument,        0, 'S' },
@@ -504,23 +503,6 @@ static struct options parse_options( int argc, char** argv ){
            case 'd': opts.description = 1; break;
            case 'n': opts.nonzero = 1; break;
            case 'k': opts.labels = segyio_labels; break;
-           case 'f': if( strcmp( optarg, "ibm" ) == 0 )
-                         opts.format = SEGY_IBM_FLOAT_4_BYTE;
-                     if( strcmp( optarg, "ieee" ) == 0 )
-                         opts.format = SEGY_IEEE_FLOAT_4_BYTE;
-                     if( strcmp( optarg, "short" ) == 0 )
-                         opts.format = SEGY_SIGNED_SHORT_2_BYTE;
-                     if( strcmp( optarg, "long" ) == 0 )
-                         opts.format = SEGY_SIGNED_INTEGER_4_BYTE;
-                     if( strcmp( optarg, "char" ) == 0 )
-                         opts.format = SEGY_SIGNED_CHAR_1_BYTE;
-                     if( opts.format == 0 ) {
-                         opts.errmsg = "invalid format argument. valid formats: "
-                                       "ibm ieee short long char";
-                         return opts;
-                     }
-                     break;
-
            case 'r': // intentional fallthrough
            case 't': {
                 if( opts.rsize == rallocsize ) {
@@ -630,52 +612,20 @@ int main( int argc, char** argv ) {
     }
 
     char trheader[ TRHSIZE ];
-    char binheader[ BINSIZE ];
 
     segy_file* src = segy_open( opts.src, "r" );
     if( !src )
         exit( errmsg2( errno, "Unable to open src", strerror( errno ) ) );
 
-    int err = segy_binheader( src, binheader );
-    if( err ) exit( errmsg( errno, "Unable to read binheader" ) );
-
-    int samnr = segy_samples( binheader );
-
-    int format = opts.format ? opts.format : segy_format( binheader );
-    switch( format ) {
-        /* all good */
-        case SEGY_IBM_FLOAT_4_BYTE:
-        case SEGY_SIGNED_INTEGER_4_BYTE:
-        case SEGY_SIGNED_SHORT_2_BYTE:
-        case SEGY_FIXED_POINT_WITH_GAIN_4_BYTE:
-        case SEGY_IEEE_FLOAT_4_BYTE:
-        case SEGY_SIGNED_CHAR_1_BYTE:
-            break;
-
-        /*
-         * assume this header field is just not set, silently fall back
-         * to 4-byte floats
-         */
-        case 0:
-            format = SEGY_IBM_FLOAT_4_BYTE;
-            break;
-
-        case SEGY_NOT_IN_USE_1:
-        case SEGY_NOT_IN_USE_2:
-        default:
-            errmsg( 1, "sample format field is garbage. "
-                        "falling back to 4-byte float. "
-                        "override with --format" );
-            format = SEGY_IBM_FLOAT_4_BYTE;
+    int err = segy_collect_metadata( src, -1, -1, -1 );
+    if( err != SEGY_OK ) {
+        perror( "Could not collect metadata: %d" );
+        exit( err );
     }
 
-    int trace_bsize = segy_trsize( format, samnr );
-    long trace0 = segy_trace0( binheader );
-
-    int numtrh;
-    err = segy_traces( src, &numtrh, trace0, trace_bsize );
-    if( err )
-        exit( errmsg( errno, "Unable to determine number of traces in file" ) );
+    const long trace0 = src->metadata.trace0;
+    const long trace_bsize = src->metadata.trace_bsize;
+    const int numtrh = src->metadata.tracecount;
 
     /*
      * If any range field is defaulted (= 0), expand the defaults into sane
@@ -699,29 +649,35 @@ int main( int argc, char** argv ) {
                 exit( errmsg( errno, "Unable to read trace header" ) );
 
             for( int j = 0; j < 92; j++ ) {
-                int f;
-                segy_get_tracefield_int( trheader, fields[j], &f );
+                int buf;
+                segy_get_tracefield_int( trheader, fields[j], &buf );
+
+                long long f = buf;
                 if( opts.nonzero && !f ) continue;
 
                 /*
                  * convert cannot-be-negative values to unsigned int, as mandated by SEGY-Y
                  * rev2
                  */
-                switch (f) {
+                switch (fields[j]) {
                     case SEGY_TR_SAMPLE_COUNT:
-                        f = (int)((uint16_t)f);
+                        f = (uint16_t)buf;
+                        break;
+                    case SEGY_TR_SEQ_LINE:
+                    case SEGY_TR_SEQ_FILE:
+                        f = (uint32_t)buf;
                         break;
                 }
 
                 if( opts.description ) {
-                    printf( "%s\t%d\t%d\t%s\n",
+                    printf( "%s\t%lld\t%d\t%s\n",
                             labels[j],
                             f,
                             fields[ j ],
                             desc[ j ] );
                 }
                 else
-                    printf( "%s\t%d\n", labels[j], f );
+                    printf( "%s\t%lld\n", labels[j], f );
             }
         }
     }

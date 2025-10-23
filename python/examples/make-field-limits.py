@@ -53,6 +53,8 @@ def main():
             return samples
         if field == segyio.BinField.ExtendedHeaders:
             return 0
+        if field == segyio.BinField.IntConstant:
+            return 16909060
 
         if field == segyio.BinField.ExtInterval:
             return 1125899906842594.0 * value_sign
@@ -71,6 +73,8 @@ def main():
             segyio.BinField.SEGYRevisionMinor,
             segyio.BinField.FirstTraceOffset,
             segyio.BinField.NrTracesInStream,
+            segyio.TraceField.TRACE_SEQUENCE_LINE,
+            segyio.TraceField.TRACE_SEQUENCE_FILE,
             segyio.TraceField.TRACE_SAMPLE_COUNT
         ]
         if value_sign < 0:

@@ -5,7 +5,9 @@ import segyio
 from .utils import (
     FileDatasourceDescriptor,
     StreamDatasourceDescriptor,
-    MemoryBufferDatasourceDescriptor
+    MemoryBufferDatasourceDescriptor,
+    to_c_endianness,
+    to_c_encoding
 )
 
 def infer_geometry(f, metrics, strict):
@@ -40,7 +42,7 @@ def open(filename, mode="r", iline = 189,
                              xline = 193,
                              strict = True,
                              ignore_geometry = False,
-                             endian = 'big',
+                             endian = None,
                              encoding = None):
     """Open a segy file.
 
@@ -95,7 +97,8 @@ def open(filename, mode="r", iline = 189,
         organised files. Defaults to False.
 
     endian : {'big', 'msb', 'little', 'lsb'}
-        File endianness, big/msb (default) or little/lsb
+        File endianness, big/msb or little/lsb. If not set, value would be read
+        from binary header fields 3297-3300.
 
     encoding : {None, 'ebcdic', 'ascii'}
         Encoding for text and strings for the whole file: None - auto detection
@@ -170,7 +173,7 @@ def open_with(stream,
               xline=193,
               strict=True,
               ignore_geometry=False,
-              endian='big',
+              endian=None,
               encoding=None,
               minimize_requests_number=True
               ):
@@ -211,7 +214,7 @@ def open_from_memory(memory_buffer,
                    xline=193,
                    strict=True,
                    ignore_geometry=False,
-                   endian='big',
+                   endian=None,
                    encoding=None,
                    ):
     """
@@ -243,12 +246,17 @@ def _open(datasource_descriptor,
           xline=193,
           strict=True,
           ignore_geometry=False,
-          endian='big',
+          endian=None,
           encoding=None,
           ):
 
-    fd = datasource_descriptor.make_segyfile_descriptor(endian, encoding)
-    fd.segyopen(iline=int(iline), xline=int(xline))
+    fd = datasource_descriptor.make_segyfile_descriptor()
+    fd.segyopen(
+        endianness=to_c_endianness(endian),
+        encoding=to_c_encoding(encoding),
+        iline=int(iline),
+        xline=int(xline)
+    )
     metrics = fd.metrics()
 
     f = segyio.SegyFile(fd,

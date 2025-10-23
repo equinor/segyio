@@ -34,9 +34,9 @@ void testcfg::mmap( segy_file* fp ) {
 
 void testcfg::lsb( segy_file* fp ) {
     if( this->lsbit ) {
-        REQUIRE( segy_set_endianness( fp, SEGY_LSB ) == SEGY_OK );
+        REQUIRE( fp->metadata.endianness == SEGY_LSB );
     } else {
-        REQUIRE( segy_set_endianness( fp, SEGY_MSB ) == SEGY_OK );
+        REQUIRE( fp->metadata.endianness == SEGY_MSB );
     }
 }
 
