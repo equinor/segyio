@@ -285,7 +285,7 @@ typedef struct {
     int ext_textheader_count;
 
     /* Byte offset of the first trace in the file. */
-    long trace0;
+    unsigned long long trace0;
 
     /* Number of samples in each trace. */
     int samplecount;
@@ -417,7 +417,7 @@ typedef struct {
  * Output parameters are non-const pointers, input parameters are const
  * pointers or plain values. All functions are namespace-prefix'd with segy_.
  * Some functions return values, notably the family concerned with the binary
- * header such as segy_trace0, that should be used in consecutive segy function
+ * header such as segy_trsize, that should be used in consecutive segy function
  * calls that use the same name for one of its parameters.
  */
 
@@ -563,8 +563,20 @@ int segy_trace_bsize( int samples );
  * a negative value. If `samples` is zero or negative, the result is undefined.
  */
 int segy_trsize( int format, int samples );
-/* byte-offset of the first trace header. */
-long segy_trace0( const char* binheader );
+
+/* Sets byte-offset of the first trace header.
+ *
+ * Returns the value from 3521–3528 if it is positive. Otherwise function would
+ * calculate implied trace0 consulting ext_textheader_count. If provided value
+ * is negative, attempt would be made to read value from fields 3505–3506 and
+ * error code is returned if this value is negative too.
+ */
+int segy_trace0(
+    const char* binheader,
+    unsigned long long* trace0,
+    int ext_textheader_count
+);
+
 /*
  * number of traces in this file.
  * if this function fails, the input argument is not modified.
