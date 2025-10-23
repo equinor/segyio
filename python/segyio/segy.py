@@ -56,6 +56,7 @@ class SegyFile(object):
         self._tracecount = metrics['tracecount']
         self._ext_textheaders_count = metrics['ext_headers']
         self._encoding = metrics['encoding']
+        self._traceheader_count = metrics['traceheader_count']
 
         try:
             self._dtype = np.dtype({
@@ -342,6 +343,20 @@ class SegyFile(object):
             Number of extra text headers
         """
         return self._ext_textheaders_count
+
+    @property
+    def traceheader_count(self):
+        """Total number of trace headers.
+
+        segyio assumes that every single trace has exactly this number of trace
+        headers.
+
+        Returns
+        -------
+        traceheader_count : int
+            Number of trace headers for each trace
+        """
+        return self._traceheader_count
 
     @property
     def unstructured(self):
@@ -1044,3 +1059,4 @@ class spec(object):
         self.sorting = None
         self.endian = 'big'
         self.encoding = 'ebcdic'
+        self.traceheader_count = 1
