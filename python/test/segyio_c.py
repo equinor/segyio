@@ -389,18 +389,18 @@ def test_get_and_putfield():
 
 
 @tmpfiles(testdata / 'small.sgy')
-def test_read_and_write_traceheader_mmap(tmpdir):
+def test_read_and_write_standard_traceheader_mmap(tmpdir):
     f = get_instance_segyfile(tmpdir)
-    read_and_write_traceheader(f, True)
+    read_and_write_standard_traceheader(f, True)
 
 
 @tmpfiles(testdata / 'small.sgy')
-def test_read_and_write_traceheader(tmpdir):
+def test_read_and_write_standard_traceheader(tmpdir):
     f = get_instance_segyfile(tmpdir)
-    read_and_write_traceheader(f, False)
+    read_and_write_standard_traceheader(f, False)
 
 
-def read_and_write_traceheader(f, mmap):
+def read_and_write_standard_traceheader(f, mmap):
     if mmap:
         f.mmap()
 
@@ -414,14 +414,14 @@ def read_and_write_traceheader(f, mmap):
         f.getth("+")
 
     with pytest.raises(TypeError):
-        f.getth(0, None)
+        f.getth(0, 0, None)
 
-    trace_header = f.getth(0, mkempty())
+    trace_header = f.getth(0, 0, mkempty())
 
     assert _segyio.getfield(trace_header, ilb) == 1
     assert _segyio.getfield(trace_header, xlb) == 20
 
-    trace_header = f.getth(1, mkempty())
+    trace_header = f.getth(1, 0, mkempty())
 
     assert _segyio.getfield(trace_header, ilb) == 1
     assert _segyio.getfield(trace_header, xlb) == 21
@@ -429,12 +429,42 @@ def read_and_write_traceheader(f, mmap):
     _segyio.putfield(trace_header, ilb, 99)
     _segyio.putfield(trace_header, xlb, 42)
 
-    f.putth(0, trace_header)
+    f.putth(0, 0, trace_header)
 
-    trace_header = f.getth(0, mkempty())
+    trace_header = f.getth(0, 0, mkempty())
 
     assert _segyio.getfield(trace_header, ilb) == 99
     assert _segyio.getfield(trace_header, xlb) == 42
+
+    f.close()
+
+
+@tmpfiles(testdata / 'trace-header-extensions.sgy')
+def test_read_and_write_traceheader(tmpdir):
+    f = get_instance_segyfile(tmpdir, 'trace-header-extensions.sgy')
+
+    def mkempty():
+        return bytearray(_segyio.thsize())
+
+    field = 1
+    # note: for the moment all headers are processed using default standard
+    # traceheader mapping, which is incorrect. Test will change in the future
+    # when get-set field functions are updated.
+
+    standard_th = f.getth(0, 0, mkempty())
+    assert _segyio.getfield(standard_th, field) == 286331153
+
+    extension1_th = f.getth(0, 1, mkempty())
+    assert _segyio.getfield(extension1_th, field) == 572662306
+
+    proprietary_th = f.getth(0, 2, mkempty())
+    assert _segyio.getfield(proprietary_th, field) == 858993459
+
+    _segyio.putfield(extension1_th, field, 42)
+    f.putth(0, 1, extension1_th)
+
+    extension1_th = f.getth(0, 1, mkempty())
+    assert _segyio.getfield(extension1_th, field) == 42
 
     f.close()
 

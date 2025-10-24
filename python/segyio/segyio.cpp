@@ -1061,9 +1061,10 @@ PyObject* getth( segyfd* self, PyObject *args ) {
     if( !ds ) return NULL;
 
     int traceno;
+    int traceheaderno;
     PyObject* bufferobj;
 
-    if( !PyArg_ParseTuple( args, "iO", &traceno, &bufferobj ) ) return NULL;
+    if( !PyArg_ParseTuple( args, "iiO", &traceno, &traceheaderno, &bufferobj ) ) return NULL;
 
     buffer_guard buffer( bufferobj, PyBUF_CONTIG );
     if( !buffer ) return NULL;
@@ -1073,8 +1074,13 @@ PyObject* getth( segyfd* self, PyObject *args ) {
                            "expected %i, was %zd",
                            SEGY_TRACE_HEADER_SIZE, buffer.len() );
 
-    int err = segy_read_standard_traceheader( ds, traceno,
-                                    buffer.buf() );
+    int err = segy_read_traceheader(
+        ds,
+        traceno,
+        traceheaderno,
+        self->traceheader_mappings[traceheaderno].offset_to_entry_definition,
+        buffer.buf()
+    );
 
     switch( err ) {
         case SEGY_OK:
@@ -1095,8 +1101,9 @@ PyObject* putth( segyfd* self, PyObject* args ) {
     if( !ds ) return NULL;
 
     int traceno;
+    int traceheaderno;
     buffer_guard buf;
-    if( !PyArg_ParseTuple( args, "is*", &traceno, &buf ) ) return NULL;
+    if( !PyArg_ParseTuple( args, "iis*", &traceno, &traceheaderno, &buf ) ) return NULL;
 
     if( buf.len() < SEGY_TRACE_HEADER_SIZE )
         return ValueError( "internal: trace header buffer too small, "
@@ -1105,9 +1112,13 @@ PyObject* putth( segyfd* self, PyObject* args ) {
 
     const char* buffer = buf.buf< const char >();
 
-    const int err = segy_write_standard_traceheader( ds,
-                                            traceno,
-                                            buffer );
+    int err = segy_write_traceheader(
+        ds,
+        traceno,
+        traceheaderno,
+        self->traceheader_mappings[traceheaderno].offset_to_entry_definition,
+        buffer
+    );
 
     switch( err ) {
         case SEGY_OK:
