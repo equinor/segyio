@@ -247,7 +247,7 @@ class Field(MutableMapping):
         try:
             if self.kind == TraceField:
                 if traceno is None: return buf
-                return self.segyfd.getth(traceno, buf)
+                return self.segyfd.getth(traceno, 0, buf)
             else:
                 return self.segyfd.getbin()
         except IOError:
@@ -317,7 +317,7 @@ class Field(MutableMapping):
         """
 
         if self.kind == TraceField:
-            self.segyfd.putth(self.traceno, self.buf)
+            self.segyfd.putth(self.traceno, 0, self.buf)
 
         elif self.kind == BinField:
             self.segyfd.putbin(self.buf)
