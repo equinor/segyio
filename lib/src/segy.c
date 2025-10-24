@@ -1723,151 +1723,95 @@ int segy_traceheaders(
     return SEGY_OK;
 }
 
-static int bswap_th( char* xs, int lsb ) {
-    if( !lsb ) return SEGY_OK;
 
-    const int bytes4[] = {
-        SEGY_TR_CDP_X,
-        SEGY_TR_CDP_Y,
-        SEGY_TR_CROSSLINE,
-        SEGY_TR_ENERGY_SOURCE_POINT,
-        SEGY_TR_ENSEMBLE,
-        SEGY_TR_FIELD_RECORD,
-        SEGY_TR_GROUP_WATER_DEPTH,
-        SEGY_TR_GROUP_X,
-        SEGY_TR_GROUP_Y,
-        SEGY_TR_INLINE,
-        SEGY_TR_NUMBER_ORIG_FIELD,
-        SEGY_TR_NUM_IN_ENSEMBLE,
-        SEGY_TR_OFFSET,
-        SEGY_TR_RECV_DATUM_ELEV,
-        SEGY_TR_RECV_GROUP_ELEV,
-        SEGY_TR_SEQ_FILE,
-        SEGY_TR_SEQ_LINE,
-        SEGY_TR_SHOT_POINT,
-        SEGY_TR_SOURCE_DATUM_ELEV,
-        SEGY_TR_SOURCE_DEPTH,
-        SEGY_TR_SOURCE_MEASURE_MANT,
-        SEGY_TR_SOURCE_SURF_ELEV,
-        SEGY_TR_SOURCE_WATER_DEPTH,
-        SEGY_TR_SOURCE_X,
-        SEGY_TR_SOURCE_Y,
-        SEGY_TR_TRANSDUCTION_MANT,
-    };
+static int bswap_th(
+    const segy_datasource* ds,
+    const segy_entry_definition* mapping,
+    char* xs
+) {
+    if( ds->metadata.endianness != SEGY_LSB ) return SEGY_OK;
 
-    const int bytes4_len = sizeof(bytes4) / sizeof(int);
-
-    for( int i = 0; i < bytes4_len; ++i ) {
-        const int offset = bytes4[ i ] - 1;
-        bswap32_mem( xs + offset, xs + offset );
+    int offset = 0;
+    while( offset < SEGY_TRACE_HEADER_SIZE ) {
+        int datatype = segy_entry_type_to_datatype( mapping[offset].entry_type );
+        if( datatype == SEGY_UNDEFINED_FIELD ) {
+            ++offset;
+            continue;
+        }
+        int size = segy_formatsize( datatype );
+        switch( size ) {
+            case 8:
+                bswap64_mem( xs + offset, xs + offset );
+                break;
+            case 4:
+                bswap32_mem( xs + offset, xs + offset );
+                break;
+            case 2:
+                bswap16_mem( xs + offset, xs + offset );
+                break;
+            case 1:
+                break;
+            default:
+                return SEGY_INVALID_FIELD_DATATYPE;
+        }
+        offset += size;
     }
-
-    const int bytes2[] = {
-        SEGY_TR_ALIAS_FILT_FREQ,
-        SEGY_TR_ALIAS_FILT_SLOPE,
-        SEGY_TR_COORD_UNITS,
-        SEGY_TR_CORRELATED,
-        SEGY_TR_DATA_USE,
-        SEGY_TR_DAY_OF_YEAR,
-        SEGY_TR_DELAY_REC_TIME,
-        SEGY_TR_DEVICE_ID,
-        SEGY_TR_ELEV_SCALAR,
-        SEGY_TR_GAIN_TYPE,
-        SEGY_TR_GAP_SIZE,
-        SEGY_TR_GEOPHONE_GROUP_FIRST,
-        SEGY_TR_GEOPHONE_GROUP_LAST,
-        SEGY_TR_GEOPHONE_GROUP_ROLL1,
-        SEGY_TR_GROUP_STATIC_CORR,
-        SEGY_TR_GROUP_UPHOLE_TIME,
-        SEGY_TR_HIGH_CUT_FREQ,
-        SEGY_TR_HIGH_CUT_SLOPE,
-        SEGY_TR_HOUR_OF_DAY,
-        SEGY_TR_INSTR_GAIN_CONST,
-        SEGY_TR_INSTR_INIT_GAIN,
-        SEGY_TR_LAG_A,
-        SEGY_TR_LAG_B,
-        SEGY_TR_LOW_CUT_FREQ,
-        SEGY_TR_LOW_CUT_SLOPE,
-        SEGY_TR_MEASURE_UNIT,
-        SEGY_TR_MIN_OF_HOUR,
-        SEGY_TR_MUTE_TIME_END,
-        SEGY_TR_MUTE_TIME_START,
-        SEGY_TR_NOTCH_FILT_FREQ,
-        SEGY_TR_NOTCH_FILT_SLOPE,
-        SEGY_TR_OVER_TRAVEL,
-        SEGY_TR_SAMPLE_COUNT,
-        SEGY_TR_SAMPLE_INTER,
-        SEGY_TR_SCALAR_TRACE_HEADER,
-        SEGY_TR_SEC_OF_MIN,
-        SEGY_TR_SHOT_POINT_SCALAR,
-        SEGY_TR_SOURCE_ENERGY_DIR_VERT,
-        SEGY_TR_SOURCE_ENERGY_DIR_XLINE,
-        SEGY_TR_SOURCE_ENERGY_DIR_ILINE,
-        SEGY_TR_SOURCE_GROUP_SCALAR,
-        SEGY_TR_SOURCE_MEASURE_EXP,
-        SEGY_TR_SOURCE_MEASURE_UNIT,
-        SEGY_TR_SOURCE_STATIC_CORR,
-        SEGY_TR_SOURCE_TYPE,
-        SEGY_TR_SOURCE_UPHOLE_TIME,
-        SEGY_TR_STACKED_TRACES,
-        SEGY_TR_SUBWEATHERING_VELO,
-        SEGY_TR_SUMMED_TRACES,
-        SEGY_TR_SWEEP_FREQ_END,
-        SEGY_TR_SWEEP_FREQ_START,
-        SEGY_TR_SWEEP_LENGTH,
-        SEGY_TR_SWEEP_TAPERLEN_END,
-        SEGY_TR_SWEEP_TAPERLEN_START,
-        SEGY_TR_SWEEP_TYPE,
-        SEGY_TR_TAPER_TYPE,
-        SEGY_TR_TIME_BASE_CODE,
-        SEGY_TR_TOT_STATIC_APPLIED,
-        SEGY_TR_TRACE_ID,
-        SEGY_TR_TRANSDUCTION_EXP,
-        SEGY_TR_TRANSDUCTION_UNIT,
-        SEGY_TR_WEATHERING_VELO,
-        SEGY_TR_WEIGHTING_FAC,
-        SEGY_TR_YEAR_DATA_REC,
-    };
-
-    const int bytes2_len = sizeof( bytes2 ) / sizeof( int );
-
-    for( int i = 0; i < bytes2_len; ++i ) {
-        const int offset = bytes2[ i ] - 1;
-        bswap16_mem( xs + offset, xs + offset );
-    }
-
     return SEGY_OK;
 }
 
-int segy_read_standard_traceheader( segy_datasource* ds,
-                      int traceno,
-                      char* buf ) {
+int segy_read_traceheader( segy_datasource* ds,
+                           int traceno,
+                           int traceheader_no,
+                           const segy_entry_definition* mapping,
+                           char* buf ) {
 
-    int err = seek_traceheader_offset( ds, traceno, 0, 0 );
+    int err = seek_traceheader_offset( ds, traceno, traceheader_no, 0 );
     if( err != SEGY_OK ) return err;
 
     err = ds->read( ds, buf, SEGY_TRACE_HEADER_SIZE );
     if( err != 0 ) return SEGY_DS_READ_ERROR;
 
-    return bswap_th( buf, ds->metadata.endianness );
+    return bswap_th( ds, mapping, buf );
 }
 
-int segy_write_standard_traceheader( segy_datasource* ds,
+int segy_read_standard_traceheader(
+    segy_datasource* ds,
+    int traceno,
+    char* buf
+) {
+    return segy_read_traceheader(
+        ds, traceno, 0, ds->traceheader_mapping_standard.offset_to_entry_definition, buf
+    );
+}
+
+int segy_write_traceheader( segy_datasource* ds,
                             int traceno,
+                            int traceheader_no,
+                            const segy_entry_definition* mapping,
                             const char* buf ) {
     if( !ds->writable ) return SEGY_READONLY;
 
-    int err = seek_traceheader_offset( ds, traceno, 0, 0 );
+    int err = seek_traceheader_offset( ds, traceno, traceheader_no, 0 );
     if( err != SEGY_OK ) return err;
 
     char swapped[SEGY_TRACE_HEADER_SIZE];
     memcpy( swapped, buf, SEGY_TRACE_HEADER_SIZE );
-    bswap_th( swapped, ds->metadata.endianness );
+    bswap_th( ds, mapping, swapped );
 
     err = ds->write( ds, swapped, SEGY_TRACE_HEADER_SIZE );
     if( err != 0 ) return SEGY_DS_WRITE_ERROR;
 
     return SEGY_OK;
+}
+
+int segy_write_standard_traceheader(
+    segy_datasource* ds,
+    int traceno,
+    const char* buf
+) {
+    return segy_write_traceheader(
+        ds, traceno, 0, ds->traceheader_mapping_standard.offset_to_entry_definition, buf
+    );
 }
 
 /*

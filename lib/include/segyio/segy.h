@@ -632,6 +632,20 @@ int segy_read_ext_textheader( segy_datasource*, int pos, char* buf );
  */
 int segy_write_textheader( segy_datasource*, int pos, const char* buf );
 
+/* Read the 'traceheaderno' trace header at `traceno` into `buf`. */
+int segy_read_traceheader( segy_datasource*,
+                           int traceno,
+                           int traceheader_no,
+                           const segy_entry_definition* mapping,
+                           char* buf );
+
+/* Write the 'traceheaderno' trace header at `traceno` from `buf` into file. */
+int segy_write_traceheader( segy_datasource*,
+                            int traceno,
+                            int traceheader_no,
+                            const segy_entry_definition* mapping,
+                            const char* buf );
+
 /* Read the standard trace header at `traceno` into `buf`. */
 int segy_read_standard_traceheader( segy_datasource*,
                                     int traceno,
