@@ -61,7 +61,7 @@ int main(int argc, char* argv[]) {
     }
 
     char traceh[ SEGY_TRACE_HEADER_SIZE ];
-    err = segy_traceheader( fp, 0, traceh );
+    err = segy_read_standard_traceheader( fp, 0, traceh );
     if( err != 0 ) {
         perror( "Unable to read trace 0:" );
         exit( err );
@@ -70,7 +70,7 @@ int main(int argc, char* argv[]) {
     puts("Info from first trace:");
     printSegyTraceInfo( traceh );
 
-    err = segy_traceheader( fp, 1, traceh );
+    err = segy_read_standard_traceheader( fp, 1, traceh );
     if( err != 0 ) {
         perror( "Unable to read trace 1:" );
         exit( err );
@@ -89,7 +89,7 @@ int main(int argc, char* argv[]) {
     int min_sample_count = 999999999;
     int max_sample_count = 0;
     for( int i = 0; i < traces; ++i ) {
-        err = segy_traceheader( fp, i, traceh );
+        err = segy_read_standard_traceheader( fp, i, traceh );
         if( err != 0 ) {
             perror( "Unable to read trace" );
             exit( err );
@@ -125,7 +125,7 @@ int main(int argc, char* argv[]) {
 
     puts("");
     puts("Info from last trace:");
-    err = segy_traceheader( fp, traces - 1, traceh );
+    err = segy_read_standard_traceheader( fp, traces - 1, traceh );
 
     if( err != 0 ) {
         perror( "Unable to read trace." );

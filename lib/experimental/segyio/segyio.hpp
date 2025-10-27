@@ -1330,8 +1330,7 @@ trace_header trace_header_reader< Derived >::get_th( int i ) noexcept(false) {
     auto* self = static_cast< Derived* >( this );
 
     self->consider( i );
-    auto err = segy_traceheader( self->escape(), i,
-                                                 buffer );
+    auto err = segy_read_standard_traceheader( self->escape(), i, buffer );
 
     switch( err ) {
         case SEGY_OK: break;

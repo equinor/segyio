@@ -861,7 +861,7 @@ PyObject* suopen( segyfd* self, PyObject* args, PyObject* kwargs ) {
     ds->metadata.trace0 = 0;
 
     char header[SEGY_TRACE_HEADER_SIZE] = {};
-    err = segy_traceheader( ds, 0, header );
+    err = segy_read_standard_traceheader( ds, 0, header );
     if( err )
         return IOError( "unable to read first trace header in SU file" );
 
@@ -1073,7 +1073,7 @@ PyObject* getth( segyfd* self, PyObject *args ) {
                            "expected %i, was %zd",
                            SEGY_TRACE_HEADER_SIZE, buffer.len() );
 
-    int err = segy_traceheader( ds, traceno,
+    int err = segy_read_standard_traceheader( ds, traceno,
                                     buffer.buf() );
 
     switch( err ) {
@@ -1105,7 +1105,7 @@ PyObject* putth( segyfd* self, PyObject* args ) {
 
     const char* buffer = buf.buf< const char >();
 
-    const int err = segy_write_traceheader( ds,
+    const int err = segy_write_standard_traceheader( ds,
                                             traceno,
                                             buffer );
 
@@ -1639,7 +1639,7 @@ PyObject* getdt( segyfd* self, PyObject* args ) {
         return IOError( "I/O operation failed on binary header, "
                         "likely corrupted file" );
 
-    err = segy_traceheader( ds, 0, buffer );
+    err = segy_read_standard_traceheader( ds, 0, buffer );
 
     if( err == SEGY_FREAD_ERROR )
         return IOError( "I/O operation failed on trace header 0, "
