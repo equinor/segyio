@@ -2,11 +2,11 @@ name: Wheels
 
 on:
   push:
-    branches: [main]
+    branches: [backport-1.x]
     tags:
       - '*'
   pull_request:
-    branches: [main]
+    branches: [backport-1.x]
   workflow_dispatch:
 
 jobs:

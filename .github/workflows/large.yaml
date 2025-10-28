@@ -2,9 +2,9 @@ name: Run large tests
 
 on:
   push:
-    branches: [main]
+    branches: [backport-1.x]
   pull_request:
-    branches: [main]
+    branches: [backport-1.x]
   workflow_dispatch:
 
 jobs:
