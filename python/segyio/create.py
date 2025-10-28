@@ -247,10 +247,11 @@ def _create(datasource_descriptor, spec):
         ext_headers = int(ext_headers),
     )
 
+    # note: even if iline/xline are overridden, file is already created with
+    # standard iline/xline position, so those can mismatch
+
     f = segyio.SegyFile(fd,
             datasource_descriptor,
-            iline = int(spec.iline),
-            xline = int(spec.xline),
             endian = endian,
     )
 

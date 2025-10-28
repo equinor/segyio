@@ -105,8 +105,6 @@ def _open(datasource_descriptor,
     f = sufile(
         fd,
         datasource_descriptor,
-        iline = iline,
-        xline = xline,
     )
 
     h0 = f.header[0]

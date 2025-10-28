@@ -63,6 +63,8 @@ class Enum(object):
         return hash(self._value)
 
     def __eq__(self, other):
+        if other is None:
+            return False
         try:
             o = int(other)
         except ValueError:
