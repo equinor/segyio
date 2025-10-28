@@ -1,9 +1,7 @@
 # segyio #
 
-[![Travis](https://img.shields.io/travis/equinor/segyio/master.svg?label=travis)](https://travis-ci.org/equinor/segyio)
-[![Appveyor](https://ci.appveyor.com/api/projects/status/2i5cr8ui2t9qbxk9?svg=true)](https://ci.appveyor.com/project/statoil-travis/segyio)
-[![PyPI Updates](https://pyup.io/repos/github/equinor/segyio/shield.svg)](https://pyup.io/repos/github/equinor/segyio/)
-[![Python 3](https://pyup.io/repos/github/equinor/segyio/python-3-shield.svg)](https://pyup.io/repos/github/equinor/segyio/)
+[![PyPI - Version](https://img.shields.io/pypi/v/segyio)](https://pypi.org/project/segyio/)
+[![Read the Docs](https://img.shields.io/readthedocs/segyio)](https://segyio.readthedocs.io/)
 
 > [!NOTE]
 > 🚧 *segyio 2.0* is under construction in the `main` branch. 🚧
