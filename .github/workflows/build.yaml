@@ -44,7 +44,7 @@ jobs:
             compiler: "clang"
             build_type: "Debug"
             compiler_flags: "-Wextra -Wall -pedantic"
-          - os: macos-13
+          - os: macos-15-intel
             privledges: "sudo"
             build_type: "Release"
           - os: macos-latest
