@@ -2,11 +2,11 @@ name: Wheels
 
 on:
   push:
-    branches: [master]
+    branches: [backport-1.x]
     tags:
       - '*'
   pull_request:
-    branches: [master]
+    branches: [backport-1.x]
   workflow_dispatch:
 
 jobs:
@@ -17,23 +17,23 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: windows-2019
-            cmake_generator: "Visual Studio 16 2019"
+          - os: windows-2022
+            cmake_generator: "Visual Studio 17 2022"
             cmake_generator_platform: "x64"
             arch: AMD64
-          - os: windows-2019
-            cmake_generator: "Visual Studio 16 2019"
+          - os: windows-2022
+            cmake_generator: "Visual Studio 17 2022"
             cmake_generator_platform: "Win32"
             arch: x86
-          - os: ubuntu-20.04
+          - os: ubuntu-latest
             arch: x86_64
           - os: ubuntu-24.04-arm
             arch: aarch64
-          - os: ubuntu-20.04
+          - os: ubuntu-latest
             arch: i686
           # macos-latest runs on arm64 architecture and cibuildwheel cross
           # compiling for x86_64 fails
-          - os: macos-13
+          - os: macos-15-intel
             arch: x86_64
           - os: macos-latest
             arch: arm64
@@ -54,7 +54,7 @@ jobs:
           CIBW_ENVIRONMENT_WINDOWS: >
             CMAKE_GENERATOR="${{ matrix.cmake_generator }}"
             CMAKE_GENERATOR_PLATFORM="${{ matrix.cmake_generator_platform }}"
-          CIBW_SKIP: pp* *-musllinux_* cp36-* cp37-* cp38-*
+          CIBW_SKIP: cp38-* cp314* *-musllinux_*
           CIBW_ARCHS: ${{ matrix.arch }}
         run: |
             python -m cibuildwheel --output-dir wheelhouse python/

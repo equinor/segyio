@@ -9,7 +9,7 @@
 #include "apputils.h"
 #include <segyio/segy.h>
 
-static int printhelp(){
+static int printhelp(void){
     puts( "Usage: segyio-catb [OPTION]... [FILE]...\n"
           "Concatenate the binary header from FILE(s) to seismic unix "
           "output.\n"
@@ -23,7 +23,7 @@ static int printhelp(){
     return 0;
 }
 
-static int get_binary_value( char* binheader, int bfield ){
+static int get_binary_value( const char* binheader, int bfield ){
     int32_t f;
     segy_get_bfield( binheader, bfield, &f );
 
@@ -54,7 +54,7 @@ static struct options parse_options( int argc, char** argv ){
     opts.description = 0;
     opts.version = 0, opts.help = 0;
     opts.errmsg = NULL;
-    
+
     static struct option long_options[] = {
         {"version",         no_argument,    0,    'V'},
         {"help",            no_argument,    0,    'h'},
@@ -64,7 +64,7 @@ static struct options parse_options( int argc, char** argv ){
     };
 
     opterr = 1;
-     
+
     while( true ){
 
         int option_index = 0;
@@ -72,7 +72,7 @@ static struct options parse_options( int argc, char** argv ){
                             long_options, &option_index);
 
         if ( c == -1 ) break;
-        
+
         switch( c ){
             case  0: break;
             case 'h': opts.help = 1;    return opts;
@@ -156,7 +156,7 @@ int main( int argc, char** argv ){
         "Number of 3200-byte, Extended Textual File Headers"
     };
 
-    static int bfield_value[ 30 ] = {
+    static const int bfield_value[ 30 ] = {
         SEGY_BIN_JOB_ID,
         SEGY_BIN_LINE_NUMBER,
         SEGY_BIN_REEL_NUMBER,
@@ -188,7 +188,7 @@ int main( int argc, char** argv ){
         SEGY_BIN_TRACE_FLAG,
         SEGY_BIN_EXT_HEADERS
     };
-    
+
     if( argc == 1 ){
          int err = errmsg(2, "Missing argument\n");
          printhelp();
@@ -196,7 +196,7 @@ int main( int argc, char** argv ){
     }
 
     struct options opts = parse_options( argc, argv );
-   
+
     if( opts.help )    return printhelp();
     if( opts.version ) return printversion( "segyio-catb" );
 
@@ -206,9 +206,9 @@ int main( int argc, char** argv ){
         if( !fp ) return errmsg(opterr, "No such file or directory");
 
         char binheader[ SEGY_BINARY_HEADER_SIZE ];
-        int err = segy_binheader( fp, binheader );        
+        int err = segy_binheader( fp, binheader );
 
-        if( err ) return errmsg(opterr, "Unable to read binary header"); 
+        if( err ) return errmsg(opterr, "Unable to read binary header");
 
         for( int c = 0; c < 30; ++c ){
             int field = get_binary_value( binheader, bfield_value[ c ] );
@@ -229,4 +229,3 @@ int main( int argc, char** argv ){
     }
     return 0;
 }
-

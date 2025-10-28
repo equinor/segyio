@@ -9,7 +9,7 @@
 #include "apputils.c"
 #include <segyio/segy.h>
 
-static int help() {
+static int help(void) {
     puts( "Usage: segyio-cath [OPTION]... [FILE]...\n"
           "Concatenate the textual header(s) from FILE(s) to standard output.\n"
           "\n"

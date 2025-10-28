@@ -1,0 +1,88 @@
+name: Benchmark
+description: benchmark execution
+
+inputs:
+  ref:
+    description: ref to checkout
+  compare:
+    description: results comparison string
+    default: --benchmark-compare=0001 --benchmark-compare-fail=min:25% --benchmark-group-by=fullname --color=yes
+
+runs:
+  using: "composite"
+  steps:
+    - name: Print available disk space
+      shell: bash
+      run: df -h
+
+    - name: Checkout commit which performance should be measured
+      shell: bash
+      run: |
+        git restore .
+        git fetch origin ${{ inputs.ref }} --depth 1
+        git checkout ${{ inputs.ref }}
+
+    - name: Build wheel
+      shell: bash
+      env:
+        CIBW_BUILD_VERBOSITY: 1
+      run: |
+        python -m cibuildwheel --only cp312-manylinux_x86_64 --output-dir ./wheelhouse python/
+
+    - name: Install local wheel
+      shell: bash
+      run: |
+        pip install ./wheelhouse/*.whl
+        rm -f ./wheelhouse/*.whl
+
+    - name: Checkout current commit which contains all tests to run
+      shell: bash
+      run: git checkout ${{ github.sha }}
+
+    # assure that local segyio doesn't take priority (one installed to pip is used)
+    - name: Remove local segyio
+      shell: bash
+      working-directory: python
+      run: |
+        python -c "import segyio; import inspect; print('before: segyio loaded from ' + inspect.getfile(segyio))"
+        rm -rf $(pwd)/segyio
+        python -c "import segyio; import inspect; print('after: segyio loaded from ' + inspect.getfile(segyio))"
+
+    - name: Make segy file
+      shell: bash
+      working-directory: python
+      run: |
+        if [ ! -f file.sgy ]; then
+          time python -m examples.make-file file.sgy 1600 1 1000 1 1200
+        else
+          echo "file.sgy already exists"
+        fi
+
+    - name: Make segy small file
+      shell: bash
+      working-directory: python
+      run: |
+        if [ ! -f file-small.sgy ]; then
+          time python -m examples.make-file file-small.sgy 500 1 350 1 350
+        else
+          echo "file-small.sgy already exists"
+        fi
+
+    - name: Print filesize
+      shell: bash
+      working-directory: python
+      run: |
+        ls -lh file.sgy
+        ls -lh file-small.sgy
+
+    - name: Run benchmark tests
+      shell: bash
+      working-directory: python
+      run: |
+        pytest test/benchmarks.py -rP --benchmark-sort=name --benchmark-autosave ${{ inputs.compare }}
+
+    - name: Remove build artifacts
+      shell: bash
+      run: |
+        git clean -df --exclude=.benchmarks
+        pip uninstall -y segyio

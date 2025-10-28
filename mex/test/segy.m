@@ -1,3 +1,4 @@
+disp('segy.m test suite: start');
 % test segyline
 
 % preconditions
@@ -279,3 +280,5 @@ assert(abs(wr_line1(1,2,3) - 101.03)    < eps);
 assert(abs(wr_line1(2,2,1) - 101.01001) < eps);
 assert(abs(wr_line1(3,2,1) - 101.01002) < eps);
 assert(abs(wr_line1(2,2,2) - 101.02001) < eps);
+
+disp('segy.m test suite: over');
