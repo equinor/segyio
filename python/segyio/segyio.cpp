@@ -239,6 +239,7 @@ struct buffer_guard {
 namespace fd {
 
 int init( segyiofd* self, PyObject* args, PyObject* kwargs ) {
+    (void)kwargs; // required by signature. mark to silence -Wunused-parameter
     char* filename = NULL;
     char* mode = NULL;
     int endian = 0;
