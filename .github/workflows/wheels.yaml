@@ -3,11 +3,11 @@ permissions: {}
 
 on:
   push:
-    branches: [main]
+    branches: [segyio-1.x]
     tags:
       - '*'
   pull_request:
-    branches: [main]
+    branches: [segyio-1.x]
   workflow_dispatch:
 
 jobs:
