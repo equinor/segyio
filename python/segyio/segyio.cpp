@@ -652,11 +652,14 @@ PyObject* segyopen( segyfd* self, PyObject* args, PyObject* kwargs ) {
         return NULL;
     }
 
-    char binary[ SEGY_BINARY_HEADER_SIZE ] = {};
-    int err = segy_binheader( ds, binary );
-    if( err ) return Error( err );
+    // endianness must be set before any other header values are read
+    if( endianness != SEGY_LSB && endianness != SEGY_MSB ) {
+        int err = segy_endianness( ds, &endianness );
+        if( err ) return Error( err );
+    }
+    ds->metadata.endianness = endianness;
 
-    err = parse_extended_text_headers( self );
+    int err = parse_extended_text_headers( self );
     if( err ) return Error( err );
 
     std::vector<char> layout_stanza_data;
