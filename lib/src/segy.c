@@ -1846,6 +1846,93 @@ int segy_traces( segy_datasource* ds,
     return SEGY_OK;
 }
 
+/* Gets scalar value from field data. Allows only int2 and uint2. At the moment
+ * other types on purpose are assumed to be invalid for scalars.
+ */
+static int field_data_to_scalar(
+    const segy_field_data* fd,
+    int* scalar
+) {
+    switch( fd->entry_type ) {
+        case SEGY_ENTRY_TYPE_INT2:
+            *scalar = fd->value.i16;
+            break;
+        case SEGY_ENTRY_TYPE_UINT2:
+            *scalar = fd->value.u16;
+            break;
+        default:
+            return SEGY_INVALID_FIELD_DATATYPE;
+    }
+    return SEGY_OK;
+}
+
+static float apply_scalar(
+    long raw_value,
+    int raw_scalar
+) {
+    float scalar;
+    if( raw_scalar == 0 ) {
+        scalar = 1.0f;
+    } else if( raw_scalar < 0 ) {
+        scalar = -1.0f / raw_scalar;
+    } else {
+        scalar = 1.0f * raw_scalar;
+    }
+    return raw_value * scalar;
+}
+
+int segy_delay_recoding_time( segy_datasource* ds, float* delay ) {
+    char trace_header[SEGY_TRACE_HEADER_SIZE];
+
+    /* we don't need to figure out a trace size, since we're not advancing
+     * beyond the first header */
+    int err = segy_read_standard_traceheader( ds, 0, trace_header );
+    if( err != 0 ) {
+        return err;
+    }
+
+    const segy_entry_definition* standard_map =
+        ds->traceheader_mapping_standard.offset_to_entry_definition;
+    const uint8_t* standard_name_map =
+        ds->traceheader_mapping_standard.name_to_offset;
+
+    const int delay_offset = standard_name_map[SEGY_TR_DELAY_REC_TIME];
+    int delay_raw = 0;
+    segy_field_data delay_fd;
+    err = segy_get_tracefield(
+        trace_header, standard_map, delay_offset, &delay_fd
+    );
+    if( err != SEGY_OK ) return err;
+
+    // until someone complains, we restrict allowed types to these only. For now
+    // they all are treated as if they were TIME2 (decision by domain expert)
+    switch( delay_fd.entry_type ) {
+        case SEGY_ENTRY_TYPE_TIME2:
+        case SEGY_ENTRY_TYPE_INT2:
+            delay_raw = delay_fd.value.i16;
+            break;
+        case SEGY_ENTRY_TYPE_UINT2:
+            delay_raw = delay_fd.value.u16;
+            break;
+        default:
+            return SEGY_INVALID_FIELD_DATATYPE;
+    }
+
+    const int scalar_offset = standard_name_map[SEGY_TR_SCALAR_TRACE_HEADER];
+    int scalar_raw = 0;
+    segy_field_data scalar_fd;
+    err = segy_get_tracefield(
+        trace_header, standard_map, scalar_offset, &scalar_fd
+    );
+    if( err != SEGY_OK ) return err;
+
+    err = field_data_to_scalar( &scalar_fd, &scalar_raw );
+    if( err != SEGY_OK ) return err;
+
+    *delay = apply_scalar( delay_raw, scalar_raw );
+    return SEGY_OK;
+}
+
 int segy_sample_interval( segy_datasource* ds, float fallback, float* dt ) {
 
     char bin_header[ SEGY_BINARY_HEADER_SIZE ];
@@ -2972,7 +3059,7 @@ static int scaled_standard_header_cdp(
     int err = segy_get_tracefield( header, map, cdp_offset, &fd );
     if( err != SEGY_OK ) return err;
 
-    float raw_cdp;
+    long raw_cdp;
     switch( fd.entry_type ) {
         case SEGY_ENTRY_TYPE_IBMFP:
         case SEGY_ENTRY_TYPE_IEEE32:
@@ -2981,11 +3068,11 @@ static int scaled_standard_header_cdp(
         case SEGY_ENTRY_TYPE_COOR4:
         // breaks spec on purpose: scalar is applied anyway
         case SEGY_ENTRY_TYPE_INT4:
-            raw_cdp = (float)fd.value.i32;
+            raw_cdp = fd.value.i32;
             break;
         // breaks spec on purpose: scalar is applied anyway
         case SEGY_ENTRY_TYPE_UINT4:
-            raw_cdp = (float)fd.value.u32;
+            raw_cdp = fd.value.u32;
             break;
         default:
             return SEGY_INVALID_FIELD_DATATYPE;
@@ -2995,21 +3082,10 @@ static int scaled_standard_header_cdp(
     if( err != SEGY_OK ) return err;
 
     int scalar;
-    switch( fd.entry_type ) {
-        case SEGY_ENTRY_TYPE_INT2:
-            scalar = fd.value.i16;
-            break;
-        case SEGY_ENTRY_TYPE_UINT2:
-            scalar = fd.value.u16;
-            break;
-        default:
-            return SEGY_INVALID_FIELD_DATATYPE;
-    }
+    err = field_data_to_scalar( &fd, &scalar );
+    if( err != SEGY_OK ) return err;
 
-    float scale = (float)scalar;
-    if( scalar == 0 ) scale = 1.0;
-    if( scalar < 0 ) scale = -1.0f / scale;
-    *cdp = raw_cdp * scale;
+    *cdp = apply_scalar( raw_cdp, scalar );
     return SEGY_OK;
 }
 

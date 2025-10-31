@@ -1662,6 +1662,19 @@ PyObject* getdt( segyfd* self, PyObject* args ) {
     return Error( err );
 }
 
+PyObject* getdelay( segyfd* self ) {
+    segy_datasource* ds = self->ds;
+    if( !ds ) return NULL;
+
+    float delay;
+    int err = segy_delay_recoding_time( ds, &delay );
+
+    if( err == SEGY_OK )
+        return PyFloat_FromDouble( delay );
+
+    return Error( err );
+}
+
 PyObject* rotation( segyfd* self, PyObject* args ) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
@@ -1753,7 +1766,8 @@ PyMethodDef methods [] = {
     { "getdepth", (PyCFunction) fd::getdepth, METH_VARARGS, "Get depth." },
     { "putdepth", (PyCFunction) fd::putdepth, METH_VARARGS, "Put depth." },
 
-    { "getdt",    (PyCFunction) fd::getdt, METH_VARARGS,    "Get sample interval (dt)." },
+    { "getdt",    (PyCFunction) fd::getdt,    METH_VARARGS, "Get sample interval (dt)." },
+    { "getdelay", (PyCFunction) fd::getdelay, METH_NOARGS,  "Get recording delay."      },
     { "rotation", (PyCFunction) fd::rotation, METH_VARARGS, "Get clockwise rotation."   },
 
     { "metrics",      (PyCFunction) fd::metrics,      METH_NOARGS,  "Metrics."         },
