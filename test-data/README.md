@@ -97,9 +97,11 @@ Files are created manually.
 | File                           | Purpose                                                       |
 |--------------------------------|---------------------------------------------------------------|
 | mapping-default.sgy            | XML corresponds exactly to the default SEG-Y rev 2.1 mapping. |
+| mapping-empty.sgy              | Root does not have minimal number of required fields.         |
 | mapping-invalid-attribute.sgy  | Last entry does not have 'byte' attribute.                    |
 | mapping-invalid-root.sgy       | Root does not define standard header layout.                  |
 | mapping-invalid-value.sgy      | Last standard header entry byte is out of range.              |
+| mapping-minimal.sgy            | File with minimal number of defined fields segyio can open.   |
 | mapping-multiple-stanzas.sgy   | Other stanzas are present before and after layout stanza.     |
 | mapping-shifted.sgy            | Default mapping with all offsets shifted by 1 byte.           |
 | mapping-unparsable.sgy         | XML is unparsable.                                            |
