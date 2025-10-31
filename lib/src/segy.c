@@ -1761,11 +1761,11 @@ static int bswap_th(
 
 int segy_read_traceheader( segy_datasource* ds,
                            int traceno,
-                           int traceheaderno,
+                           int traceheader_no,
                            const segy_entry_definition* mapping,
                            char* buf ) {
 
-    int err = seek_traceheader_offset( ds, traceno, traceheaderno, 0 );
+    int err = seek_traceheader_offset( ds, traceno, traceheader_no, 0 );
     if( err != SEGY_OK ) return err;
 
     err = ds->read( ds, buf, SEGY_TRACE_HEADER_SIZE );
@@ -1786,12 +1786,12 @@ int segy_read_standard_traceheader(
 
 int segy_write_traceheader( segy_datasource* ds,
                             int traceno,
-                            int traceheaderno,
+                            int traceheader_no,
                             const segy_entry_definition* mapping,
                             const char* buf ) {
     if( !ds->writable ) return SEGY_READONLY;
 
-    int err = seek_traceheader_offset( ds, traceno, traceheaderno, 0 );
+    int err = seek_traceheader_offset( ds, traceno, traceheader_no, 0 );
     if( err != SEGY_OK ) return err;
 
     char swapped[SEGY_TRACE_HEADER_SIZE];
