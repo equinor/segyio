@@ -26,7 +26,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
     int il = (int)mxGetScalar(mx_il_word);
     int xl = (int)mxGetScalar(mx_xl_word);
 
-    segy_file* fp = segy_open( spec.filename, "rb" );
+    segy_file* fp = segyio_open( spec.filename, "rb" );
 
     if( !fp ) {
         errc = SEGY_FOPEN_ERROR;
