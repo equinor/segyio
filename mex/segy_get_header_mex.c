@@ -30,7 +30,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
 
     err = segy_field_forall( fp, field,
                              0, fmt.traces, 1, /* start, stop, step */
-                             out, fmt.trace0, fmt.trace_bsize );
+                             out );
 
     int no = errno;
     segy_close( fp );

@@ -27,6 +27,11 @@ int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, 
     spec->inline_indexes = NULL;
     spec->crossline_indexes = NULL;
 
+    errc = segy_collect_metadata( fp, -1, -1, -1 );
+    if( errc != 0 ) {
+        goto CLEANUP;
+    }
+
     char header[ SEGY_BINARY_HEADER_SIZE ];
     errc = segy_binheader( fp, header );
     if (errc!=0) {
@@ -47,12 +52,12 @@ int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, 
 
     spec->trace_bsize = segy_trace_bsize( segy_samples( header ) );
     int traces;
-    errc = segy_traces(fp, &traces, trace0, spec->trace_bsize);
+    errc = segy_traces(fp, &traces);
     if (errc != 0) {
         goto CLEANUP;
     }
 
-    errc = segy_offsets(fp, inline_field, crossline_field, traces, &spec->offset_count, trace0, spec->trace_bsize);
+    errc = segy_offsets(fp, inline_field, crossline_field, traces, &spec->offset_count);
     if (errc != 0) {
         goto CLEANUP;
     }
@@ -60,8 +65,7 @@ int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, 
     errc = segy_sorting(fp, inline_field,
                             crossline_field,
                             SEGY_TR_OFFSET,
-                            &spec->trace_sorting_format,
-                            trace0, spec->trace_bsize);
+                            &spec->trace_sorting_format);
     if (errc != 0) {
         goto CLEANUP;
     }
@@ -82,7 +86,7 @@ int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, 
         goto CLEANUP;
     }
 
-    errc = segy_count_lines(fp, field, spec->offset_count, l1, l2, trace0, spec->trace_bsize);
+    errc = segy_count_lines(fp, field, spec->offset_count, l1, l2);
     if (errc != 0) {
         goto CLEANUP;
     }
@@ -91,15 +95,13 @@ int segyCreateSpec(SegySpec* spec, const char* file, unsigned int inline_field, 
     spec->crossline_indexes = malloc(sizeof(int) * spec->crossline_count);
 
     errc = segy_inline_indices(fp, inline_field, spec->trace_sorting_format,
-                        spec->inline_count, spec->crossline_count, spec->offset_count, spec->inline_indexes,
-                        trace0, spec->trace_bsize);
+                        spec->inline_count, spec->crossline_count, spec->offset_count, spec->inline_indexes);
     if (errc != 0) {
         goto CLEANUP;
     }
 
     errc = segy_crossline_indices(fp, crossline_field, spec->trace_sorting_format,
-                        spec->inline_count, spec->crossline_count, spec->offset_count, spec->crossline_indexes,
-                        trace0, spec->trace_bsize);
+                        spec->inline_count, spec->crossline_count, spec->offset_count, spec->crossline_indexes);
     if (errc != 0) {
         goto CLEANUP;
     }
@@ -188,7 +190,7 @@ struct segy_file_format filefmt( segy_file* fp ) {
 
     struct segy_file_format fmt = buffmt( binary );
 
-    err = segy_traces( fp, &fmt.traces, fmt.trace0, fmt.trace_bsize );
+    err = segy_traces( fp, &fmt.traces );
     if( err == 0 ) return fmt;
 
     const char* msg1 = "segy:c:filefmt";
@@ -212,6 +214,11 @@ segy_file* segyfopen( const mxArray* filename, const char* mode ) {
 
     if( !fp )
         mexErrMsgIdAndTxt( "segy:c:fopen", strerror( err ) );
+
+    err = segy_collect_metadata( fp, -1, -1, -1 );
+    if( err != 0 ) {
+        mexErrMsgIdAndTxt( "segy:c:segy_collect_metadata", strerror( err ) );
+    }
 
     return fp;
 }

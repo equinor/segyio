@@ -43,7 +43,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
 
     float* itr = out;
     for( int i = first_trace; i <= last_trace; ++i ) {
-        err = segy_writetrace( fp, i, itr, fmt.trace0, fmt.trace_bsize );
+        err = segy_writetrace( fp, i, itr );
         itr += fmt.samples;
 
         if( err != 0 ) {

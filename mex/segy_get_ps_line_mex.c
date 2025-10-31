@@ -26,19 +26,23 @@ void mexFunction(int nlhs, mxArray *plhs[],
     int il = (int)mxGetScalar(mx_il_word);
     int xl = (int)mxGetScalar(mx_xl_word);
 
-    segy_file* fp = segyio_open( spec.filename, "rb" );
+    segy_file* fp = segy_open( spec.filename, "rb" );
 
     if( !fp ) {
         errc = SEGY_FOPEN_ERROR;
         goto ERROR;
     };
 
+    errc = segy_collect_metadata( fp, -1, -1, -1 );
+    if( errc != 0 ) {
+        goto CLEANUP;
+    }
+
     plhs[0] = mxCreateNumericMatrix(spec.sample_count, spec.offset_count, mxINT32_CLASS, mxREAL);
     int* int_offsets = mxMalloc(sizeof( int ) * spec.offset_count);
 
     errc = segy_offsets(fp, offset, spec.offset_count,
-                        int_offsets,
-                        spec.first_trace_pos, spec.trace_bsize);
+                        int_offsets);
 
     if( err != SEGY_OK ) goto CLEANUP;
 

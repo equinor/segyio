@@ -35,7 +35,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
 
     double* itr = headers;
     for( int i = 0; i < fmt.traces; ++i, ++itr ) {
-        err = segy_traceheader( fp, i, traceheader, fmt.trace0, fmt.trace_bsize );
+        err = segy_traceheader( fp, i, traceheader );
         const int val = *itr;
 
         if( err != 0 ) {
@@ -45,7 +45,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
         }
 
         segy_set_tracefield_int( traceheader, field, val );
-        err = segy_write_traceheader( fp, i, traceheader, fmt.trace0, fmt.trace_bsize );
+        err = segy_write_traceheader( fp, i, traceheader );
         if( err != 0 ) {
             msg1 = "segy:put_headers:os";
             msg2 = strerror( errno );

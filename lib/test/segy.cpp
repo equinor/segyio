@@ -117,8 +117,6 @@ namespace {
 
 void regular_geometry( segy_file* fp,
                        int traces,
-                       long trace0,
-                       int trace_bsize,
                        int expected_ilines,
                        int expected_xlines,
                        int expected_offset) {
@@ -136,8 +134,7 @@ void regular_geometry( segy_file* fp,
         int offsets = -1;
         const Err err = segy_offsets( fp,
                                       il, xl, traces,
-                                      &offsets,
-                                      trace0, trace_bsize );
+                                      &offsets );
         THEN( "there is only one offset" ) {
             CHECK( err == Err::ok() );
             CHECK( offsets == 1 );
@@ -147,8 +144,7 @@ void regular_geometry( segy_file* fp,
             offsets = -1;
             const Err erc = segy_offsets( fp,
                                           xl, il, traces,
-                                          &offsets,
-                                          trace0, trace_bsize );
+                                          &offsets );
             THEN( "there is only one offset" ) {
                 CHECK( erc == Err::ok() );
                 CHECK( offsets == 1 );
@@ -162,8 +158,7 @@ void regular_geometry( segy_file* fp,
         int offset_index = -1;
         const Err err = segy_offset_indices( fp,
                                              of, offsets,
-                                             &offset_index,
-                                             trace0, trace_bsize );
+                                             &offset_index );
         CHECK( err == Err::ok() );
         CHECK( offset_index == expected_offset );
     }
@@ -175,8 +170,7 @@ void regular_geometry( segy_file* fp,
         WHEN( "using segy_count_lines" ) {
             const Err err = segy_count_lines( fp,
                                               xl, offsets,
-                                              &ilsz, &xlsz,
-                                              trace0, trace_bsize );
+                                              &ilsz, &xlsz );
             CHECK( err == Err::ok() );
             CHECK( ilsz == expected_ilines );
             CHECK( xlsz == expected_xlines );
@@ -185,8 +179,7 @@ void regular_geometry( segy_file* fp,
         WHEN( "using segy_lines_count" ) {
             const Err err = segy_lines_count( fp,
                                               il, xl, sorting, offsets,
-                                              &ilsz, &xlsz,
-                                              trace0, trace_bsize );
+                                              &ilsz, &xlsz );
             CHECK( err == Err::ok() );
             CHECK( ilsz == expected_ilines );
             CHECK( xlsz == expected_xlines );
@@ -231,7 +224,7 @@ struct smallheader : smallbasic {
     char header[ SEGY_TRACE_HEADER_SIZE ];
 
     smallheader() : smallbasic() {
-        Err err = segy_traceheader( fp, 0, header, trace0, trace_bsize );
+        Err err = segy_traceheader( fp, 0, header );
         REQUIRE( success( err ) );
     }
 };
@@ -289,6 +282,7 @@ TEST_CASE_METHOD( smallbin,
     REQUIRE( hdt == 4000 );
 
     float dt = arbitrary_float();
+
     const Err err = segy_sample_interval( fp, 100.0, &dt );
 
     CHECK( err == Err::ok() );
@@ -301,11 +295,13 @@ TEST_CASE( "use fallback interval when both trace and bin is negative",
         segy_open("test-data/interval-neg-bin-neg-trace.sgy", "rb")
     };
     auto fp = ufp.get();
+    Err err = segy_collect_metadata( fp, -1, -1, 0 );
+    CHECK( err == Err::ok() );
 
     const float fallback = 100.0;
 
     float dt = arbitrary_float();
-    const Err err = segy_sample_interval( fp, fallback, &dt );
+    err = segy_sample_interval( fp, fallback, &dt );
 
     CHECK( err == Err::ok() );
     CHECK( dt == fallback );
@@ -317,12 +313,14 @@ TEST_CASE( "use trace interval when bin is negative",
         segy_open("test-data/interval-neg-bin-pos-trace.sgy", "rb")
     };
     auto fp = ufp.get();
+    Err err = segy_collect_metadata( fp, -1, -1, 0 );
+    CHECK( err == Err::ok() );
 
     const float fallback = 100.0;
     const float expected = 4000.0;
 
     float dt = arbitrary_float();
-    const Err err = segy_sample_interval( fp, fallback, &dt );
+    err = segy_sample_interval( fp, fallback, &dt );
 
     CHECK( err == Err::ok() );
     CHECK( dt == expected );
@@ -334,12 +332,14 @@ TEST_CASE( "use bin interval when trace is negative",
         segy_open("test-data/interval-pos-bin-neg-trace.sgy", "rb")
     };
     auto fp = ufp.get();
+    Err err = segy_collect_metadata( fp, -1, -1, 0 );
+    CHECK( err == Err::ok() );
 
     const float fallback = 100.0;
     const float expected = 2000.0;
 
     float dt = arbitrary_float();
-    const Err err = segy_sample_interval( fp, fallback, &dt );
+    err = segy_sample_interval( fp, fallback, &dt );
 
     CHECK( err == Err::ok() );
     CHECK( dt == expected );
@@ -361,7 +361,7 @@ TEST_CASE_METHOD( smallbasic,
                   "trace count is 25",
                   "[c.segy]" ) {
     int traces;
-    Err err = segy_traces( fp, &traces, trace0, trace_bsize );
+    Err err = segy_traces( fp, &traces );
     CHECK( success( err ) );
     CHECK( traces == 25 );
 }
@@ -371,7 +371,8 @@ TEST_CASE_METHOD( smallbasic,
                   "[c.segy]" ) {
     const int input_traces = arbitrary_int();
     int traces = input_traces;
-    Err err = segy_traces( fp, &traces, 50000, trace_bsize );
+    fp->metadata.trace0 = 50000;
+    Err err = segy_traces( fp, &traces );
     CHECK( err == Err::args() );
     CHECK( traces == input_traces );
 }
@@ -381,7 +382,8 @@ TEST_CASE_METHOD( smallbasic,
                   "[c.segy]" ) {
     const int input_traces = arbitrary_int();
     int traces = input_traces;
-    Err err = segy_traces( fp, &traces, -1, trace_bsize );
+    fp->metadata.trace0 = -1;
+    Err err = segy_traces( fp, &traces );
     CHECK( err == Err::args() );
     CHECK( traces == input_traces );
 }
@@ -392,7 +394,8 @@ TEST_CASE_METHOD( smallbasic,
     const int input_traces = arbitrary_int();
     int traces = input_traces;
     const int too_long_bsize = trace_bsize + sizeof( float );
-    Err err = segy_traces( fp, &traces, trace0, too_long_bsize );
+    fp->metadata.trace_bsize = too_long_bsize;
+    Err err = segy_traces( fp, &traces );
     CHECK( err == SEGY_TRACE_SIZE_MISMATCH );
     CHECK( traces == input_traces );
 }
@@ -455,7 +458,7 @@ TEST_CASE_METHOD( smallfields,
                   "inline sorting is detected",
                   "[c.segy]" ) {
     int sorting;
-    Err err = segy_sorting( fp, il, xl, of, &sorting, trace0, trace_bsize );
+    Err err = segy_sorting( fp, il, xl, of, &sorting );
     CHECK( success( err ) );
     CHECK( sorting == SEGY_INLINE_SORTING );
 }
@@ -464,7 +467,7 @@ TEST_CASE_METHOD( smallfields,
                   "crossline sorting is detected with swapped il/xl",
                   "[c.segy]" ) {
     int sorting;
-    Err err = segy_sorting( fp, xl, il, of, &sorting, trace0, trace_bsize );
+    Err err = segy_sorting( fp, xl, il, of, &sorting );
     CHECK( success( err ) );
     CHECK( sorting == SEGY_CROSSLINE_SORTING );
 }
@@ -473,13 +476,13 @@ TEST_CASE_METHOD( smallfields,
                   "invalid in-between byte offsets are detected",
                   "[c.segy]" ) {
     int sorting;
-    Err err = segy_sorting( fp, il + 1, xl, of, &sorting, trace0, trace_bsize );
+    Err err = segy_sorting( fp, il + 1, xl, of, &sorting );
     CHECK( err == SEGY_INVALID_FIELD );
 
-    err = segy_sorting( fp, il, xl + 1, of, &sorting, trace0, trace_bsize );
+    err = segy_sorting( fp, il, xl + 1, of, &sorting );
     CHECK( err == SEGY_INVALID_FIELD );
 
-    err = segy_sorting( fp, il, xl, of + 1, &sorting, trace0, trace_bsize );
+    err = segy_sorting( fp, il, xl, of + 1, &sorting );
     CHECK( err == SEGY_INVALID_FIELD );
 }
 
@@ -487,10 +490,10 @@ TEST_CASE_METHOD( smallfields,
                   "out of bounds byte offsets are detected",
                   "[c.segy]" ) {
     int sorting;
-    Err err = segy_sorting( fp, 0, xl, of, &sorting, trace0, trace_bsize );
+    Err err = segy_sorting( fp, 0, xl, of, &sorting );
     CHECK( err == SEGY_INVALID_FIELD );
 
-    err = segy_sorting( fp, il, SEGY_TRACE_HEADER_SIZE + 1, of, &sorting, trace0, trace_bsize );
+    err = segy_sorting( fp, il, SEGY_TRACE_HEADER_SIZE + 1, of, &sorting );
     CHECK( err == SEGY_INVALID_FIELD );
 }
 
@@ -502,9 +505,7 @@ TEST_CASE_METHOD( smallsize,
                             il,
                             xl,
                             traces,
-                            &offsets,
-                            trace0,
-                            trace_bsize );
+                            &offsets );
 
     CHECK( success( err ) );
     CHECK( offsets == 1 );
@@ -518,9 +519,7 @@ TEST_CASE_METHOD( smallsize,
                             xl,
                             il,
                             traces,
-                            &offsets,
-                            trace0,
-                            trace_bsize );
+                            &offsets );
 
     CHECK( success( err ) );
     CHECK( offsets == 1 );
@@ -669,9 +668,7 @@ TEST_CASE_METHOD( smallshape,
                                       xl,
                                       offsets,
                                       &count_inlines,
-                                      &count_crosslines,
-                                      trace0,
-                                      trace_bsize );
+                                      &count_crosslines );
 
     int lines_inlines;
     int lines_crosslines;
@@ -681,9 +678,7 @@ TEST_CASE_METHOD( smallshape,
                                       sorting,
                                       offsets,
                                       &lines_inlines,
-                                      &lines_crosslines,
-                                      trace0,
-                                      trace_bsize );
+                                      &lines_crosslines );
 
     CHECK( success( err_count ) );
     CHECK( success( err_lines ) );
@@ -714,9 +709,7 @@ TEST_CASE_METHOD( smallshape,
     Err err = segy_offset_indices( fp,
                                    of,
                                    offsets,
-                                   labels.data(),
-                                   trace0,
-                                   trace_bsize );
+                                   labels.data() );
     CHECK( success( err ) );
     CHECK_THAT( labels, Catch::Equals( expected ) );
 }
@@ -734,9 +727,7 @@ TEST_CASE_METHOD( smallshape,
                                    ilines,
                                    xlines,
                                    offsets,
-                                   labels.data(),
-                                   trace0,
-                                   trace_bsize );
+                                   labels.data() );
 
     CHECK( success( err ) );
     CHECK_THAT( labels, Catch::Equals( expected ) );
@@ -755,9 +746,7 @@ TEST_CASE_METHOD( smallshape,
                                       ilines,
                                       xlines,
                                       offsets,
-                                      labels.data(),
-                                      trace0,
-                                      trace_bsize );
+                                      labels.data() );
 
     CHECK( success( err ) );
     CHECK_THAT( labels, Catch::Equals( expected ) );
@@ -882,9 +871,7 @@ TEST_CASE_METHOD( smallstep,
                               stop,
                               step,
                               xs.data(),
-                              rangebuf,
-                              trace0,
-                              trace_bsize );
+                              rangebuf );
     segy_to_native( format, xs.size(), xs.data() );
     CHECK( success( err ) );
     CHECK_THAT( xs, ApproxRange( expected ) );
@@ -910,9 +897,7 @@ TEST_CASE_METHOD( smallstep,
                               stop,
                               step,
                               xs.data(),
-                              rangebuf,
-                              trace0,
-                              trace_bsize );
+                              rangebuf );
     segy_to_native( format, xs.size(), xs.data() );
     CHECK( success( err ) );
     CHECK_THAT( xs, ApproxRange( expected ) );
@@ -938,9 +923,7 @@ TEST_CASE_METHOD( smallstep,
                               stop,
                               step,
                               xs.data(),
-                              rangebuf,
-                              trace0,
-                              trace_bsize );
+                              rangebuf );
     segy_to_native( format, xs.size(), xs.data() );
     CHECK( success( err ) );
     CHECK_THAT( xs, ApproxRange( expected ) );
@@ -966,9 +949,7 @@ TEST_CASE_METHOD( smallstep,
                               stop,
                               step,
                               xs.data(),
-                              nullptr,
-                              trace0,
-                              trace_bsize );
+                              nullptr );
     segy_to_native( format, xs.size(), xs.data() );
     CHECK( success( err ) );
     CHECK_THAT( xs, ApproxRange( expected ) );
@@ -985,9 +966,7 @@ TEST_CASE_METHOD( smallcube,
         for( int i = 0; i < xlines; ++i ) {
             Err err = segy_readtrace( fp,
                                       i,
-                                      xs.data() + (i * samples),
-                                      trace0,
-                                      trace_bsize );
+                                      xs.data() + (i * samples) );
             REQUIRE( success( err ) );
         }
 
@@ -1001,9 +980,7 @@ TEST_CASE_METHOD( smallcube,
                               (int) crosslines.size(),
                               stride,
                               offsets,
-                              line.data(),
-                              trace0,
-                              trace_bsize );
+                              line.data() );
 
     segy_to_native( format, line.size(), line.data() );
     CHECK( success( err ) );
@@ -1022,9 +999,7 @@ TEST_CASE_METHOD( smallcube,
         for( int i = 0; i < ilines; ++i ) {
             Err err = segy_readtrace( fp,
                                       i * stride,
-                                      xs.data() + (i * samples),
-                                      trace0,
-                                      trace_bsize );
+                                      xs.data() + (i * samples) );
             REQUIRE( success( err ) );
         }
 
@@ -1038,9 +1013,7 @@ TEST_CASE_METHOD( smallcube,
                               (int) inlines.size(),
                               stride,
                               offsets,
-                              line.data(),
-                              trace0,
-                              trace_bsize );
+                              line.data() );
 
     segy_to_native( format, line.size(), line.data() );
     CHECK( success( err ) );
@@ -1084,7 +1057,7 @@ struct writesubtr {
         trace.assign( 50, 0 );
         expected.resize( trace.size() );
 
-        Err err = segy_writetrace( fp, traceno, trace.data(), trace0, trace_bsize );
+        Err err = segy_writetrace( fp, traceno, trace.data() );
         REQUIRE( success( err ) );
     }
 
@@ -1094,7 +1067,7 @@ struct writesubtr {
         /* test that writes are observable */
 
         trace.assign( trace.size(), 0 );
-        Err err = segy_readtrace( fp, traceno, trace.data(), trace0, trace_bsize );
+        Err err = segy_readtrace( fp, traceno, trace.data() );
 
         CHECK( success( err ) );
         segy_to_native( format, trace.size(), trace.data() );
@@ -1122,9 +1095,7 @@ TEST_CASE_METHOD( (writesubtr< 3, 19, 5 >),
                                    stop,
                                    step,
                                    out.data(),
-                                   rangebuf,
-                                   trace0,
-                                   trace_bsize );
+                                   rangebuf );
 
     CHECK( success( err ) );
 }
@@ -1144,9 +1115,7 @@ TEST_CASE_METHOD( (writesubtr< 18, 2, -5 >),
                                    stop,
                                    step,
                                    out.data(),
-                                   rangebuf,
-                                   trace0,
-                                   trace_bsize );
+                                   rangebuf );
 
     CHECK( success( err ) );
 }
@@ -1167,9 +1136,7 @@ TEST_CASE_METHOD( (writesubtr< 24, -1, -5 >),
                                    stop,
                                    step,
                                    out.data(),
-                                   rangebuf,
-                                   trace0,
-                                   trace_bsize );
+                                   rangebuf );
 
     CHECK( success( err ) );
 }
@@ -1191,9 +1158,7 @@ TEST_CASE_METHOD( smallfields,
     const Err err = segy_field_forall( fp,
                                        il,
                                        start, stop, step,
-                                       out.data(),
-                                       trace0,
-                                       trace_bsize );
+                                       out.data() );
 
     CHECK( success( err ) );
     CHECK_THAT( out, Catch::Equals( inlines ) );
@@ -1216,9 +1181,7 @@ TEST_CASE_METHOD( smallfields,
     const Err err = segy_field_forall( fp,
                                        xl,
                                        start, stop, step,
-                                       out.data(),
-                                       trace0,
-                                       trace_bsize );
+                                       out.data() );
 
     CHECK( success( err ) );
     CHECK_THAT( out, Catch::Equals( crosslines ) );
@@ -1240,9 +1203,7 @@ TEST_CASE_METHOD( smallfields,
     const Err err = segy_field_forall( fp,
                                        xl,
                                        start, stop, step,
-                                       out.data(),
-                                       trace0,
-                                       trace_bsize );
+                                       out.data() );
 
     CHECK( success( err ) );
     CHECK_THAT( out, Catch::Equals( crosslines ) );
@@ -1264,9 +1225,7 @@ TEST_CASE_METHOD( smallfields,
     const Err err = segy_field_forall( fp,
                                        xl,
                                        start, stop, step,
-                                       out.data(),
-                                       trace0,
-                                       trace_bsize );
+                                       out.data() );
 
     CHECK( success( err ) );
     CHECK_THAT( out, Catch::Equals( crosslines ) );
@@ -1282,9 +1241,7 @@ TEST_CASE_METHOD( smallfields,
     const Err err = segy_field_forall( fp,
                                        xl,
                                        start, stop, step,
-                                       out.data(),
-                                       trace0,
-                                       trace_bsize );
+                                       out.data() );
 
     CHECK( success( err ) );
     CHECK_THAT( out, Catch::Equals( crosslines ) );
@@ -1337,8 +1294,6 @@ TEST_CASE( "setting correct header fields succeeds",
 SCENARIO( "modifying trace header", "[c.segy]" ) {
 
     const int samples = 10;
-    int trace_bsize = segy_trsize( SEGY_IBM_FLOAT_4_BYTE, samples );
-    const int trace0 = 0;
     const float emptytr[ samples ] = {};
     const char emptyhdr[ SEGY_TRACE_HEADER_SIZE ] = {};
 
@@ -1367,24 +1322,27 @@ SCENARIO( "modifying trace header", "[c.segy]" ) {
 
         unique_segy ufp( segy_open( file, "w+b" ) );
         auto fp = ufp.get();
+        fp->metadata.samplecount = samples;
+        fp->metadata.trace_bsize = segy_trsize( SEGY_IBM_FLOAT_4_BYTE, samples );
+        fp->metadata.trace0 = 0;
 
         /* make a file and write to last trace (to accurately get size) */
-        err = segy_write_traceheader( fp, 10, emptyhdr, trace0, trace_bsize );
+        err = segy_write_traceheader( fp, 10, emptyhdr );
         REQUIRE( err == Err::ok() );
 
-        err = segy_writetrace( fp, 10, emptytr, trace0, trace_bsize );
+        err = segy_writetrace( fp, 10, emptytr );
         REQUIRE( err == Err::ok() );
         /* memory map only after writing last trace, so size is correct */
         testcfg::config().mmap( fp );
 
-        err = segy_write_traceheader( fp, 5, header, trace0, trace_bsize );
+        err = segy_write_traceheader( fp, 5, header );
         CHECK( err == Err::ok() );
 
         THEN( "changes are observable on disk" ) {
             char fresh[ SEGY_TRACE_HEADER_SIZE ] = {};
             int ilno = 0;
             int scale = 0;
-            err = segy_traceheader( fp, 5, fresh, trace0, trace_bsize );
+            err = segy_traceheader( fp, 5, fresh );
             CHECK( err == Err::ok() );
             err = segy_get_tracefield_int( fresh, SEGY_TR_INLINE, &ilno );
             CHECK( err == Err::ok() );
@@ -1400,20 +1358,18 @@ SCENARIO( "modifying trace header", "[c.segy]" ) {
 namespace {
 
 int check_sorting( const std::string& name ) {
-    int trace0 = 3600;
-    int trace_bsize = 10 * 4;
     int sorting;
 
     unique_segy ufp( segy_open( name.c_str(), "rb" ) );
     auto fp = ufp.get();
+    Err err = segy_collect_metadata( fp, -1, -1, 0 );
+    REQUIRE( success( err ) );
 
-    Err err = segy_sorting( fp,
+    err = segy_sorting( fp,
                             SEGY_TR_INLINE,
                             SEGY_TR_CROSSLINE,
                             SEGY_TR_OFFSET,
-                            &sorting,
-                            trace0,
-                            trace_bsize );
+                            &sorting );
     CHECK( success( err ) );
 
     return sorting;
@@ -1630,9 +1586,7 @@ void f3_in_format(int fmt) {
     std::vector< T > fptrace(samples);
     Err err = segy_readtrace(fp,
             0,
-            fptrace.data(),
-            trace0,
-            segy_trsize(fmt, samples));
+            fptrace.data() );
     REQUIRE(err == Err::ok());
 
     const auto f3fmt = SEGY_SIGNED_SHORT_2_BYTE;
@@ -1643,9 +1597,7 @@ void f3_in_format(int fmt) {
     std::vector< std::int16_t > f3trace(samples);
     err = segy_readtrace(f3,
             0,
-            f3trace.data(),
-            trace0,
-            segy_trsize(f3fmt, samples));
+            f3trace.data() );
     REQUIRE(err == Err::ok());
 
     segy_to_native(fmt, fptrace.size(), fptrace.data());
@@ -1745,6 +1697,8 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
     WHEN( "reading data without collecting metadata" ) {
         unique_segy ufp( segy_open( "test-data/f3.sgy", "rb" ) );
         auto fp = ufp.get();
+        fp->metadata.trace0 = trace0;
+        fp->metadata.trace_bsize = trace_bsize;
         /*
          * explicitly zero this buffer - if segy_collect_metadata is called then
          * this function should read 2 bytes, but now 4 is read instead.
@@ -1753,8 +1707,7 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
         Err err = segy_readsubtr( fp, 10,
                                       25, 26, 1,
                                       &val,
-                                      nullptr,
-                                      trace0, trace_bsize );
+                                      nullptr );
 
         CHECK( err == Err::ok() );
 
@@ -1771,13 +1724,14 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
 
     WHEN( "determining number of traces" ) {
         int traces = 0;
-        err = segy_traces( fp, &traces, trace0, trace_bsize );
+        err = segy_traces( fp, &traces );
         REQUIRE( err == Err::ok() );
         CHECK( traces == 414 );
 
         GIVEN( "trace0 outside its domain" ) {
             WHEN( "trace0 is after end-of-file" ) {
-                err = segy_traces( fp, &traces, 500000, trace_bsize );
+                fp->metadata.trace0 = 500000;
+                err = segy_traces( fp, &traces);
 
                 THEN( "segy_traces fail" ) {
                     CHECK( err == Err::args() );
@@ -1789,7 +1743,8 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
             }
 
             WHEN( "trace0 is negative" ) {
-                err = segy_traces( fp, &traces, -1, trace_bsize );
+                fp->metadata.trace0 = -1;
+                err = segy_traces( fp, &traces );
 
                 THEN( "segy_traces fail" ) {
                     CHECK( err == Err::args() );
@@ -1807,8 +1762,6 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
     const int xlines = 18;
     const int offset_label = 0;
     regular_geometry( fp, traces,
-                          trace0,
-                          trace_bsize,
                           ilines,
                           xlines,
                           offset_label );
@@ -1829,9 +1782,7 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
                                        ilines,
                                        xlines,
                                        offsets,
-                                       result.data(),
-                                       trace0,
-                                       trace_bsize );
+                                       result.data() );
             CHECK( err == Err::ok() );
             CHECK_THAT( result, Catch::Equals( indices ) );
         }
@@ -1841,7 +1792,7 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
         char buf[ SEGY_TRACE_HEADER_SIZE ] = {};
 
         GIVEN( "a valid field" ) {
-            err = segy_traceheader( fp, 0, buf, trace0, trace_bsize );
+            err = segy_traceheader( fp, 0, buf );
             CHECK( err == Err::ok() );
 
             int ilno = 0;
@@ -1892,8 +1843,7 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
                                       10,
                                       start, stop, step,
                                       buf.data(),
-                                      nullptr,
-                                      trace0, trace_bsize );
+                                      nullptr );
                 segy_to_native( format, buf.size(), buf.data() );
                 CHECK( err == Err::ok() );
                 CHECK_THAT( buf, Catch::Equals( expect[ i ] ) );
@@ -1910,11 +1860,6 @@ SCENARIO( "checking sorting for wonky files", "[c.segy]" ) {
         char header[ SEGY_BINARY_HEADER_SIZE ];
         REQUIRE( Err( segy_binheader( fp, header ) ) == Err::ok() );
 
-        long trace0 = segy_trace0( header );
-        int samples = segy_samples( header );
-        int format = segy_format( header );
-        int trace_bsize = segy_trsize( format, samples );
-
         int sorting;
         int err;
 
@@ -1923,9 +1868,7 @@ SCENARIO( "checking sorting for wonky files", "[c.segy]" ) {
             SEGY_TR_SEQ_LINE,
             SEGY_TR_CROSSLINE,
             SEGY_TR_OFFSET,
-            &sorting,
-            trace0,
-            trace_bsize
+            &sorting
         );
         CHECK( err == SEGY_INVALID_FIELD_DATATYPE );
 
@@ -1934,9 +1877,7 @@ SCENARIO( "checking sorting for wonky files", "[c.segy]" ) {
             SEGY_TR_INLINE,
             SEGY_TR_DAY_OF_YEAR,
             SEGY_TR_OFFSET,
-            &sorting,
-            trace0,
-            trace_bsize
+            &sorting
         );
         CHECK( err == SEGY_INVALID_FIELD_DATATYPE );
     }
@@ -1955,19 +1896,12 @@ SCENARIO( "checking sorting for wonky files", "[c.segy]" ) {
         char header[ SEGY_BINARY_HEADER_SIZE ];
         REQUIRE( Err( segy_binheader( fp, header ) ) == Err::ok() );
 
-        long trace0 = segy_trace0( header );
-        int samples = segy_samples( header );
-        int format = segy_format( header );
-        int trace_bsize = segy_trsize( format, samples );
-
         int sorting;
             int err = segy_sorting( fp,
                                     SEGY_TR_FIELD_RECORD,
                                     SEGY_TR_FIELD_RECORD,
                                     SEGY_TR_FIELD_RECORD,
-                                    &sorting,
-                                    trace0,
-                                    trace_bsize );
+                                    &sorting );
 
         CHECK( err == SEGY_OK );
         CHECK( sorting == SEGY_UNKNOWN_SORTING );
@@ -1979,23 +1913,18 @@ SCENARIO( "checking sorting for wonky files", "[c.segy]" ) {
         unique_segy ufp( segy_open( file, "rb" ) );
         auto fp = ufp.get();
         testcfg::config().mmap( fp );
+        int err = segy_collect_metadata( fp, -1, -1, 0 );
+        REQUIRE( success( err ) );
 
         char header[ SEGY_BINARY_HEADER_SIZE ];
         REQUIRE( Err( segy_binheader( fp, header ) ) == Err::ok() );
 
-        long trace0 = segy_trace0( header );
-        int samples = segy_samples( header );
-        int format = segy_format( header );
-        int trace_bsize = segy_trsize( format, samples );
-
         int sorting;
-        int err = segy_sorting( fp,
-                                SEGY_TR_INLINE,
-                                SEGY_TR_CROSSLINE,
-                                SEGY_TR_OFFSET,
-                                &sorting,
-                                trace0,
-                                trace_bsize );
+        err = segy_sorting( fp,
+                            SEGY_TR_INLINE,
+                            SEGY_TR_CROSSLINE,
+                            SEGY_TR_OFFSET,
+                            &sorting );
 
         CHECK( err == SEGY_OK );
         CHECK( sorting == SEGY_CROSSLINE_SORTING );
@@ -2007,23 +1936,18 @@ SCENARIO( "checking sorting for wonky files", "[c.segy]" ) {
         unique_segy ufp( segy_open( file, "rb" ) );
         auto fp = ufp.get();
         testcfg::config().mmap( fp );
+        int err = segy_collect_metadata( fp, -1, -1, 0 );
+        REQUIRE( success( err ) );
 
         char header[ SEGY_BINARY_HEADER_SIZE ];
         REQUIRE( Err( segy_binheader( fp, header ) ) == Err::ok() );
 
-        long trace0 = segy_trace0( header );
-        int samples = segy_samples( header );
-        int format = segy_format( header );
-        int trace_bsize = segy_trsize( format, samples );
-
         int sorting;
-        int err = segy_sorting( fp,
-                                SEGY_TR_INLINE,
-                                SEGY_TR_CROSSLINE,
-                                SEGY_TR_OFFSET,
-                                &sorting,
-                                trace0,
-                                trace_bsize );
+        err = segy_sorting( fp,
+                            SEGY_TR_INLINE,
+                            SEGY_TR_CROSSLINE,
+                            SEGY_TR_OFFSET,
+                            &sorting );
 
         CHECK( err == SEGY_OK );
         CHECK( sorting == SEGY_INLINE_SORTING );

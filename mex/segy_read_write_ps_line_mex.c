@@ -52,6 +52,11 @@ void mexFunction(int nlhs, mxArray *plhs[],
         return;
     }
 
+    fp->metadata.format = spec.sample_format;
+    fp->metadata.trace0 = spec.first_trace_pos;
+    fp->metadata.trace_bsize = spec.trace_bsize;
+    fp->metadata.samplecount = spec.sample_count;
+
     mwSize dims[] = { spec.sample_count, spec.offset_count, line_length };
 
     const size_t tr_size = SEGY_TRACE_HEADER_SIZE + spec.trace_bsize;
@@ -62,13 +67,11 @@ void mexFunction(int nlhs, mxArray *plhs[],
 
         for( int i = 0; i < offsets; ++i ) {
             errc = segy_read_line( fp,
-                                   line_trace0,
+                                   line_trace0 + i,
                                    line_length,
                                    stride,
                                    offsets,
-                                   buf + (spec.sample_count * line_length * i),
-                                   spec.first_trace_pos + (i * tr_size),
-                                   spec.trace_bsize );
+                                   buf + (spec.sample_count * line_length * i) );
 
             if( errc != 0 ) goto CLEANUP;
         }
@@ -91,13 +94,11 @@ void mexFunction(int nlhs, mxArray *plhs[],
 
         for( int i = 0; i < offsets; ++i ) {
             errc = segy_write_line( fp,
-                                    line_trace0,
+                                    line_trace0 + i,
                                     line_length,
                                     stride,
                                     offsets,
-                                    buf + (spec.sample_count * line_length * i),
-                                    spec.first_trace_pos + (i * tr_size),
-                                    spec.trace_bsize );
+                                    buf + (spec.sample_count * line_length * i) );
             if( errc != 0 ) goto CLEANUP;
         }
 
