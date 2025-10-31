@@ -2237,6 +2237,9 @@ def test_open_with_custom_mapping():
     with pytest.raises(ValueError, match=parse_error):
         segyio.open(testdata / 'mapping-invalid-value.sgy')
 
+    with pytest.raises(RuntimeError, match=r"unable to gather basic metadata*"):
+        segyio.open(testdata / 'mapping-empty.sgy')
+
     ilines = list(range(1, 4))
     xlines = list(range(20, 22))
     offsets = list(range(1, 2))
@@ -2255,7 +2258,11 @@ def test_open_with_custom_mapping():
         assert list(f.ilines) == ilines
         assert list(f.xlines) == xlines
         assert list(f.offsets) == offsets
-        pass
+
+    with segyio.open(testdata / 'mapping-minimal.sgy') as f:
+        assert list(f.ilines) == ilines
+        assert list(f.xlines) == xlines
+        assert list(f.offsets) == offsets
 
 
 def test_trace_header_extensions():
