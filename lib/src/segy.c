@@ -942,13 +942,20 @@ int segy_flush( segy_datasource* ds ) {
     return SEGY_OK;
 }
 
-static int segy_seek( segy_datasource* ds,
-                      int trace,
-                      long trace0,
-                      int trace_bsize ) {
-
-    trace_bsize += SEGY_TRACE_HEADER_SIZE;
-    long long pos = (long long)trace0 + (trace * (long long)trace_bsize);
+static int seek_traceheader_offset(
+    segy_datasource* ds,
+    int trace,
+    int traceheader,
+    long long offset,
+    long trace0,
+    int trace_bsize
+) {
+    long long trace_size = trace_bsize +
+                           SEGY_TRACE_HEADER_SIZE * ds->metadata.traceheader_count;
+    long long pos = trace0 +
+                    trace * trace_size +
+                    traceheader * SEGY_TRACE_HEADER_SIZE +
+                    offset;
 
     int err = ds->seek( ds, pos, SEEK_SET );
     if( err != 0 ) return SEGY_DS_SEEK_ERROR;
@@ -1437,9 +1444,9 @@ int segy_field_forall( segy_datasource* ds,
 
     const int zfield = field - 1;
     for( int i = start; slicelen > 0; i += step, buf += elemsize, --slicelen ) {
-        int offset = trace0 + zfield;
-        err = segy_seek( ds, i, offset, trace_bsize );
+        err = seek_traceheader_offset( ds, i, 0, zfield, trace0, trace_bsize );
         if( err != SEGY_OK ) return err;
+
         err = ds->read( ds, header + zfield, elemsize );
         if( err != 0 ) return SEGY_DS_READ_ERROR;
 
@@ -1782,7 +1789,7 @@ int segy_traceheader( segy_datasource* ds,
                       long trace0,
                       int trace_bsize ) {
 
-    int err = segy_seek( ds, traceno, trace0, trace_bsize );
+    int err = seek_traceheader_offset( ds, traceno, 0, 0, trace0, trace_bsize );
     if( err != SEGY_OK ) return err;
 
     err = ds->read( ds, buf, SEGY_TRACE_HEADER_SIZE );
@@ -1798,7 +1805,7 @@ int segy_write_traceheader( segy_datasource* ds,
                             int trace_bsize ) {
     if( !ds->writable ) return SEGY_READONLY;
 
-    int err = segy_seek( ds, traceno, trace0, trace_bsize );
+    int err = seek_traceheader_offset( ds, traceno, 0, 0, trace0, trace_bsize );
     if( err != SEGY_OK ) return err;
 
     char swapped[SEGY_TRACE_HEADER_SIZE];
@@ -2383,9 +2390,15 @@ static inline int subtr_seek( segy_datasource* ds,
     assert( stop >= -1 );
     assert( abs(stop - start) * elemsize <= trace_bsize );
 
-    // skip the trace header and skip everything before min
-    trace0 += (min * elemsize) + SEGY_TRACE_HEADER_SIZE;
-    return segy_seek( ds, traceno, trace0, trace_bsize );
+    // skip the traceheaders and skip everything before min
+    return seek_traceheader_offset(
+        ds,
+        traceno,
+        ds->metadata.traceheader_count,
+        min * elemsize,
+        trace0,
+        trace_bsize
+    );
 }
 
 static int reverse( void* buf, int elems, int elemsize ) {
