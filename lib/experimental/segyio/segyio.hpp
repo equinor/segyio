@@ -590,7 +590,7 @@ struct truncate_always : public truncable< Derived > {
  *
  * int samplecount() - samplecount-per-trace
  * fmt format()      - data format
- * long trace0()     - offset of first trace past extended text headers
+ * unsigned long long trace0()     - offset of first trace past extended text headers
  * int tracesize()   - size of each trace in bytes
  * int tracecount()  - number of traces in this file
  */
@@ -600,14 +600,14 @@ struct trace_meta_fromfile {
     int samplecount()    const noexcept(true);
     segyio::fmt format() const noexcept(true);
 
-    long trace0()     const noexcept(true);
+    unsigned long long trace0()     const noexcept(true);
     int  tracesize()  const noexcept(true);
     int  tracecount() const noexcept(true);
 
     void operator()( segy_file* fp ) noexcept(false);
 
 private:
-    long tr0 = 0;
+    unsigned long long tr0 = 0;
     int trsize = 0;
     int smp = 0;
     int traces = 0;
@@ -1137,7 +1137,7 @@ segyio::fmt trace_meta_fromfile< T >::format() const noexcept(true) {
 }
 
 template< typename T >
-long trace_meta_fromfile< T >::trace0() const noexcept(true) {
+unsigned long long trace_meta_fromfile< T >::trace0() const noexcept(true) {
     return this->tr0;
 }
 

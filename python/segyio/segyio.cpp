@@ -481,7 +481,7 @@ int autods::close() {
 struct segyfd {
     PyObject_HEAD
     autods ds;
-    long trace0;
+    unsigned long long trace0;
     int trace_bsize;
     int tracecount;
     int traceheader_count;
