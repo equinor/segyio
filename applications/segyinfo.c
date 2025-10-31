@@ -45,7 +45,6 @@ int main(int argc, char* argv[]) {
     int err = segy_collect_metadata( fp, -1, -1, -1 );
     const int format = fp->metadata.format;
     const int samples = fp->metadata.samplecount;
-    const long trace0 = fp->metadata.trace0;
     const long trace_bsize = fp->metadata.trace_bsize;
     const int extended_headers = fp->metadata.ext_textheader_count;
     const int traces = fp->metadata.tracecount;
@@ -62,7 +61,7 @@ int main(int argc, char* argv[]) {
     }
 
     char traceh[ SEGY_TRACE_HEADER_SIZE ];
-    err = segy_traceheader( fp, 0, traceh, trace0, trace_bsize );
+    err = segy_traceheader( fp, 0, traceh );
     if( err != 0 ) {
         perror( "Unable to read trace 0:" );
         exit( err );
@@ -71,7 +70,7 @@ int main(int argc, char* argv[]) {
     puts("Info from first trace:");
     printSegyTraceInfo( traceh );
 
-    err = segy_traceheader( fp, 1, traceh, trace0, trace_bsize );
+    err = segy_traceheader( fp, 1, traceh );
     if( err != 0 ) {
         perror( "Unable to read trace 1:" );
         exit( err );
@@ -90,7 +89,7 @@ int main(int argc, char* argv[]) {
     int min_sample_count = 999999999;
     int max_sample_count = 0;
     for( int i = 0; i < traces; ++i ) {
-        err = segy_traceheader( fp, i, traceh, trace0, trace_bsize );
+        err = segy_traceheader( fp, i, traceh );
         if( err != 0 ) {
             perror( "Unable to read trace" );
             exit( err );
@@ -107,7 +106,7 @@ int main(int argc, char* argv[]) {
         min_sample_count = minimum( sample_count, min_sample_count );
         max_sample_count = maximum( sample_count, max_sample_count );
 
-        err = segy_readtrace( fp, i, trbuf, trace0, trace_bsize );
+        err = segy_readtrace( fp, i, trbuf );
 
         if( err != 0 ) {
             fprintf( stderr, "Unable to read trace: %d\n", i );
@@ -126,7 +125,7 @@ int main(int argc, char* argv[]) {
 
     puts("");
     puts("Info from last trace:");
-    err = segy_traceheader( fp, traces - 1, traceh, trace0, trace_bsize );
+    err = segy_traceheader( fp, traces - 1, traceh );
 
     if( err != 0 ) {
         perror( "Unable to read trace." );

@@ -1203,10 +1203,7 @@ OutputIt trace_reader< Derived >::get( int i, OutputIt out ) noexcept(false) {
     auto* fp = self->escape();
 
     self->consider( i );
-    auto err = segy_readtrace( fp, i,
-                                    self->buffer(),
-                                    self->trace0(),
-                                    self->tracesize() );
+    auto err = segy_readtrace( fp, i, self->buffer() );
 
     switch( err ) {
         case SEGY_OK:
@@ -1334,9 +1331,7 @@ trace_header trace_header_reader< Derived >::get_th( int i ) noexcept(false) {
 
     self->consider( i );
     auto err = segy_traceheader( self->escape(), i,
-                                                 buffer,
-                                                 self->trace0(),
-                                                 self->tracesize() );
+                                                 buffer );
 
     switch( err ) {
         case SEGY_OK: break;
@@ -1489,9 +1484,7 @@ void volume_meta_fromfile< Derived >::operator()( segy_file* fp,
                         il,
                         xl,
                         SEGY_TR_OFFSET,
-                        &sort,
-                        self->trace0(),
-                        self->tracesize() );
+                        &sort );
 
     switch( err ) {
         case SEGY_OK: break;
@@ -1520,9 +1513,7 @@ void volume_meta_fromfile< Derived >::operator()( segy_file* fp,
                         il,
                         xl,
                         self->tracecount(),
-                        &ofs,
-                        self->trace0(),
-                        self->tracesize() );
+                        &ofs );
 
     switch( err ) {
         case SEGY_OK: break;
@@ -1543,9 +1534,7 @@ void volume_meta_fromfile< Derived >::operator()( segy_file* fp,
                             sort,
                             ofs,
                             &ils,
-                            &xls,
-                            self->trace0(),
-                            self->tracesize() );
+                            &xls );
 
     switch( err ) {
         case SEGY_OK: break;
@@ -1620,9 +1609,7 @@ InputIt trace_writer< Derived >::put( int i, InputIt in ) noexcept(false) {
     segy_from_native( format, len, self->buffer() );
     auto err = segy_writetrace( fp,
                                 i,
-                                self->buffer(),
-                                self->trace0(),
-                                self->tracesize() );
+                                self->buffer() );
 
     switch( err ) {
         case SEGY_OK:
