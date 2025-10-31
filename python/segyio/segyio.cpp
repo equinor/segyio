@@ -484,6 +484,7 @@ struct segyfd {
     unsigned long long trace0;
     int trace_bsize;
     int tracecount;
+    int traceheader_count;
     int samplecount;
     int format;
     int elemsize;
@@ -675,6 +676,7 @@ PyObject* segyopen( segyfd* self, PyObject* args, PyObject* kwargs ) {
         self->trace0 = ds->metadata.trace0;
         self->samplecount = ds->metadata.samplecount;
         self->trace_bsize = ds->metadata.trace_bsize;
+        self->traceheader_count = ds->metadata.traceheader_count;
         self->tracecount = ds->metadata.tracecount;
 
         Py_INCREF( self );
@@ -706,6 +708,7 @@ PyObject* segycreate( segyfd* self, PyObject* args, PyObject* kwargs ) {
     int samples;
     int tracecount;
     int ext_headers = 0;
+    int traceheader_count = 1;
     int format = SEGY_IBM_FLOAT_4_BYTE;
 
     // https://mail.python.org/pipermail/python-dev/2006-February/060689.html
@@ -719,20 +722,23 @@ PyObject* segycreate( segyfd* self, PyObject* args, PyObject* kwargs ) {
         "tracecount",
         "endianness",
         "encoding",
+        "traceheader_count",
         "format",
         "ext_headers",
         NULL,
     };
 
     if( !PyArg_ParseTupleAndKeywords( args, kwargs,
-                "ii|iiii",
+                "ii|iiiii",
                 const_cast< char** >(kwlist),
                 &samples,
                 &tracecount,
                 &endianness,
                 &encoding,
+                &traceheader_count,
                 &format,
-                &ext_headers ) )
+                &ext_headers
+             ) )
         return NULL;
 
     if( endianness != SEGY_MSB && endianness != SEGY_LSB ) {
@@ -790,6 +796,7 @@ PyObject* segycreate( segyfd* self, PyObject* args, PyObject* kwargs ) {
                           SEGY_TEXT_HEADER_SIZE * ext_headers;
     ds->metadata.samplecount = samples;
     ds->metadata.trace_bsize = segy_trsize( format, samples );
+    ds->metadata.traceheader_count = traceheader_count;
     ds->metadata.tracecount = tracecount;
 
     self->trace0 = ds->metadata.trace0;
@@ -798,6 +805,7 @@ PyObject* segycreate( segyfd* self, PyObject* args, PyObject* kwargs ) {
     self->elemsize = elemsize;
     self->samplecount = samples;
     self->tracecount = tracecount;
+    self->traceheader_count = traceheader_count;
 
     Py_INCREF( self );
     return (PyObject*) self;
@@ -874,6 +882,7 @@ PyObject* suopen( segyfd* self, PyObject* args, PyObject* kwargs ) {
         self->trace0 = ds->metadata.trace0;
         self->samplecount = ds->metadata.samplecount;
         self->trace_bsize = ds->metadata.trace_bsize;
+        self->traceheader_count = ds->metadata.traceheader_count;
         self->tracecount = ds->metadata.tracecount;
         Py_INCREF( self );
         return (PyObject*)self;
@@ -1187,13 +1196,14 @@ PyObject* metrics( segyfd* self ) {
     const int ext = (self->trace0 - (text + bin)) / text;
     segy_datasource* ds = self->ds;
     int encoding = ds->metadata.encoding;
-    return Py_BuildValue( "{s:i, s:K, s:i, s:i, s:i, s:i, s:i}",
+    return Py_BuildValue( "{s:i, s:K, s:i, s:i, s:i, s:i, s:i, s:i}",
                           "tracecount",  self->tracecount,
                           "trace0",      self->trace0,
                           "trace_bsize", self->trace_bsize,
                           "samplecount", self->samplecount,
                           "format",      self->format,
                           "encoding",    encoding,
+                          "traceheader_count", self->traceheader_count,
                           "ext_headers", ext );
 }
 
