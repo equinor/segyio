@@ -1018,14 +1018,16 @@ int segy_collect_metadata(
     ds->metadata.samplecount = segy_samples( binheader );
     ds->metadata.trace_bsize = ds->metadata.samplecount * ds->metadata.elemsize;
 
-    ds->metadata.traceheader_count = 1;
+    int traceheader_count;
+    err = segy_traceheaders( binheader, &traceheader_count );
+    if( err != SEGY_OK ) return err;
+    ds->metadata.traceheader_count = traceheader_count;
 
     int tracecount;
     err = segy_traces( ds, &tracecount );
-    if( err ) {
-        return err;
-    }
+    if( err != SEGY_OK ) return err;
     ds->metadata.tracecount = tracecount;
+
     return SEGY_OK;
 }
 
@@ -1698,6 +1700,29 @@ int segy_trace0(
     return SEGY_OK;
 }
 
+int segy_traceheaders(
+    const char* binheader,
+    int* traceheader_count
+) {
+    int revision;
+    int err = segy_revision( binheader, &revision );
+    if( err != SEGY_OK ) return err;
+
+    if( revision >= 2 ) {
+        segy_field_data fd;
+        err = segy_get_binfield( binheader, SEGY_BIN_MAX_ADDITIONAL_TR_HEADERS, &fd );
+        if( err != SEGY_OK ) return err;
+
+        int extra_traceheaders = fd.value.i16;
+        if( extra_traceheaders < 0 ) return SEGY_INVALID_FIELD_VALUE;
+        *traceheader_count = extra_traceheaders + 1;
+    } else {
+        *traceheader_count = 1;
+    }
+
+    return SEGY_OK;
+}
+
 static int bswap_th( char* xs, int lsb ) {
     if( !lsb ) return SEGY_OK;
 
@@ -1865,7 +1890,8 @@ int segy_traces( segy_datasource* ds,
     if( trace0 > size ) return SEGY_INVALID_ARGS;
 
     size -= trace0;
-    long long trace_bsize = ds->metadata.trace_bsize + SEGY_TRACE_HEADER_SIZE;
+    long long trace_bsize =
+        ds->metadata.trace_bsize + SEGY_TRACE_HEADER_SIZE * ds->metadata.traceheader_count;
 
     if( size % trace_bsize != 0 )
         return SEGY_TRACE_SIZE_MISMATCH;

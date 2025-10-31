@@ -461,6 +461,14 @@ int segy_write_binheader( segy_datasource*, const char* buf );
  * up to 65536 samples per trace.
  */
 int segy_samples( const char* binheader );
+
+/*
+ * Gets number of traceheaders expected for each trace. For rev1 files it is
+ * always 1, for higher revisions it equals to maximum number of traceheaders in
+ * bytes 3507–3508 + 1. Custom number of traceheaders for each trace is not
+ * supported.
+ */
+int segy_traceheaders( const char* binheader, int* traceheader_count );
 /*
  * infer the interval between traces. this function tries to read the interval
  * from the binary header and the first trace header, and will fall back to the
