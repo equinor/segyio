@@ -590,7 +590,7 @@ struct truncate_always : public truncable< Derived > {
  *
  * int samplecount() - samplecount-per-trace
  * fmt format()      - data format
- * long trace0()     - offset of first trace past extended text headers
+ * unsigned long long trace0()     - offset of first trace past extended text headers
  * int tracesize()   - size of each trace in bytes
  * int tracecount()  - number of traces in this file
  */
@@ -600,14 +600,14 @@ struct trace_meta_fromfile {
     int samplecount()    const noexcept(true);
     segyio::fmt format() const noexcept(true);
 
-    long trace0()     const noexcept(true);
+    unsigned long long trace0()     const noexcept(true);
     int  tracesize()  const noexcept(true);
     int  tracecount() const noexcept(true);
 
     void operator()( segy_file* fp ) noexcept(false);
 
 private:
-    long tr0 = 0;
+    unsigned long long tr0 = 0;
     int trsize = 0;
     int smp = 0;
     int traces = 0;
@@ -1137,7 +1137,7 @@ segyio::fmt trace_meta_fromfile< T >::format() const noexcept(true) {
 }
 
 template< typename T >
-long trace_meta_fromfile< T >::trace0() const noexcept(true) {
+unsigned long long trace_meta_fromfile< T >::trace0() const noexcept(true) {
     return this->tr0;
 }
 
@@ -1203,10 +1203,7 @@ OutputIt trace_reader< Derived >::get( int i, OutputIt out ) noexcept(false) {
     auto* fp = self->escape();
 
     self->consider( i );
-    auto err = segy_readtrace( fp, i,
-                                    self->buffer(),
-                                    self->trace0(),
-                                    self->tracesize() );
+    auto err = segy_readtrace( fp, i, self->buffer() );
 
     switch( err ) {
         case SEGY_OK:
@@ -1333,10 +1330,7 @@ trace_header trace_header_reader< Derived >::get_th( int i ) noexcept(false) {
     auto* self = static_cast< Derived* >( this );
 
     self->consider( i );
-    auto err = segy_traceheader( self->escape(), i,
-                                                 buffer,
-                                                 self->trace0(),
-                                                 self->tracesize() );
+    auto err = segy_read_standard_traceheader( self->escape(), i, buffer );
 
     switch( err ) {
         case SEGY_OK: break;
@@ -1489,9 +1483,7 @@ void volume_meta_fromfile< Derived >::operator()( segy_file* fp,
                         il,
                         xl,
                         SEGY_TR_OFFSET,
-                        &sort,
-                        self->trace0(),
-                        self->tracesize() );
+                        &sort );
 
     switch( err ) {
         case SEGY_OK: break;
@@ -1520,9 +1512,7 @@ void volume_meta_fromfile< Derived >::operator()( segy_file* fp,
                         il,
                         xl,
                         self->tracecount(),
-                        &ofs,
-                        self->trace0(),
-                        self->tracesize() );
+                        &ofs );
 
     switch( err ) {
         case SEGY_OK: break;
@@ -1543,9 +1533,7 @@ void volume_meta_fromfile< Derived >::operator()( segy_file* fp,
                             sort,
                             ofs,
                             &ils,
-                            &xls,
-                            self->trace0(),
-                            self->tracesize() );
+                            &xls );
 
     switch( err ) {
         case SEGY_OK: break;
@@ -1620,9 +1608,7 @@ InputIt trace_writer< Derived >::put( int i, InputIt in ) noexcept(false) {
     segy_from_native( format, len, self->buffer() );
     auto err = segy_writetrace( fp,
                                 i,
-                                self->buffer(),
-                                self->trace0(),
-                                self->tracesize() );
+                                self->buffer() );
 
     switch( err ) {
         case SEGY_OK:

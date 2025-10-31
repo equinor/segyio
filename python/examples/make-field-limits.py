@@ -55,6 +55,10 @@ def main():
             return 0
         if field == segyio.BinField.IntConstant:
             return 16909060
+        if field == segyio.BinField.FirstTraceOffset:
+            return 3600
+        if field == segyio.BinField.MaxAdditionalTraceHeaders:
+            return 0
 
         if field == segyio.BinField.ExtInterval:
             return 1125899906842594.0 * value_sign

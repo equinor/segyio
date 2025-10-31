@@ -37,9 +37,9 @@ rev       	36
 revmin    	37
 trflag    	-32730
 exth      	0
-maxtrh    	-32728
+maxtrh    	0
 survty    	-32727
 timebc    	-32726
 ntrst     	43
-ftroff    	44
+ftroff    	3600
 ntr       	-2147483603
