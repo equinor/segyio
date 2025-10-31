@@ -100,6 +100,7 @@ struct StringMaker< Err > {
             case SEGY_FREAD_ERROR: return "SEGY_FREAD_ERROR";
             case SEGY_FWRITE_ERROR: return "SEGY_FWRITE_ERROR";
             case SEGY_INVALID_FIELD: return "SEGY_INVALID_FIELD";
+            case SEGY_INVALID_FIELD_DATATYPE: return "SEGY_INVALID_FIELD_DATATYPE";
             case SEGY_INVALID_SORTING: return "SEGY_INVALID_SORTING";
             case SEGY_MISSING_LINE_INDEX: return "SEGY_MISSING_LINE_INDEX";
             case SEGY_INVALID_OFFSETS: return "SEGY_INVALID_OFFSETS";
@@ -2103,4 +2104,56 @@ TEST_CASE( "segy_get/set_bin/tracefield errors", "[c.segy]" ) {
         );
         CHECK( err == Err::field() );
     }
+}
+
+TEST_CASE( "segy_delay_recoding_time works correctly", "[c.segy]" ) {
+    const char* file;
+    const uint16_t delay_raw = 5;
+    int16_t scalar;
+    float expected;
+
+    auto params = GENERATE(
+        std::tuple<const char*, int16_t, float>{ "delay-scalar-zero.sgy", 0, 5.0f },
+        std::tuple<const char*, int16_t, float>{ "delay-scalar-pos.sgy", 10, 50.0f },
+        std::tuple<const char*, int16_t, float>{ "delay-scalar-neg.sgy", -10, 0.5f }
+    );
+    std::tie( file, scalar, expected ) = params;
+
+    unique_segy ufp( segy_open( file, "w+b" ) );
+    auto fp = ufp.get();
+
+    fp->metadata.samplecount = 8;
+    fp->metadata.trace_bsize = segy_trsize( SEGY_IBM_FLOAT_4_BYTE, fp->metadata.samplecount );
+    fp->metadata.trace0 = 0;
+    char header[SEGY_TRACE_HEADER_SIZE] = {};
+
+    const segy_entry_definition* map = segy_traceheader_default_map();
+    const uint8_t* name_map = segy_traceheader_default_name_map();
+
+    segy_field_data fd_delay;
+    const int delay_offset = name_map[SEGY_TR_DELAY_REC_TIME];
+    fd_delay.entry_type = SEGY_ENTRY_TYPE_TIME2;
+    fd_delay.value.i16 = delay_raw;
+
+    Err err = segy_set_tracefield(
+        header, map, delay_offset, fd_delay
+    );
+    CHECK( err == Err::ok() );
+
+    segy_field_data fd_scalar;
+    const int scalar_offset = name_map[SEGY_TR_SCALAR_TRACE_HEADER];
+    fd_scalar.entry_type = SEGY_ENTRY_TYPE_INT2;
+    fd_scalar.value.i16 = scalar;
+    err = segy_set_tracefield(
+        header, map, scalar_offset, fd_scalar
+    );
+    CHECK( err == Err::ok() );
+
+    err = segy_write_standard_traceheader( fp, 0, header );
+    REQUIRE( err == Err::ok() );
+
+    float delay = arbitrary_float();
+    err = segy_delay_recoding_time( fp, &delay );
+    CHECK( err == Err::ok() );
+    CHECK( delay == expected );
 }

@@ -469,6 +469,11 @@ int segy_samples( const char* binheader );
  * supported.
  */
 int segy_traceheaders( const char* binheader, int* traceheader_count );
+
+/*
+ * calculate delay recording time for the first trace.
+ */
+int segy_delay_recoding_time( segy_datasource* ds, float* delay );
 /*
  * infer the interval between traces. this function tries to read the interval
  * from the binary header and the first trace header, and will fall back to the

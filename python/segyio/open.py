@@ -275,13 +275,11 @@ def _open(datasource_descriptor,
     )
 
     try:
-        delay_scalar = f.header[0][segyio.TraceField.ScalarTraceHeader]
-        if delay_scalar == 0:
-            delay_scalar = 1
-        elif delay_scalar < 0:
-            delay_scalar = 1.0 / delay_scalar
         dt = segyio.tools.dt(f, fallback_dt = 4000.0) / 1000.0
-        t0 = f.header[0][segyio.TraceField.DelayRecordingTime] * abs(delay_scalar)
+        try:
+            t0 = fd.getdelay()
+        except RuntimeError:
+            t0 = 0.0
         samples = metrics['samplecount']
         f._samples = (numpy.arange(samples) * dt) + t0
 
