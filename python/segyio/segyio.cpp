@@ -18,6 +18,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #if PY_MAJOR_VERSION >= 3
@@ -515,6 +516,11 @@ int set_traceheader_mappings(
  * SEGY_OK both when data was successfully extracted or not found. */
 int extract_layout_stanza( segyfd* self, std::vector<char>& layout_stanza_data );
 
+/**
+ * Returns the dictionary {header_name: TraceHeaderLayout.}
+ */
+PyObject* traceheader_layouts( segyfd* self );
+
 } // namespace
 
 namespace fd {
@@ -739,6 +745,12 @@ PyObject* segycreate( segyfd* self, PyObject* args, PyObject* kwargs ) {
 
     ds->metadata.endianness = endianness;
     ds->metadata.encoding = encoding;
+
+    std::vector<char> layout_stanza_data;
+    int err = set_traceheader_mappings(
+        self, layout_stanza_data, Py_None, Py_None
+    );
+    if( err ) return NULL;
 
     if( samples <= 0 )
         return ValueError( "expected samples > 0" );
@@ -1322,7 +1334,7 @@ PyObject* indices( segyfd* self, PyObject* args ) {
     const int sorting      = getitem( metrics, "sorting" );
     if( PyErr_Occurred() ) return NULL;
 
-    metrics_errmsg errmsg = { il_field, xl_field, SEGY_TR_OFFSET };
+    metrics_errmsg errmsg = { il_field, xl_field, offset_field };
 
     int err = segy_inline_indices( ds, il_field,
                                        sorting,
@@ -1773,6 +1785,8 @@ PyMethodDef methods [] = {
 
     { "stanza_names", (PyCFunction) fd::stanza_names, METH_NOARGS, "Stanza names in order." },
 
+    { "traceheader_layouts", (PyCFunction) traceheader_layouts, METH_VARARGS, "Layout of all traceheaders." },
+
     { NULL }
 };
 #ifdef IS_GCC
@@ -2199,164 +2213,6 @@ PyMethodDef SegyMethods[] = {
 
 namespace {
 
-int overwrite_inline_xline(
-    segy_header_mapping& mapping,
-    PyObject* py_iline,
-    PyObject* py_xline
-) {
-    if( py_iline != Py_None ) {
-        long iline = PyLong_AsUnsignedLong( py_iline );
-        if( PyErr_Occurred() || iline < 1 || iline > SEGY_TRACE_HEADER_SIZE ) {
-            ValueError( "Custom iline offset out of range" );
-            return SEGY_INVALID_ARGS;
-        }
-        uint8_t il = static_cast<uint8_t>( iline );
-        mapping.name_to_offset[SEGY_TR_INLINE] = il;
-        mapping.offset_to_entry_definition[il - 1] = { SEGY_ENTRY_TYPE_INT4, false, NULL };
-    }
-
-    if( py_xline != Py_None ) {
-        long xline = PyLong_AsUnsignedLong( py_xline );
-        if( PyErr_Occurred() || xline < 1 || xline > SEGY_TRACE_HEADER_SIZE ) {
-            ValueError( "Custom xline offset out of range" );
-            return SEGY_INVALID_ARGS;
-        }
-        uint8_t xl = static_cast<uint8_t>( xline );
-        mapping.name_to_offset[SEGY_TR_CROSSLINE] = xl;
-        mapping.offset_to_entry_definition[xl - 1] = { SEGY_ENTRY_TYPE_INT4, false, NULL };
-    }
-    return SEGY_OK;
-}
-
-int initialize_traceheader_mappings(
-    segyfd* self,
-    std::vector<char>& layout_stanza_data
-) {
-    segy_datasource* ds = self->ds;
-
-    if( layout_stanza_data.empty() ) {
-        self->traceheader_mappings.insert(
-            self->traceheader_mappings.begin(), ds->traceheader_mapping_standard
-        );
-        return SEGY_OK;
-    }
-
-    segy_header_mapping* mappings = nullptr;
-    size_t mappings_length = 0;
-    int err = segy_parse_layout_xml(
-        layout_stanza_data.data(),
-        layout_stanza_data.size(),
-        &mappings,
-        &mappings_length
-    );
-    if( err != SEGY_OK ) return err;
-
-    // For now assume order of headers in the file corresponds to the order of
-    // mappings in xml. TODO later: read all traceheaders in first trace and
-    // order traceheader mappings accordingly
-    self->traceheader_mappings =
-        std::vector<segy_header_mapping>( mappings, mappings + mappings_length );
-    delete[] mappings;
-
-    bool found_standard = false;
-    for( const auto& mapping : self->traceheader_mappings ) {
-        if( strncmp( mapping.name, "SEG00000", 8 ) == 0 ) {
-            found_standard = true;
-        }
-        // TODO: same for SEG00001 header. Insert default into second position if not found
-    }
-
-    // standard header definition is obligatory, so it anyway should have failed earlier
-    if( !found_standard ) return SEGY_NOTFOUND;
-
-    return SEGY_OK;
-}
-
-int set_traceheader_mappings(
-    segyfd* self,
-    std::vector<char>& layout_stanza_data,
-    PyObject* py_iline,
-    PyObject* py_xline
-) {
-    int err = initialize_traceheader_mappings( self, layout_stanza_data );
-    if( err != SEGY_OK ) {
-        if( PyErr_Occurred() ) {
-            PyErr_Clear();
-        }
-        ValueError( "error parsing trace header mappings" );
-        return err;
-    }
-
-    err = overwrite_inline_xline( self->traceheader_mappings[0], py_iline, py_xline );
-    if( err != SEGY_OK ) return err;
-
-    segy_datasource* ds = self->ds;
-    memcpy(
-        &ds->traceheader_mapping_standard,
-        &self->traceheader_mappings[0],
-        sizeof( ds->traceheader_mapping_standard )
-    );
-
-    return SEGY_OK;
-}
-
-int parse_extended_text_headers( segyfd* self ) {
-    segy_datasource* ds = self->ds;
-
-    char binheader[SEGY_BINARY_HEADER_SIZE] = {};
-    int err = segy_binheader( ds, binheader );
-    if( err != SEGY_OK ) return err;
-
-    segy_field_data fd;
-    segy_get_binfield( binheader, SEGY_BIN_EXT_HEADERS, &fd );
-    const int extra_headers_count = fd.value.i16;
-
-    int i = 0;
-    while( extra_headers_count != i ) {
-        char* c_stanza_name = NULL;
-        size_t stanza_name_length;
-
-        err = segy_read_stanza_header(
-            ds, i, &c_stanza_name, &stanza_name_length
-        );
-        if( err != SEGY_OK ) return err;
-
-        if( stanza_name_length != 0 || self->stanzas.empty() ) {
-            self->stanzas.emplace_back(
-                std::string( c_stanza_name, stanza_name_length ),
-                i,
-                1
-            );
-        } else {
-            self->stanzas.back().headercount += 1;
-        }
-        if( c_stanza_name ) free( c_stanza_name );
-        if( self->stanzas.back().normalized_name() == "seg:endtext" ) break;
-
-        ++i;
-    }
-    return SEGY_OK;
-}
-
-int free_header_mappings_names(
-    segy_header_mapping* mappings,
-    size_t mappings_length
-) {
-    if( !mappings ) return SEGY_OK;
-
-    for( size_t i = 0; i < mappings_length; ++i ) {
-        segy_header_mapping* mapping = &mappings[i];
-        for( int j = 0; j < SEGY_TRACE_HEADER_SIZE; ++j ) {
-            char*& name = mapping->offset_to_entry_definition[j].name;
-            if( name ) {
-                delete[] name;
-            }
-            name = nullptr;
-        }
-    }
-    return SEGY_OK;
-}
-
 struct NameMapEntry {
     std::string spec_entry_name;
     int segyio_entry_name;
@@ -2484,6 +2340,211 @@ static const TypeMapEntry entry_type_map[] = {
     { "scale6",   SEGY_ENTRY_TYPE_SCALE6_MANT },
 };
 
+static const std::unordered_map<SEGY_ENTRY_TYPE, std::string> segytype_to_spectype_map = [] {
+    std::unordered_map<SEGY_ENTRY_TYPE, std::string> map;
+    for( const auto& e : entry_type_map ) {
+        map[e.segyio_entry_type] = e.spec_entry_type;
+    }
+    return map;
+}();
+
+static const std::unordered_map<std::string, SEGY_ENTRY_TYPE> spectype_to_segytype_map = [] {
+    std::unordered_map<std::string, SEGY_ENTRY_TYPE> map;
+    for( const auto& e : entry_type_map ) {
+        map[e.spec_entry_type] = e.segyio_entry_type;
+    }
+    return map;
+}();
+
+int overwrite_field_offset(
+    segy_header_mapping& mapping,
+    uint8_t segyio_field_name,
+    const char* spec_entry_name,
+    SEGY_ENTRY_TYPE entry_type,
+    PyObject* py_entry_byte
+) {
+    if( py_entry_byte == Py_None ) return SEGY_OK;
+
+    unsigned long long raw_entry_byte = PyLong_AsUnsignedLongLong( py_entry_byte );
+    if( PyErr_Occurred() || raw_entry_byte < 1 || raw_entry_byte > SEGY_TRACE_HEADER_SIZE ) {
+        ValueError( "Custom field offset %llu out of range: ", raw_entry_byte );
+        return SEGY_INVALID_ARGS;
+    }
+    uint8_t entry_byte = static_cast<uint8_t>( raw_entry_byte );
+    mapping.name_to_offset[segyio_field_name] = entry_byte;
+
+    segy_entry_definition& def = mapping.offset_to_entry_definition[entry_byte - 1];
+    def.entry_type = entry_type;
+    def.requires_nonzero_value = false;
+
+    if( def.name ) {
+        delete[] def.name;
+    }
+    def.name = new char[6];
+    std::strcpy( def.name, spec_entry_name );
+
+    return SEGY_OK;
+}
+
+int initialize_traceheader_mappings(
+    segyfd* self,
+    std::vector<char>& layout_stanza_data
+) {
+    segy_datasource* ds = self->ds;
+
+    if( layout_stanza_data.empty() ) {
+        segy_header_mapping mapping = ds->traceheader_mapping_standard;
+
+        /* Entry names provided by xml are of unknown length, so we must
+         * allocate them on heap and delete them afterwards. Default C maps have
+         * their names set to NULL. If we provided default names for entries
+         * inside of the C code, then:
+         * - we can't allocate them on heap statically, so there has to be a
+         *   separate function doing the job and user would have to deallocate
+         *   appropriately. This is complex and doesn't solve much.
+         * - if we allocated them as static strings, then we would have to
+         *   somehow keep track where strings were allocated to know if they
+         *   should be freed or not.
+         *
+         * So we allocate names only here, in C++, where we know they always
+         * will be freed.
+         **/
+        for( const auto& entry : standard_name_map ) {
+            int offset = mapping.name_to_offset[entry.segyio_entry_name];
+            if( offset != 0 ) {
+                char* name = new char[entry.spec_entry_name.size() + 1];
+                std::strcpy( name, entry.spec_entry_name.c_str() );
+                mapping.offset_to_entry_definition[offset - 1].name = name;
+            }
+        }
+        self->traceheader_mappings.insert( self->traceheader_mappings.begin(), mapping );
+        return SEGY_OK;
+    }
+
+    segy_header_mapping* mappings = nullptr;
+    size_t mappings_length = 0;
+    int err = segy_parse_layout_xml(
+        layout_stanza_data.data(),
+        layout_stanza_data.size(),
+        &mappings,
+        &mappings_length
+    );
+    if( err != SEGY_OK ) return err;
+
+    // For now assume order of headers in the file corresponds to the order of
+    // mappings in xml. TODO later: read all traceheaders in first trace and
+    // order traceheader mappings accordingly
+    self->traceheader_mappings =
+        std::vector<segy_header_mapping>( mappings, mappings + mappings_length );
+    delete[] mappings;
+
+    bool found_standard = false;
+    for( const auto& mapping : self->traceheader_mappings ) {
+        if( strncmp( mapping.name, "SEG00000", 8 ) == 0 ) {
+            found_standard = true;
+        }
+        // TODO: same for SEG00001 header. Insert default into second position if not found
+    }
+
+    // standard header definition is obligatory, so it anyway should have failed earlier
+    if( !found_standard ) return SEGY_NOTFOUND;
+
+    return SEGY_OK;
+}
+
+int set_traceheader_mappings(
+    segyfd* self,
+    std::vector<char>& layout_stanza_data,
+    PyObject* py_iline,
+    PyObject* py_xline
+) {
+    int err = initialize_traceheader_mappings( self, layout_stanza_data );
+    if( err != SEGY_OK ) {
+        if( PyErr_Occurred() ) {
+            PyErr_Clear();
+        }
+        ValueError( "error parsing trace header mappings" );
+        return err;
+    }
+
+    segy_header_mapping& mapping = self->traceheader_mappings[0];
+    err = overwrite_field_offset(
+        mapping, SEGY_TR_INLINE, "iline", SEGY_ENTRY_TYPE_INT4, py_iline
+    );
+    if( err != SEGY_OK ) return err;
+
+    err = overwrite_field_offset(
+        mapping, SEGY_TR_CROSSLINE, "xline", SEGY_ENTRY_TYPE_INT4, py_xline
+    );
+    if( err != SEGY_OK ) return err;
+
+    segy_datasource* ds = self->ds;
+    memcpy(
+        &ds->traceheader_mapping_standard,
+        &self->traceheader_mappings[0],
+        sizeof( ds->traceheader_mapping_standard )
+    );
+
+    return SEGY_OK;
+}
+
+int parse_extended_text_headers( segyfd* self ) {
+    segy_datasource* ds = self->ds;
+
+    char binheader[SEGY_BINARY_HEADER_SIZE] = {};
+    int err = segy_binheader( ds, binheader );
+    if( err != SEGY_OK ) return err;
+
+    segy_field_data fd;
+    segy_get_binfield( binheader, SEGY_BIN_EXT_HEADERS, &fd );
+    const int extra_headers_count = fd.value.i16;
+
+    int i = 0;
+    while( extra_headers_count != i ) {
+        char* c_stanza_name = NULL;
+        size_t stanza_name_length;
+
+        err = segy_read_stanza_header(
+            ds, i, &c_stanza_name, &stanza_name_length
+        );
+        if( err != SEGY_OK ) return err;
+
+        if( stanza_name_length != 0 || self->stanzas.empty() ) {
+            self->stanzas.emplace_back(
+                std::string( c_stanza_name, stanza_name_length ),
+                i,
+                1
+            );
+        } else {
+            self->stanzas.back().headercount += 1;
+        }
+        if( c_stanza_name ) free( c_stanza_name );
+        if( self->stanzas.back().normalized_name() == "seg:endtext" ) break;
+
+        ++i;
+    }
+    return SEGY_OK;
+}
+
+int free_header_mappings_names(
+    segy_header_mapping* mappings,
+    size_t mappings_length
+) {
+    if( !mappings ) return SEGY_OK;
+
+    for( size_t i = 0; i < mappings_length; ++i ) {
+        segy_header_mapping* mapping = &mappings[i];
+        for( int j = 0; j < SEGY_TRACE_HEADER_SIZE; ++j ) {
+            char*& name = mapping->offset_to_entry_definition[j].name;
+            if( name ) {
+                delete[] name;
+            }
+            name = nullptr;
+        }
+    }
+    return SEGY_OK;
+}
+
 int set_mapping_name_to_offset(
     segy_header_mapping* mapping,
     std::string spec_entry_name,
@@ -2523,18 +2584,13 @@ int set_mapping_offset_to_entry_defintion(
     std::string spec_entry_type,
     bool requires_nonzero_value
 ) {
-    size_t entry_type_map_size = sizeof( entry_type_map ) / sizeof( entry_type_map[0] );
-
     char* spec_entry_name_heap = new char[spec_entry_name.size() + 1];
     if( !spec_entry_name_heap ) return SEGY_MEMORY_ERROR;
     std::strcpy( spec_entry_name_heap, spec_entry_name.c_str() );
 
     SEGY_ENTRY_TYPE entry_type = SEGY_ENTRY_TYPE_UNDEFINED;
-    for( size_t i = 0; i < entry_type_map_size; ++i ) {
-        if( spec_entry_type == entry_type_map[i].spec_entry_type ) {
-            entry_type = entry_type_map[i].segyio_entry_type;
-            break;
-        }
+    if( spectype_to_segytype_map.count( spec_entry_type ) ) {
+        entry_type = spectype_to_segytype_map.at( spec_entry_type );
     }
     if( entry_type == SEGY_ENTRY_TYPE_UNDEFINED ) return SEGY_INVALID_ARGS;
 
@@ -2691,6 +2747,122 @@ extern "C" int segy_parse_layout_xml(
     }
 
     return SEGY_OK;
+}
+
+int entry_defintion_to_py_TraceHeaderLayoutEntry(
+    PyObject* entries,
+    int offset,
+    const segy_entry_definition& def,
+    PyObject* entry_class
+) {
+    std::string entry_type;
+    if( segytype_to_spectype_map.count( def.entry_type ) ) {
+        entry_type = segytype_to_spectype_map.at( def.entry_type );
+    }
+
+    char* name = NULL;
+    if( def.name != NULL ) {
+        name = def.name;
+    }
+
+    PyObject* args = Py_BuildValue(
+        "sisi",
+        name,
+        offset,
+        entry_type.c_str(),
+        def.requires_nonzero_value
+    );
+    if( !args ) {
+        return SEGY_INVALID_ARGS;
+    }
+
+    PyObject* entry = PyObject_CallObject( entry_class, args );
+    Py_DECREF( args );
+
+    if( !entry ) {
+        return SEGY_INVALID_ARGS;
+    }
+    PyList_Append( entries, entry );
+    Py_DECREF( entry );
+    return SEGY_OK;
+}
+
+int mapping_to_py_TraceHeaderLayout(
+    PyObject* layout_dict,
+    const segy_header_mapping& mapping,
+    PyObject* layout_class,
+    PyObject* entry_class
+) {
+    PyObject* header_name = PyUnicode_FromStringAndSize( mapping.name, strnlen( mapping.name, 8 ) );
+    if( !header_name ) return SEGY_INVALID_ARGS;
+
+    PyObject* entries = PyList_New( 0 );
+    if( !entries ) {
+        Py_DECREF( header_name );
+        return SEGY_INVALID_ARGS;
+    }
+
+    for( int i = 0; i < SEGY_TRACE_HEADER_SIZE; ++i ) {
+        const segy_entry_definition& def = mapping.offset_to_entry_definition[i];
+        if( def.entry_type == SEGY_ENTRY_TYPE_UNDEFINED ) continue;
+
+        int err = entry_defintion_to_py_TraceHeaderLayoutEntry( entries, i + 1, def, entry_class );
+        if( err != SEGY_OK ) {
+            Py_DECREF( header_name );
+            Py_DECREF( entries );
+            return err;
+        }
+    }
+
+    PyObject* trace_header_layout = PyObject_CallFunctionObjArgs( layout_class, entries, NULL );
+    if( !trace_header_layout ) {
+        Py_DECREF( header_name );
+        Py_DECREF( entries );
+        return SEGY_INVALID_ARGS;
+    }
+
+    PyDict_SetItem( layout_dict, header_name, trace_header_layout );
+    Py_DECREF( header_name );
+    Py_DECREF( entries );
+    Py_DECREF( trace_header_layout );
+
+    return SEGY_OK;
+}
+
+PyObject* traceheader_layouts( segyfd* self ) {
+    PyObject* mod = PyImport_ImportModule( "segyio.utils" );
+    if( !mod ) {
+        return NULL;
+    }
+
+    PyObject* entry_class = PyObject_GetAttrString( mod, "TraceHeaderLayoutEntry" );
+    PyObject* layout_class = PyObject_GetAttrString( mod, "TraceHeaderLayout" );
+    Py_DECREF( mod );
+
+    if( !entry_class || !layout_class ) {
+        return NULL;
+    }
+
+    if( !PyCallable_Check( entry_class ) || !PyCallable_Check( layout_class ) ) {
+        return NULL;
+    }
+
+    PyObject* layout_dict = PyDict_New();
+    if( !layout_dict ) return NULL;
+
+    for( const auto& mapping : self->traceheader_mappings ) {
+        int err = mapping_to_py_TraceHeaderLayout( layout_dict, mapping, layout_class, entry_class );
+        if( err != SEGY_OK ) {
+            Py_DECREF( layout_class );
+            Py_DECREF( entry_class );
+            Py_DECREF( layout_dict );
+            return NULL;
+        }
+    }
+
+    Py_DECREF( layout_class );
+    Py_DECREF( entry_class );
+    return layout_dict;
 }
 
 int extract_layout_stanza(

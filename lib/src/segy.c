@@ -1377,33 +1377,39 @@ static int slicelength( int start, int stop, int step ) {
     return (stop - start - 1) / step + 1;
 }
 
-static int32_t bswap_header_word(int32_t f, int word_size) {
-    if (word_size == 4)
-        return bswap32(f);
+static int bswap_header_word( segy_field_data* fd ) {
+    uint8_t datatype = entry_type_to_datatype_map[fd->entry_type];
+    switch( datatype ) {
+        case SEGY_SIGNED_INTEGER_8_BYTE:
+            fd->value.i64 = bswap64( fd->value.i64 );
+            return SEGY_OK;
 
-    /*
-     * The casts are here are necessary
-     *
-     * First, it must be converted to a *signed* short (to preserve negative
-     * numbers). The narrowing is safe because the source is 2 bytes anyway.
-     *
-     * The behaviour when this is implicitly wrong was discovered in [1].
-     *
-     * Then, it must be byteswapped with bswap16. When using the shifts is
-     * probably fine as the types are also cast in the macro and are
-     * compatible, but the builtins have this signature [2]:
-     *
-     *  uint16_t __builtin_bswap16 (uint16_t x)
-     *
-     * which means that if the value is *negative* it will be interpreted as
-     * unsigned and very much positive. When it is then implicitly converted
-     * in the return type it is widened, and int32 can fit uint16 maximum just
-     * fine.
-     *
-     * [1] https://github.com/equinor/segyio/issues/368
-     * [2] http://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html
-     */
-    return (int16_t) bswap16((int16_t) f);
+        case SEGY_SIGNED_INTEGER_4_BYTE:
+            fd->value.i32 = bswap32( fd->value.i32 );
+            return SEGY_OK;
+
+        case SEGY_SIGNED_SHORT_2_BYTE:
+            fd->value.i16 = bswap16( fd->value.i16 );
+            return SEGY_OK;
+
+        case SEGY_UNSIGNED_INTEGER_8_BYTE:
+            fd->value.u64 = bswap64( fd->value.u64 );
+            return SEGY_OK;
+
+        case SEGY_UNSIGNED_INTEGER_4_BYTE:
+            fd->value.u32 = bswap32( fd->value.u32 );
+            return SEGY_OK;
+
+        case SEGY_UNSIGNED_SHORT_2_BYTE:
+            fd->value.u16 = bswap16( fd->value.u16 );
+            return SEGY_OK;
+
+        case SEGY_UNSIGNED_CHAR_1_BYTE:
+        case SEGY_SIGNED_CHAR_1_BYTE:
+            return SEGY_OK;
+        default:
+            return SEGY_INVALID_FIELD_DATATYPE;
+    }
 }
 
 int segy_field_forall( segy_datasource* ds,
@@ -1411,34 +1417,76 @@ int segy_field_forall( segy_datasource* ds,
                        int start,
                        int stop,
                        int step,
-                       int* buf,
+                       void* buffer,
                        long trace0,
                        int trace_bsize ) {
     int err;
+    char* buf = (char*)buffer;
+
     // do a dummy-read of a zero-init'd buffer to check args
-    int32_t f;
-    char header[ SEGY_TRACE_HEADER_SIZE ] = { 0 };
-    err = segy_get_tracefield_int( header, field, &f );
+    segy_field_data fd;
+    char header[SEGY_TRACE_HEADER_SIZE] = { 0 };
+
+    const segy_entry_definition* offset_map =
+        ds->traceheader_mapping_standard.offset_to_entry_definition;
+    err = segy_get_tracefield( header, offset_map, field, &fd );
     if( err != SEGY_OK ) return SEGY_INVALID_ARGS;
 
     int slicelen = slicelength( start, stop, step );
+    int elemsize = segy_formatsize( entry_type_to_datatype_map[fd.entry_type] );
 
     const int zfield = field - 1;
-    for( int i = start; slicelen > 0; i += step, ++buf, --slicelen ) {
-        err = segy_seek( ds, i, trace0 + zfield, trace_bsize );
+    for( int i = start; slicelen > 0; i += step, buf += elemsize, --slicelen ) {
+        int offset = trace0 + zfield;
+        err = segy_seek( ds, i, offset, trace_bsize );
         if( err != SEGY_OK ) return err;
-        err = ds->read( ds, header + zfield, sizeof( uint32_t ) );
+        err = ds->read( ds, header + zfield, elemsize );
         if( err != 0 ) return SEGY_DS_READ_ERROR;
 
-        // note: for the moment function still works only on ints
-        err = segy_get_tracefield_int( header, field, &f );
+        err = segy_get_tracefield( header, offset_map, field, &fd );
         if( err != 0 ) return err;
-        const uint8_t entry_type = traceheader_default_map[zfield].entry_type;
-        const uint8_t datatype = entry_type_to_datatype_map[entry_type];
-        if( ds->metadata.endianness == SEGY_LSB) {
-            f = bswap_header_word( f, segy_formatsize( datatype ) );
+
+        if( ds->metadata.endianness == SEGY_LSB ) {
+            err = bswap_header_word( &fd );
+            if( err != SEGY_OK ) return err;
         }
-        *buf = f;
+
+        switch( entry_type_to_datatype_map[fd.entry_type] ) {
+            case SEGY_SIGNED_INTEGER_8_BYTE:
+                memcpy( buf, &fd.value.i64, elemsize );
+                break;
+
+            case SEGY_SIGNED_INTEGER_4_BYTE:
+                memcpy( buf, &fd.value.i32, elemsize );
+                break;
+
+            case SEGY_SIGNED_SHORT_2_BYTE:
+                memcpy( buf, &fd.value.i16, elemsize );
+                break;
+
+            case SEGY_SIGNED_CHAR_1_BYTE:
+                memcpy( buf, &fd.value.i8, elemsize );
+                break;
+
+            case SEGY_UNSIGNED_INTEGER_8_BYTE:
+                memcpy( buf, &fd.value.u64, elemsize );
+                break;
+
+            case SEGY_UNSIGNED_INTEGER_4_BYTE:
+                memcpy( buf, &fd.value.u32, elemsize );
+                break;
+
+            case SEGY_UNSIGNED_SHORT_2_BYTE:
+                memcpy( buf, &fd.value.u16, elemsize );
+                break;
+
+            case SEGY_UNSIGNED_CHAR_1_BYTE:
+                memcpy( buf, &fd.value.u8, elemsize );
+                break;
+
+            default:
+                return SEGY_INVALID_FIELD_DATATYPE;
+        }
     }
 
     return SEGY_OK;
@@ -2117,7 +2165,7 @@ static int segy_line_indices( segy_datasource* ds,
                               int traceno,
                               int stride,
                               int num_indices,
-                              int* buf,
+                              void* buf,
                               long trace0,
                               int trace_bsize ) {
     return segy_field_forall( ds,
@@ -2281,7 +2329,7 @@ int segy_inline_indices( segy_datasource* ds,
                          int inline_count,
                          int crossline_count,
                          int offsets,
-                         int* buf,
+                         void* buf,
                          long trace0,
                          int trace_bsize) {
 
@@ -2303,7 +2351,7 @@ int segy_crossline_indices( segy_datasource* ds,
                             int inline_count,
                             int crossline_count,
                             int offsets,
-                            int* buf,
+                            void* buf,
                             long trace0,
                             int trace_bsize ) {
 

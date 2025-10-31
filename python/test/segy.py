@@ -2234,8 +2234,21 @@ def test_open_with_custom_mapping():
     with pytest.raises(ValueError, match=parse_error):
         segyio.open(testdata / 'mapping-invalid-value.sgy')
 
+    ilines = list(range(1, 4))
+    xlines = list(range(20, 22))
+    offsets = list(range(1, 2))
+
     with segyio.open(testdata / 'mapping-default.sgy') as f:
-        pass
+        assert list(f.ilines) == ilines
+        assert list(f.xlines) == xlines
+        assert list(f.offsets) == offsets
 
     with segyio.open(testdata / 'mapping-multiple-stanzas.sgy') as f:
-        pass
+        assert list(f.ilines) == ilines
+        assert list(f.xlines) == xlines
+        assert list(f.offsets) == offsets
+
+    with segyio.open(testdata / 'mapping-shifted.sgy') as f:
+        assert list(f.ilines) == ilines
+        assert list(f.xlines) == xlines
+        assert list(f.offsets) == offsets

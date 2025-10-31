@@ -779,12 +779,35 @@ class Attributes(Sequence):
     .. versionadded:: 1.1
     """
 
-    def __init__(self, field, segyfd, tracecount):
+    ENTRY_TYPE_TO_NUMPY = {
+        "int2": np.int16,
+        "int4": np.int32,
+        "int8": np.int64,
+        "uint2": np.uint16,
+        "uint4": np.uint32,
+        "uint8": np.uint64,
+        "ibmfp": np.float32,
+        "ieee32": np.float32,
+        "ieee64": np.float64,
+        "linetrc": np.uint32,
+        "reeltrc": np.uint32,
+        "linetrc8": np.uint64,
+        "reeltrc8": np.uint64,
+        "coor4":    np.int32,
+        "elev4":    np.int32,
+        "time2":    np.int16,
+        "spnum4":   np.int32,
+        # "scale6" unspported, unclear what to do yet
+    }
+
+    def __init__(self, field, segyfd, traceheader_layout, tracecount):
         super(Attributes, self).__init__(tracecount)
         self.field = field
         self.segyfd = segyfd
         self.tracecount = tracecount
-        self.dtype = np.intc
+
+        entry = traceheader_layout.entry_by_byte(field)
+        self.dtype = Attributes.ENTRY_TYPE_TO_NUMPY[entry.type]
 
     def __iter__(self):
         # attributes requires a custom iter, because self[:] returns a numpy

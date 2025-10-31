@@ -38,8 +38,8 @@ def infer_geometry(f, metrics, strict):
     return f
 
 
-def open(filename, mode="r", iline = 189,
-                             xline = 193,
+def open(filename, mode="r", iline = None,
+                             xline = None,
                              strict = True,
                              ignore_geometry = False,
                              endian = None,
@@ -82,12 +82,16 @@ def open(filename, mode="r", iline = 189,
         File access mode, read-only ('r', default) or read-write ('r+')
 
     iline : int or segyio.TraceField
-        Inline number field in the trace headers. Defaults to 189 as per the
-        SEG-Y rev1 specification
+        Overrides inline field offset in the trace headers. If no value is set,
+        value defined in xml mapping is used and if this one is absent the
+        standard-defined value 189 is used. By setting this value user takes
+        over responsibility of assuring parsing can be done correctly.
 
     xline : int or segyio.TraceField
-        Crossline number field in the trace headers. Defaults to 193 as per the
-        SEG-Y rev1 specification
+        Overrides crossline field offset in the trace headers. If no value is
+        set, value defined in xml mapping is used and if this one is absent the
+        standard-defined value 193 is used. By setting this value user takes
+        over responsibility of assuring parsing can be done correctly.
 
     strict : bool, optional
         Abort if a geometry cannot be inferred. Defaults to True.
@@ -169,8 +173,8 @@ def open(filename, mode="r", iline = 189,
 
 
 def open_with(stream,
-              iline=189,
-              xline=193,
+              iline=None,
+              xline=None,
               strict=True,
               ignore_geometry=False,
               endian=None,
@@ -210,8 +214,8 @@ def open_with(stream,
 
 
 def open_from_memory(memory_buffer,
-                   iline=189,
-                   xline=193,
+                   iline=None,
+                   xline=None,
                    strict=True,
                    ignore_geometry=False,
                    endian=None,
@@ -242,8 +246,8 @@ def open_from_memory(memory_buffer,
 
 
 def _open(datasource_descriptor,
-          iline=189,
-          xline=193,
+          iline=None,
+          xline=None,
           strict=True,
           ignore_geometry=False,
           endian=None,
@@ -251,18 +255,22 @@ def _open(datasource_descriptor,
           ):
 
     fd = datasource_descriptor.make_segyfile_descriptor()
+
+    if iline != None:
+        iline = int(iline)
+    if xline != None:
+        xline = int(xline)
+
     fd.segyopen(
         endianness=to_c_endianness(endian),
         encoding=to_c_encoding(encoding),
-        iline=int(iline),
-        xline=int(xline)
+        iline=iline,
+        xline=xline
     )
     metrics = fd.metrics()
 
     f = segyio.SegyFile(fd,
             datasource_descriptor,
-            iline = int(iline),
-            xline = int(xline),
             endian = endian,
     )
 
