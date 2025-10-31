@@ -333,9 +333,10 @@ class SegyFile(object):
 
     @property
     def ext_text_headers_count(self):
-        """Number of extended text header blocks.
+        """Number of extended textual file header records.
 
-        The number of extra text headers present in the file.
+        The number of 3200-byte, extended textual file header records following
+        the binary header.
 
         Returns
         -------
