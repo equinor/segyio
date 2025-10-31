@@ -224,7 +224,7 @@ struct smallheader : smallbasic {
     char header[ SEGY_TRACE_HEADER_SIZE ];
 
     smallheader() : smallbasic() {
-        Err err = segy_traceheader( fp, 0, header );
+        Err err = segy_read_standard_traceheader( fp, 0, header );
         REQUIRE( success( err ) );
     }
 };
@@ -1323,7 +1323,7 @@ SCENARIO( "modifying trace header", "[c.segy]" ) {
         fp->metadata.trace0 = 0;
 
         /* make a file and write to last trace (to accurately get size) */
-        err = segy_write_traceheader( fp, 10, emptyhdr );
+        err = segy_write_standard_traceheader( fp, 10, emptyhdr );
         REQUIRE( err == Err::ok() );
 
         err = segy_writetrace( fp, 10, emptytr );
@@ -1331,14 +1331,14 @@ SCENARIO( "modifying trace header", "[c.segy]" ) {
         /* memory map only after writing last trace, so size is correct */
         testcfg::config().mmap( fp );
 
-        err = segy_write_traceheader( fp, 5, header );
+        err = segy_write_standard_traceheader( fp, 5, header );
         CHECK( err == Err::ok() );
 
         THEN( "changes are observable on disk" ) {
             char fresh[ SEGY_TRACE_HEADER_SIZE ] = {};
             int ilno = 0;
             int scale = 0;
-            err = segy_traceheader( fp, 5, fresh );
+            err = segy_read_standard_traceheader( fp, 5, fresh );
             CHECK( err == Err::ok() );
             err = segy_get_tracefield_int( fresh, SEGY_TR_INLINE, &ilno );
             CHECK( err == Err::ok() );
@@ -1788,7 +1788,7 @@ SCENARIO( "reading a 2-byte int file", "[c.segy][2-byte]" ) {
         char buf[ SEGY_TRACE_HEADER_SIZE ] = {};
 
         GIVEN( "a valid field" ) {
-            err = segy_traceheader( fp, 0, buf );
+            err = segy_read_standard_traceheader( fp, 0, buf );
             CHECK( err == Err::ok() );
 
             int ilno = 0;

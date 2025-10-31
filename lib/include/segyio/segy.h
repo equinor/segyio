@@ -632,15 +632,15 @@ int segy_read_ext_textheader( segy_datasource*, int pos, char* buf );
  */
 int segy_write_textheader( segy_datasource*, int pos, const char* buf );
 
-/* Read the trace header at `traceno` into `buf`. */
-int segy_traceheader( segy_datasource*,
-                      int traceno,
-                      char* buf );
+/* Read the standard trace header at `traceno` into `buf`. */
+int segy_read_standard_traceheader( segy_datasource*,
+                                    int traceno,
+                                    char* buf );
 
-/* Read the trace header at `traceno` into `buf`. */
-int segy_write_traceheader( segy_datasource*,
-                            int traceno,
-                            const char* buf );
+/* Write the standard trace header at `traceno` from `buf` into file. */
+int segy_write_standard_traceheader( segy_datasource*,
+                                     int traceno,
+                                     const char* buf );
 
 /*
  * The sorting type will be written to `sorting` if the function can figure out

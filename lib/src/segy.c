@@ -1839,7 +1839,7 @@ static int bswap_th( char* xs, int lsb ) {
     return SEGY_OK;
 }
 
-int segy_traceheader( segy_datasource* ds,
+int segy_read_standard_traceheader( segy_datasource* ds,
                       int traceno,
                       char* buf ) {
 
@@ -1852,7 +1852,7 @@ int segy_traceheader( segy_datasource* ds,
     return bswap_th( buf, ds->metadata.endianness );
 }
 
-int segy_write_traceheader( segy_datasource* ds,
+int segy_write_standard_traceheader( segy_datasource* ds,
                             int traceno,
                             const char* buf ) {
     if( !ds->writable ) return SEGY_READONLY;
@@ -1914,7 +1914,7 @@ int segy_sample_interval( segy_datasource* ds, float fallback, float* dt ) {
 
     /* we don't need to figure out a trace size, since we're not advancing
      * beyond the first header */
-    err = segy_traceheader( ds, 0, trace_header );
+    err = segy_read_standard_traceheader( ds, 0, trace_header );
     if( err != 0 ) {
         return err;
     }
@@ -2033,7 +2033,7 @@ int segy_sorting( segy_datasource* ds,
     int err;
     char traceheader[ SEGY_TRACE_HEADER_SIZE ];
 
-    err = segy_traceheader( ds, 0, traceheader );
+    err = segy_read_standard_traceheader( ds, 0, traceheader );
     if( err != SEGY_OK ) return err;
 
     int traces;
@@ -2084,7 +2084,7 @@ int segy_sorting( segy_datasource* ds,
 
     int traceno = 1;
     while ( traceno < traces ) {
-        err = segy_traceheader( ds, traceno, traceheader );
+        err = segy_read_standard_traceheader( ds, traceno, traceheader );
         if( err ) return err;
         ++traceno;
 
@@ -2150,7 +2150,7 @@ int segy_offsets( segy_datasource* ds,
         return SEGY_OK;
     }
 
-    err = segy_traceheader( ds, 0, header );
+    err = segy_read_standard_traceheader( ds, 0, header );
     if( err != 0 ) return SEGY_FREAD_ERROR;
 
     segy_field_data fd;
@@ -2173,7 +2173,7 @@ int segy_offsets( segy_datasource* ds,
 
         if( offsets == traces ) break;
 
-        err = segy_traceheader( ds, offsets, header );
+        err = segy_read_standard_traceheader( ds, offsets, header );
         if( err != 0 ) return err;
 
         segy_get_tracefield( header, standard_map, il, &fd );
@@ -2199,7 +2199,7 @@ int segy_offset_indices( segy_datasource* ds,
         ds->traceheader_mapping_standard.offset_to_entry_definition;
 
     for( int i = 0; i < offsets; ++i ) {
-        int err = segy_traceheader( ds, i, header );
+        int err = segy_read_standard_traceheader( ds, i, header );
         if( err != SEGY_OK ) return err;
 
         err = segy_get_tracefield( header, standard_map, offset_field, &fd );
@@ -2234,7 +2234,7 @@ static int count_lines( segy_datasource* ds,
 
     int err;
     char header[ SEGY_TRACE_HEADER_SIZE ];
-    err = segy_traceheader( ds, 0, header );
+    err = segy_read_standard_traceheader( ds, 0, header );
     if( err != 0 ) return err;
 
     long first_lineno, first_offset, ln = 0, off = 0;
@@ -2263,7 +2263,7 @@ static int count_lines( segy_datasource* ds,
         if( curr == traces ) break;
         if( curr >  traces ) return SEGY_NOTFOUND;
 
-        err = segy_traceheader( ds, curr, header );
+        err = segy_read_standard_traceheader( ds, curr, header );
         if( err != 0 ) return err;
 
         segy_get_tracefield( header, standard_map, field, &fd );
@@ -3078,7 +3078,7 @@ static int scaled_cdp(
 
     char trheader[SEGY_TRACE_HEADER_SIZE];
 
-    int err = segy_traceheader( ds, traceno, trheader );
+    int err = segy_read_standard_traceheader( ds, traceno, trheader );
     if( err != 0 ) return err;
 
     const segy_entry_definition* standard_map =

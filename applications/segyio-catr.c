@@ -647,7 +647,7 @@ int main( int argc, char** argv ) {
                                      "out of range" ) );
             if( i > numtrh ) break;
 
-            err = segy_traceheader( src, i - 1, trheader );
+            err = segy_read_standard_traceheader( src, i - 1, trheader );
             if( err )
                 exit( errmsg( errno, "Unable to read trace header" ) );
 

@@ -35,8 +35,8 @@ segy_read_textheader
 segy_textheader_size
 segy_read_ext_textheader
 segy_write_textheader
-segy_traceheader
-segy_write_traceheader
+segy_read_standard_traceheader
+segy_write_standard_traceheader
 segy_sorting
 segy_offsets
 segy_offset_indices
