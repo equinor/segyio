@@ -57,10 +57,6 @@ jobs:
             build_type: "Debug"
             compiler_flags: "-Wextra -Wall -pedantic"
             build_python: "OFF"
-          - os: macos-13
-            privledges: "sudo"
-            build_type: "Release"
-            build_python: "OFF"
           - os: macos-latest
             privledges: "sudo"
             build_type: "Release"
