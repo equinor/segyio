@@ -1424,6 +1424,8 @@ static int bswap_header_word( segy_field_data* fd ) {
 }
 
 int segy_field_forall( segy_datasource* ds,
+                       int traceheader_index,
+                       const segy_entry_definition* offset_map,
                        int field,
                        int start,
                        int stop,
@@ -1436,8 +1438,6 @@ int segy_field_forall( segy_datasource* ds,
     segy_field_data fd;
     char header[SEGY_TRACE_HEADER_SIZE] = { 0 };
 
-    const segy_entry_definition* offset_map =
-        ds->traceheader_mapping_standard.offset_to_entry_definition;
     err = segy_get_tracefield( header, offset_map, field, &fd );
     if( err != SEGY_OK ) return SEGY_INVALID_ARGS;
 
@@ -1446,7 +1446,7 @@ int segy_field_forall( segy_datasource* ds,
 
     const int zfield = field - 1;
     for( int i = start; slicelen > 0; i += step, buf += elemsize, --slicelen ) {
-        err = seek_traceheader_offset( ds, i, 0, zfield );
+        err = seek_traceheader_offset( ds, i, traceheader_index, zfield );
         if( err != SEGY_OK ) return err;
 
         err = ds->read( ds, header + zfield, elemsize );
@@ -2250,6 +2250,8 @@ static int segy_line_indices( segy_datasource* ds,
                               int num_indices,
                               void* buf ) {
     return segy_field_forall( ds,
+                              0,
+                              ds->traceheader_mapping_standard.offset_to_entry_definition,
                               field,
                               traceno,                          /* start */
                               traceno + (num_indices * stride), /* stop */

@@ -1403,13 +1403,19 @@ PyObject* field_forall( segyfd* self, PyObject* args ) {
 
     PyObject* bufferobj;
     int start, stop, step;
+    uint16_t traceheader_index;
     int field;
 
-    if( !PyArg_ParseTuple( args, "Oiiii", &bufferobj,
-                                          &start,
-                                          &stop,
-                                          &step,
-                                          &field ) )
+    if( !PyArg_ParseTuple(
+            args,
+            "OHiiii",
+            &bufferobj,
+            &traceheader_index,
+            &start,
+            &stop,
+            &step,
+            &field
+        ) )
         return NULL;
 
     if( step == 0 ) return ValueError( "slice step cannot be zero" );
@@ -1417,7 +1423,17 @@ PyObject* field_forall( segyfd* self, PyObject* args ) {
     buffer_guard buffer( bufferobj, PyBUF_CONTIG );
     if( !buffer ) return NULL;
 
+    if( traceheader_index >= self->traceheader_mappings.size() ) {
+        return KeyError(
+            "no trace header mapping available for index %d", traceheader_index
+        );
+    }
+    const segy_entry_definition* map =
+        self->traceheader_mappings[traceheader_index].offset_to_entry_definition;
+
     const int err = segy_field_forall( ds,
+                                       traceheader_index,
+                                       map,
                                        field,
                                        start,
                                        stop,
@@ -1435,29 +1451,50 @@ PyObject* field_foreach( segyfd* self, PyObject* args ) {
     if( !ds ) return NULL;
 
     PyObject* bufferobj;
-    buffer_guard indices;
+    uint16_t traceheader_index;
+    buffer_guard indices; //int32 is expected, but not really assured
     int field;
-    if( !PyArg_ParseTuple( args, "Os*i", &bufferobj, &indices, &field ) )
+    if( !PyArg_ParseTuple(
+            args,
+            "OHs*i",
+            &bufferobj,
+            &traceheader_index,
+            &indices,
+            &field
+        ) )
         return NULL;
 
     buffer_guard bufout( bufferobj, PyBUF_CONTIG );
     if( !bufout ) return NULL;
 
-    if( bufout.len() != indices.len() )
+    if( traceheader_index >= self->traceheader_mappings.size() ) {
+        return KeyError(
+            "no trace header mapping available for index %d", traceheader_index
+        );
+    }
+    const segy_entry_definition* map =
+        self->traceheader_mappings[traceheader_index].offset_to_entry_definition;
+
+    int field_size = segy_formatsize( segy_entry_type_to_datatype(
+                                        map[field - 1].entry_type ));
+
+    int buffer_length = bufout.len() / field_size;
+    int indices_length = indices.len() / sizeof( int32_t );
+
+    if( buffer_length != indices_length )
         return ValueError( "internal: array size mismatch "
                            "(output %zd, indices %zd)",
-                           bufout.len(), indices.len() );
+                           buffer_length, indices_length );
 
     const int* ind = indices.buf< const int >();
-    int* out = bufout.buf< int >();
-    Py_ssize_t len = bufout.len() / sizeof(int);
+    char* out = bufout.buf< char >();
     int err = 0;
-    for( int i = 0; err == 0 && i < len; ++i ) {
-        err = segy_field_forall( ds, field,
+    for( int i = 0; err == 0 && i < buffer_length; ++i ) {
+        err = segy_field_forall( ds, traceheader_index, map, field,
                                      ind[ i ],
                                      ind[ i ] + 1,
                                      1,
-                                     out + i );
+                                     out + i * field_size );
     }
 
     if( err ) return Error( err );

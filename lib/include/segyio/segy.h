@@ -559,6 +559,8 @@ int segy_set_binfield_int( char* header, int field, int val );
 
 
 int segy_field_forall( segy_datasource*,
+                       int traceheader_index,
+                       const segy_entry_definition* offset_map,
                        int field,
                        int start,
                        int stop,
