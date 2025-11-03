@@ -1153,6 +1153,8 @@ TEST_CASE_METHOD( smallfields,
 
     std::vector< int > out( inlines.size() );
     const Err err = segy_field_forall( fp,
+                                       0,
+                                       segy_traceheader_default_map(),
                                        il,
                                        start, stop, step,
                                        out.data() );
@@ -1176,6 +1178,8 @@ TEST_CASE_METHOD( smallfields,
 
     std::vector< int > out( crosslines.size() );
     const Err err = segy_field_forall( fp,
+                                       0,
+                                       segy_traceheader_default_map(),
                                        xl,
                                        start, stop, step,
                                        out.data() );
@@ -1198,6 +1202,8 @@ TEST_CASE_METHOD( smallfields,
 
     std::vector< int > out( crosslines.size() );
     const Err err = segy_field_forall( fp,
+                                       0,
+                                       segy_traceheader_default_map(),
                                        xl,
                                        start, stop, step,
                                        out.data() );
@@ -1220,6 +1226,8 @@ TEST_CASE_METHOD( smallfields,
 
     std::vector< int > out( crosslines.size() );
     const Err err = segy_field_forall( fp,
+                                       0,
+                                       segy_traceheader_default_map(),
                                        xl,
                                        start, stop, step,
                                        out.data() );
@@ -1236,6 +1244,8 @@ TEST_CASE_METHOD( smallfields,
 
     std::vector< int > out( crosslines.size() );
     const Err err = segy_field_forall( fp,
+                                       0,
+                                       segy_traceheader_default_map(),
                                        xl,
                                        start, stop, step,
                                        out.data() );

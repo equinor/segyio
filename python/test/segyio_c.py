@@ -491,9 +491,9 @@ def read_traceheaders_forall(f, mmap):
     field = segyio.TraceField.INLINE_3D
 
     with pytest.raises(ValueError):
-        f.field_forall(attrs, start, stop, 0, field)
+        f.field_forall(attrs, 0, start, stop, 0, field)
 
-    buf_handle = f.field_forall(attrs, start, stop, step, field)
+    buf_handle = f.field_forall(attrs, 0, start, stop, step, field)
     numpy.testing.assert_array_equal(attrs, [5, 4, 3, 2, 1])
     assert buf_handle is attrs
 
@@ -507,9 +507,9 @@ def read_traceheaders_foreach(f, mmap):
     field = segyio.TraceField.CROSSLINE_3D
 
     with pytest.raises(ValueError):
-        f.field_foreach(numpy.empty(1, dtype=numpy.intc), indices, field)
+        f.field_foreach(numpy.empty(1, dtype=numpy.intc), 0, indices, field)
 
-    buf_handle = f.field_foreach(attrs, indices, field)
+    buf_handle = f.field_foreach(attrs, 0, indices, field)
     numpy.testing.assert_array_equal(attrs, [22, 24, 21, 23, 20])
     assert buf_handle is attrs
 
