@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
+#include <memory>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -1213,8 +1214,15 @@ PyObject* getfield( segyfd* self, PyObject* args ) {
         case SEGY_UNSIGNED_CHAR_1_BYTE:
             return PyLong_FromUnsignedLong( fd.value.u8 );
 
+        case SEGY_IBM_FLOAT_4_BYTE:
+        case SEGY_IEEE_FLOAT_4_BYTE:
+            return PyFloat_FromDouble( fd.value.f32 );
         case SEGY_IEEE_FLOAT_8_BYTE:
             return PyFloat_FromDouble( fd.value.f64 );
+
+        case SEGY_STRING_8_BYTE: {
+            return PyBytes_FromStringAndSize( fd.value.str8, 8 );
+        }
 
         default:
             return KeyError( "Unhandled entry type %d for field %d", fd.entry_type, field );
@@ -1371,6 +1379,7 @@ PyObject* putfield( segyfd* self, PyObject *args ) {
                 fd.value.f64 = val;
                 break;
             }
+        case SEGY_IBM_FLOAT_4_BYTE:
         case SEGY_IEEE_FLOAT_4_BYTE:
             {
                 float val = static_cast<float>( PyFloat_AsDouble( value_arg ) );
@@ -1381,6 +1390,18 @@ PyObject* putfield( segyfd* self, PyObject *args ) {
                 break;
             }
             break;
+            case SEGY_STRING_8_BYTE: {
+                char* ptr = nullptr;
+                Py_ssize_t len = 0;
+                if( PyBytes_AsStringAndSize( value_arg, &ptr, &len ) == -1 ) {
+                    return ValueError( "Value must be a bytes object of length 8 at field %d", field );
+                }
+                if( len != 8 ) {
+                    return ValueError( "Value must be exactly 8 bytes, got %zd", len );
+                }
+                memcpy( fd.value.str8, ptr, len );
+                break;
+            }
         default:
             return KeyError( "Field %d has unknown entry type %d", field, fd.entry_type );
     }
@@ -1450,7 +1471,7 @@ PyObject* field_forall( segyfd* self, PyObject* args ) {
                                        start,
                                        stop,
                                        step,
-                                       buffer.buf< int >() );
+                                       buffer.buf< char >() );
 
     if( err ) return Error( err );
 
@@ -2670,9 +2691,11 @@ int set_mapping_offset_to_entry_defintion(
     std::string spec_entry_type,
     bool requires_nonzero_value
 ) {
-    char* spec_entry_name_heap = new char[spec_entry_name.size() + 1];
-    if( !spec_entry_name_heap ) return SEGY_MEMORY_ERROR;
-    std::strcpy( spec_entry_name_heap, spec_entry_name.c_str() );
+    std::unique_ptr<char[]> spec_entry_name_ptr(
+        new char[spec_entry_name.size() + 1]
+    );
+    if( !spec_entry_name_ptr ) return SEGY_MEMORY_ERROR;
+    std::strcpy( spec_entry_name_ptr.get(), spec_entry_name.c_str() );
 
     SEGY_ENTRY_TYPE entry_type = SEGY_ENTRY_TYPE_UNDEFINED;
     if( spectype_to_segytype_map.count( spec_entry_type ) ) {
@@ -2680,10 +2703,43 @@ int set_mapping_offset_to_entry_defintion(
     }
     if( entry_type == SEGY_ENTRY_TYPE_UNDEFINED ) return SEGY_INVALID_ARGS;
 
+    if( entry_type == SEGY_ENTRY_TYPE_SCALE6_MANT ) {
+        const int byte_mant = byte;
+        const int byte_exp = byte + 4;
+        if( byte_exp < 1 || byte_exp > SEGY_TRACE_HEADER_SIZE ) {
+            return SEGY_INVALID_ARGS;
+        }
+
+        std::string mant_name = spec_entry_name + "_mant";
+        std::unique_ptr<char[]> mant_name_ptr( new char[mant_name.size() + 1] );
+        if( !mant_name_ptr ) return SEGY_MEMORY_ERROR;
+        std::strcpy( mant_name_ptr.get(), mant_name.c_str() );
+
+        std::string exp_name = spec_entry_name + "_exp";
+        std::unique_ptr<char[]> exp_name_ptr( new char[exp_name.size() + 1] );
+        if( !exp_name_ptr ) return SEGY_MEMORY_ERROR;
+        std::strcpy( exp_name_ptr.get(), exp_name.c_str() );
+
+        segy_entry_definition def_mant = {
+            SEGY_ENTRY_TYPE_SCALE6_MANT,
+            requires_nonzero_value,
+            mant_name_ptr.release()
+        };
+        segy_entry_definition def_exp = {
+            SEGY_ENTRY_TYPE_SCALE6_EXP,
+            requires_nonzero_value,
+            exp_name_ptr.release()
+        };
+
+        mapping->offset_to_entry_definition[byte_mant - 1] = def_mant;
+        mapping->offset_to_entry_definition[byte_exp - 1] = def_exp;
+        return SEGY_OK;
+    }
+
     segy_entry_definition def = {
         entry_type,
         requires_nonzero_value,
-        spec_entry_name_heap
+        spec_entry_name_ptr.release()
     };
     mapping->offset_to_entry_definition[byte - 1] = def;
     return SEGY_OK;

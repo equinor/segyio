@@ -1298,6 +1298,84 @@ TEST_CASE( "setting correct header fields succeeds",
     CHECK( output == input );
 }
 
+TEST_CASE( "setting correct header fields of float types", "[c.segy]" ) {
+    char header[SEGY_TRACE_HEADER_SIZE] = {};
+
+    const double value = 123.75;
+    SEGY_ENTRY_TYPE entry_type = GENERATE(
+        SEGY_ENTRY_TYPE_IEEE64,
+        SEGY_ENTRY_TYPE_IEEE32,
+        SEGY_ENTRY_TYPE_IBMFP
+    );
+
+    segy_field_data fd;
+    fd.entry_type = entry_type;
+
+    switch( entry_type ) {
+        case SEGY_ENTRY_TYPE_IEEE64:
+            fd.value.f64 = value;
+            break;
+        case SEGY_ENTRY_TYPE_IEEE32:
+        case SEGY_ENTRY_TYPE_IBMFP:
+            fd.value.f32 = value;
+            break;
+        default:
+            FAIL( "unsupported entry type" );
+    }
+
+    int offset = 45;
+    segy_entry_definition offset_map[240];
+    segy_entry_definition def = { entry_type, false, NULL };
+    offset_map[offset - 1] = def;
+
+    Err err = segy_set_tracefield( header, offset_map, offset, fd );
+    CHECK( err == Err::ok() );
+
+    segy_field_data fd_out;
+    err = segy_get_tracefield( header, offset_map, offset, &fd_out );
+    CHECK( err == Err::ok() );
+
+    switch( entry_type ) {
+        case SEGY_ENTRY_TYPE_IEEE64: {
+            CHECK( fd_out.value.f64 == value );
+            break;
+        }
+
+        case SEGY_ENTRY_TYPE_IEEE32:
+        case SEGY_ENTRY_TYPE_IBMFP:
+            CHECK( fd_out.value.f32 == value );
+            break;
+        default:
+            FAIL( "unsupported entry type" );
+    }
+}
+
+TEST_CASE( "setting correct header fields of string type", "[c.segy]" ) {
+    char header[SEGY_TRACE_HEADER_SIZE] = {};
+    std::string value = "TEST";
+
+    SEGY_ENTRY_TYPE entry_type = SEGY_ENTRY_TYPE_STRING8;
+
+    segy_field_data fd;
+    fd.entry_type = entry_type;
+    memset( fd.value.str8, '\0', 8 );
+    memcpy( fd.value.str8, value.c_str(), value.size() );
+
+    int offset = 45;
+    segy_entry_definition offset_map[240];
+    segy_entry_definition def = { entry_type, false, NULL };
+    offset_map[offset - 1] = def;
+
+    Err err = segy_set_tracefield( header, offset_map, offset, fd );
+    CHECK( err == Err::ok() );
+
+    segy_field_data fd_out;
+    err = segy_get_tracefield( header, offset_map, offset, &fd_out );
+    CHECK( err == Err::ok() );
+
+    CHECK( std::string( fd_out.value.str8, value.size() ) == value );
+}
+
 SCENARIO( "modifying trace header", "[c.segy]" ) {
 
     const int samples = 10;
