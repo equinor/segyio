@@ -1389,39 +1389,35 @@ static int slicelength( int start, int stop, int step ) {
     return (stop - start - 1) / step + 1;
 }
 
-static int bswap_header_word( segy_field_data* fd ) {
-    uint8_t datatype = entry_type_to_datatype_map[fd->entry_type];
-    switch( datatype ) {
-        case SEGY_SIGNED_INTEGER_8_BYTE:
-            fd->value.i64 = bswap64( fd->value.i64 );
-            return SEGY_OK;
+/* Byte-swaps field value in the header. Returns new offset after swapping or -1
+ * if error occurred.
+ */
+static int bswap_header_field_value(
+    const segy_entry_definition* mapping,
+    char* xs,
+    int offset
+) {
+    int datatype = segy_entry_type_to_datatype( mapping[offset].entry_type );
+    if( datatype == SEGY_UNDEFINED_FIELD ) return offset + 1;
+    if( datatype == SEGY_STRING_8_BYTE ) return offset + 8;
 
-        case SEGY_SIGNED_INTEGER_4_BYTE:
-            fd->value.i32 = bswap32( fd->value.i32 );
-            return SEGY_OK;
-
-        case SEGY_SIGNED_SHORT_2_BYTE:
-            fd->value.i16 = bswap16( fd->value.i16 );
-            return SEGY_OK;
-
-        case SEGY_UNSIGNED_INTEGER_8_BYTE:
-            fd->value.u64 = bswap64( fd->value.u64 );
-            return SEGY_OK;
-
-        case SEGY_UNSIGNED_INTEGER_4_BYTE:
-            fd->value.u32 = bswap32( fd->value.u32 );
-            return SEGY_OK;
-
-        case SEGY_UNSIGNED_SHORT_2_BYTE:
-            fd->value.u16 = bswap16( fd->value.u16 );
-            return SEGY_OK;
-
-        case SEGY_UNSIGNED_CHAR_1_BYTE:
-        case SEGY_SIGNED_CHAR_1_BYTE:
-            return SEGY_OK;
+    int size = segy_formatsize( datatype );
+    switch( size ) {
+        case 8:
+            bswap64_mem( xs + offset, xs + offset );
+            break;
+        case 4:
+            bswap32_mem( xs + offset, xs + offset );
+            break;
+        case 2:
+            bswap16_mem( xs + offset, xs + offset );
+            break;
+        case 1:
+            break;
         default:
-            return SEGY_INVALID_FIELD_DATATYPE;
+            return -1;
     }
+    return offset + size;
 }
 
 int segy_field_forall( segy_datasource* ds,
@@ -1452,14 +1448,13 @@ int segy_field_forall( segy_datasource* ds,
 
         err = ds->read( ds, header + zfield, elemsize );
         if( err != 0 ) return SEGY_DS_READ_ERROR;
+        if( ds->metadata.endianness == SEGY_LSB ) {
+            int next = bswap_header_field_value( offset_map, header, zfield );
+            if( next < 0 ) return SEGY_INVALID_FIELD_DATATYPE;
+        }
 
         err = segy_get_tracefield( header, offset_map, field, &fd );
         if( err != 0 ) return err;
-
-        if( ds->metadata.endianness == SEGY_LSB ) {
-            err = bswap_header_word( &fd );
-            if( err != SEGY_OK ) return err;
-        }
 
         switch( entry_type_to_datatype_map[fd.entry_type] ) {
             case SEGY_SIGNED_INTEGER_8_BYTE:
@@ -1508,28 +1503,9 @@ static int bswap_bin( const segy_datasource* ds, char* xs ) {
     const segy_entry_definition* binmap = segy_binheader_map();
     int offset = 0;
     while( offset < SEGY_BINARY_HEADER_SIZE ) {
-        int datatype = segy_entry_type_to_datatype( binmap[offset].entry_type );
-        if( datatype == SEGY_UNDEFINED_FIELD ) {
-            ++offset;
-            continue;
-        }
-        int size = segy_formatsize( datatype );
-        switch( size ) {
-            case 8:
-                bswap64_mem( xs + offset, xs + offset );
-                break;
-            case 4:
-                bswap32_mem( xs + offset, xs + offset );
-                break;
-            case 2:
-                bswap16_mem( xs + offset, xs + offset );
-                break;
-            case 1:
-                break;
-            default:
-                return SEGY_INVALID_FIELD_DATATYPE;
-        }
-        offset += size;
+        int next = bswap_header_field_value( binmap, xs, offset );
+        if( next < 0 ) return SEGY_INVALID_FIELD_DATATYPE;
+        offset = next;
     }
     return SEGY_OK;
 }
@@ -1734,28 +1710,9 @@ static int bswap_th(
 
     int offset = 0;
     while( offset < SEGY_TRACE_HEADER_SIZE ) {
-        int datatype = segy_entry_type_to_datatype( mapping[offset].entry_type );
-        if( datatype == SEGY_UNDEFINED_FIELD ) {
-            ++offset;
-            continue;
-        }
-        int size = segy_formatsize( datatype );
-        switch( size ) {
-            case 8:
-                bswap64_mem( xs + offset, xs + offset );
-                break;
-            case 4:
-                bswap32_mem( xs + offset, xs + offset );
-                break;
-            case 2:
-                bswap16_mem( xs + offset, xs + offset );
-                break;
-            case 1:
-                break;
-            default:
-                return SEGY_INVALID_FIELD_DATATYPE;
-        }
-        offset += size;
+        int next = bswap_header_field_value( mapping, xs, offset );
+        if( next < 0 ) return SEGY_INVALID_FIELD_DATATYPE;
+        offset = next;
     }
     return SEGY_OK;
 }
