@@ -2264,6 +2264,9 @@ def test_open_with_custom_mapping():
         assert list(f.xlines) == xlines
         assert list(f.offsets) == offsets
 
+    with pytest.raises(ValueError, match=r"invalid field datatype*"):
+        segyio.open(testdata / 'mapping-unsupported-type.sgy')
+
 
 def test_trace_header_extensions():
     with segyio.open(testdata / 'trace-header-extensions.sgy') as f:
@@ -2274,3 +2277,134 @@ def test_trace_header_extensions():
 
         assert np.array_equal(f.attributes(TraceField.INLINE_3D), [1, 1])
         assert np.array_equal(f.attributes(TraceField.CROSSLINE_3D), [20, 21])
+
+
+@pytest.mark.parametrize(
+    "endianness, filename",
+    [
+        ("big", "mapping-all-types.sgy"),
+        ("little", "mapping-all-types-lsb.sgy"),
+    ]
+)
+@tmpfiles(testdata / 'mapping-all-types.sgy')
+@tmpfiles(testdata / 'mapping-all-types-lsb.sgy')
+def test_read_write_all_custom_mapping_types(tmpdir, endianness, filename):
+    from dataclasses import dataclass
+    import numbers
+
+    @dataclass
+    class HeaderTest:
+        name: str
+        opened: numbers.Real
+        changed: numbers.Real
+
+    trace0_ext_header1_cases = [
+        HeaderTest("int2", 1, -101),
+        HeaderTest("int4", 2, -102),
+        HeaderTest("int8", 3, -103),
+        HeaderTest("uint2", 4, 104),
+        HeaderTest("uint4", 5, 105),
+        HeaderTest("uint8", 6, 106),
+        HeaderTest("ibmfp", 7.0, -107.0),
+        HeaderTest("ieee32", 8.0, -108.0),
+        HeaderTest("ieee64", 9.0, -109.0),
+        HeaderTest("linetrc", 10, 110),
+        HeaderTest("reeltrc", 11, 111),
+        HeaderTest("linetrc8", 12, 112),
+        HeaderTest("reeltrc8", 13, 113),
+        # scaled values are not scaled. As in segyio 1.x, raw value is returned
+        HeaderTest("coor4", 14, -114),
+        HeaderTest("elev4", 15, -115),
+        HeaderTest("time2", 16, -116),
+        HeaderTest("spnum4", 17, -117),
+        # scale 6 type is inconsistent and not supported well yet
+        HeaderTest("scale6_mant", 18, -118),
+        HeaderTest("scale6_exp", 19, -119),
+        HeaderTest("header_name", b"TYPES\x00\x00\x00", b"TYPES   "),
+    ]
+
+    trace1_ext_header1_cases = [
+        HeaderTest("int2", -1001, 10001),
+        HeaderTest("int4", -1002, 2000002),
+        HeaderTest("int8", -1003, 3000000003),
+        HeaderTest("uint2", 1004, 4004),
+        HeaderTest("uint4", 1005, 5000005),
+        HeaderTest("uint8", 1006, 60000000006),
+        HeaderTest("ibmfp", -1007.0, 707.125),
+        HeaderTest("ieee32", -1008.0, 808.75),
+        HeaderTest("ieee64", -1009.0, 909.5),
+        HeaderTest("linetrc", 1010, 10010),
+        HeaderTest("reeltrc", 1011, 10011),
+        HeaderTest("linetrc8", 1012, 1000012),
+        HeaderTest("reeltrc8", 1013, 1000013),
+        HeaderTest("coor4", -1014, 100014),
+        HeaderTest("elev4", -1015, 100015),
+        HeaderTest("time2", -1016, 10016),
+        HeaderTest("spnum4", -1017, 100017),
+        # scale 6 type is inconsistent and not supported well yet
+        HeaderTest("scale6_mant", -1018, 1018),
+        HeaderTest("scale6_exp", -1019, 1019),
+        HeaderTest("header_name", b"TYPES\x00\x00\x00", b"TYPES   "),
+    ]
+
+    headers = {
+        0: trace0_ext_header1_cases,
+        1: trace1_ext_header1_cases,
+    }
+
+    traceheader_index = 1
+
+    # all internal calls are temporary!
+    # they would be exchanged with proper ones once python interface is in place
+    with segyio.open(tmpdir / filename, mode='r+', endian=endianness) as f:
+        def mkempty():
+            return bytearray(240)
+
+        types_layout = f._traceheader_layouts["TYPES"]
+        for trace_index, header_cases in headers.items():
+            for case in header_cases:
+                offset = types_layout.entry_by_name(case.name).byte
+
+                # assert f.traceheader[trace_index][traceheader_index][offset] == case.opened
+                traceheader = f.segyfd.getth(
+                    trace_index, traceheader_index, mkempty())
+                assert f.segyfd.getfield(
+                    traceheader, traceheader_index, offset) == case.opened
+
+                # f.traceheader[trace_index][traceheader_index][offset] = case.changed
+                f.segyfd.putfield(
+                    traceheader, traceheader_index, offset, case.changed)
+                f.segyfd.putth(trace_index, traceheader_index, traceheader)
+
+                # assert f.traceheader[trace_index][traceheader_index][offset] == case.changed
+                traceheader = f.segyfd.getth(
+                    trace_index, traceheader_index, mkempty())
+                assert f.segyfd.getfield(
+                    traceheader, traceheader_index, offset) == case.changed
+
+        with pytest.raises(ValueError, match=r"Value out of range*"):
+            offset = types_layout.entry_by_name("int2").byte
+
+            # f.traceheader[trace_index][traceheader_index][offset] = 50000
+            f.segyfd.putfield(traceheader, traceheader_index, offset, 50000)
+
+        from segyio.trace import Attributes
+        for i, case in enumerate(trace0_ext_header1_cases):
+            if (case.name == "scale6_mant") or (case.name == "scale6_exp"):
+                # scale6 is not properly supported yet
+                continue
+
+            if case.name == "header_name":
+                type = "string8"
+            else:
+                type = case.name
+
+            offset = types_layout.entry_by_name(case.name).byte
+            expected = np.array(
+                [trace0_ext_header1_cases[i].changed, trace1_ext_header1_cases[i].changed])
+
+            # attrs = f.attributes(offset, traceheader_index)
+            attrs = np.empty(2, dtype=Attributes.ENTRY_TYPE_TO_NUMPY[type])
+            f.segyfd.field_forall(attrs, traceheader_index, 0, 2, 1, offset)
+
+            np.testing.assert_array_equal(attrs, expected)

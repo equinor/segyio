@@ -96,6 +96,8 @@ Files are created manually.
 
 | File                           | Purpose                                                       |
 |--------------------------------|---------------------------------------------------------------|
+| mapping-all-types.sgy          | Entries are given all types possible.                         |
+| mapping-all-types-lsb.sgy      | `flip-endianness.py mapping-all-types.sgy out.sgy`            |
 | mapping-default.sgy            | XML corresponds exactly to the default SEG-Y rev 2.1 mapping. |
 | mapping-empty.sgy              | Root does not have minimal number of required fields.         |
 | mapping-invalid-attribute.sgy  | Last entry does not have 'byte' attribute.                    |
@@ -105,4 +107,5 @@ Files are created manually.
 | mapping-multiple-stanzas.sgy   | Other stanzas are present before and after layout stanza.     |
 | mapping-shifted.sgy            | Default mapping with all offsets shifted by 1 byte.           |
 | mapping-unparsable.sgy         | XML is unparsable.                                            |
+| mapping-unsupported-type.sgy   | One axis value is of type segyio doesn't allow in that field. |
 

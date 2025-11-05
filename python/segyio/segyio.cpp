@@ -71,14 +71,9 @@ PyObject* ValueError( const char* msg ) {
     return NULL;
 }
 
-template< typename T1 >
-PyObject* ValueError( const char* msg, T1 t1 ) {
-    return PyErr_Format( PyExc_ValueError, msg, t1 );
-}
-
-template< typename T1, typename T2 >
-PyObject* ValueError( const char* msg, T1 t1, T2 t2 ) {
-    return PyErr_Format( PyExc_ValueError, msg, t1, t2 );
+template< typename... Args >
+PyObject* ValueError( const char* msg, Args... args ) {
+    return PyErr_Format( PyExc_ValueError, msg, args... );
 }
 
 template< typename T1, typename T2 >
@@ -1560,6 +1555,11 @@ struct metrics_errmsg {
             case SEGY_INVALID_FIELD:
                 return IndexError( "invalid iline, (%i), xline (%i), "
                                    "or offset (%i) field", il, xl, of );
+
+            case SEGY_INVALID_FIELD_DATATYPE:
+                return ValueError( "invalid field datatype for "
+                                   "iline, (%i), xline (%i) or offset (%i) field",
+                                   il, xl, of );
 
             case SEGY_INVALID_SORTING:
                 return RuntimeError( "unable to find sorting."
