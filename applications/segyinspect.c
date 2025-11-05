@@ -82,23 +82,20 @@ int main(int argc, char* argv[]) {
 
     const int format = fp->metadata.format;
     const int samples = fp->metadata.samplecount;
-    const long trace0 = fp->metadata.trace0;
-    const long trace_bsize = fp->metadata.trace_bsize;
     const int traces = fp->metadata.tracecount;
 
     int sorting;
     err = segy_sorting( fp, il_field,
                             xl_field,
                             SEGY_TR_OFFSET,
-                            &sorting,
-                            trace0, trace_bsize );
+                            &sorting );
     if( err != 0 ) {
         perror( "Could not determine sorting" );
         exit( err );
     }
 
     int offsets;
-    err = segy_offsets( fp, il_field, xl_field, traces, &offsets, trace0, trace_bsize );
+    err = segy_offsets( fp, il_field, xl_field, traces, &offsets );
     if( err != 0 ) {
         perror( "Could not determine offsets" );
         exit( err );
@@ -106,9 +103,9 @@ int main(int argc, char* argv[]) {
 
     int inline_count, crossline_count;
     if( sorting == SEGY_INLINE_SORTING ) {
-        err = segy_count_lines( fp, xl_field, offsets, &inline_count, &crossline_count, trace0, trace_bsize );
+        err = segy_count_lines( fp, xl_field, offsets, &inline_count, &crossline_count );
     } else {
-        err = segy_count_lines( fp, il_field, offsets, &crossline_count, &inline_count, trace0, trace_bsize );
+        err = segy_count_lines( fp, il_field, offsets, &crossline_count, &inline_count );
     }
 
     if( err != 0 ) {
@@ -120,13 +117,13 @@ int main(int argc, char* argv[]) {
     int* inline_indices = malloc( sizeof( int ) * inline_count );
     int* crossline_indices = malloc( sizeof( int ) * crossline_count );
 
-    err = segy_inline_indices( fp, il_field, sorting, inline_count, crossline_count, offsets, inline_indices, trace0, trace_bsize );
+    err = segy_inline_indices( fp, il_field, sorting, inline_count, crossline_count, offsets, inline_indices );
     if( err != 0 ) {
         perror( "Could not determine inline numbers" );
         exit( err );
     }
 
-    err = segy_crossline_indices( fp, xl_field, sorting, inline_count, crossline_count, offsets, crossline_indices, trace0, trace_bsize );
+    err = segy_crossline_indices( fp, xl_field, sorting, inline_count, crossline_count, offsets, crossline_indices );
     if( err != 0 ) {
         fprintf( stderr, "Errcode %d\n", err );
         perror( "Could not determine crossline numbers" );

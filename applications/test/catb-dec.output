@@ -37,9 +37,9 @@ rev       	218
 revmin    	217
 trflag    	32729
 exth      	0
-maxtrh    	32727
+maxtrh    	0
 survty    	32726
 timebc    	32725
 ntrst     	18446744073709551572
-ftroff    	18446744073709551571
+ftroff    	3600
 ntr       	2147483602

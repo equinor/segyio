@@ -58,10 +58,15 @@ void mexFunction(int nlhs, mxArray *plhs[],
             goto CLEANUP;
         }
 
+        fp->metadata.format = spec.sample_format;
+        fp->metadata.trace0 = spec.first_trace_pos;
+        fp->metadata.trace_bsize = spec.trace_bsize;
+        fp->metadata.samplecount = spec.sample_count;
+
         plhs[0] = mxCreateNumericMatrix(spec.sample_count, line_length, mxSINGLE_CLASS, mxREAL);
         float *data_ptr = (float *) mxGetData(plhs[0]);
 
-        errc = segy_read_line( fp, line_trace0, line_length, stride, offsets, data_ptr, spec.first_trace_pos, spec.trace_bsize );
+        errc = segy_read_line( fp, line_trace0, line_length, stride, offsets, data_ptr );
         if (errc != 0) {
             goto CLEANUP;
         }
@@ -77,6 +82,11 @@ void mexFunction(int nlhs, mxArray *plhs[],
             goto CLEANUP;
         }
 
+        fp->metadata.format = spec.sample_format;
+        fp->metadata.trace0 = spec.first_trace_pos;
+        fp->metadata.trace_bsize = spec.trace_bsize;
+        fp->metadata.samplecount = spec.sample_count;
+
         const mxArray* mx_data = prhs[6];
 
         float *data_ptr = (float *) mxGetData(mx_data);
@@ -86,7 +96,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
             goto CLEANUP;
         }
 
-        errc = segy_write_line( fp, line_trace0, line_length, stride, offsets, data_ptr, spec.first_trace_pos, spec.trace_bsize );
+        errc = segy_write_line( fp, line_trace0, line_length, stride, offsets, data_ptr );
         if (errc != 0) {
             goto CLEANUP;
         }

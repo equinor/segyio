@@ -24,7 +24,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
 
     mwSize dims[ 1 ] = { SEGY_TRACE_HEADER_SIZE };
     plhs[ 0 ] = mxCreateCharArray( 1, dims );
-    err = segy_traceheader( fp, traceno, mxGetData( plhs[ 0 ] ), fmt.trace0, fmt.trace_bsize );
+    err = segy_read_standard_traceheader( fp, traceno, mxGetData( plhs[ 0 ] ) );
 
     segy_close( fp );
 

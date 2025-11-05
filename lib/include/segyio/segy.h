@@ -285,7 +285,7 @@ typedef struct {
     int ext_textheader_count;
 
     /* Byte offset of the first trace in the file. */
-    long trace0;
+    unsigned long long trace0;
 
     /* Number of samples in each trace. */
     int samplecount;
@@ -417,7 +417,7 @@ typedef struct {
  * Output parameters are non-const pointers, input parameters are const
  * pointers or plain values. All functions are namespace-prefix'd with segy_.
  * Some functions return values, notably the family concerned with the binary
- * header such as segy_trace0, that should be used in consecutive segy function
+ * header such as segy_trsize, that should be used in consecutive segy function
  * calls that use the same name for one of its parameters.
  */
 
@@ -461,6 +461,14 @@ int segy_write_binheader( segy_datasource*, const char* buf );
  * up to 65536 samples per trace.
  */
 int segy_samples( const char* binheader );
+
+/*
+ * Gets number of traceheaders expected for each trace. For rev1 files it is
+ * always 1, for higher revisions it equals to maximum number of traceheaders in
+ * bytes 3507–3508 + 1. Custom number of traceheaders for each trace is not
+ * supported.
+ */
+int segy_traceheaders( const char* binheader, int* traceheader_count );
 /*
  * infer the interval between traces. this function tries to read the interval
  * from the binary header and the first trace header, and will fall back to the
@@ -550,9 +558,7 @@ int segy_field_forall( segy_datasource*,
                        int start,
                        int stop,
                        int step,
-                       void* buf,
-                       long trace0,
-                       int trace_bsize );
+                       void* buf );
 
 /*
  * exception: segy_trace_bsize computes the size of the traces in bytes. Cannot
@@ -565,13 +571,25 @@ int segy_trace_bsize( int samples );
  * a negative value. If `samples` is zero or negative, the result is undefined.
  */
 int segy_trsize( int format, int samples );
-/* byte-offset of the first trace header. */
-long segy_trace0( const char* binheader );
+
+/* Sets byte-offset of the first trace header.
+ *
+ * Returns the value from 3521–3528 if it is positive. Otherwise function would
+ * calculate implied trace0 consulting ext_textheader_count. If provided value
+ * is negative, attempt would be made to read value from fields 3505–3506 and
+ * error code is returned if this value is negative too.
+ */
+int segy_trace0(
+    const char* binheader,
+    unsigned long long* trace0,
+    int ext_textheader_count
+);
+
 /*
  * number of traces in this file.
  * if this function fails, the input argument is not modified.
  */
-int segy_traces( segy_datasource*, int*, long trace0, int trace_bsize );
+int segy_traces( segy_datasource*, int* );
 
 int segy_sample_indices( segy_datasource*,
                          float t0,
@@ -614,19 +632,29 @@ int segy_read_ext_textheader( segy_datasource*, int pos, char* buf );
  */
 int segy_write_textheader( segy_datasource*, int pos, const char* buf );
 
-/* Read the trace header at `traceno` into `buf`. */
-int segy_traceheader( segy_datasource*,
-                      int traceno,
-                      char* buf,
-                      long trace0,
-                      int trace_bsize );
+/* Read the 'traceheaderno' trace header at `traceno` into `buf`. */
+int segy_read_traceheader( segy_datasource*,
+                           int traceno,
+                           int traceheader_no,
+                           const segy_entry_definition* mapping,
+                           char* buf );
 
-/* Read the trace header at `traceno` into `buf`. */
+/* Write the 'traceheaderno' trace header at `traceno` from `buf` into file. */
 int segy_write_traceheader( segy_datasource*,
                             int traceno,
-                            const char* buf,
-                            long trace0,
-                            int trace_bsize );
+                            int traceheader_no,
+                            const segy_entry_definition* mapping,
+                            const char* buf );
+
+/* Read the standard trace header at `traceno` into `buf`. */
+int segy_read_standard_traceheader( segy_datasource*,
+                                    int traceno,
+                                    char* buf );
+
+/* Write the standard trace header at `traceno` from `buf` into file. */
+int segy_write_standard_traceheader( segy_datasource*,
+                                     int traceno,
+                                     const char* buf );
 
 /*
  * The sorting type will be written to `sorting` if the function can figure out
@@ -636,9 +664,7 @@ int segy_sorting( segy_datasource*,
                   int il,
                   int xl,
                   int tr_offset,
-                  int* sorting,
-                  long trace0,
-                  int trace_bsize );
+                  int* sorting );
 
 /*
  * Number of offsets in this file, written to `offsets`. 1 if a 3D data set, >1
@@ -648,9 +674,7 @@ int segy_offsets( segy_datasource*,
                   int il,
                   int xl,
                   int traces,
-                  int* out,
-                  long trace0,
-                  int trace_bsize );
+                  int* out );
 
 /*
  * The names of the individual offsets. `out` must be a buffer of
@@ -659,9 +683,7 @@ int segy_offsets( segy_datasource*,
 int segy_offset_indices( segy_datasource*,
                          int offset_field,
                          int offsets,
-                         int* out,
-                         long trace0,
-                         int trace_bsize );
+                         int* out );
 
 /*
  * read/write traces. does not convert data from on-disk representation to
@@ -670,15 +692,11 @@ int segy_offset_indices( segy_datasource*,
  */
 int segy_readtrace( segy_datasource*,
                     int traceno,
-                    void* buf,
-                    long trace0,
-                    int trace_bsize );
+                    void* buf );
 
 int segy_writetrace( segy_datasource*,
                      int traceno,
-                     const void* buf,
-                     long trace0,
-                     int trace_bsize );
+                     const void* buf );
 
 /*
  * read/write sub traces, with the same assumption and requirements as
@@ -709,9 +727,7 @@ int segy_readsubtr( segy_datasource*,
                     int stop,
                     int step,
                     void* buf,
-                    void* rangebuf,
-                    long trace0,
-                    int trace_bsize );
+                    void* rangebuf );
 
 int segy_writesubtr( segy_datasource*,
                      int traceno,
@@ -719,9 +735,7 @@ int segy_writesubtr( segy_datasource*,
                      int stop,
                      int step,
                      const void* buf,
-                     void* rangebuf,
-                     long trace0,
-                     int trace_bsize );
+                     void* rangebuf );
 
 /*
  * convert to/from native float from segy formats (likely IBM or IEEE).  Size
@@ -747,18 +761,14 @@ int segy_read_line( segy_datasource* ds,
                     int line_length,
                     int stride,
                     int offsets,
-                    void* buf,
-                    long trace0,
-                    int trace_bsize );
+                    void* buf );
 
 int segy_write_line( segy_datasource* ds,
                     int line_trace0,
                     int line_length,
                     int stride,
                     int offsets,
-                    const void* buf,
-                    long trace0,
-                    int trace_bsize );
+                    const void* buf );
 
 /*
  * Count inlines and crosslines. Use this function to determine how large buffer
@@ -779,9 +789,7 @@ int segy_count_lines( segy_datasource*,
                       int field,
                       int offsets,
                       int* l1out,
-                      int* l2out,
-                      long trace0,
-                      int trace_bsize );
+                      int* l2out );
 
 /*
  * Alternative interface for segy_count_lines. If you have information about
@@ -795,9 +803,7 @@ int segy_lines_count( segy_datasource*,
                       int sorting,
                       int offsets,
                       int* il_count,
-                      int* xl_count,
-                      long trace0,
-                      int trace_bsize );
+                      int* xl_count );
 /*
  * Find the `line_length` for the inlines. Assumes all inlines, crosslines and
  * traces don't vary in length.
@@ -821,9 +827,7 @@ int segy_inline_indices( segy_datasource*,
                          int inline_count,
                          int crossline_count,
                          int offsets,
-                         void* buf,
-                         long trace0,
-                         int trace_bsize );
+                         void* buf );
 
 int segy_crossline_indices( segy_datasource*,
                             int xl,
@@ -831,9 +835,7 @@ int segy_crossline_indices( segy_datasource*,
                             int inline_count,
                             int crossline_count,
                             int offsets,
-                            void* buf,
-                            long trace0,
-                            int trace_bsize );
+                            void* buf );
 
 /*
  * Find the first `traceno` of the line `lineno`. `linenos` should be the line
@@ -886,9 +888,7 @@ int segy_rotation_cw( segy_datasource*,
                       int offsets,
                       const int* linenos,
                       int linenos_sz,
-                      float* rotation,
-                      long trace0,
-                      int trace_bsize );
+                      float* rotation );
 
 /*
  * Find the stride needed for an inline/crossline traversal.

@@ -229,6 +229,8 @@ def _create(datasource_descriptor, spec):
     ext_headers = spec.ext_headers if hasattr(spec, 'ext_headers') else 0
     samples = numpy.asarray(spec.samples)
 
+    traceheader_count = spec.traceheader_count if hasattr(spec, 'traceheader_count') else 1
+
     endian = spec.endian if hasattr(spec, 'endian') else 'big'
     if endian is None:
         endian = 'big'
@@ -245,6 +247,7 @@ def _create(datasource_descriptor, spec):
         encoding=to_c_encoding(encoding),
         format = int(spec.format),
         ext_headers = int(ext_headers),
+        traceheader_count = traceheader_count,
     )
 
     # note: even if iline/xline are overridden, file is already created with

@@ -33,12 +33,16 @@ void mexFunction(int nlhs, mxArray *plhs[],
         goto ERROR;
     };
 
+    errc = segy_collect_metadata( fp, -1, -1, -1 );
+    if( errc != 0 ) {
+        goto CLEANUP;
+    }
+
     plhs[0] = mxCreateNumericMatrix(spec.sample_count, spec.offset_count, mxINT32_CLASS, mxREAL);
     int* int_offsets = mxMalloc(sizeof( int ) * spec.offset_count);
 
     errc = segy_offsets(fp, offset, spec.offset_count,
-                        int_offsets,
-                        spec.first_trace_pos, spec.trace_bsize);
+                        int_offsets);
 
     if( err != SEGY_OK ) goto CLEANUP;
 

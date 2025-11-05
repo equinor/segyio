@@ -718,6 +718,9 @@ def test_read_text_sequence():
         for line in lines:
             assert line.startswith('C')
 
+    with segyio.open(testdata / 'stanzas-unknown-count.sgy') as f:
+        assert f.tracecount == 6
+
 
 @tmpfiles(testdata / 'multi-text.sgy')
 def test_put_text_sequence(tmpdir):
@@ -2252,3 +2255,15 @@ def test_open_with_custom_mapping():
         assert list(f.ilines) == ilines
         assert list(f.xlines) == xlines
         assert list(f.offsets) == offsets
+        pass
+
+
+def test_trace_header_extensions():
+    with segyio.open(testdata / 'trace-header-extensions.sgy') as f:
+        h0 = f.header[0]
+        h1 = f.header[1]
+        assert h0[TraceField.CROSSLINE_3D] == 20
+        assert h1[TraceField.CROSSLINE_3D] == 21
+
+        assert np.array_equal(f.attributes(TraceField.INLINE_3D), [1, 1])
+        assert np.array_equal(f.attributes(TraceField.CROSSLINE_3D), [20, 21])

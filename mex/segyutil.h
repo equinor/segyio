@@ -39,7 +39,7 @@ void recreateSpec(SegySpec* spec, const mxArray* mex_spec);
 
 struct segy_file_format {
     int samples;
-    long trace0;
+    unsigned long long trace0;
     int trace_bsize;
     int traces;
     int format;

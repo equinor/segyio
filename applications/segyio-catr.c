@@ -628,8 +628,6 @@ int main( int argc, char** argv ) {
         exit( err );
     }
 
-    const long trace0 = src->metadata.trace0;
-    const long trace_bsize = src->metadata.trace_bsize;
     const int numtrh = src->metadata.tracecount;
 
     /*
@@ -649,7 +647,7 @@ int main( int argc, char** argv ) {
                                      "out of range" ) );
             if( i > numtrh ) break;
 
-            err = segy_traceheader( src, i - 1, trheader, trace0, trace_bsize );
+            err = segy_read_standard_traceheader( src, i - 1, trheader );
             if( err )
                 exit( errmsg( errno, "Unable to read trace header" ) );
 
