@@ -445,30 +445,69 @@ def read_and_write_standard_traceheader(f, mmap):
 
 @tmpfiles(testdata / 'trace-header-extensions.sgy')
 def test_read_and_write_traceheader(tmpdir):
-    f = get_instance_segyfile(tmpdir, 'trace-header-extensions.sgy')
+    field = 1
+    start, stop, step = 0, 2, 1
+    indices = numpy.asarray([0, 1], dtype=numpy.intc)
+    attrs = numpy.empty(len(indices), dtype=numpy.intc)
+    trace_index = 0
 
     def mkempty():
         return bytearray(_segyio.thsize())
 
-    field = 1
-    # note: for the moment all headers are processed using default standard
-    # traceheader mapping, which is incorrect. Test will change in the future
-    # when get-set field functions are updated.
+    def verify_traceheader(f, traceheader_index, type, expected):
+        attrs = numpy.empty(len(indices), dtype=type)
 
-    standard_th = f.getth(0, 0, mkempty())
-    assert f.getfield(standard_th, 0, field) == 286331153
+        traceheader = f.getth(trace_index, traceheader_index, mkempty())
+        assert f.getfield(traceheader, traceheader_index, field) == expected[0]
 
-    extension1_th = f.getth(0, 1, mkempty())
-    assert f.getfield(extension1_th, 0, field) == 572662306
+        f.field_forall(attrs, traceheader_index, start, stop, step, field)
+        numpy.testing.assert_array_equal(attrs, expected)
 
-    proprietary_th = f.getth(0, 2, mkempty())
-    assert f.getfield(proprietary_th, 0, field) == 858993459
+        f.field_foreach(attrs, traceheader_index, indices, field)
+        numpy.testing.assert_array_equal(attrs, expected)
 
-    f.putfield(extension1_th, 0, field, 42)
-    f.putth(0, 1, extension1_th)
+        f.putfield(traceheader, traceheader_index, field, 42)
+        f.putth(trace_index, traceheader_index, traceheader)
 
-    extension1_th = f.getth(0, 1, mkempty())
-    assert f.getfield(extension1_th, 0, field) == 42
+        traceheader = f.getth(trace_index, traceheader_index, mkempty())
+        assert f.getfield(traceheader, traceheader_index, field) == 42
+
+    f = get_instance_segyfile(tmpdir, 'trace-header-extensions.sgy')
+
+    standard_index = 0
+    extension1_index = 1
+    proprietary_index = 2
+    nonexistent_index = 3
+
+    expected = {
+        standard_index: [0x11111111, 0x44444444],
+        extension1_index: [0x22222222_22222222, 0x55555555_55555555],
+        proprietary_index: [0x3333, 0x6666],
+    }
+
+    with pytest.raises(KeyError):
+        f.getth(0, nonexistent_index, mkempty())
+
+    with pytest.raises(KeyError):
+        f.getfield(mkempty(), nonexistent_index, field)
+
+    with pytest.raises(KeyError):
+        f.field_forall(attrs, nonexistent_index, start, stop, step, field)
+
+    with pytest.raises(KeyError):
+        f.field_foreach(attrs, nonexistent_index, indices, field)
+
+    verify_traceheader(
+        f, standard_index, numpy.uint32, expected[standard_index]
+    )
+
+    verify_traceheader(
+        f, extension1_index, numpy.uint64, expected[extension1_index]
+    )
+
+    verify_traceheader(
+        f, proprietary_index, numpy.int16, expected[proprietary_index]
+    )
 
     f.close()
 

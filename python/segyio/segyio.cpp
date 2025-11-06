@@ -1064,10 +1064,10 @@ PyObject* getth( segyfd* self, PyObject *args ) {
     if( !ds ) return NULL;
 
     int traceno;
-    int traceheaderno;
+    uint16_t traceheader_index;
     PyObject* bufferobj;
 
-    if( !PyArg_ParseTuple( args, "iiO", &traceno, &traceheaderno, &bufferobj ) ) return NULL;
+    if( !PyArg_ParseTuple( args, "iHO", &traceno, &traceheader_index, &bufferobj ) ) return NULL;
 
     buffer_guard buffer( bufferobj, PyBUF_CONTIG );
     if( !buffer ) return NULL;
@@ -1077,11 +1077,17 @@ PyObject* getth( segyfd* self, PyObject *args ) {
                            "expected %i, was %zd",
                            SEGY_TRACE_HEADER_SIZE, buffer.len() );
 
+    if( traceheader_index >= self->traceheader_mappings.size() ) {
+        return KeyError(
+            "no trace header mapping available for index %d", traceheader_index
+        );
+    }
+
     int err = segy_read_traceheader(
         ds,
         traceno,
-        traceheaderno,
-        self->traceheader_mappings[traceheaderno].offset_to_entry_definition,
+        traceheader_index,
+        self->traceheader_mappings[traceheader_index].offset_to_entry_definition,
         buffer.buf()
     );
 
@@ -1104,22 +1110,28 @@ PyObject* putth( segyfd* self, PyObject* args ) {
     if( !ds ) return NULL;
 
     int traceno;
-    int traceheaderno;
+    uint16_t traceheader_index;
     buffer_guard buf;
-    if( !PyArg_ParseTuple( args, "iis*", &traceno, &traceheaderno, &buf ) ) return NULL;
+    if( !PyArg_ParseTuple( args, "iHs*", &traceno, &traceheader_index, &buf ) ) return NULL;
 
     if( buf.len() < SEGY_TRACE_HEADER_SIZE )
         return ValueError( "internal: trace header buffer too small, "
                            "expected %i, was %zd",
                            SEGY_TRACE_HEADER_SIZE, buf.len() );
 
+    if( traceheader_index >= self->traceheader_mappings.size() ) {
+        return KeyError(
+            "no trace header mapping available for index %d", traceheader_index
+        );
+    }
+
     const char* buffer = buf.buf< const char >();
 
     int err = segy_write_traceheader(
         ds,
         traceno,
-        traceheaderno,
-        self->traceheader_mappings[traceheaderno].offset_to_entry_definition,
+        traceheader_index,
+        self->traceheader_mappings[traceheader_index].offset_to_entry_definition,
         buffer
     );
 
