@@ -786,6 +786,57 @@ def test_create_ascii_text(tmpdir):
         assert f.text[0] == ref
 
 
+def test_stanzas():
+    filename = str(testdata / 'small.sgy')
+    with segyio.open(filename, "r") as f:
+        assert len(f.stanza) == 0
+
+    filename = str(testdata / 'multi-text.sgy')
+    with segyio.open(filename, "r") as f:
+        assert f.stanza.names() == ['']
+        assert len(f.stanza) == 1
+
+    filename = str(testdata / 'stanzas-known-count.sgy')
+    with segyio.open(filename, "r") as f:
+        assert f.stanza.names() == [
+            'SEGYIO:TEST ASCII  DATA WITH CONTENTTYPE AND BYTES: application/vnd.openxmlformats-officedocument.wordprocessingml.document.glossary+xml:666',
+            'SEGYIO:Test EBCDIC data',
+            'SEGYIO: test ASCII data'
+        ]
+        assert len(f.stanza) == 3
+
+        for stanza in f.stanza:  # __iter__ check
+            pass
+
+    filename = str(testdata / 'mapping-shifted.sgy')
+    with segyio.open(filename, "r") as f:
+        layout_stanza_index = -1
+        for i, name in enumerate(f.stanza.names()):
+            if name.upper().startswith("SEG:LAYOUT"):
+                layout_stanza_index = i
+        assert layout_stanza_index == 0
+
+    filename = str(testdata / 'stanzas-unknown-count.sgy')
+    with segyio.open(filename, "r") as f:
+        stanza = f.stanza[0]
+
+        name_len = len(f.stanza.names()[0]) + 4
+        block2_offset = 3200 - name_len
+
+        assert len(stanza) == 3200 * 2 - name_len
+
+        expected_start1 = bytes("first part", "ascii")
+        expected_start2 = bytes("second part", "ascii")
+
+        assert stanza[0:].startswith(expected_start1)
+        assert stanza[block2_offset:].startswith(expected_start2)
+
+        for i in range(len(expected_start1), block2_offset):
+            assert stanza[i] == ord(' ')
+        for i in range(block2_offset+len(expected_start2), len(stanza)):
+            assert stanza[i] == ord(' ')
+
+
 @pytest.mark.parametrize(('openfn', 'kwargs'), smallfiles)
 def test_header_getitem_intlikes(openfn, kwargs):
     with openfn(**kwargs) as f:

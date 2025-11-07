@@ -1022,6 +1022,30 @@ PyObject* puttext( segyfd* self, PyObject* args ) {
     return Py_BuildValue( "" );
 }
 
+PyObject* getstanza( segyfd* self, PyObject* args ) {
+    segy_datasource* ds = self->ds;
+    if( !ds ) return NULL;
+
+    int index = 0;
+    if( !PyArg_ParseTuple( args, "i", &index ) ) return NULL;
+
+    stanza_header stanza = self->stanzas[index];
+
+    heapbuffer buffer( stanza.data_size() );
+    if( !buffer ) return NULL;
+
+    const int err = segy_read_stanza_data(
+        ds,
+        stanza.header_length(),
+        stanza.headerindex,
+        stanza.data_size(),
+        buffer
+    );
+    if( err ) return Error( err );
+
+    return PyByteArray_FromStringAndSize( buffer, stanza.data_size() );
+}
+
 PyObject* getbin( segyfd* self ) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
@@ -2080,6 +2104,7 @@ PyMethodDef methods [] = {
 
     { "gettext", (PyCFunction) fd::gettext, METH_VARARGS, "Get text header." },
     { "puttext", (PyCFunction) fd::puttext, METH_VARARGS, "Put text header." },
+    { "getstanza", (PyCFunction) fd::getstanza, METH_VARARGS, "Get stanza data." },
 
     { "getbin", (PyCFunction) fd::getbin, METH_VARARGS, "Get binary header." },
     { "putbin", (PyCFunction) fd::putbin, METH_VARARGS, "Put binary header." },

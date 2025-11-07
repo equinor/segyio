@@ -992,3 +992,85 @@ class Text(Sequence):
                 if isinstance(text, Text):
                     text = text[0]
                 self.segyfd.puttext(i, text)
+
+
+class Stanza(Sequence):
+    """Access stanza data from extended textual headers.
+
+    Reading stanzas is done with []. Keys are stanza indices, values are raw
+    stanza data as bytes. Stanza name (stanza header) is not included in the
+    return bytes.
+
+    Writing stanzas is not supported.
+
+    Notes
+    -----
+    .. versionadded:: 2.0
+
+    Examples
+    --------
+    Get all stanza names:
+
+    >>> names = f.stanza.names()
+    ... ['OGP:P1/11:text/csv', 'SEG:catalog', 'TROIKA:IMAGEPNG:image/png:51929']
+
+    Access stanza data:
+
+    >>> data = f.stanza[2]
+    """
+
+    def __init__(self, segyfd):
+        self.segyfd = segyfd
+        self._names = self.segyfd.stanza_names()
+        super(Stanza, self).__init__(len(self._names))
+
+    def names(self):
+        """Get all stanza names. Names are the same as they appear in the file.
+
+        Returns
+        -------
+        names : list of str
+            List of all stanza names in the file in order of appearance
+        """
+        return self._names
+
+    def __getitem__(self, key):
+        """Get stanza data by index.
+
+        Parameters
+        ----------
+        key : int or slice
+            Stanza index or indices
+
+        Returns
+        -------
+        data : bytes
+            Stanza data for single stanza, or generator for slice
+
+        Examples
+        --------
+        Access by index:
+
+        >>> data = f.stanza[0]
+
+        Find stanza that fits name pattern:
+
+        >>> for i, name in enumerate(f.stanza.names()):
+        >>>     if name.upper().startswith("SEG:LAYOUT"):
+        >>>         layout_stanza_index = i
+        >>> data = f.stanza[layout_stanza_index]
+        """
+        try:
+            index = self.wrapindex(key)
+            return self.segyfd.getstanza(index)
+        except TypeError:
+            try:
+                indices = key.indices(len(self))
+            except AttributeError:
+                msg = 'stanza indices must be integers, strings, or slices, not {}'
+                raise TypeError(msg.format(type(key).__name__))
+
+            def gen():
+                for j in range(*indices):
+                    yield self.segyfd.getstanza(j)
+            return gen()
