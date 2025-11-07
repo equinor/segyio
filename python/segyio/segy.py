@@ -8,7 +8,7 @@ import numpy as np
 
 from .gather import Gather, Groups
 from .line import Line
-from .trace import Trace, Header, Attributes, Text
+from .trace import Trace, Header, Attributes, Text, Stanza
 from .field import Field
 
 from .tracesortingformat import TraceSortingFormat
@@ -807,6 +807,22 @@ class SegyFile(object):
         .. versionadded:: 1.1
         """
         return Text(self.segyfd, self._ext_textheaders_count + 1)
+
+    @property
+    def stanza(self):
+        """Interact with segy in stanza mode
+
+        Allows reading stanzas present in the file.
+
+        Returns
+        -------
+        stanza : Stanza
+
+        Notes
+        -----
+        .. versionadded:: 2.0
+        """
+        return Stanza(self.segyfd)
 
     @property
     def bin(self):
