@@ -9,6 +9,7 @@ import numpy as np
 from .gather import Gather, Groups
 from .line import Line
 from .trace import Trace, Header, Attributes, Text, Stanza
+from .trace import RowLayoutEntries
 from .field import Field
 
 from .tracesortingformat import TraceSortingFormat
@@ -374,6 +375,41 @@ class SegyFile(object):
 
         """
         return self.ilines is None
+
+    @property
+    def tracefield(self):
+        """
+        Access the trace header layouts for this SEG-Y file.
+
+        Returns
+        -------
+        tracefield : RowLayoutEntries
+
+        Examples
+        --------
+        List all trace header layout names:
+
+        >>> f.tracefield.names()
+        ['SEG00000', 'SEG00001']
+
+        Access a specific layout by name:
+
+        >>> layout = f.tracefield.SEG00000
+
+        List all field names in a specific layout:
+
+        >>> f.tracefield.SEG00000.names()
+
+        Find offset of a specific field:
+
+        >>> f.tracefield.SEG00000.iline.offset()
+        >>> f.tracefield[0].xline.offset()
+
+        Notes
+        -----
+        .. versionadded:: 2.0
+        """
+        return RowLayoutEntries(self)
 
     @property
     def header(self):

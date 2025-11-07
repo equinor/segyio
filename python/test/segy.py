@@ -2319,6 +2319,45 @@ def test_open_with_custom_mapping():
         segyio.open(testdata / 'mapping-unsupported-type.sgy')
 
 
+def test_tracefields():
+    with segyio.open(testdata / 'trace-header-extensions.sgy') as f:
+        assert len(f.tracefield) == 3
+        for x in f.tracefield:
+            assert isinstance(x, segyio.trace.HeaderLayoutEntries)
+
+        assert len(f.tracefield[1]) == 2
+        for x in f.tracefield[1]:
+            assert isinstance(x, segyio.trace.FieldLayoutEntry)
+
+        assert f.tracefield.names() == ['SEG00000', 'SEG00001', 'PRIVATE1']
+        assert f.tracefield[0].names() == f.tracefield.SEG00000.names()
+
+        assert f.tracefield.SEG00000.names() == [
+            'linetrc', 'offset', 'delay', 'dt', 'iline', 'xline', 'tm_scal', 'header_name'
+        ]
+        assert f.tracefield.SEG00001.names() == [
+            'linetrc', 'header_name'
+        ]
+        assert f.tracefield.PRIVATE1.names() == [
+            'precious', 'precious2', 'precious3', 'precious4', 'header_name'
+        ]
+        with pytest.raises(AttributeError):
+            f.tracefield.Missing
+
+        assert f.tracefield.PRIVATE1.precious3.offset() == 5
+        with pytest.raises(AttributeError):
+            f.tracefield.PRIVATE1.PRECIOUS3
+
+        assert f.tracefield.SEG00000.xline.offset() == 193
+        assert f.tracefield[0][5].name() == 'xline'
+        assert f.tracefield.SEG00001.linetrc.type() == "linetrc8"
+        assert f.tracefield.SEG00000.linetrc.use_only_if_non_zero() is False
+        assert f.tracefield.SEG00001.linetrc.use_only_if_non_zero() is True
+
+        str_rep = "linetrc (offset=1, type=linetrc8, use_only_if_non_zero=True)"
+        assert str(f.tracefield.SEG00001.linetrc) == str_rep
+
+
 def test_trace_header_extensions():
     with segyio.open(testdata / 'trace-header-extensions.sgy') as f:
         h0 = f.header[0]

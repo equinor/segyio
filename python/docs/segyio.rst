@@ -78,6 +78,16 @@ Trace and binary header
 .. autoclass:: segyio.field.Field()
     :special-members: __getitem__, __setitem__, __delitem__, __len__, __contains__, __iter__
 
+.. autoclass:: segyio.trace.RowLayoutEntries()
+    :special-members: __getitem__, __getattr__, __len__, __iter__
+    :exclude-members: count, index
+
+.. autoclass:: segyio.trace.HeaderLayoutEntries()
+    :special-members: __getitem__, __getattr__, __len__, __iter__
+    :exclude-members: count
+
+.. autoclass:: segyio.trace.FieldLayoutEntry()
+
 Tools
 =====
 

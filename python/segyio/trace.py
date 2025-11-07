@@ -1074,3 +1074,274 @@ class Stanza(Sequence):
                 for j in range(*indices):
                     yield self.segyfd.getstanza(j)
             return gen()
+
+
+class RowLayoutEntries(Sequence):
+    """
+    Sequence of trace header layouts in one trace (row).
+
+    Provides access to all trace header layouts defined in the SEG-Y file.
+
+    Notes
+    -----
+    .. versionadded:: 2.0
+    """
+
+    def __init__(self, segyfile):
+        self.segyfile = segyfile
+        self._layouts = segyfile._traceheader_layouts
+        self._layout_names = list(self._layouts.keys())
+
+        super().__init__(segyfile.traceheader_count)
+
+    def __getitem__(self, key):
+        """
+        Get a trace header fields layout by index or slice.
+
+        Parameters
+        ----------
+        key : int or slice
+            Index or range.
+
+        Returns
+        -------
+        HeaderLayoutEntries or generator of HeaderLayoutEntries
+
+        Examples
+        --------
+        Get the layout via [] notation:
+
+        >>> layout = traceheader_layouts[0]
+        """
+        try:
+            traceheader_index = self.wrapindex(key)
+            name = self._layout_names[traceheader_index]
+            layout = self._layouts[name]
+            return HeaderLayoutEntries(self.segyfile, traceheader_index, layout)
+        except TypeError:
+            indices = key.indices(len(self))
+
+            def gen():
+                for traceheader_index in range(*indices):
+                    name = self._layout_names[traceheader_index]
+                    layout = self._layouts[name]
+                    yield HeaderLayoutEntries(self.segyfile, traceheader_index, layout)
+            return gen()
+
+    def __getattr__(self, name):
+        """
+        Get trace header fields layout as an attribute.
+
+        Parameters
+        ----------
+        name : str
+            Name of the layout. Name is case-sensitive.
+
+        Returns
+        -------
+        HeaderLayoutEntries
+
+        Examples
+        --------
+        Get the field layout via . notation:
+
+        >>> layout = traceheader_layouts.SEG00000
+
+        Raises
+        ------
+        AttributeError
+            If the layout does not exist.
+        """
+        if name in self._layouts:
+            traceheader_index = self._layout_names.index(name)
+            return HeaderLayoutEntries(self.segyfile, traceheader_index, self._layouts[name])
+        raise AttributeError(f"No header with name: {name}")
+
+    def names(self):
+        """
+        List all trace header names.
+
+        Returns
+        -------
+        list of str
+            Names of all traceheaders.
+        """
+        return self._layout_names
+
+    def __repr__(self):
+        return f"RowLayoutEntries({self._layout_names})"
+
+
+class HeaderLayoutEntries(Sequence):
+    """
+    Sequence of field layout entries in a trace header.
+
+    Provides access to the individual fields (entries) within a trace header
+    layout.
+
+    Notes
+    -----
+    .. versionadded:: 2.0
+    """
+
+    def __init__(self, segyfile, traceheader_index, layout):
+        self.segyfile = segyfile
+        self._layout = layout
+        self.traceheader_index = traceheader_index
+
+        super().__init__(len(layout))
+
+    def __getitem__(self, key):
+        """
+        Get field entries by index or slice.
+
+        Parameters
+        ----------
+        key : int or slice
+            Index or range.
+
+        Returns
+        -------
+        FieldLayoutEntry or generator of FieldLayoutEntry
+
+        Examples
+        --------
+        Get the entry via [] notation:
+
+        >>> entry = layout[3]
+        """
+        try:
+            entry_index = self.wrapindex(key)
+            entry = self._layout.entries[entry_index]
+            return FieldLayoutEntry(self.segyfile, entry, self.traceheader_index)
+
+        except TypeError:
+            indices = key.indices(len(self))
+
+            def gen():
+                for entry_index in range(*indices):
+                    entry = self._layout.entries[entry_index]
+                    yield FieldLayoutEntry(self.segyfile, entry, self.traceheader_index)
+            return gen()
+
+    def __getattr__(self, name):
+        """
+        Get field entry as an attribute.
+
+        Parameters
+        ----------
+        name : str
+            Name of the field. Name is case-sensitive.
+
+        Returns
+        -------
+        FieldLayoutEntry
+
+        Examples
+        --------
+        Get the entry via . notation:
+
+        >>> entry = layout.iline
+
+        Raises
+        ------
+        AttributeError
+            If the field by that name does not exist.
+        """
+        entry = self._layout.entry_by_name(name)
+        if entry is None:
+            raise AttributeError(f"No field with name: {name}")
+        return FieldLayoutEntry(self.segyfile, entry, self.traceheader_index)
+
+    def names(self):
+        """
+        List all field names in this traceheader layout.
+
+        Returns
+        -------
+        list of str
+            Names of all fields.
+        """
+        return [entry.name for entry in self._layout]
+
+    def index(self):
+        """
+        Get traceheader index of this layout.
+
+        Returns
+        -------
+        int
+            Layout index.
+        """
+        return self.traceheader_index
+
+    def __repr__(self):
+        return f"HeaderLayoutEntries({self.names()})"
+
+
+class FieldLayoutEntry():
+    """
+    Represents a single field entry in a trace header layout.
+
+    Notes
+    -----
+    .. versionadded:: 2.0
+    """
+
+    def __init__(self, segyfile, entry, traceheader_index):
+        self.segyfile = segyfile
+        self.entry = entry
+        self.traceheader_index = traceheader_index
+
+    def name(self):
+        """
+        Get the name of the field as is defined in the layout.
+
+        Returns
+        -------
+        str
+            Name of the field.
+        """
+        return self.entry.name
+
+    def offset(self):
+        """
+        Get the byte offset of this field in the trace header.
+
+        Returns
+        -------
+        int
+            Byte offset of the field.
+        """
+        return self.entry.byte
+
+    def type(self):
+        """
+        Get the data type of the field as defined in the layout.
+
+        Returns
+        -------
+        str
+            Data type of the field.
+        """
+        return self.entry.type
+
+
+    def use_only_if_non_zero(self):
+        """
+        Returns the field property 'if-non-zero' stating if this field could be
+        used only when its value does not equal 0.
+
+        Returns
+        -------
+        bool
+            True if requires non-zero value, False otherwise.
+        """
+        return self.entry.requires_nonzero_value
+
+    def __str__(self):
+        name = self.name()
+        offset = self.offset()
+        type = self.type()
+        non_zero = self.use_only_if_non_zero()
+        return f"{name} (offset={offset}, type={type}, use_only_if_non_zero={non_zero})"
