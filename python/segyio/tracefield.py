@@ -3,6 +3,13 @@ from . import Enum
 class TraceField(Enum):
     """Trace header field enumerator
 
+    Warning
+    -------
+    This class is outdated as per SEG-Y rev 2 standard and works only for files
+    with default layouts.
+
+    See :meth:`~segyio.SegyFile.tracefield` for file-dependent fields.
+
     See also
     -------
     segyio.su : Seismic unix aliases for header fields
