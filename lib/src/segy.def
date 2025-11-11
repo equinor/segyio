@@ -18,6 +18,8 @@ segy_entry_type_to_datatype
 segy_binheader_map
 segy_traceheader_default_map
 segy_traceheader_default_name_map
+segy_ext1_traceheader_default_map
+segy_ext1_traceheader_default_name_map
 segy_get_tracefield
 segy_set_tracefield
 segy_get_binfield

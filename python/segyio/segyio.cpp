@@ -291,6 +291,25 @@ int py_set_writable( segy_datasource* self ) {
     return SEGY_OK;
 }
 
+static void init_traceheader_mapping(
+    segy_header_mapping* dst_mapping,
+    const uint8_t* src_name_map,
+    const segy_entry_definition* src_entry_definition_map,
+    const char* name
+) {
+    memcpy( dst_mapping->name, name, 8 );
+    memcpy(
+        dst_mapping->name_to_offset,
+        src_name_map,
+        sizeof( dst_mapping->name_to_offset )
+    );
+    memcpy(
+        dst_mapping->offset_to_entry_definition,
+        src_entry_definition_map,
+        sizeof( dst_mapping->offset_to_entry_definition )
+    );
+}
+
 segy_datasource* create_py_stream_datasource(
     PyObject* py_stream, bool minimize_requests_number
 ) {
@@ -329,17 +348,18 @@ segy_datasource* create_py_stream_datasource(
     ds->metadata.traceheader_count = 1;
     ds->metadata.tracecount = -1;
 
-    segy_header_mapping* mapping = &ds->traceheader_mapping_standard;
-    memcpy(mapping->name, "SEG00000", 8);
-    memcpy(
-        mapping->name_to_offset,
+    init_traceheader_mapping(
+        &ds->traceheader_mapping_standard,
         segy_traceheader_default_name_map(),
-        sizeof(mapping->name_to_offset)
-    );
-    memcpy(
-        mapping->offset_to_entry_definition,
         segy_traceheader_default_map(),
-        sizeof(mapping->offset_to_entry_definition)
+        "SEG00000"
+    );
+
+    init_traceheader_mapping(
+        &ds->traceheader_mapping_extension1,
+        segy_ext1_traceheader_default_name_map(),
+        segy_ext1_traceheader_default_map(),
+        "SEG00001"
     );
 
     /* keep additional reference to assure object does not get deleted before

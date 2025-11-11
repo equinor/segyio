@@ -322,6 +322,42 @@ static const segy_entry_definition traceheader_default_map[SEGY_TRACE_HEADER_SIZ
 };
 
 /*
+ * Default traceheader extension 1 offset-to-entry-definition map. May be
+ * overwritten by mapping in the file. Possible mapping offsets are in range
+ * [0-240), with first defined offset being positioned at 0. All offsets not
+ * explicitly set are implicitly mapped to {SEGY_ENTRY_TYPE_UNDEFINED, false,
+ * NULL}.
+ */
+static const segy_entry_definition ext1_traceheader_default_map[SEGY_TRACE_HEADER_SIZE] = {
+    [ -1 + SEGY_EXT1_SEQ_LINE              ] = { SEGY_ENTRY_TYPE_LINETRC8,  true,  NULL },
+    [ -1 + SEGY_EXT1_SEQ_FILE              ] = { SEGY_ENTRY_TYPE_REELTRC8,  true,  NULL },
+    [ -1 + SEGY_EXT1_FIELD_RECORD          ] = { SEGY_ENTRY_TYPE_INT8,      true,  NULL },
+    [ -1 + SEGY_EXT1_ENSEMBLE              ] = { SEGY_ENTRY_TYPE_INT8,      true,  NULL },
+    [ -1 + SEGY_EXT1_RECV_GROUP_ELEV       ] = { SEGY_ENTRY_TYPE_IEEE64,    true,  NULL },
+    [ -1 + SEGY_EXT1_RECV_GROUP_DEPTH      ] = { SEGY_ENTRY_TYPE_IEEE64,    false, NULL },
+    [ -1 + SEGY_EXT1_SOURCE_SURF_ELEV      ] = { SEGY_ENTRY_TYPE_IEEE64,    true,  NULL },
+    [ -1 + SEGY_EXT1_SOURCE_DEPTH          ] = { SEGY_ENTRY_TYPE_IEEE64,    true,  NULL },
+    [ -1 + SEGY_EXT1_RECV_DATUM_ELEV       ] = { SEGY_ENTRY_TYPE_IEEE64,    true,  NULL },
+    [ -1 + SEGY_EXT1_SOURCE_DATUM_ELEV     ] = { SEGY_ENTRY_TYPE_IEEE64,    true,  NULL },
+    [ -1 + SEGY_EXT1_SOURCE_WATER_DEPTH    ] = { SEGY_ENTRY_TYPE_IEEE64,    true,  NULL },
+    [ -1 + SEGY_EXT1_GROUP_WATER_DEPTH     ] = { SEGY_ENTRY_TYPE_IEEE64,    true,  NULL },
+    [ -1 + SEGY_EXT1_SOURCE_X              ] = { SEGY_ENTRY_TYPE_IEEE64,    true,  NULL },
+    [ -1 + SEGY_EXT1_SOURCE_Y              ] = { SEGY_ENTRY_TYPE_IEEE64,    true,  NULL },
+    [ -1 + SEGY_EXT1_GROUP_X               ] = { SEGY_ENTRY_TYPE_IEEE64,    true,  NULL },
+    [ -1 + SEGY_EXT1_GROUP_Y               ] = { SEGY_ENTRY_TYPE_IEEE64,    true,  NULL },
+    [ -1 + SEGY_EXT1_OFFSET                ] = { SEGY_ENTRY_TYPE_IEEE64,    true,  NULL },
+    [ -1 + SEGY_EXT1_SAMPLE_COUNT          ] = { SEGY_ENTRY_TYPE_UINT4,     true,  NULL },
+    [ -1 + SEGY_EXT1_NANOSEC_OF_SEC        ] = { SEGY_ENTRY_TYPE_INT4,      false, NULL },
+    [ -1 + SEGY_EXT1_SAMPLE_INTER          ] = { SEGY_ENTRY_TYPE_IEEE64,    true,  NULL },
+    [ -1 + SEGY_EXT1_RECORDING_DEVICE_NR   ] = { SEGY_ENTRY_TYPE_INT4,      false, NULL },
+    [ -1 + SEGY_EXT1_ADDITIONAL_TR_HEADERS ] = { SEGY_ENTRY_TYPE_UINT2,     false, NULL },
+    [ -1 + SEGY_EXT1_LAST_TRACE_FLAG       ] = { SEGY_ENTRY_TYPE_INT2,      false, NULL },
+    [ -1 + SEGY_EXT1_CDP_X                 ] = { SEGY_ENTRY_TYPE_IEEE64,    true,  NULL },
+    [ -1 + SEGY_EXT1_CDP_Y                 ] = { SEGY_ENTRY_TYPE_IEEE64,    true,  NULL },
+    [ -1 + SEGY_EXT1_TRACE_HEADER_NAME     ] = {SEGY_ENTRY_TYPE_STRING8,    false, NULL },
+};
+
+/*
  * Binary header offset-to-entry-definition map. This mapping should be valid
  * for every file. Possible mapping offsets are in range [0-400), with first
  * defined offset being positioned at 0. All offsets not explicitly set are
@@ -476,8 +512,47 @@ static const uint8_t traceheader_default_name_map[SEGY_TRACE_HEADER_SIZE] = {
     [ SEGY_TR_UNASSIGNED2             ] = SEGY_TR_UNASSIGNED2,
 };
 
+/*
+ * Default traceheader extension 1 name-to-offset map. Both names and offsets
+ * are 1-based. May be overwritten by mapping in the file. Possible mapping
+ * names are in range [0-240), with first defined name being positioned at 1.
+ * All names not explicitly set are implicitly mapped to offset 0.
+ */
+static const uint8_t ext1_traceheader_default_name_map[SEGY_TRACE_HEADER_SIZE] = {
+    [ SEGY_EXT1_SEQ_LINE              ] = SEGY_EXT1_SEQ_LINE,
+    [ SEGY_EXT1_SEQ_FILE              ] = SEGY_EXT1_SEQ_FILE,
+    [ SEGY_EXT1_FIELD_RECORD          ] = SEGY_EXT1_FIELD_RECORD,
+    [ SEGY_EXT1_ENSEMBLE              ] = SEGY_EXT1_ENSEMBLE,
+    [ SEGY_EXT1_RECV_GROUP_ELEV       ] = SEGY_EXT1_RECV_GROUP_ELEV,
+    [ SEGY_EXT1_RECV_GROUP_DEPTH      ] = SEGY_EXT1_RECV_GROUP_DEPTH,
+    [ SEGY_EXT1_SOURCE_SURF_ELEV      ] = SEGY_EXT1_SOURCE_SURF_ELEV,
+    [ SEGY_EXT1_SOURCE_DEPTH          ] = SEGY_EXT1_SOURCE_DEPTH,
+    [ SEGY_EXT1_RECV_DATUM_ELEV       ] = SEGY_EXT1_RECV_DATUM_ELEV,
+    [ SEGY_EXT1_SOURCE_DATUM_ELEV     ] = SEGY_EXT1_SOURCE_DATUM_ELEV,
+    [ SEGY_EXT1_SOURCE_WATER_DEPTH    ] = SEGY_EXT1_SOURCE_WATER_DEPTH,
+    [ SEGY_EXT1_GROUP_WATER_DEPTH     ] = SEGY_EXT1_GROUP_WATER_DEPTH,
+    [ SEGY_EXT1_SOURCE_X              ] = SEGY_EXT1_SOURCE_X,
+    [ SEGY_EXT1_SOURCE_Y              ] = SEGY_EXT1_SOURCE_Y,
+    [ SEGY_EXT1_GROUP_X               ] = SEGY_EXT1_GROUP_X,
+    [ SEGY_EXT1_GROUP_Y               ] = SEGY_EXT1_GROUP_Y,
+    [ SEGY_EXT1_OFFSET                ] = SEGY_EXT1_OFFSET,
+    [ SEGY_EXT1_SAMPLE_COUNT          ] = SEGY_EXT1_SAMPLE_COUNT,
+    [ SEGY_EXT1_NANOSEC_OF_SEC        ] = SEGY_EXT1_NANOSEC_OF_SEC,
+    [ SEGY_EXT1_SAMPLE_INTER          ] = SEGY_EXT1_SAMPLE_INTER,
+    [ SEGY_EXT1_RECORDING_DEVICE_NR   ] = SEGY_EXT1_RECORDING_DEVICE_NR,
+    [ SEGY_EXT1_ADDITIONAL_TR_HEADERS ] = SEGY_EXT1_ADDITIONAL_TR_HEADERS,
+    [ SEGY_EXT1_LAST_TRACE_FLAG       ] = SEGY_EXT1_LAST_TRACE_FLAG,
+    [ SEGY_EXT1_CDP_X                 ] = SEGY_EXT1_CDP_X,
+    [ SEGY_EXT1_CDP_Y                 ] = SEGY_EXT1_CDP_Y,
+    [ SEGY_EXT1_TRACE_HEADER_NAME     ] = SEGY_EXT1_TRACE_HEADER_NAME,
+};
+
 const segy_entry_definition* segy_traceheader_default_map( void ) {
     return traceheader_default_map;
+}
+
+const segy_entry_definition* segy_ext1_traceheader_default_map( void ) {
+    return ext1_traceheader_default_map;
 }
 
 const segy_entry_definition* segy_binheader_map( void ) {
@@ -486,6 +561,10 @@ const segy_entry_definition* segy_binheader_map( void ) {
 
 const uint8_t* segy_traceheader_default_name_map( void ) {
     return traceheader_default_name_map;
+}
+
+const uint8_t* segy_ext1_traceheader_default_name_map( void ) {
+    return ext1_traceheader_default_name_map;
 }
 
 /*
@@ -723,6 +802,25 @@ int segy_formatsize( int format ) {
     }
 }
 
+static void init_traceheader_mapping(
+    segy_header_mapping* dst_mapping,
+    const uint8_t* src_name_map,
+    const segy_entry_definition* src_entry_definition_map,
+    const char* name
+) {
+    memcpy( dst_mapping->name, name, 8 );
+    memcpy(
+        dst_mapping->name_to_offset,
+        src_name_map,
+        sizeof( dst_mapping->name_to_offset )
+    );
+    memcpy(
+        dst_mapping->offset_to_entry_definition,
+        src_entry_definition_map,
+        sizeof( dst_mapping->offset_to_entry_definition )
+    );
+}
+
 #define MODEBUF_SIZE 5
 
 segy_file* segy_open( const char* path, const char* mode ) {
@@ -802,17 +900,18 @@ segy_file* segy_open( const char* path, const char* mode ) {
     ds->metadata.traceheader_count = 1;
     ds->metadata.tracecount = -1;
 
-    segy_header_mapping* mapping = &ds->traceheader_mapping_standard;
-    memcpy(mapping->name, "SEG00000", 8);
-    memcpy(
-        mapping->name_to_offset,
+    init_traceheader_mapping(
+        &ds->traceheader_mapping_standard,
         segy_traceheader_default_name_map(),
-        sizeof(mapping->name_to_offset)
-    );
-    memcpy(
-        mapping->offset_to_entry_definition,
         segy_traceheader_default_map(),
-        sizeof(mapping->offset_to_entry_definition)
+        "SEG00000"
+    );
+
+    init_traceheader_mapping(
+        &ds->traceheader_mapping_extension1,
+        segy_ext1_traceheader_default_name_map(),
+        segy_ext1_traceheader_default_map(),
+        "SEG00001"
     );
 
     return ds;
@@ -863,17 +962,18 @@ segy_datasource* segy_memopen( unsigned char* addr, size_t size ) {
     ds->metadata.traceheader_count = 1;
     ds->metadata.tracecount = -1;
 
-    segy_header_mapping* mapping = &ds->traceheader_mapping_standard;
-    memcpy(mapping->name, "SEG00000", 8);
-    memcpy(
-        mapping->name_to_offset,
+    init_traceheader_mapping(
+        &ds->traceheader_mapping_standard,
         segy_traceheader_default_name_map(),
-        sizeof(mapping->name_to_offset)
-    );
-    memcpy(
-        mapping->offset_to_entry_definition,
         segy_traceheader_default_map(),
-        sizeof(mapping->offset_to_entry_definition)
+        "SEG00000"
+    );
+
+    init_traceheader_mapping(
+        &ds->traceheader_mapping_extension1,
+        segy_ext1_traceheader_default_name_map(),
+        segy_ext1_traceheader_default_map(),
+        "SEG00001"
     );
 
     return ds;
@@ -1023,6 +1123,15 @@ int segy_collect_metadata(
     err = segy_traceheaders( binheader, &traceheader_count );
     if( err != SEGY_OK ) return err;
     ds->metadata.traceheader_count = traceheader_count;
+
+    if( ds->metadata.traceheader_count == 1 ) {
+        // remove extension1 maps, which are on by default
+        memset(
+            &ds->traceheader_mapping_extension1,
+            0,
+            sizeof( ds->traceheader_mapping_extension1 )
+        );
+    }
 
     int tracecount;
     err = segy_traces( ds, &tracecount );
