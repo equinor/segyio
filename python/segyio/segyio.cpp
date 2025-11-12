@@ -1213,7 +1213,7 @@ PyObject* getfield( segyfd* self, PyObject* args ) {
         }
 
         default:
-            return KeyError( "Unhandled datatype %d for field %d", fd.entry_type, field );
+            return KeyError( "Unhandled entry type %d for field %d", fd.entry_type, field );
     }
 }
 
@@ -1302,7 +1302,7 @@ PyObject* putfield( segyfd* self, PyObject *args ) {
                 if( PyErr_Occurred() || val > UINT16_MAX ) {
                     return ValueError( "Value out of range for unsigned short at field %d", field );
                 }
-                fd.value.u16 = val;
+                fd.value.u16 = static_cast<uint16_t>( val );
             }
             break;
         case SEGY_UNSIGNED_CHAR_1_BYTE:
@@ -1311,7 +1311,7 @@ PyObject* putfield( segyfd* self, PyObject *args ) {
                 if( PyErr_Occurred() || val > UINT8_MAX ) {
                     return ValueError( "Value out of range for unsigned char at field %d", field );
                 }
-                fd.value.u8 = val;
+                fd.value.u8 = static_cast<uint8_t>( val );
             }
             break;
 
@@ -1339,7 +1339,7 @@ PyObject* putfield( segyfd* self, PyObject *args ) {
                 if( PyErr_Occurred() || val > INT16_MAX || val < INT16_MIN ) {
                     return ValueError( "Value out of range for signed short at field %d", field );
                 }
-                fd.value.i16 = val;
+                fd.value.i16 = static_cast<int16_t>( val );
             }
             break;
         case SEGY_SIGNED_CHAR_1_BYTE:
@@ -1348,7 +1348,7 @@ PyObject* putfield( segyfd* self, PyObject *args ) {
                 if( PyErr_Occurred() || val > INT8_MAX || val < INT8_MIN ) {
                     return ValueError( "Value out of range for signed char at field %d", field );
                 }
-                fd.value.i8 = val;
+                fd.value.u8 = static_cast<uint8_t>( val );
             }
             break;
 
@@ -1364,7 +1364,7 @@ PyObject* putfield( segyfd* self, PyObject *args ) {
         case SEGY_IBM_FLOAT_4_BYTE:
         case SEGY_IEEE_FLOAT_4_BYTE:
             {
-                float val = PyFloat_AsDouble( value_arg );
+                float val = static_cast<float>( PyFloat_AsDouble( value_arg ) );
                 if( PyErr_Occurred() ) {
                     return ValueError( "Value out of range for float at field %d", field );
                 }
@@ -1385,7 +1385,7 @@ PyObject* putfield( segyfd* self, PyObject *args ) {
                 break;
             }
         default:
-            return KeyError( "Field %d has unknown datatype %d", field, fd.entry_type );
+            return KeyError( "Field %d has unknown entry type %d", field, fd.entry_type );
     }
 
     int err;
