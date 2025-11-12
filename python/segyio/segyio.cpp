@@ -2774,6 +2774,15 @@ int parse_py_TraceHeaderLayoutEntry_list( PyObject* entries, segy_header_mapping
         if( err != SEGY_OK ) return err;
     }
 
+    /* Last 8 bytes of each trace header should contain a header name, which is
+     * not in the map. To be able to deal with header names the same way we deal
+     * with other fields, we need to add them to the map.
+     *
+     * The main header is an exception as there header name in bytes 233-240 is
+     * optional. Previous versions of segyio assumed those fields could contain
+     * custom user information. To be compliant with those versions, we allow
+     * any field types in SEG00000 bytes 233-240.
+     */
     const int header_name_offset = 233;
     const segy_entry_definition header_name_entry =
         mapping->offset_to_entry_definition[header_name_offset - 1];
