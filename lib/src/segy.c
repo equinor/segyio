@@ -1920,7 +1920,9 @@ int segy_traces( segy_datasource* ds,
     return SEGY_OK;
 }
 
-/* Allows only int2 and uint2. */
+/* Gets scalar value from field data. Allows only int2 and uint2. At the moment
+ * other types on purpose are assumed to be invalid for scalars.
+ */
 static int field_data_to_scalar(
     const segy_field_data* fd,
     int* scalar
@@ -1936,6 +1938,21 @@ static int field_data_to_scalar(
             return SEGY_INVALID_FIELD_DATATYPE;
     }
     return SEGY_OK;
+}
+
+static float apply_scalar(
+    int raw_value,
+    int raw_scalar
+) {
+    float scalar;
+    if( raw_scalar == 0 ) {
+        scalar = 1.0f;
+    } else if( raw_scalar < 0 ) {
+        scalar = -1.0f / raw_scalar;
+    } else {
+        scalar = 1.0f * raw_scalar;
+    }
+    return raw_value * scalar;
 }
 
 int segy_delay_recoding_time( segy_datasource* ds, float* delay ) {
@@ -1961,7 +1978,8 @@ int segy_delay_recoding_time( segy_datasource* ds, float* delay ) {
     );
     if( err != SEGY_OK ) return err;
 
-    // until someone complains, we restrict allowed types to these only
+    // until someone complains, we restrict allowed types to these only. For now
+    // they all are treated as if they were TIME2 (decision by domain expert)
     switch( delay_fd.entry_type ) {
         case SEGY_ENTRY_TYPE_TIME2:
         case SEGY_ENTRY_TYPE_INT2:
@@ -1985,16 +2003,7 @@ int segy_delay_recoding_time( segy_datasource* ds, float* delay ) {
     err = field_data_to_scalar( &scalar_fd, &scalar_raw );
     if( err != SEGY_OK ) return err;
 
-    float delay_scalar;
-    if( scalar_raw == 0 ) {
-        delay_scalar = 1.0f;
-    } else if( scalar_raw < 0 ) {
-        delay_scalar = -1.0f / scalar_raw;
-    } else {
-        delay_scalar = 1.0f * scalar_raw;
-    }
-
-    *delay = delay_raw * delay_scalar;
+    *delay = apply_scalar( delay_raw, scalar_raw );
     return SEGY_OK;
 }
 
@@ -3152,10 +3161,7 @@ static int scaled_standard_header_cdp(
     err = field_data_to_scalar( &fd, &scalar );
     if( err != SEGY_OK ) return err;
 
-    float scale = (float)scalar;
-    if( scalar == 0 ) scale = 1.0;
-    if( scalar < 0 ) scale = -1.0f / scale;
-    *cdp = raw_cdp * scale;
+    *cdp = apply_scalar( raw_cdp, scalar );
     return SEGY_OK;
 }
 
