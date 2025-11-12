@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
+#include <memory>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -2678,9 +2679,11 @@ int set_mapping_offset_to_entry_defintion(
     std::string spec_entry_type,
     bool requires_nonzero_value
 ) {
-    char* spec_entry_name_heap = new char[spec_entry_name.size() + 1];
-    if( !spec_entry_name_heap ) return SEGY_MEMORY_ERROR;
-    std::strcpy( spec_entry_name_heap, spec_entry_name.c_str() );
+    std::unique_ptr<char[]> spec_entry_name_ptr(
+        new char[spec_entry_name.size() + 1]
+    );
+    if( !spec_entry_name_ptr ) return SEGY_MEMORY_ERROR;
+    std::strcpy( spec_entry_name_ptr.get(), spec_entry_name.c_str() );
 
     SEGY_ENTRY_TYPE entry_type = SEGY_ENTRY_TYPE_UNDEFINED;
     if( spectype_to_segytype_map.count( spec_entry_type ) ) {
@@ -2688,7 +2691,7 @@ int set_mapping_offset_to_entry_defintion(
     }
     if( entry_type == SEGY_ENTRY_TYPE_UNDEFINED ) return SEGY_INVALID_ARGS;
 
-    if (entry_type == SEGY_ENTRY_TYPE_SCALE6_MANT) {
+    if( entry_type == SEGY_ENTRY_TYPE_SCALE6_MANT ) {
         const int byte_mant = byte;
         const int byte_exp = byte + 4;
         if( byte_exp < 1 || byte_exp > SEGY_TRACE_HEADER_SIZE ) {
@@ -2696,26 +2699,24 @@ int set_mapping_offset_to_entry_defintion(
         }
 
         std::string mant_name = spec_entry_name + "_mant";
-        char* mant_name_heap = new char[mant_name.size() + 1];
-        if( !mant_name_heap ) return SEGY_MEMORY_ERROR;
-        std::strcpy( mant_name_heap, mant_name.c_str() );
+        std::unique_ptr<char[]> mant_name_ptr( new char[mant_name.size() + 1] );
+        if( !mant_name_ptr ) return SEGY_MEMORY_ERROR;
+        std::strcpy( mant_name_ptr.get(), mant_name.c_str() );
 
         std::string exp_name = spec_entry_name + "_exp";
-        char* exp_name_heap = new char[exp_name.size() + 1];
-        if( !exp_name_heap ) return SEGY_MEMORY_ERROR;
-        std::strcpy( exp_name_heap, exp_name.c_str() );
-
-        delete[] spec_entry_name_heap;
+        std::unique_ptr<char[]> exp_name_ptr( new char[exp_name.size() + 1] );
+        if( !exp_name_ptr ) return SEGY_MEMORY_ERROR;
+        std::strcpy( exp_name_ptr.get(), exp_name.c_str() );
 
         segy_entry_definition def_mant = {
             SEGY_ENTRY_TYPE_SCALE6_MANT,
             requires_nonzero_value,
-            mant_name_heap
+            mant_name_ptr.release()
         };
         segy_entry_definition def_exp = {
             SEGY_ENTRY_TYPE_SCALE6_EXP,
             requires_nonzero_value,
-            exp_name_heap
+            exp_name_ptr.release()
         };
 
         mapping->offset_to_entry_definition[byte_mant - 1] = def_mant;
@@ -2726,7 +2727,7 @@ int set_mapping_offset_to_entry_defintion(
     segy_entry_definition def = {
         entry_type,
         requires_nonzero_value,
-        spec_entry_name_heap
+        spec_entry_name_ptr.release()
     };
     mapping->offset_to_entry_definition[byte - 1] = def;
     return SEGY_OK;

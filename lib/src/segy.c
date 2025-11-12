@@ -1097,7 +1097,6 @@ static int get_field( const char* header,
             memcpy( &(fd->value.i8), header + offset, vsize );
             return SEGY_OK;
 
-
         case SEGY_UNSIGNED_INTEGER_8_BYTE:
             memcpy( &(fd->value.u64), header + offset, vsize );
             fd->value.u64 = be64toh( fd->value.u64 );
@@ -1116,7 +1115,6 @@ static int get_field( const char* header,
         case SEGY_UNSIGNED_CHAR_1_BYTE:
             memcpy( &(fd->value.u8), header + offset, vsize );
             return SEGY_OK;
-
 
         case SEGY_IEEE_FLOAT_8_BYTE: {
             uint64_t val;
@@ -1232,7 +1230,6 @@ static int set_field( char* header,
             memcpy( header + offset, &( fv.i8 ), vsize );
             return SEGY_OK;
 
-
         case SEGY_UNSIGNED_INTEGER_8_BYTE:
             fv.u64 = htobe64( fv.u64 );
             memcpy( header + offset, &( fv.u64 ), vsize );
@@ -1251,7 +1248,6 @@ static int set_field( char* header,
         case SEGY_UNSIGNED_CHAR_1_BYTE:
             memcpy( header + offset, &( fv.u8 ), vsize );
             return SEGY_OK;
-
 
         case SEGY_IEEE_FLOAT_8_BYTE: {
             uint64_t val;
@@ -1546,7 +1542,6 @@ int segy_field_forall( segy_datasource* ds,
                 memcpy( buf, &fd.value.i8, elemsize );
                 break;
 
-
             case SEGY_UNSIGNED_INTEGER_8_BYTE:
                 memcpy( buf, &fd.value.u64, elemsize );
                 break;
@@ -1562,7 +1557,6 @@ int segy_field_forall( segy_datasource* ds,
             case SEGY_UNSIGNED_CHAR_1_BYTE:
                 memcpy( buf, &fd.value.u8, elemsize );
                 break;
-
 
             case SEGY_IEEE_FLOAT_8_BYTE:
                 memcpy( buf, &fd.value.f64, elemsize );

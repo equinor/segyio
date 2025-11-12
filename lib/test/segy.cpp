@@ -1358,7 +1358,7 @@ TEST_CASE( "setting correct header fields of string type", "[c.segy]" ) {
 
     segy_field_data fd;
     fd.entry_type = entry_type;
-    memset( fd.value.str8, 0, 8 );
+    memset( fd.value.str8, '\0', 8 );
     memcpy( fd.value.str8, value.c_str(), value.size() );
 
     int offset = 45;
