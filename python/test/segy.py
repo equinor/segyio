@@ -2282,9 +2282,16 @@ def test_trace_header_extensions():
         assert np.array_equal(f.attributes(TraceField.CROSSLINE_3D), [20, 21])
 
 
+@pytest.mark.parametrize(
+    "endianness, filename",
+    [
+        ("big", "mapping-all-types.sgy"),
+        ("little", "mapping-all-types-lsb.sgy"),
+    ]
+)
 @tmpfiles(testdata / 'mapping-all-types.sgy')
 @tmpfiles(testdata / 'mapping-all-types-lsb.sgy')
-def test_read_write_all_custom_mapping_types(tmpdir):
+def test_read_write_all_custom_mapping_types(tmpdir, endianness, filename):
     from dataclasses import dataclass
     import numbers
 
@@ -2294,7 +2301,7 @@ def test_read_write_all_custom_mapping_types(tmpdir):
         opened: numbers.Real
         changed: numbers.Real
 
-    types_header0_cases = [
+    trace0_ext_header1_cases = [
         HeaderTest("int2", 1, -101),
         HeaderTest("int4", 2, -102),
         HeaderTest("int8", 3, -103),
@@ -2319,7 +2326,7 @@ def test_read_write_all_custom_mapping_types(tmpdir):
         HeaderTest("header_name", b"TYPES\x00\x00\x00", b"TYPES   "),
     ]
 
-    types_header1_cases = [
+    trace1_ext_header1_cases = [
         HeaderTest("int2", -1001, 10001),
         HeaderTest("int4", -1002, 2000002),
         HeaderTest("int8", -1003, 3000000003),
@@ -2343,21 +2350,21 @@ def test_read_write_all_custom_mapping_types(tmpdir):
         HeaderTest("header_name", b"TYPES\x00\x00\x00", b"TYPES   "),
     ]
 
-    types_headers = {
-        0: types_header0_cases,
-        1: types_header1_cases,
+    headers = {
+        0: trace0_ext_header1_cases,
+        1: trace1_ext_header1_cases,
     }
 
     traceheader_index = 1
 
     # all internal calls are temporary!
     # they would be exchanged with proper ones once python interface is in place
-    def test(f):
+    with segyio.open(tmpdir / filename, mode='r+', endian=endianness) as f:
         def mkempty():
             return bytearray(240)
 
         types_layout = f._traceheader_layouts["TYPES"]
-        for trace_index, header_cases in types_headers.items():
+        for trace_index, header_cases in headers.items():
             for case in header_cases:
                 offset = types_layout.entry_by_name(case.name).byte
 
@@ -2385,7 +2392,7 @@ def test_read_write_all_custom_mapping_types(tmpdir):
             f.segyfd.putfield(traceheader, traceheader_index, offset, 50000)
 
         from segyio.trace import Attributes
-        for i, case in enumerate(types_header0_cases):
+        for i, case in enumerate(trace0_ext_header1_cases):
             if (case.name == "scale6_mant") or (case.name == "scale6_exp"):
                 # scale6 is not properly supported yet
                 continue
@@ -2397,16 +2404,10 @@ def test_read_write_all_custom_mapping_types(tmpdir):
 
             offset = types_layout.entry_by_name(case.name).byte
             expected = np.array(
-                [types_header0_cases[i].changed, types_header1_cases[i].changed])
+                [trace0_ext_header1_cases[i].changed, trace1_ext_header1_cases[i].changed])
 
             # attrs = f.attributes(offset, traceheader_index)
             attrs = np.empty(2, dtype=Attributes.ENTRY_TYPE_TO_NUMPY[type])
             f.segyfd.field_forall(attrs, traceheader_index, 0, 2, 1, offset)
 
             np.testing.assert_array_equal(attrs, expected)
-
-    with segyio.open(tmpdir / 'mapping-all-types.sgy', mode='r+') as f:
-        test(f)
-
-    with segyio.open(tmpdir / 'mapping-all-types-lsb.sgy', mode='r+', endian="little") as f:
-        test(f)
