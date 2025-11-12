@@ -1935,7 +1935,7 @@ static int field_data_to_scalar(
 }
 
 static float apply_scalar(
-    int raw_value,
+    long raw_value,
     int raw_scalar
 ) {
     float scalar;
@@ -3129,7 +3129,7 @@ static int scaled_standard_header_cdp(
     int err = segy_get_tracefield( header, map, cdp_offset, &fd );
     if( err != SEGY_OK ) return err;
 
-    float raw_cdp;
+    long raw_cdp;
     switch( fd.entry_type ) {
         case SEGY_ENTRY_TYPE_IBMFP:
         case SEGY_ENTRY_TYPE_IEEE32:
@@ -3138,11 +3138,11 @@ static int scaled_standard_header_cdp(
         case SEGY_ENTRY_TYPE_COOR4:
         // breaks spec on purpose: scalar is applied anyway
         case SEGY_ENTRY_TYPE_INT4:
-            raw_cdp = (float)fd.value.i32;
+            raw_cdp = fd.value.i32;
             break;
         // breaks spec on purpose: scalar is applied anyway
         case SEGY_ENTRY_TYPE_UINT4:
-            raw_cdp = (float)fd.value.u32;
+            raw_cdp = fd.value.u32;
             break;
         default:
             return SEGY_INVALID_FIELD_DATATYPE;
