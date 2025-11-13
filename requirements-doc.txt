@@ -5,3 +5,4 @@ sphinx-gallery
 # https://github.com/sphinx-gallery/sphinx-gallery/issues/192
 pillow
 matplotlib
+sphinx-rtd-theme
