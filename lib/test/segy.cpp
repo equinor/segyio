@@ -100,6 +100,7 @@ struct StringMaker< Err > {
             case SEGY_FREAD_ERROR: return "SEGY_FREAD_ERROR";
             case SEGY_FWRITE_ERROR: return "SEGY_FWRITE_ERROR";
             case SEGY_INVALID_FIELD: return "SEGY_INVALID_FIELD";
+            case SEGY_INVALID_FIELD_DATATYPE: return "SEGY_INVALID_FIELD_DATATYPE";
             case SEGY_INVALID_SORTING: return "SEGY_INVALID_SORTING";
             case SEGY_MISSING_LINE_INDEX: return "SEGY_MISSING_LINE_INDEX";
             case SEGY_INVALID_OFFSETS: return "SEGY_INVALID_OFFSETS";
@@ -1152,6 +1153,8 @@ TEST_CASE_METHOD( smallfields,
 
     std::vector< int > out( inlines.size() );
     const Err err = segy_field_forall( fp,
+                                       0,
+                                       segy_traceheader_default_map(),
                                        il,
                                        start, stop, step,
                                        out.data() );
@@ -1175,6 +1178,8 @@ TEST_CASE_METHOD( smallfields,
 
     std::vector< int > out( crosslines.size() );
     const Err err = segy_field_forall( fp,
+                                       0,
+                                       segy_traceheader_default_map(),
                                        xl,
                                        start, stop, step,
                                        out.data() );
@@ -1197,6 +1202,8 @@ TEST_CASE_METHOD( smallfields,
 
     std::vector< int > out( crosslines.size() );
     const Err err = segy_field_forall( fp,
+                                       0,
+                                       segy_traceheader_default_map(),
                                        xl,
                                        start, stop, step,
                                        out.data() );
@@ -1219,6 +1226,8 @@ TEST_CASE_METHOD( smallfields,
 
     std::vector< int > out( crosslines.size() );
     const Err err = segy_field_forall( fp,
+                                       0,
+                                       segy_traceheader_default_map(),
                                        xl,
                                        start, stop, step,
                                        out.data() );
@@ -1235,6 +1244,8 @@ TEST_CASE_METHOD( smallfields,
 
     std::vector< int > out( crosslines.size() );
     const Err err = segy_field_forall( fp,
+                                       0,
+                                       segy_traceheader_default_map(),
                                        xl,
                                        start, stop, step,
                                        out.data() );
@@ -1285,6 +1296,84 @@ TEST_CASE( "setting correct header fields succeeds",
     CHECK( success( err ) );
 
     CHECK( output == input );
+}
+
+TEST_CASE( "setting correct header fields of float types", "[c.segy]" ) {
+    char header[SEGY_TRACE_HEADER_SIZE] = {};
+
+    const double value = 123.75;
+    SEGY_ENTRY_TYPE entry_type = GENERATE(
+        SEGY_ENTRY_TYPE_IEEE64,
+        SEGY_ENTRY_TYPE_IEEE32,
+        SEGY_ENTRY_TYPE_IBMFP
+    );
+
+    segy_field_data fd;
+    fd.entry_type = entry_type;
+
+    switch( entry_type ) {
+        case SEGY_ENTRY_TYPE_IEEE64:
+            fd.value.f64 = value;
+            break;
+        case SEGY_ENTRY_TYPE_IEEE32:
+        case SEGY_ENTRY_TYPE_IBMFP:
+            fd.value.f32 = value;
+            break;
+        default:
+            FAIL( "unsupported entry type" );
+    }
+
+    int offset = 45;
+    segy_entry_definition offset_map[240];
+    segy_entry_definition def = { entry_type, false, NULL };
+    offset_map[offset - 1] = def;
+
+    Err err = segy_set_tracefield( header, offset_map, offset, fd );
+    CHECK( err == Err::ok() );
+
+    segy_field_data fd_out;
+    err = segy_get_tracefield( header, offset_map, offset, &fd_out );
+    CHECK( err == Err::ok() );
+
+    switch( entry_type ) {
+        case SEGY_ENTRY_TYPE_IEEE64: {
+            CHECK( fd_out.value.f64 == value );
+            break;
+        }
+
+        case SEGY_ENTRY_TYPE_IEEE32:
+        case SEGY_ENTRY_TYPE_IBMFP:
+            CHECK( fd_out.value.f32 == value );
+            break;
+        default:
+            FAIL( "unsupported entry type" );
+    }
+}
+
+TEST_CASE( "setting correct header fields of string type", "[c.segy]" ) {
+    char header[SEGY_TRACE_HEADER_SIZE] = {};
+    std::string value = "TEST";
+
+    SEGY_ENTRY_TYPE entry_type = SEGY_ENTRY_TYPE_STRING8;
+
+    segy_field_data fd;
+    fd.entry_type = entry_type;
+    memset( fd.value.str8, '\0', 8 );
+    memcpy( fd.value.str8, value.c_str(), value.size() );
+
+    int offset = 45;
+    segy_entry_definition offset_map[240];
+    segy_entry_definition def = { entry_type, false, NULL };
+    offset_map[offset - 1] = def;
+
+    Err err = segy_set_tracefield( header, offset_map, offset, fd );
+    CHECK( err == Err::ok() );
+
+    segy_field_data fd_out;
+    err = segy_get_tracefield( header, offset_map, offset, &fd_out );
+    CHECK( err == Err::ok() );
+
+    CHECK( std::string( fd_out.value.str8, value.size() ) == value );
 }
 
 SCENARIO( "modifying trace header", "[c.segy]" ) {
@@ -2103,4 +2192,56 @@ TEST_CASE( "segy_get/set_bin/tracefield errors", "[c.segy]" ) {
         );
         CHECK( err == Err::field() );
     }
+}
+
+TEST_CASE( "segy_delay_recoding_time works correctly", "[c.segy]" ) {
+    const char* file;
+    const uint16_t delay_raw = 5;
+    int16_t scalar;
+    float expected;
+
+    auto params = GENERATE(
+        std::tuple<const char*, int16_t, float>{ "delay-scalar-zero.sgy", 0, 5.0f },
+        std::tuple<const char*, int16_t, float>{ "delay-scalar-pos.sgy", 10, 50.0f },
+        std::tuple<const char*, int16_t, float>{ "delay-scalar-neg.sgy", -10, 0.5f }
+    );
+    std::tie( file, scalar, expected ) = params;
+
+    unique_segy ufp( segy_open( file, "w+b" ) );
+    auto fp = ufp.get();
+
+    fp->metadata.samplecount = 8;
+    fp->metadata.trace_bsize = segy_trsize( SEGY_IBM_FLOAT_4_BYTE, fp->metadata.samplecount );
+    fp->metadata.trace0 = 0;
+    char header[SEGY_TRACE_HEADER_SIZE] = {};
+
+    const segy_entry_definition* map = segy_traceheader_default_map();
+    const uint8_t* name_map = segy_traceheader_default_name_map();
+
+    segy_field_data fd_delay;
+    const int delay_offset = name_map[SEGY_TR_DELAY_REC_TIME];
+    fd_delay.entry_type = SEGY_ENTRY_TYPE_TIME2;
+    fd_delay.value.i16 = delay_raw;
+
+    Err err = segy_set_tracefield(
+        header, map, delay_offset, fd_delay
+    );
+    CHECK( err == Err::ok() );
+
+    segy_field_data fd_scalar;
+    const int scalar_offset = name_map[SEGY_TR_SCALAR_TRACE_HEADER];
+    fd_scalar.entry_type = SEGY_ENTRY_TYPE_INT2;
+    fd_scalar.value.i16 = scalar;
+    err = segy_set_tracefield(
+        header, map, scalar_offset, fd_scalar
+    );
+    CHECK( err == Err::ok() );
+
+    err = segy_write_standard_traceheader( fp, 0, header );
+    REQUIRE( err == Err::ok() );
+
+    float delay = arbitrary_float();
+    err = segy_delay_recoding_time( fp, &delay );
+    CHECK( err == Err::ok() );
+    CHECK( delay == expected );
 }

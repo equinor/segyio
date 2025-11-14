@@ -13,6 +13,8 @@ from . import testdata
 import segyio
 import segyio._segyio as _segyio
 
+SEG00000_INDEX = 0
+
 
 def segyfile(filename, mode):
     return _segyio.segyfd(filename=filename, mode=mode)
@@ -164,13 +166,13 @@ def test_read_binary_header_fields(mmap=False):
     binary_header = f.getbin()
 
     with pytest.raises(TypeError):
-        _ = _segyio.getfield([], 0)
+        _ = f.getfield([], SEG00000_INDEX, 0)
 
     with pytest.raises(KeyError):
-        _ = _segyio.getfield(binary_header, -1)
+        _ = f.getfield(binary_header, SEG00000_INDEX, -1)
 
-    assert _segyio.getfield(binary_header, 3225) == 1
-    assert _segyio.getfield(binary_header, 3221) == 50
+    assert f.getfield(binary_header, SEG00000_INDEX, 3225) == 1
+    assert f.getfield(binary_header, SEG00000_INDEX, 3221) == 50
 
     f.close()
 
@@ -361,31 +363,33 @@ def test_fread_trace0(mmap=False):
     f.close()
 
 
-def test_get_and_putfield():
+@tmpfiles(testdata / 'small.sgy')
+def test_get_and_putfield(tmpdir):
+    f = get_instance_segyfile(tmpdir)
     hdr = bytearray(_segyio.thsize())
 
     with pytest.raises(BufferError):
-        _segyio.getfield(".", 0)
+        f.getfield(".", SEG00000_INDEX, 0)
 
     with pytest.raises(TypeError):
-        _segyio.getfield([], 0)
+        f.getfield([], SEG00000_INDEX, 0)
 
     with pytest.raises(TypeError):
-        _segyio.putfield({}, 0, 1)
+        f.putfield({}, SEG00000_INDEX, 0, 1)
 
     with pytest.raises(KeyError):
-        _segyio.getfield(hdr, 0)
+        f.getfield(hdr, SEG00000_INDEX, 0)
 
     with pytest.raises(KeyError):
-        _segyio.putfield(hdr, 0, 1)
+        f.putfield(hdr, SEG00000_INDEX, 0, 1)
 
-    _segyio.putfield(hdr, 1, 127)
-    _segyio.putfield(hdr, 5, 67)
-    _segyio.putfield(hdr, 9, 19)
+    f.putfield(hdr, SEG00000_INDEX, 1, 127)
+    f.putfield(hdr, SEG00000_INDEX, 5, 67)
+    f.putfield(hdr, SEG00000_INDEX, 9, 19)
 
-    assert _segyio.getfield(hdr, 1) == 127
-    assert _segyio.getfield(hdr, 5) == 67
-    assert _segyio.getfield(hdr, 9) == 19
+    assert f.getfield(hdr, SEG00000_INDEX, 1) == 127
+    assert f.getfield(hdr, SEG00000_INDEX, 5) == 67
+    assert f.getfield(hdr, SEG00000_INDEX, 9) == 19
 
 
 @tmpfiles(testdata / 'small.sgy')
@@ -414,57 +418,96 @@ def read_and_write_standard_traceheader(f, mmap):
         f.getth("+")
 
     with pytest.raises(TypeError):
-        f.getth(0, 0, None)
+        f.getth(0, SEG00000_INDEX, None)
 
-    trace_header = f.getth(0, 0, mkempty())
+    trace_header = f.getth(0, SEG00000_INDEX, mkempty())
 
-    assert _segyio.getfield(trace_header, ilb) == 1
-    assert _segyio.getfield(trace_header, xlb) == 20
+    assert f.getfield(trace_header, SEG00000_INDEX, ilb) == 1
+    assert f.getfield(trace_header, SEG00000_INDEX, xlb) == 20
 
-    trace_header = f.getth(1, 0, mkempty())
+    trace_header = f.getth(1, SEG00000_INDEX, mkempty())
 
-    assert _segyio.getfield(trace_header, ilb) == 1
-    assert _segyio.getfield(trace_header, xlb) == 21
+    assert f.getfield(trace_header, SEG00000_INDEX, ilb) == 1
+    assert f.getfield(trace_header, SEG00000_INDEX, xlb) == 21
 
-    _segyio.putfield(trace_header, ilb, 99)
-    _segyio.putfield(trace_header, xlb, 42)
+    f.putfield(trace_header, SEG00000_INDEX, ilb, 99)
+    f.putfield(trace_header, SEG00000_INDEX, xlb, 42)
 
-    f.putth(0, 0, trace_header)
+    f.putth(0, SEG00000_INDEX, trace_header)
 
-    trace_header = f.getth(0, 0, mkempty())
+    trace_header = f.getth(0, SEG00000_INDEX, mkempty())
 
-    assert _segyio.getfield(trace_header, ilb) == 99
-    assert _segyio.getfield(trace_header, xlb) == 42
+    assert f.getfield(trace_header, SEG00000_INDEX, ilb) == 99
+    assert f.getfield(trace_header, SEG00000_INDEX, xlb) == 42
 
     f.close()
 
 
 @tmpfiles(testdata / 'trace-header-extensions.sgy')
 def test_read_and_write_traceheader(tmpdir):
-    f = get_instance_segyfile(tmpdir, 'trace-header-extensions.sgy')
+    field = 1
+    start, stop, step = 0, 2, 1
+    indices = numpy.asarray([0, 1], dtype=numpy.intc)
+    attrs = numpy.empty(len(indices), dtype=numpy.intc)
+    trace_index = 0
 
     def mkempty():
         return bytearray(_segyio.thsize())
 
-    field = 1
-    # note: for the moment all headers are processed using default standard
-    # traceheader mapping, which is incorrect. Test will change in the future
-    # when get-set field functions are updated.
+    def verify_traceheader(f, traceheader_index, type, expected):
+        attrs = numpy.empty(len(indices), dtype=type)
 
-    standard_th = f.getth(0, 0, mkempty())
-    assert _segyio.getfield(standard_th, field) == 286331153
+        traceheader = f.getth(trace_index, traceheader_index, mkempty())
+        assert f.getfield(traceheader, traceheader_index, field) == expected[0]
 
-    extension1_th = f.getth(0, 1, mkempty())
-    assert _segyio.getfield(extension1_th, field) == 572662306
+        f.field_forall(attrs, traceheader_index, start, stop, step, field)
+        numpy.testing.assert_array_equal(attrs, expected)
 
-    proprietary_th = f.getth(0, 2, mkempty())
-    assert _segyio.getfield(proprietary_th, field) == 858993459
+        f.field_foreach(attrs, traceheader_index, indices, field)
+        numpy.testing.assert_array_equal(attrs, expected)
 
-    _segyio.putfield(extension1_th, field, 42)
-    f.putth(0, 1, extension1_th)
+        f.putfield(traceheader, traceheader_index, field, 42)
+        f.putth(trace_index, traceheader_index, traceheader)
 
-    extension1_th = f.getth(0, 1, mkempty())
-    assert _segyio.getfield(extension1_th, field) == 42
+        traceheader = f.getth(trace_index, traceheader_index, mkempty())
+        assert f.getfield(traceheader, traceheader_index, field) == 42
+
+    f = get_instance_segyfile(tmpdir, 'trace-header-extensions.sgy')
+
+    standard_index = 0
+    extension1_index = 1
+    proprietary_index = 2
+    nonexistent_index = 3
+
+    expected = {
+        standard_index: [0x11111111, 0x44444444],
+        extension1_index: [0x22222222_22222222, 0x55555555_55555555],
+        proprietary_index: [0x3333, 0x6666],
+    }
+
+    with pytest.raises(KeyError):
+        f.getth(0, nonexistent_index, mkempty())
+
+    with pytest.raises(KeyError):
+        f.getfield(mkempty(), nonexistent_index, field)
+
+    with pytest.raises(KeyError):
+        f.field_forall(attrs, nonexistent_index, start, stop, step, field)
+
+    with pytest.raises(KeyError):
+        f.field_foreach(attrs, nonexistent_index, indices, field)
+
+    verify_traceheader(
+        f, standard_index, numpy.uint32, expected[standard_index]
+    )
+
+    verify_traceheader(
+        f, extension1_index, numpy.uint64, expected[extension1_index]
+    )
+
+    verify_traceheader(
+        f, proprietary_index, numpy.int16, expected[proprietary_index]
+    )
 
     f.close()
 
@@ -489,9 +532,9 @@ def read_traceheaders_forall(f, mmap):
     field = segyio.TraceField.INLINE_3D
 
     with pytest.raises(ValueError):
-        f.field_forall(attrs, start, stop, 0, field)
+        f.field_forall(attrs, SEG00000_INDEX, start, stop, 0, field)
 
-    buf_handle = f.field_forall(attrs, start, stop, step, field)
+    buf_handle = f.field_forall(attrs, SEG00000_INDEX, start, stop, step, field)
     numpy.testing.assert_array_equal(attrs, [5, 4, 3, 2, 1])
     assert buf_handle is attrs
 
@@ -505,9 +548,9 @@ def read_traceheaders_foreach(f, mmap):
     field = segyio.TraceField.CROSSLINE_3D
 
     with pytest.raises(ValueError):
-        f.field_foreach(numpy.empty(1, dtype=numpy.intc), indices, field)
+        f.field_foreach(numpy.empty(1, dtype=numpy.intc), SEG00000_INDEX, indices, field)
 
-    buf_handle = f.field_foreach(attrs, indices, field)
+    buf_handle = f.field_foreach(attrs, SEG00000_INDEX, indices, field)
     numpy.testing.assert_array_equal(attrs, [22, 24, 21, 23, 20])
     assert buf_handle is attrs
 
@@ -646,7 +689,7 @@ def test_datasource_little_endian(datasource):
         ).segyopen(endianness=1)
 
     binary_header = fd.getbin()
-    assert _segyio.getfield(binary_header, 3221) == 50
+    assert fd.getfield(binary_header, SEG00000_INDEX, 3221) == 50
 
     fd.close()
 
@@ -665,7 +708,7 @@ def test_memory_buffer_memory_management():
     # internal code should still have reference to original "data" buffer, so
     # there should be no error
     binary_header = fd.getbin()
-    assert _segyio.getfield(binary_header, 3225) == 1
+    assert fd.getfield(binary_header, SEG00000_INDEX, 3225) == 1
 
     fd.close()
 
