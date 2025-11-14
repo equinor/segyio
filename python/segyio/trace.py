@@ -435,8 +435,14 @@ class RefTrace(Trace):
         be useful in certain contexts to provide stronger guarantees.
         """
         garbage = []
+        # If there are no external references to the data (so only internal
+        # references remain), the reference count is
+        # - 2 (Python >= 3.14)
+        # - 3 (Python < 3.14)
+        garbage_threshold = 3 if sys.version_info < (3, 14) else 2
+
         for i, (x, signature) in self.refs.items():
-            if sys.getrefcount(x) == 3:
+            if sys.getrefcount(x) == garbage_threshold:
                 garbage.append(i)
 
             if fingerprint(x) == signature: continue
