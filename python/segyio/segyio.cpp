@@ -1136,11 +1136,18 @@ PyObject* putth( segyfd* self, PyObject* args ) {
 }
 
 PyObject* getfield( segyfd* self, PyObject* args ) {
-    (void)self;
     buffer_guard buffer;
     int field;
+    PyObject* py_traceheader_index;
 
-    if( !PyArg_ParseTuple( args, "s*i", &buffer, &field ) ) return NULL;
+    if( !PyArg_ParseTuple(
+            args,
+            "s*Oi",
+            &buffer,
+            &py_traceheader_index,
+            &field
+        ) )
+        return NULL;
 
     segy_field_data fd;
     int err;
@@ -1150,11 +1157,23 @@ PyObject* getfield( segyfd* self, PyObject* args ) {
                 buffer.buf<const char>(), field, &fd
             );
             break;
-        case SEGY_TRACE_HEADER_SIZE:
-            err = segy_get_tracefield(
-                buffer.buf<const char>(), segy_traceheader_default_map(), field, &fd
-            );
+        case SEGY_TRACE_HEADER_SIZE: {
+            unsigned long traceheader_index = PyLong_AsUnsignedLong( py_traceheader_index );
+            if( PyErr_Occurred() ) {
+                return ValueError(
+                    "traceheader_index must be a non-negative integer"
+                );
+            }
+            if( traceheader_index >= self->traceheader_mappings.size() ) {
+                return KeyError(
+                    "no trace header mapping available for index %d", traceheader_index
+                );
+            }
+            const segy_entry_definition* map =
+                self->traceheader_mappings[traceheader_index].offset_to_entry_definition;
+            err = segy_get_tracefield( buffer.buf<const char>(), map, field, &fd );
             break;
+        }
         default:
             return BufferError( "buffer too small" );
     }
@@ -1191,18 +1210,27 @@ PyObject* getfield( segyfd* self, PyObject* args ) {
 }
 
 PyObject* putfield( segyfd* self, PyObject *args ) {
-    (void)self;
+    PyObject* buffer_arg;
+    PyObject* py_traceheader_index;
+    int field;
+    PyObject* value_arg;
 
-    PyObject *buffer_arg = PyTuple_GetItem(args, 0);
-    PyObject *field_arg = PyTuple_GetItem(args, 1);
-    PyObject *value_arg = PyTuple_GetItem(args, 2);
+
+    if( !PyArg_ParseTuple(
+            args,
+            "OOiO",
+            &buffer_arg,
+            &py_traceheader_index,
+            &field,
+            &value_arg
+        ) ) return NULL;
 
     buffer_guard buffer;
-    if( !PyArg_Parse(buffer_arg, "w*", &buffer) )
+    if( !PyArg_Parse( buffer_arg, "w*", &buffer ) )
         return NULL;
 
-    int field = (int)PyLong_AsLong(field_arg);
     segy_field_data fd;
+    const segy_entry_definition* map;
 
     /*
      * We repeat some of internal logic here because Python does not keep type
@@ -1216,7 +1244,7 @@ PyObject* putfield( segyfd* self, PyObject *args ) {
             if( offset < 0 || offset >= SEGY_BINARY_HEADER_SIZE ) {
                 return KeyError( "Invalid field %d", field );
             }
-            const segy_entry_definition* map = segy_binheader_map();
+            map = segy_binheader_map();
             fd.entry_type = map[offset].entry_type;
             break;
         }
@@ -1225,7 +1253,20 @@ PyObject* putfield( segyfd* self, PyObject *args ) {
             if( offset < 0 || offset >= SEGY_TRACE_HEADER_SIZE ) {
                 return KeyError( "Invalid field %d", field );
             }
-            const segy_entry_definition* map = segy_traceheader_default_map();
+
+            unsigned long traceheader_index = PyLong_AsUnsignedLong( py_traceheader_index );
+            if( PyErr_Occurred() ) {
+                return ValueError(
+                    "traceheader_index must be a non-negative integer"
+                );
+            }
+
+            if( traceheader_index >= self->traceheader_mappings.size() ) {
+                return KeyError(
+                    "no trace header mapping available for index %d", traceheader_index
+                );
+            }
+            map = self->traceheader_mappings[traceheader_index].offset_to_entry_definition;
             fd.entry_type = map[offset].entry_type;
             break;
         }
@@ -1341,7 +1382,7 @@ PyObject* putfield( segyfd* self, PyObject *args ) {
             break;
         case SEGY_TRACE_HEADER_SIZE:
             err = segy_set_tracefield(
-                buffer.buf<char>(), segy_traceheader_default_map(), field, fd
+                buffer.buf<char>(), map, field, fd
             );
             break;
         default:

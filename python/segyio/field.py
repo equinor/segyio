@@ -374,10 +374,12 @@ class Field(MutableMapping):
         { 37: 5, 189: 2484 }
         """
 
-        try: return self.getfield(self.buf, int(key))
+        traceheader_index = 0
+
+        try: return self.getfield(self.buf, traceheader_index, int(key))
         except TypeError: pass
 
-        return {self.kind(k): self.getfield(self.buf, int(k)) for k in key}
+        return {self.kind(k): self.getfield(self.buf, traceheader_index, int(k)) for k in key}
 
     def __setitem__(self, key, val):
         """d[key] = val
@@ -426,7 +428,9 @@ class Field(MutableMapping):
         5
         """
 
-        self.putfield(self.buf, key, val)
+        traceheader_index = 0
+
+        self.putfield(self.buf, traceheader_index, key, val)
         self.flush()
 
         return val
@@ -513,6 +517,8 @@ class Field(MutableMapping):
 
         buf = bytearray(self.buf)
 
+        traceheader_index = 0
+
         # Implementation largely borrowed from Mapping
         # If E present and has a .keys() method: for k in E: D[k] = E[k]
         # If E present and lacks .keys() method: for (k, v) in E: D[k] = v
@@ -521,16 +527,16 @@ class Field(MutableMapping):
             other = args[0]
             if isinstance(other, Mapping):
                 for key in other:
-                    self.putfield(buf, int(key), other[key])
+                    self.putfield(buf, traceheader_index, int(key), other[key])
             elif hasattr(other, "keys"):
                 for key in other.keys():
-                    self.putfield(buf, int(key), other[key])
+                    self.putfield(buf, traceheader_index, int(key), other[key])
             else:
                 for key, value in other:
-                    self.putfield(buf, int(key), value)
+                    self.putfield(buf, traceheader_index, int(key), value)
 
         for key, value in kwargs.items():
-            self.putfield(buf, int(self._kwargs[key]), value)
+            self.putfield(buf, traceheader_index, int(self._kwargs[key]), value)
 
         self.buf = buf
         self.flush()

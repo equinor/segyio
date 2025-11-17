@@ -13,6 +13,8 @@ from . import testdata
 import segyio
 import segyio._segyio as _segyio
 
+SEG00000_INDEX = 0
+
 
 def segyfile(filename, mode):
     return _segyio.segyfd(filename=filename, mode=mode)
@@ -164,13 +166,13 @@ def test_read_binary_header_fields(mmap=False):
     binary_header = f.getbin()
 
     with pytest.raises(TypeError):
-        _ = f.getfield([], 0)
+        _ = f.getfield([], SEG00000_INDEX, 0)
 
     with pytest.raises(KeyError):
-        _ = f.getfield(binary_header, -1)
+        _ = f.getfield(binary_header, SEG00000_INDEX, -1)
 
-    assert f.getfield(binary_header, 3225) == 1
-    assert f.getfield(binary_header, 3221) == 50
+    assert f.getfield(binary_header, SEG00000_INDEX, 3225) == 1
+    assert f.getfield(binary_header, SEG00000_INDEX, 3221) == 50
 
     f.close()
 
@@ -367,27 +369,27 @@ def test_get_and_putfield(tmpdir):
     hdr = bytearray(_segyio.thsize())
 
     with pytest.raises(BufferError):
-        f.getfield(".", 0)
+        f.getfield(".", SEG00000_INDEX, 0)
 
     with pytest.raises(TypeError):
-        f.getfield([], 0)
+        f.getfield([], SEG00000_INDEX, 0)
 
     with pytest.raises(TypeError):
-        f.putfield({}, 0, 1)
+        f.putfield({}, SEG00000_INDEX, 0, 1)
 
     with pytest.raises(KeyError):
-        f.getfield(hdr, 0)
+        f.getfield(hdr, SEG00000_INDEX, 0)
 
     with pytest.raises(KeyError):
-        f.putfield(hdr, 0, 1)
+        f.putfield(hdr, SEG00000_INDEX, 0, 1)
 
-    f.putfield(hdr, 1, 127)
-    f.putfield(hdr, 5, 67)
-    f.putfield(hdr, 9, 19)
+    f.putfield(hdr, SEG00000_INDEX, 1, 127)
+    f.putfield(hdr, SEG00000_INDEX, 5, 67)
+    f.putfield(hdr, SEG00000_INDEX, 9, 19)
 
-    assert f.getfield(hdr, 1) == 127
-    assert f.getfield(hdr, 5) == 67
-    assert f.getfield(hdr, 9) == 19
+    assert f.getfield(hdr, SEG00000_INDEX, 1) == 127
+    assert f.getfield(hdr, SEG00000_INDEX, 5) == 67
+    assert f.getfield(hdr, SEG00000_INDEX, 9) == 19
 
 
 @tmpfiles(testdata / 'small.sgy')
@@ -416,27 +418,27 @@ def read_and_write_standard_traceheader(f, mmap):
         f.getth("+")
 
     with pytest.raises(TypeError):
-        f.getth(0, 0, None)
+        f.getth(0, SEG00000_INDEX, None)
 
-    trace_header = f.getth(0, 0, mkempty())
+    trace_header = f.getth(0, SEG00000_INDEX, mkempty())
 
-    assert f.getfield(trace_header, ilb) == 1
-    assert f.getfield(trace_header, xlb) == 20
+    assert f.getfield(trace_header, SEG00000_INDEX, ilb) == 1
+    assert f.getfield(trace_header, SEG00000_INDEX, xlb) == 20
 
-    trace_header = f.getth(1, 0, mkempty())
+    trace_header = f.getth(1, SEG00000_INDEX, mkempty())
 
-    assert f.getfield(trace_header, ilb) == 1
-    assert f.getfield(trace_header, xlb) == 21
+    assert f.getfield(trace_header, SEG00000_INDEX, ilb) == 1
+    assert f.getfield(trace_header, SEG00000_INDEX, xlb) == 21
 
-    f.putfield(trace_header, ilb, 99)
-    f.putfield(trace_header, xlb, 42)
+    f.putfield(trace_header, SEG00000_INDEX, ilb, 99)
+    f.putfield(trace_header, SEG00000_INDEX, xlb, 42)
 
-    f.putth(0, 0, trace_header)
+    f.putth(0, SEG00000_INDEX, trace_header)
 
-    trace_header = f.getth(0, 0, mkempty())
+    trace_header = f.getth(0, SEG00000_INDEX, mkempty())
 
-    assert f.getfield(trace_header, ilb) == 99
-    assert f.getfield(trace_header, xlb) == 42
+    assert f.getfield(trace_header, SEG00000_INDEX, ilb) == 99
+    assert f.getfield(trace_header, SEG00000_INDEX, xlb) == 42
 
     f.close()
 
@@ -454,19 +456,19 @@ def test_read_and_write_traceheader(tmpdir):
     # when get-set field functions are updated.
 
     standard_th = f.getth(0, 0, mkempty())
-    assert f.getfield(standard_th, field) == 286331153
+    assert f.getfield(standard_th, 0, field) == 286331153
 
     extension1_th = f.getth(0, 1, mkempty())
-    assert f.getfield(extension1_th, field) == 572662306
+    assert f.getfield(extension1_th, 0, field) == 572662306
 
     proprietary_th = f.getth(0, 2, mkempty())
-    assert f.getfield(proprietary_th, field) == 858993459
+    assert f.getfield(proprietary_th, 0, field) == 858993459
 
-    f.putfield(extension1_th, field, 42)
+    f.putfield(extension1_th, 0, field, 42)
     f.putth(0, 1, extension1_th)
 
     extension1_th = f.getth(0, 1, mkempty())
-    assert f.getfield(extension1_th, field) == 42
+    assert f.getfield(extension1_th, 0, field) == 42
 
     f.close()
 
@@ -648,7 +650,7 @@ def test_datasource_little_endian(datasource):
         ).segyopen(endianness=1)
 
     binary_header = fd.getbin()
-    assert fd.getfield(binary_header, 3221) == 50
+    assert fd.getfield(binary_header, SEG00000_INDEX, 3221) == 50
 
     fd.close()
 
@@ -667,7 +669,7 @@ def test_memory_buffer_memory_management():
     # internal code should still have reference to original "data" buffer, so
     # there should be no error
     binary_header = fd.getbin()
-    assert fd.getfield(binary_header, 3225) == 1
+    assert fd.getfield(binary_header, SEG00000_INDEX, 3225) == 1
 
     fd.close()
 
