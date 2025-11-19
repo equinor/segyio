@@ -1891,6 +1891,32 @@ int segy_traceheaders(
     return SEGY_OK;
 }
 
+int segy_traceheader_names(
+    segy_datasource* ds,
+    char ( *names )[8]
+) {
+    memcpy( names[0], "SEG00000", 8 );
+
+    for( int i = 1; i < ds->metadata.traceheader_count; ++i ) {
+        int err = seek_traceheader_offset( ds, 0, i, 232 );
+        if( err != SEGY_OK ) return err;
+
+        err = ds->read( ds, names[i], 8 );
+        if( err != 0 ) return SEGY_DS_READ_ERROR;
+
+        // it is unclear how to interpret specification "May be ASCII or EBCDIC
+        // text." For proprietary headers we don't know the expected name, so
+        // have to assume that header name is encoded the same way as main text
+        // header. We however can guess the encoding in files that have only
+        // predefined headers to prevent 'open' from breaking.
+        bool is_ascii_seg_header = memcmp( names[i], "SEG", 3 ) == 0;
+        if( ds->metadata.encoding == SEGY_EBCDIC && !is_ascii_seg_header ) {
+            encode( names[i], names[i], e2a, 8 );
+        }
+    }
+
+    return SEGY_OK;
+}
 
 static int bswap_th(
     const segy_datasource* ds,

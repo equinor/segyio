@@ -13,6 +13,7 @@
 #include <segyio/segy.h>
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <cstring>
 #include <memory>
@@ -689,33 +690,54 @@ PyObject* segyopen( segyfd* self, PyObject* args, PyObject* kwargs ) {
         self->stanzas.empty() ? 0 : self->stanzas.back().end_index();
 
     err = segy_collect_metadata( ds, endianness, encoding, ext_textheader_count );
-    if( err == SEGY_OK ) {
-        self->format = ds->metadata.format;
-        self->elemsize = ds->metadata.elemsize;
-        self->trace0 = ds->metadata.trace0;
-        self->samplecount = ds->metadata.samplecount;
-        self->trace_bsize = ds->metadata.trace_bsize;
-        self->traceheader_count = ds->metadata.traceheader_count;
-        self->tracecount = ds->metadata.tracecount;
-
-        Py_INCREF( self );
-        return (PyObject*)self;
+    if( err != SEGY_OK ) {
+        std::ostringstream msg;
+        msg << "unable to gather basic metadata from the file, error " << segy_errstr( err )
+            << ". Intermediate state:\n"
+            << "  endianness=" << ds->metadata.endianness << "\n"
+            << "  encoding=" << ds->metadata.encoding << "\n"
+            << "  format=" << ds->metadata.format << "\n"
+            << "  elemsize=" << ds->metadata.elemsize << "\n"
+            << "  ext_textheader_count=" << ds->metadata.ext_textheader_count << "\n"
+            << "  trace0=" << ds->metadata.trace0 << "\n"
+            << "  samplecount=" << ds->metadata.samplecount << "\n"
+            << "  trace_bsize=" << ds->metadata.trace_bsize << "\n"
+            << "  traceheader_count=" << ds->metadata.traceheader_count << "\n"
+            << "  tracecount=" << ds->metadata.tracecount;
+        return RuntimeError( msg.str().c_str() );
     }
 
-    std::ostringstream msg;
-    msg << "unable to gather basic metadata from the file, error " << segy_errstr( err )
-        << ". Intermediate state:\n"
-        << "  endianness=" << ds->metadata.endianness << "\n"
-        << "  encoding=" << ds->metadata.encoding << "\n"
-        << "  format=" << ds->metadata.format << "\n"
-        << "  elemsize=" << ds->metadata.elemsize << "\n"
-        << "  ext_textheader_count=" << ds->metadata.ext_textheader_count << "\n"
-        << "  trace0=" << ds->metadata.trace0 << "\n"
-        << "  samplecount=" << ds->metadata.samplecount << "\n"
-        << "  trace_bsize=" << ds->metadata.trace_bsize << "\n"
-        << "  traceheader_count=" << ds->metadata.traceheader_count << "\n"
-        << "  tracecount=" << ds->metadata.tracecount;
-    return RuntimeError( msg.str().c_str() );
+    self->format = ds->metadata.format;
+    self->elemsize = ds->metadata.elemsize;
+    self->trace0 = ds->metadata.trace0;
+    self->samplecount = ds->metadata.samplecount;
+    self->trace_bsize = ds->metadata.trace_bsize;
+    self->traceheader_count = ds->metadata.traceheader_count;
+    self->tracecount = ds->metadata.tracecount;
+
+
+    std::vector<std::array<char, 8>> traceheader_names(self->traceheader_count);
+    err = segy_traceheader_names(ds, reinterpret_cast<char(*)[8]>(traceheader_names.data()));
+    if( err ) return Error( err );
+
+    std::vector<segy_header_mapping> ordered_mappings;
+    for (const auto& header_name : traceheader_names) {
+        bool found = false;
+        for (const auto& mapping : self->traceheader_mappings) {
+            if (std::strncmp(mapping.name, header_name.data(), 8) == 0) {
+                ordered_mappings.push_back(mapping);
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            return KeyError("traceheader mapping for '%8.8s' not found", header_name.data());
+        }
+    }
+    self->traceheader_mappings = std::move(ordered_mappings);
+
+    Py_INCREF( self );
+    return (PyObject*)self;
 }
 
 PyObject* segycreate( segyfd* self, PyObject* args, PyObject* kwargs ) {

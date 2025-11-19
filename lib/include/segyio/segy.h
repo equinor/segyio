@@ -503,6 +503,9 @@ int segy_samples( const char* binheader );
  */
 int segy_traceheaders( const char* binheader, int* traceheader_count );
 
+/* Reads into allocated memory traceheader names from first trace. */
+int segy_traceheader_names( segy_datasource* ds, char (*names)[8] );
+
 /*
  * calculate delay recording time for the first trace.
  */

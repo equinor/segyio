@@ -9,6 +9,7 @@ segy_binheader_size
 segy_binheader
 segy_write_binheader
 segy_samples
+segy_traceheader_names
 segy_delay_recoding_time
 segy_sample_interval
 segy_format

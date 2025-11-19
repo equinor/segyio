@@ -2430,6 +2430,18 @@ def test_open_with_custom_mapping():
     with pytest.raises(ValueError, match=r"invalid field datatype*"):
         segyio.open(testdata / 'mapping-unsupported-type.sgy')
 
+    with segyio.open(testdata / 'mapping-mixed-order.sgy') as f:
+        assert f.tracefield.names() == ["SEG00000", "SEG00001", "PRIVATE1", "PRIVATE2"]
+
+    with segyio.open(testdata / 'mapping-no-extension1.sgy') as f:
+        assert f.tracefield.names() == ["SEG00000", "PRIVATE1"]
+
+    with segyio.open(testdata / 'mapping-encoding-ext1.sgy') as f:
+        assert f.tracefield.names() == ["SEG00000", "SEG00001"]
+
+    with pytest.raises(KeyError, match=r"traceheader mapping for .* not found"):
+        segyio.open(testdata / 'mapping-encoding-private.sgy')
+
 
 def test_tracefields():
     with segyio.open(testdata / 'trace-header-extensions.sgy') as f:
