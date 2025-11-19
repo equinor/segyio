@@ -3257,7 +3257,7 @@ static int scaled_standard_header_cdp(
     const segy_entry_definition* map,
     int cdp_offset,
     int scalar_offset,
-    float* cdp
+    double* cdp
 ) {
 
     segy_field_data fd = {0};
@@ -3294,36 +3294,83 @@ static int scaled_standard_header_cdp(
     return SEGY_OK;
 }
 
-static int scaled_cdp(
+static int scaled_ext1_header_cdp(
+    const char* header,
+    const segy_entry_definition* map,
+    int cdp_offset,
+    double* cdp
+) {
+
+    segy_field_data fd = { 0 };
+    int err = segy_get_tracefield( header, map, cdp_offset, &fd );
+    if( err != SEGY_OK ) return err;
+
+    switch( fd.entry_type ) {
+        case SEGY_ENTRY_TYPE_IEEE64:
+            *cdp = fd.value.f64;
+            return SEGY_OK;
+            break;
+        default:
+            return SEGY_INVALID_FIELD_DATATYPE;
+    }
+}
+
+static int scaled_cdp_in_dimension(
     segy_datasource* ds,
     int traceno,
-    float* cdpx,
-    float* cdpy
+    int dimension_standard_name,
+    int dimension_ext1_name,
+    double* cdp
 ) {
 
     char trheader[SEGY_TRACE_HEADER_SIZE];
 
-    int err = segy_read_standard_traceheader( ds, traceno, trheader );
-    if( err != 0 ) return err;
+    const segy_entry_definition* ext1_map =
+        ds->traceheader_mapping_extension1.offset_to_entry_definition;
+    const int cdp_ext1_offset =
+        ds->traceheader_mapping_extension1.name_to_offset[dimension_ext1_name];
+
+    if( ext1_map[cdp_ext1_offset - 1].entry_type != SEGY_ENTRY_TYPE_UNDEFINED ) {
+        int err = segy_read_traceheader( ds, traceno, 1, ext1_map, trheader );
+        if( err != SEGY_OK ) return err;
+
+        err = scaled_ext1_header_cdp(
+            trheader, ext1_map, cdp_ext1_offset, cdp
+        );
+        if( err != SEGY_OK ) return err;
+        if( *cdp != 0 || !ext1_map[cdp_ext1_offset - 1].requires_nonzero_value ) {
+            return SEGY_OK;
+        }
+    }
 
     const segy_entry_definition* standard_map =
         ds->traceheader_mapping_standard.offset_to_entry_definition;
 
-    const int cdp_x_offset =
-        ds->traceheader_mapping_standard.name_to_offset[SEGY_TR_CDP_X];
-    const int cdp_y_offset =
-        ds->traceheader_mapping_standard.name_to_offset[SEGY_TR_CDP_Y];
+    const int cdp_standard_offset =
+        ds->traceheader_mapping_standard.name_to_offset[dimension_standard_name];
     const int scalar_offset =
         ds->traceheader_mapping_standard.name_to_offset[SEGY_TR_SOURCE_GROUP_SCALAR];
 
-    err = scaled_standard_header_cdp(
-        trheader, standard_map, cdp_x_offset, scalar_offset, cdpx
-    );
+    int err = segy_read_standard_traceheader( ds, traceno, trheader );
     if( err != SEGY_OK ) return err;
 
     err = scaled_standard_header_cdp(
-        trheader, standard_map, cdp_y_offset, scalar_offset, cdpy
+        trheader, standard_map, cdp_standard_offset, scalar_offset, cdp
     );
+    return err;
+}
+
+static int scaled_cdp(
+    segy_datasource* ds,
+    int traceno,
+    double* cdpx,
+    double* cdpy
+) {
+    int err;
+    err = scaled_cdp_in_dimension( ds, traceno, SEGY_TR_CDP_X, SEGY_EXT1_CDP_X, cdpx );
+    if( err != SEGY_OK ) return err;
+
+    err = scaled_cdp_in_dimension( ds, traceno, SEGY_TR_CDP_Y, SEGY_EXT1_CDP_Y, cdpy );
     return err;
 }
 
@@ -3335,7 +3382,7 @@ int segy_rotation_cw( segy_datasource* ds,
                       int linenos_sz,
                       float* rotation) {
 
-    struct coord { float x, y; } nw, sw;
+    struct coord { double x, y; } nw, sw;
 
     int err;
     int traceno;
@@ -3355,8 +3402,8 @@ int segy_rotation_cw( segy_datasource* ds,
     err = scaled_cdp( ds, traceno, &nw.x, &nw.y );
     if( err != 0 ) return err;
 
-    float x = nw.x - sw.x;
-    float y = nw.y - sw.y;
+    double x = nw.x - sw.x;
+    double y = nw.y - sw.y;
     double radians = x || y ? atan2( x, y ) : 0;
     if( radians < 0 ) radians += 2 * acos(-1);
 

@@ -174,6 +174,20 @@ def test_rotation_lsb():
             assert rotation(msb, line = 'fast') == rotation(lsb, line = 'fast')
             assert rotation(msb, line = 'slow') == rotation(lsb, line = 'slow')
 
+def test_rotation_ext1():
+    # note that in the test file ext1 values are taken from "left" and standard
+    # header values are taken from "right", yet the result does not correspond
+    # to "left" results. This happens because some of the values in the ext1
+    # header are 0 and 'use-if-non-zero' flag is set for ext1 header. So these
+    # values fall down to 'right' standard header instead.
+    #
+    # While in reality it is likely that standard header would be 0-ed, for us
+    # it is good opportunity to test 'use-if-non-zero' flag. It was checked that
+    # test result values correspond with the mixed left-right picked data.
+    with segyio.open(testdata / 'rotated-small-rev2.sgy') as f:
+        assert 4.712 == approx(segyio.tools.rotation(f, line = 'fast')[0], abs = 1e-3)
+        assert 3.142 == approx(segyio.tools.rotation(f, line = 'slow')[0], abs = 1e-3)
+
 def test_metadata():
     spec = segyio.spec()
     spec.ilines = [1, 2, 3, 4, 5]

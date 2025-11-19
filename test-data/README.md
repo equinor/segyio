@@ -57,6 +57,12 @@ To recreate:
 | left-small.sgy      | 270°                                                                  |
 | inv-acute-small.sgy | 315°                                                                  |
 
+File below is used to test revision 2 features and is created with:
+`python python/examples/make-rotated-rev2.py test-data/small.sgy test-data/rotated-small-rev2.sgy`
+
+| File                   | Purpose                                                                    |
+|------------------------|--------------------------------------------------------------------------- |
+| rotated-small-rev2.sgy | Revision 2 file with different values on standard and extension 1 headers. |
 
 ## Dimensions sorting test files
 
