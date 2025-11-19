@@ -28,7 +28,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
     int* out = mxGetData( plhs[ 0 ] );
 
 
-    err = segy_field_forall( fp, field,
+    err = segy_field_forall( fp, 0, segy_traceheader_default_map(), field,
                              0, fmt.traces, 1, /* start, stop, step */
                              out );
 

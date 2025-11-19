@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
+#include <memory>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -70,14 +71,9 @@ PyObject* ValueError( const char* msg ) {
     return NULL;
 }
 
-template< typename T1 >
-PyObject* ValueError( const char* msg, T1 t1 ) {
-    return PyErr_Format( PyExc_ValueError, msg, t1 );
-}
-
-template< typename T1, typename T2 >
-PyObject* ValueError( const char* msg, T1 t1, T2 t2 ) {
-    return PyErr_Format( PyExc_ValueError, msg, t1, t2 );
+template< typename... Args >
+PyObject* ValueError( const char* msg, Args... args ) {
+    return PyErr_Format( PyExc_ValueError, msg, args... );
 }
 
 template< typename T1, typename T2 >
@@ -652,11 +648,14 @@ PyObject* segyopen( segyfd* self, PyObject* args, PyObject* kwargs ) {
         return NULL;
     }
 
-    char binary[ SEGY_BINARY_HEADER_SIZE ] = {};
-    int err = segy_binheader( ds, binary );
-    if( err ) return Error( err );
+    // endianness must be set before any other header values are read
+    if( endianness != SEGY_LSB && endianness != SEGY_MSB ) {
+        int err = segy_endianness( ds, &endianness );
+        if( err ) return Error( err );
+    }
+    ds->metadata.endianness = endianness;
 
-    err = parse_extended_text_headers( self );
+    int err = parse_extended_text_headers( self );
     if( err ) return Error( err );
 
     std::vector<char> layout_stanza_data;
@@ -1061,10 +1060,10 @@ PyObject* getth( segyfd* self, PyObject *args ) {
     if( !ds ) return NULL;
 
     int traceno;
-    int traceheaderno;
+    uint16_t traceheader_index;
     PyObject* bufferobj;
 
-    if( !PyArg_ParseTuple( args, "iiO", &traceno, &traceheaderno, &bufferobj ) ) return NULL;
+    if( !PyArg_ParseTuple( args, "iHO", &traceno, &traceheader_index, &bufferobj ) ) return NULL;
 
     buffer_guard buffer( bufferobj, PyBUF_CONTIG );
     if( !buffer ) return NULL;
@@ -1074,11 +1073,17 @@ PyObject* getth( segyfd* self, PyObject *args ) {
                            "expected %i, was %zd",
                            SEGY_TRACE_HEADER_SIZE, buffer.len() );
 
+    if( traceheader_index >= self->traceheader_mappings.size() ) {
+        return KeyError(
+            "no trace header mapping available for index %d", traceheader_index
+        );
+    }
+
     int err = segy_read_traceheader(
         ds,
         traceno,
-        traceheaderno,
-        self->traceheader_mappings[traceheaderno].offset_to_entry_definition,
+        traceheader_index,
+        self->traceheader_mappings[traceheader_index].offset_to_entry_definition,
         buffer.buf()
     );
 
@@ -1101,22 +1106,28 @@ PyObject* putth( segyfd* self, PyObject* args ) {
     if( !ds ) return NULL;
 
     int traceno;
-    int traceheaderno;
+    uint16_t traceheader_index;
     buffer_guard buf;
-    if( !PyArg_ParseTuple( args, "iis*", &traceno, &traceheaderno, &buf ) ) return NULL;
+    if( !PyArg_ParseTuple( args, "iHs*", &traceno, &traceheader_index, &buf ) ) return NULL;
 
     if( buf.len() < SEGY_TRACE_HEADER_SIZE )
         return ValueError( "internal: trace header buffer too small, "
                            "expected %i, was %zd",
                            SEGY_TRACE_HEADER_SIZE, buf.len() );
 
+    if( traceheader_index >= self->traceheader_mappings.size() ) {
+        return KeyError(
+            "no trace header mapping available for index %d", traceheader_index
+        );
+    }
+
     const char* buffer = buf.buf< const char >();
 
     int err = segy_write_traceheader(
         ds,
         traceno,
-        traceheaderno,
-        self->traceheader_mappings[traceheaderno].offset_to_entry_definition,
+        traceheader_index,
+        self->traceheader_mappings[traceheader_index].offset_to_entry_definition,
         buffer
     );
 
@@ -1132,19 +1143,307 @@ PyObject* putth( segyfd* self, PyObject* args ) {
     }
 }
 
+PyObject* getfield( segyfd* self, PyObject* args ) {
+    buffer_guard buffer;
+    int field;
+    PyObject* py_traceheader_index;
+
+    if( !PyArg_ParseTuple(
+            args,
+            "s*Oi",
+            &buffer,
+            &py_traceheader_index,
+            &field
+        ) )
+        return NULL;
+
+    segy_field_data fd;
+    int err;
+    switch( buffer.len() ) {
+        case SEGY_BINARY_HEADER_SIZE:
+            err = segy_get_binfield(
+                buffer.buf<const char>(), field, &fd
+            );
+            break;
+        case SEGY_TRACE_HEADER_SIZE: {
+            unsigned long traceheader_index = PyLong_AsUnsignedLong( py_traceheader_index );
+            if( PyErr_Occurred() ) {
+                return ValueError(
+                    "traceheader_index must be a non-negative integer"
+                );
+            }
+            if( traceheader_index >= self->traceheader_mappings.size() ) {
+                return KeyError(
+                    "no trace header mapping available for index %d", traceheader_index
+                );
+            }
+            const segy_entry_definition* map =
+                self->traceheader_mappings[traceheader_index].offset_to_entry_definition;
+            err = segy_get_tracefield( buffer.buf<const char>(), map, field, &fd );
+            break;
+        }
+        default:
+            return BufferError( "buffer too small" );
+    }
+    if( err != SEGY_OK )
+        return KeyError( "Got error code %d when requesting field %d", err, field );
+
+    uint8_t datatype = segy_entry_type_to_datatype( fd.entry_type );
+    switch( datatype ) {
+
+        case SEGY_SIGNED_INTEGER_8_BYTE:
+            return PyLong_FromLongLong( fd.value.i64 );
+        case SEGY_SIGNED_INTEGER_4_BYTE:
+            return PyLong_FromLong( fd.value.i32 );
+        case SEGY_SIGNED_SHORT_2_BYTE:
+            return PyLong_FromLong( fd.value.i16 );
+        case SEGY_SIGNED_CHAR_1_BYTE:
+            return PyLong_FromLong( fd.value.i8 );
+
+        case SEGY_UNSIGNED_INTEGER_8_BYTE:
+            return PyLong_FromUnsignedLongLong( fd.value.u64 );
+        case SEGY_UNSIGNED_INTEGER_4_BYTE:
+            return PyLong_FromUnsignedLong( fd.value.u32 );
+        case SEGY_UNSIGNED_SHORT_2_BYTE:
+            return PyLong_FromUnsignedLong( fd.value.u16 );
+        case SEGY_UNSIGNED_CHAR_1_BYTE:
+            return PyLong_FromUnsignedLong( fd.value.u8 );
+
+        case SEGY_IBM_FLOAT_4_BYTE:
+        case SEGY_IEEE_FLOAT_4_BYTE:
+            return PyFloat_FromDouble( fd.value.f32 );
+        case SEGY_IEEE_FLOAT_8_BYTE:
+            return PyFloat_FromDouble( fd.value.f64 );
+
+        case SEGY_STRING_8_BYTE: {
+            return PyBytes_FromStringAndSize( fd.value.str8, 8 );
+        }
+
+        default:
+            return KeyError( "Unhandled entry type %d for field %d", fd.entry_type, field );
+    }
+}
+
+PyObject* putfield( segyfd* self, PyObject *args ) {
+    PyObject* buffer_arg;
+    PyObject* py_traceheader_index;
+    int field;
+    PyObject* value_arg;
+
+
+    if( !PyArg_ParseTuple(
+            args,
+            "OOiO",
+            &buffer_arg,
+            &py_traceheader_index,
+            &field,
+            &value_arg
+        ) ) return NULL;
+
+    buffer_guard buffer;
+    if( !PyArg_Parse( buffer_arg, "w*", &buffer ) )
+        return NULL;
+
+    segy_field_data fd;
+    const segy_entry_definition* map;
+
+    /*
+     * We repeat some of internal logic here because Python does not keep type
+     * information the same way as C does. As we do not know the type of the
+     * data we have, we assume it to be the same as expected type in the
+     * mapping.
+     */
+    switch( buffer.len() ) {
+        case SEGY_BINARY_HEADER_SIZE: {
+            const int offset = field - SEGY_TEXT_HEADER_SIZE - 1;
+            if( offset < 0 || offset >= SEGY_BINARY_HEADER_SIZE ) {
+                return KeyError( "Invalid field %d", field );
+            }
+            map = segy_binheader_map();
+            fd.entry_type = map[offset].entry_type;
+            break;
+        }
+        case SEGY_TRACE_HEADER_SIZE: {
+            const int offset = field - 1;
+            if( offset < 0 || offset >= SEGY_TRACE_HEADER_SIZE ) {
+                return KeyError( "Invalid field %d", field );
+            }
+
+            unsigned long traceheader_index = PyLong_AsUnsignedLong( py_traceheader_index );
+            if( PyErr_Occurred() ) {
+                return ValueError(
+                    "traceheader_index must be a non-negative integer"
+                );
+            }
+
+            if( traceheader_index >= self->traceheader_mappings.size() ) {
+                return KeyError(
+                    "no trace header mapping available for index %d", traceheader_index
+                );
+            }
+            map = self->traceheader_mappings[traceheader_index].offset_to_entry_definition;
+            fd.entry_type = map[offset].entry_type;
+            break;
+        }
+        default:
+            return BufferError( "buffer too small" );
+    }
+
+    uint8_t datatype = segy_entry_type_to_datatype( fd.entry_type );
+    switch( datatype ) {
+        case SEGY_UNSIGNED_INTEGER_8_BYTE:
+            {
+                unsigned long long val = PyLong_AsUnsignedLongLong( value_arg );
+                if (PyErr_Occurred() || val > UINT64_MAX) {
+                    return ValueError( "Value out of range for unsigned long at field %d", field );
+                }
+                fd.value.u64 = val;
+            }
+            break;
+        case SEGY_UNSIGNED_INTEGER_4_BYTE:
+            {
+                unsigned long val = PyLong_AsUnsignedLong( value_arg );
+                if( PyErr_Occurred() || val > UINT32_MAX ) {
+                    return ValueError( "Value out of range for unsigned int at field %d", field );
+                }
+                fd.value.u32 = val;
+            }
+            break;
+        case SEGY_UNSIGNED_SHORT_2_BYTE:
+            {
+                unsigned long val = PyLong_AsUnsignedLong( value_arg );
+                if( PyErr_Occurred() || val > UINT16_MAX ) {
+                    return ValueError( "Value out of range for unsigned short at field %d", field );
+                }
+                fd.value.u16 = static_cast<uint16_t>( val );
+            }
+            break;
+        case SEGY_UNSIGNED_CHAR_1_BYTE:
+            {
+                unsigned long val = PyLong_AsUnsignedLong( value_arg );
+                if( PyErr_Occurred() || val > UINT8_MAX ) {
+                    return ValueError( "Value out of range for unsigned char at field %d", field );
+                }
+                fd.value.u8 = static_cast<uint8_t>( val );
+            }
+            break;
+
+        case SEGY_SIGNED_INTEGER_8_BYTE:
+            {
+                long long val = PyLong_AsLongLong( value_arg );
+                if (PyErr_Occurred() || val > INT64_MAX || val < INT64_MIN ) {
+                    return ValueError( "Value out of range for signed long at field %d", field );
+                }
+                fd.value.i64 = val;
+            }
+            break;
+        case SEGY_SIGNED_INTEGER_4_BYTE:
+            {
+                long val = PyLong_AsLong( value_arg );
+                if( PyErr_Occurred() || val > INT32_MAX || val < INT32_MIN ) {
+                    return ValueError( "Value out of range for signed int at field %d", field );
+                }
+                fd.value.i32 = val;
+            }
+            break;
+        case SEGY_SIGNED_SHORT_2_BYTE:
+            {
+                long val = PyLong_AsLong( value_arg );
+                if( PyErr_Occurred() || val > INT16_MAX || val < INT16_MIN ) {
+                    return ValueError( "Value out of range for signed short at field %d", field );
+                }
+                fd.value.i16 = static_cast<int16_t>( val );
+            }
+            break;
+        case SEGY_SIGNED_CHAR_1_BYTE:
+            {
+                long val = PyLong_AsLong( value_arg );
+                if( PyErr_Occurred() || val > INT8_MAX || val < INT8_MIN ) {
+                    return ValueError( "Value out of range for signed char at field %d", field );
+                }
+                fd.value.u8 = static_cast<uint8_t>( val );
+            }
+            break;
+
+        case SEGY_IEEE_FLOAT_8_BYTE:
+            {
+                double val = PyFloat_AsDouble( value_arg );
+                if( PyErr_Occurred() ) {
+                    return ValueError( "Value out of range for double at field %d", field );
+                }
+                fd.value.f64 = val;
+                break;
+            }
+        case SEGY_IBM_FLOAT_4_BYTE:
+        case SEGY_IEEE_FLOAT_4_BYTE:
+            {
+                float val = static_cast<float>( PyFloat_AsDouble( value_arg ) );
+                if( PyErr_Occurred() ) {
+                    return ValueError( "Value out of range for float at field %d", field );
+                }
+                fd.value.f32 = val;
+                break;
+            }
+            break;
+            case SEGY_STRING_8_BYTE: {
+                char* ptr = nullptr;
+                Py_ssize_t len = 0;
+                if( PyBytes_AsStringAndSize( value_arg, &ptr, &len ) == -1 ) {
+                    return ValueError( "Value must be a bytes object of length 8 at field %d", field );
+                }
+                if( len != 8 ) {
+                    return ValueError( "Value must be exactly 8 bytes, got %zd", len );
+                }
+                memcpy( fd.value.str8, ptr, len );
+                break;
+            }
+        default:
+            return KeyError( "Field %d has unknown entry type %d", field, fd.entry_type );
+    }
+
+    int err;
+    switch (buffer.len()) {
+        case SEGY_BINARY_HEADER_SIZE:
+            err = segy_set_binfield(
+                buffer.buf<char>(), field, fd
+            );
+            break;
+        case SEGY_TRACE_HEADER_SIZE:
+            err = segy_set_tracefield(
+                buffer.buf<char>(), map, field, fd
+            );
+            break;
+        default:
+            return ValueError( "unhandled buffer type" );
+    }
+
+    switch( err ) {
+        case SEGY_OK:
+            return Py_BuildValue("");
+        case SEGY_INVALID_FIELD: return KeyError( "No such field %d", field );
+        default:                 return Error( err );
+    }
+}
+
 PyObject* field_forall( segyfd* self, PyObject* args ) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
 
     PyObject* bufferobj;
     int start, stop, step;
+    uint16_t traceheader_index;
     int field;
 
-    if( !PyArg_ParseTuple( args, "Oiiii", &bufferobj,
-                                          &start,
-                                          &stop,
-                                          &step,
-                                          &field ) )
+    if( !PyArg_ParseTuple(
+            args,
+            "OHiiii",
+            &bufferobj,
+            &traceheader_index,
+            &start,
+            &stop,
+            &step,
+            &field
+        ) )
         return NULL;
 
     if( step == 0 ) return ValueError( "slice step cannot be zero" );
@@ -1152,12 +1451,22 @@ PyObject* field_forall( segyfd* self, PyObject* args ) {
     buffer_guard buffer( bufferobj, PyBUF_CONTIG );
     if( !buffer ) return NULL;
 
+    if( traceheader_index >= self->traceheader_mappings.size() ) {
+        return KeyError(
+            "no trace header mapping available for index %d", traceheader_index
+        );
+    }
+    const segy_entry_definition* map =
+        self->traceheader_mappings[traceheader_index].offset_to_entry_definition;
+
     const int err = segy_field_forall( ds,
+                                       traceheader_index,
+                                       map,
                                        field,
                                        start,
                                        stop,
                                        step,
-                                       buffer.buf< int >() );
+                                       buffer.buf< char >() );
 
     if( err ) return Error( err );
 
@@ -1170,29 +1479,50 @@ PyObject* field_foreach( segyfd* self, PyObject* args ) {
     if( !ds ) return NULL;
 
     PyObject* bufferobj;
-    buffer_guard indices;
+    uint16_t traceheader_index;
+    buffer_guard indices; //int32 is expected, but not really assured
     int field;
-    if( !PyArg_ParseTuple( args, "Os*i", &bufferobj, &indices, &field ) )
+    if( !PyArg_ParseTuple(
+            args,
+            "OHs*i",
+            &bufferobj,
+            &traceheader_index,
+            &indices,
+            &field
+        ) )
         return NULL;
 
     buffer_guard bufout( bufferobj, PyBUF_CONTIG );
     if( !bufout ) return NULL;
 
-    if( bufout.len() != indices.len() )
+    if( traceheader_index >= self->traceheader_mappings.size() ) {
+        return KeyError(
+            "no trace header mapping available for index %d", traceheader_index
+        );
+    }
+    const segy_entry_definition* map =
+        self->traceheader_mappings[traceheader_index].offset_to_entry_definition;
+
+    int field_size = segy_formatsize( segy_entry_type_to_datatype(
+                                        map[field - 1].entry_type ));
+
+    int buffer_length = bufout.len() / field_size;
+    int indices_length = indices.len() / sizeof( int32_t );
+
+    if( buffer_length != indices_length )
         return ValueError( "internal: array size mismatch "
                            "(output %zd, indices %zd)",
-                           bufout.len(), indices.len() );
+                           buffer_length, indices_length );
 
     const int* ind = indices.buf< const int >();
-    int* out = bufout.buf< int >();
-    Py_ssize_t len = bufout.len() / sizeof(int);
+    char* out = bufout.buf< char >();
     int err = 0;
-    for( int i = 0; err == 0 && i < len; ++i ) {
-        err = segy_field_forall( ds, field,
+    for( int i = 0; err == 0 && i < buffer_length; ++i ) {
+        err = segy_field_forall( ds, traceheader_index, map, field,
                                      ind[ i ],
                                      ind[ i ] + 1,
                                      1,
-                                     out + i );
+                                     out + i * field_size );
     }
 
     if( err ) return Error( err );
@@ -1225,6 +1555,11 @@ struct metrics_errmsg {
             case SEGY_INVALID_FIELD:
                 return IndexError( "invalid iline, (%i), xline (%i), "
                                    "or offset (%i) field", il, xl, of );
+
+            case SEGY_INVALID_FIELD_DATATYPE:
+                return ValueError( "invalid field datatype for "
+                                   "iline, (%i), xline (%i) or offset (%i) field",
+                                   il, xl, of );
 
             case SEGY_INVALID_SORTING:
                 return RuntimeError( "unable to find sorting."
@@ -1659,6 +1994,19 @@ PyObject* getdt( segyfd* self, PyObject* args ) {
     return Error( err );
 }
 
+PyObject* getdelay( segyfd* self ) {
+    segy_datasource* ds = self->ds;
+    if( !ds ) return NULL;
+
+    float delay;
+    int err = segy_delay_recoding_time( ds, &delay );
+
+    if( err == SEGY_OK )
+        return PyFloat_FromDouble( delay );
+
+    return Error( err );
+}
+
 PyObject* rotation( segyfd* self, PyObject* args ) {
     segy_datasource* ds = self->ds;
     if( !ds ) return NULL;
@@ -1739,6 +2087,9 @@ PyMethodDef methods [] = {
     { "getth", (PyCFunction) fd::getth, METH_VARARGS, "Get trace header." },
     { "putth", (PyCFunction) fd::putth, METH_VARARGS, "Put trace header." },
 
+    { "getfield", (PyCFunction) fd::getfield, METH_VARARGS, "Get a header field." },
+    { "putfield", (PyCFunction) fd::putfield, METH_VARARGS, "Put a header field." },
+
     { "field_forall",  (PyCFunction) fd::field_forall,  METH_VARARGS, "Field for-all."  },
     { "field_foreach", (PyCFunction) fd::field_foreach, METH_VARARGS, "Field for-each." },
 
@@ -1750,7 +2101,8 @@ PyMethodDef methods [] = {
     { "getdepth", (PyCFunction) fd::getdepth, METH_VARARGS, "Get depth." },
     { "putdepth", (PyCFunction) fd::putdepth, METH_VARARGS, "Put depth." },
 
-    { "getdt",    (PyCFunction) fd::getdt, METH_VARARGS,    "Get sample interval (dt)." },
+    { "getdt",    (PyCFunction) fd::getdt,    METH_VARARGS, "Get sample interval (dt)." },
+    { "getdelay", (PyCFunction) fd::getdelay, METH_NOARGS,  "Get recording delay."      },
     { "rotation", (PyCFunction) fd::rotation, METH_VARARGS, "Get clockwise rotation."   },
 
     { "metrics",      (PyCFunction) fd::metrics,      METH_NOARGS,  "Metrics."         },
@@ -1841,225 +2193,6 @@ PyObject* trbsize( PyObject*, PyObject* args ) {
     int sample_count;
     if( !PyArg_ParseTuple( args, "i", &sample_count ) ) return NULL;
     return PyLong_FromLong( segy_trace_bsize( sample_count ) );
-}
-
-PyObject* getfield( PyObject*, PyObject *args ) {
-    buffer_guard buffer;
-    int field;
-
-    if( !PyArg_ParseTuple( args, "s*i", &buffer, &field ) ) return NULL;
-
-    segy_field_data fd;
-    int err;
-    switch( buffer.len() ) {
-        case SEGY_BINARY_HEADER_SIZE:
-            err = segy_get_binfield(
-                buffer.buf<const char>(), field, &fd
-            );
-            break;
-        case SEGY_TRACE_HEADER_SIZE:
-            err = segy_get_tracefield(
-                buffer.buf<const char>(), segy_traceheader_default_map(), field, &fd
-            );
-            break;
-        default:
-            return BufferError( "buffer too small" );
-    }
-    if( err != SEGY_OK )
-        return KeyError( "Got error code %d when requesting field %d", err, field );
-
-    uint8_t datatype = segy_entry_type_to_datatype( fd.entry_type );
-    switch( datatype ) {
-
-        case SEGY_SIGNED_INTEGER_8_BYTE:
-            return PyLong_FromLongLong( fd.value.i64 );
-        case SEGY_SIGNED_INTEGER_4_BYTE:
-            return PyLong_FromLong( fd.value.i32 );
-        case SEGY_SIGNED_SHORT_2_BYTE:
-            return PyLong_FromLong( fd.value.i16 );
-        case SEGY_SIGNED_CHAR_1_BYTE:
-            return PyLong_FromLong( fd.value.i8 );
-
-        case SEGY_UNSIGNED_INTEGER_8_BYTE:
-            return PyLong_FromUnsignedLongLong( fd.value.u64 );
-        case SEGY_UNSIGNED_INTEGER_4_BYTE:
-            return PyLong_FromUnsignedLong( fd.value.u32 );
-        case SEGY_UNSIGNED_SHORT_2_BYTE:
-            return PyLong_FromUnsignedLong( fd.value.u16 );
-        case SEGY_UNSIGNED_CHAR_1_BYTE:
-            return PyLong_FromUnsignedLong( fd.value.u8 );
-
-        case SEGY_IEEE_FLOAT_8_BYTE:
-            return PyFloat_FromDouble( fd.value.f64 );
-
-        default:
-            return KeyError( "Unhandled entry type %d for field %d", fd.entry_type, field );
-    }
-}
-
-PyObject* putfield( PyObject*, PyObject *args ) {
-
-    PyObject *buffer_arg = PyTuple_GetItem(args, 0);
-    PyObject *field_arg = PyTuple_GetItem(args, 1);
-    PyObject *value_arg = PyTuple_GetItem(args, 2);
-
-    buffer_guard buffer;
-    if( !PyArg_Parse(buffer_arg, "w*", &buffer) )
-        return NULL;
-
-    int field = (int)PyLong_AsLong(field_arg);
-    segy_field_data fd;
-
-    /*
-     * We repeat some of internal logic here because Python does not keep type
-     * information the same way as C does. As we do not know the type of the
-     * data we have, we assume it to be the same as expected type in the
-     * mapping.
-     */
-    switch( buffer.len() ) {
-        case SEGY_BINARY_HEADER_SIZE: {
-            const int offset = field - SEGY_TEXT_HEADER_SIZE - 1;
-            if( offset < 0 || offset >= SEGY_BINARY_HEADER_SIZE ) {
-                return KeyError( "Invalid field %d", field );
-            }
-            const segy_entry_definition* map = segy_binheader_map();
-            fd.entry_type = map[offset].entry_type;
-            break;
-        }
-        case SEGY_TRACE_HEADER_SIZE: {
-            const int offset = field - 1;
-            if( offset < 0 || offset >= SEGY_TRACE_HEADER_SIZE ) {
-                return KeyError( "Invalid field %d", field );
-            }
-            const segy_entry_definition* map = segy_traceheader_default_map();
-            fd.entry_type = map[offset].entry_type;
-            break;
-        }
-        default:
-            return BufferError( "buffer too small" );
-    }
-
-    uint8_t datatype = segy_entry_type_to_datatype( fd.entry_type );
-    switch( datatype ) {
-        case SEGY_UNSIGNED_INTEGER_8_BYTE:
-            {
-                unsigned long long val = PyLong_AsUnsignedLongLong( value_arg );
-                if (PyErr_Occurred() || val > UINT64_MAX) {
-                    return ValueError( "Value out of range for unsigned long at field %d", field );
-                }
-                fd.value.u64 = val;
-            }
-            break;
-        case SEGY_UNSIGNED_INTEGER_4_BYTE:
-            {
-                unsigned long val = PyLong_AsUnsignedLong( value_arg );
-                if( PyErr_Occurred() || val > UINT32_MAX ) {
-                    return ValueError( "Value out of range for unsigned int at field %d", field );
-                }
-                fd.value.u32 = val;
-            }
-            break;
-        case SEGY_UNSIGNED_SHORT_2_BYTE:
-            {
-                unsigned long val = PyLong_AsUnsignedLong( value_arg );
-                if( PyErr_Occurred() || val > UINT16_MAX ) {
-                    return ValueError( "Value out of range for unsigned short at field %d", field );
-                }
-                fd.value.u16 = static_cast<uint16_t>( val );
-            }
-            break;
-        case SEGY_UNSIGNED_CHAR_1_BYTE:
-            {
-                unsigned long val = PyLong_AsUnsignedLong( value_arg );
-                if( PyErr_Occurred() || val > UINT8_MAX ) {
-                    return ValueError( "Value out of range for unsigned char at field %d", field );
-                }
-                fd.value.u8 = static_cast<uint8_t>( val );
-            }
-            break;
-
-        case SEGY_SIGNED_INTEGER_8_BYTE:
-            {
-                long long val = PyLong_AsLongLong( value_arg );
-                if (PyErr_Occurred() || val > INT64_MAX || val < INT64_MIN ) {
-                    return ValueError( "Value out of range for signed long at field %d", field );
-                }
-                fd.value.i64 = val;
-            }
-            break;
-        case SEGY_SIGNED_INTEGER_4_BYTE:
-            {
-                long val = PyLong_AsLong( value_arg );
-                if( PyErr_Occurred() || val > INT32_MAX || val < INT32_MIN ) {
-                    return ValueError( "Value out of range for signed int at field %d", field );
-                }
-                fd.value.i32 = val;
-            }
-            break;
-        case SEGY_SIGNED_SHORT_2_BYTE:
-            {
-                long val = PyLong_AsLong( value_arg );
-                if( PyErr_Occurred() || val > INT16_MAX || val < INT16_MIN ) {
-                    return ValueError( "Value out of range for signed short at field %d", field );
-                }
-                fd.value.i16 = static_cast<int16_t>( val );
-            }
-            break;
-        case SEGY_SIGNED_CHAR_1_BYTE:
-            {
-                long val = PyLong_AsLong( value_arg );
-                if( PyErr_Occurred() || val > INT8_MAX || val < INT8_MIN ) {
-                    return ValueError( "Value out of range for signed char at field %d", field );
-                }
-                fd.value.u8 = static_cast<uint8_t>( val );
-            }
-            break;
-
-        case SEGY_IEEE_FLOAT_8_BYTE:
-            {
-                double val = PyFloat_AsDouble( value_arg );
-                if( PyErr_Occurred() ) {
-                    return ValueError( "Value out of range for double at field %d", field );
-                }
-                fd.value.f64 = val;
-                break;
-            }
-        case SEGY_IEEE_FLOAT_4_BYTE:
-            {
-                float val = static_cast<float>( PyFloat_AsDouble( value_arg ) );
-                if( PyErr_Occurred() ) {
-                    return ValueError( "Value out of range for float at field %d", field );
-                }
-                fd.value.f32 = val;
-                break;
-            }
-            break;
-        default:
-            return KeyError( "Field %d has unknown entry type %d", field, fd.entry_type );
-    }
-
-    int err;
-    switch (buffer.len()) {
-        case SEGY_BINARY_HEADER_SIZE:
-            err = segy_set_binfield(
-                buffer.buf<char>(), field, fd
-            );
-            break;
-        case SEGY_TRACE_HEADER_SIZE:
-            err = segy_set_tracefield(
-                buffer.buf<char>(), segy_traceheader_default_map(), field, fd
-            );
-            break;
-        default:
-            return ValueError( "unhandled buffer type" );
-    }
-
-    switch( err ) {
-        case SEGY_OK:
-            return Py_BuildValue("");
-        case SEGY_INVALID_FIELD: return KeyError( "No such field %d", field );
-        default:                 return Error( err );
-    }
 }
 
 PyObject* line_metrics( PyObject*, PyObject *args) {
@@ -2168,9 +2301,6 @@ PyMethodDef SegyMethods[] = {
     { "textsize", (PyCFunction) textsize, METH_NOARGS, "Size of the text header."   },
 
     { "trace_bsize", (PyCFunction) trbsize, METH_VARARGS, "Size of a trace (in bytes)." },
-
-    { "getfield", (PyCFunction) getfield, METH_VARARGS, "Get a header field." },
-    { "putfield", (PyCFunction) putfield, METH_VARARGS, "Put a header field." },
 
     { "line_metrics", (PyCFunction) line_metrics,  METH_VARARGS, "Find the length and stride of lines." },
     { "fread_trace0", (PyCFunction) fread_trace0,  METH_VARARGS, "Find trace0 of a line."               },
@@ -2312,6 +2442,9 @@ static const TypeMapEntry entry_type_map[] = {
     { "time2",    SEGY_ENTRY_TYPE_TIME2       },
     { "spnum4",   SEGY_ENTRY_TYPE_SPNUM4      },
     { "scale6",   SEGY_ENTRY_TYPE_SCALE6_MANT },
+
+    // segyio private
+    { "string8",  SEGY_ENTRY_TYPE_STRING8     },
 };
 
 static const std::unordered_map<SEGY_ENTRY_TYPE, std::string> segytype_to_spectype_map = [] {
@@ -2558,9 +2691,11 @@ int set_mapping_offset_to_entry_defintion(
     std::string spec_entry_type,
     bool requires_nonzero_value
 ) {
-    char* spec_entry_name_heap = new char[spec_entry_name.size() + 1];
-    if( !spec_entry_name_heap ) return SEGY_MEMORY_ERROR;
-    std::strcpy( spec_entry_name_heap, spec_entry_name.c_str() );
+    std::unique_ptr<char[]> spec_entry_name_ptr(
+        new char[spec_entry_name.size() + 1]
+    );
+    if( !spec_entry_name_ptr ) return SEGY_MEMORY_ERROR;
+    std::strcpy( spec_entry_name_ptr.get(), spec_entry_name.c_str() );
 
     SEGY_ENTRY_TYPE entry_type = SEGY_ENTRY_TYPE_UNDEFINED;
     if( spectype_to_segytype_map.count( spec_entry_type ) ) {
@@ -2568,10 +2703,43 @@ int set_mapping_offset_to_entry_defintion(
     }
     if( entry_type == SEGY_ENTRY_TYPE_UNDEFINED ) return SEGY_INVALID_ARGS;
 
+    if( entry_type == SEGY_ENTRY_TYPE_SCALE6_MANT ) {
+        const int byte_mant = byte;
+        const int byte_exp = byte + 4;
+        if( byte_exp < 1 || byte_exp > SEGY_TRACE_HEADER_SIZE ) {
+            return SEGY_INVALID_ARGS;
+        }
+
+        std::string mant_name = spec_entry_name + "_mant";
+        std::unique_ptr<char[]> mant_name_ptr( new char[mant_name.size() + 1] );
+        if( !mant_name_ptr ) return SEGY_MEMORY_ERROR;
+        std::strcpy( mant_name_ptr.get(), mant_name.c_str() );
+
+        std::string exp_name = spec_entry_name + "_exp";
+        std::unique_ptr<char[]> exp_name_ptr( new char[exp_name.size() + 1] );
+        if( !exp_name_ptr ) return SEGY_MEMORY_ERROR;
+        std::strcpy( exp_name_ptr.get(), exp_name.c_str() );
+
+        segy_entry_definition def_mant = {
+            SEGY_ENTRY_TYPE_SCALE6_MANT,
+            requires_nonzero_value,
+            mant_name_ptr.release()
+        };
+        segy_entry_definition def_exp = {
+            SEGY_ENTRY_TYPE_SCALE6_EXP,
+            requires_nonzero_value,
+            exp_name_ptr.release()
+        };
+
+        mapping->offset_to_entry_definition[byte_mant - 1] = def_mant;
+        mapping->offset_to_entry_definition[byte_exp - 1] = def_exp;
+        return SEGY_OK;
+    }
+
     segy_entry_definition def = {
         entry_type,
         requires_nonzero_value,
-        spec_entry_name_heap
+        spec_entry_name_ptr.release()
     };
     mapping->offset_to_entry_definition[byte - 1] = def;
     return SEGY_OK;
@@ -2618,6 +2786,31 @@ int parse_py_TraceHeaderLayoutEntry_list( PyObject* entries, segy_header_mapping
         );
         if( err != SEGY_OK ) return err;
     }
+
+    /* Last 8 bytes of each trace header should contain a header name, which is
+     * not in the map. To be able to deal with header names the same way we deal
+     * with other fields, we need to add them to the map.
+     *
+     * The main header is an exception as there header name in bytes 233-240 is
+     * optional. Previous versions of segyio assumed those fields could contain
+     * custom user information. To be compliant with those versions, we allow
+     * any field types in SEG00000 bytes 233-240.
+     */
+    const int header_name_offset = 233;
+    const segy_entry_definition header_name_entry =
+        mapping->offset_to_entry_definition[header_name_offset - 1];
+    if( header_name_entry.entry_type == SEGY_ENTRY_TYPE_UNDEFINED ) {
+        int err = set_mapping_offset_to_entry_defintion(
+            mapping, "header_name", header_name_offset, "string8", false
+        );
+        if( err != SEGY_OK ) return err;
+    } else {
+        // we accept that users could have written their own values here only for SEG00000
+        if( strncmp( mapping->name, "SEG00000", 8 ) != 0 ) {
+            return SEGY_INVALID_ARGS;
+        }
+    }
+
     return SEGY_OK;
 }
 

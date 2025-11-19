@@ -798,6 +798,7 @@ class Attributes(Sequence):
         "time2":    np.int16,
         "spnum4":   np.int32,
         # "scale6" unspported, unclear what to do yet
+        "string8":  np.dtype('S8'),
     }
 
     def __init__(self, field, segyfd, traceheader_layout, tracecount):
@@ -848,10 +849,10 @@ class Attributes(Sequence):
         >>> scatter(gx, gy)
         """
         try:
-            xs = np.asarray(i, dtype = self.dtype)
-            xs = xs.astype(dtype = self.dtype, order = 'C', copy = False)
+            xs = np.asarray(i, dtype=np.int32)
+            xs = xs.astype(dtype=np.int32, order='C', copy=False)
             attrs = np.empty(len(xs), dtype = self.dtype)
-            return self.segyfd.field_foreach(attrs, xs, self.field)
+            return self.segyfd.field_foreach(attrs, 0, xs, self.field)
 
         except TypeError:
             try:
@@ -866,7 +867,7 @@ class Attributes(Sequence):
             start, stop, step = i.indices(traces)
             indices = range(start, stop, step)
             attrs = np.empty(len(indices), dtype = self.dtype)
-            return segyfd.field_forall(attrs, start, stop, step, field)
+            return segyfd.field_forall(attrs, 0, start, stop, step, field)
 
 class Text(Sequence):
     """Interact with segy in text mode

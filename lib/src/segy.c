@@ -715,6 +715,7 @@ int segy_formatsize( int format ) {
         case SEGY_UNSIGNED_INTEGER_8_BYTE:      return 8;
         case SEGY_SIGNED_CHAR_3_BYTE:           return 3;
         case SEGY_UNSIGNED_INTEGER_3_BYTE:      return 3;
+        case SEGY_STRING_8_BYTE:                return 8;
         case SEGY_NOT_IN_USE_1:
         case SEGY_NOT_IN_USE_2:
         default:
@@ -1054,7 +1055,7 @@ static const uint8_t entry_type_to_datatype_map[22] = {
     [ SEGY_ENTRY_TYPE_SPNUM4      ] = SEGY_SIGNED_INTEGER_4_BYTE,
     [ SEGY_ENTRY_TYPE_SCALE6_MANT ] = SEGY_SIGNED_INTEGER_4_BYTE,
     [ SEGY_ENTRY_TYPE_SCALE6_EXP  ] = SEGY_SIGNED_SHORT_2_BYTE,
-    [ SEGY_ENTRY_TYPE_STRING8     ] = SEGY_UNDEFINED_FIELD,
+    [ SEGY_ENTRY_TYPE_STRING8     ] = SEGY_STRING_8_BYTE,
 };
 
 int segy_entry_type_to_datatype( uint8_t entry_type ) {
@@ -1075,7 +1076,6 @@ static int get_field( const char* header,
     uint8_t datatype = entry_type_to_datatype_map[fd->entry_type];
     int vsize = segy_formatsize( datatype );
 
-    uint64_t val;
     switch ( datatype ) {
 
         case SEGY_SIGNED_INTEGER_8_BYTE:
@@ -1116,11 +1116,33 @@ static int get_field( const char* header,
             memcpy( &(fd->value.u8), header + offset, vsize );
             return SEGY_OK;
 
-        case SEGY_IEEE_FLOAT_8_BYTE:
-            memcpy( &(fd->value.f64), header + offset, vsize );
-            memcpy( &val, &(fd->value.f64), sizeof( uint64_t ) );
+        case SEGY_IEEE_FLOAT_8_BYTE: {
+            uint64_t val;
+            memcpy( &val, header + offset, vsize );
             val = be64toh( val );
-            memcpy( &(fd->value.f64), &val, sizeof( uint64_t ) );
+            memcpy( &( fd->value.f64 ), &val, vsize );
+            return SEGY_OK;
+        }
+
+        case SEGY_IEEE_FLOAT_4_BYTE: {
+            uint32_t val;
+            memcpy( &val, header + offset, vsize );
+            val = be32toh( val );
+            memcpy( &( fd->value.f32 ), &val, vsize );
+            return SEGY_OK;
+        }
+
+        case SEGY_IBM_FLOAT_4_BYTE: {
+            uint32_t val;
+            memcpy( &val, header + offset, vsize );
+            val = be32toh( val );
+            ibm_native( &val );
+            memcpy( &( fd->value.f32 ), &val, vsize );
+            return SEGY_OK;
+        }
+
+        case SEGY_STRING_8_BYTE:
+            memcpy( &( fd->value.str8 ), header + offset, vsize );
             return SEGY_OK;
 
         default:
@@ -1187,7 +1209,6 @@ static int set_field( char* header,
     uint8_t datatype = entry_type_to_datatype_map[entry_type];
     int vsize = segy_formatsize( datatype );
 
-    uint64_t val;
     switch( datatype ) {
 
         case SEGY_SIGNED_INTEGER_8_BYTE:
@@ -1228,11 +1249,33 @@ static int set_field( char* header,
             memcpy( header + offset, &( fv.u8 ), vsize );
             return SEGY_OK;
 
-        case SEGY_IEEE_FLOAT_8_BYTE:
-            memcpy( &val, &( fv.f64 ), sizeof( uint64_t ) );
+        case SEGY_IEEE_FLOAT_8_BYTE: {
+            uint64_t val;
+            memcpy( &val, &( fv.f64 ), vsize );
             val = htobe64( val );
-            memcpy( &( fv.f64 ), &val, sizeof( uint64_t ) );
-            memcpy( header + offset, &( fv.f64 ), vsize );
+            memcpy( header + offset, &val, vsize );
+            return SEGY_OK;
+        }
+
+        case SEGY_IEEE_FLOAT_4_BYTE: {
+            uint32_t val;
+            memcpy( &val, &( fv.f32 ), vsize );
+            val = htobe32( val );
+            memcpy( header + offset, &val, vsize );
+            return SEGY_OK;
+        }
+
+        case SEGY_IBM_FLOAT_4_BYTE: {
+            uint32_t val;
+            memcpy( &val, &( fv.f32 ), vsize );
+            native_ibm( &val );
+            val = htobe32( val );
+            memcpy( header + offset, &val, vsize );
+            return SEGY_OK;
+        }
+
+        case SEGY_STRING_8_BYTE:
+            memcpy( header + offset, &( fv.str8 ), vsize );
             return SEGY_OK;
 
         default:
@@ -1388,42 +1431,71 @@ static int slicelength( int start, int stop, int step ) {
     return (stop - start - 1) / step + 1;
 }
 
-static int bswap_header_word( segy_field_data* fd ) {
-    uint8_t datatype = entry_type_to_datatype_map[fd->entry_type];
-    switch( datatype ) {
-        case SEGY_SIGNED_INTEGER_8_BYTE:
-            fd->value.i64 = bswap64( fd->value.i64 );
-            return SEGY_OK;
+/* Byte-swaps field value in the header. Returns new offset after swapping or -1
+ * if error occurred.
+ */
+static int bswap_header_field_value(
+    const segy_entry_definition* mapping,
+    char* xs,
+    int offset
+) {
+    int datatype = segy_entry_type_to_datatype( mapping[offset].entry_type );
+    if( datatype == SEGY_UNDEFINED_FIELD ) return offset + 1;
+    if( datatype == SEGY_STRING_8_BYTE ) return offset + 8;
 
-        case SEGY_SIGNED_INTEGER_4_BYTE:
-            fd->value.i32 = bswap32( fd->value.i32 );
-            return SEGY_OK;
-
-        case SEGY_SIGNED_SHORT_2_BYTE:
-            fd->value.i16 = bswap16( fd->value.i16 );
-            return SEGY_OK;
-
-        case SEGY_UNSIGNED_INTEGER_8_BYTE:
-            fd->value.u64 = bswap64( fd->value.u64 );
-            return SEGY_OK;
-
-        case SEGY_UNSIGNED_INTEGER_4_BYTE:
-            fd->value.u32 = bswap32( fd->value.u32 );
-            return SEGY_OK;
-
-        case SEGY_UNSIGNED_SHORT_2_BYTE:
-            fd->value.u16 = bswap16( fd->value.u16 );
-            return SEGY_OK;
-
-        case SEGY_UNSIGNED_CHAR_1_BYTE:
-        case SEGY_SIGNED_CHAR_1_BYTE:
-            return SEGY_OK;
+    int size = segy_formatsize( datatype );
+    switch( size ) {
+        case 8:
+            bswap64_mem( xs + offset, xs + offset );
+            break;
+        case 4:
+            bswap32_mem( xs + offset, xs + offset );
+            break;
+        case 2:
+            bswap16_mem( xs + offset, xs + offset );
+            break;
+        case 1:
+            break;
         default:
-            return SEGY_INVALID_FIELD_DATATYPE;
+            return -1;
     }
+    return offset + size;
+}
+
+/* Serves similar function as segy_read_traceheader, but reads just one value
+ * from it.
+ */
+static int segy_read_traceheader_offset(
+    segy_datasource* ds,
+    int traceno,
+    int traceheader_no,
+    int offset,
+    int datatype,
+    int elemsize,
+    const segy_entry_definition* mapping,
+    char* buf
+) {
+
+    int err = seek_traceheader_offset( ds, traceno, traceheader_no, offset );
+    if( err != SEGY_OK ) return err;
+
+    err = ds->read( ds, buf + offset, elemsize );
+    if( err != 0 ) return SEGY_DS_READ_ERROR;
+
+    if( ds->metadata.encoding == SEGY_EBCDIC && datatype == SEGY_STRING_8_BYTE ) {
+        encode( buf + offset, buf + offset, e2a, 8 );
+    }
+
+    if( ds->metadata.endianness == SEGY_LSB ) {
+        int next = bswap_header_field_value( mapping, buf, offset );
+        if( next < 0 ) return SEGY_INVALID_FIELD_DATATYPE;
+    }
+    return SEGY_OK;
 }
 
 int segy_field_forall( segy_datasource* ds,
+                       int traceheader_index,
+                       const segy_entry_definition* offset_map,
                        int field,
                        int start,
                        int stop,
@@ -1436,29 +1508,22 @@ int segy_field_forall( segy_datasource* ds,
     segy_field_data fd;
     char header[SEGY_TRACE_HEADER_SIZE] = { 0 };
 
-    const segy_entry_definition* offset_map =
-        ds->traceheader_mapping_standard.offset_to_entry_definition;
     err = segy_get_tracefield( header, offset_map, field, &fd );
     if( err != SEGY_OK ) return SEGY_INVALID_ARGS;
 
     int slicelen = slicelength( start, stop, step );
-    int elemsize = segy_formatsize( entry_type_to_datatype_map[fd.entry_type] );
+    int datatype = entry_type_to_datatype_map[fd.entry_type];
+    int elemsize = segy_formatsize( datatype );
 
     const int zfield = field - 1;
     for( int i = start; slicelen > 0; i += step, buf += elemsize, --slicelen ) {
-        err = seek_traceheader_offset( ds, i, 0, zfield );
+        err = segy_read_traceheader_offset(
+            ds, i, traceheader_index, zfield, datatype, elemsize, offset_map, header
+        );
         if( err != SEGY_OK ) return err;
-
-        err = ds->read( ds, header + zfield, elemsize );
-        if( err != 0 ) return SEGY_DS_READ_ERROR;
 
         err = segy_get_tracefield( header, offset_map, field, &fd );
         if( err != 0 ) return err;
-
-        if( ds->metadata.endianness == SEGY_LSB ) {
-            err = bswap_header_word( &fd );
-            if( err != SEGY_OK ) return err;
-        }
 
         switch( entry_type_to_datatype_map[fd.entry_type] ) {
             case SEGY_SIGNED_INTEGER_8_BYTE:
@@ -1493,6 +1558,19 @@ int segy_field_forall( segy_datasource* ds,
                 memcpy( buf, &fd.value.u8, elemsize );
                 break;
 
+            case SEGY_IEEE_FLOAT_8_BYTE:
+                memcpy( buf, &fd.value.f64, elemsize );
+                break;
+
+            case SEGY_IEEE_FLOAT_4_BYTE:
+            case SEGY_IBM_FLOAT_4_BYTE:
+                memcpy( buf, &fd.value.f32, elemsize );
+                break;
+
+            case SEGY_STRING_8_BYTE:
+                memcpy( buf, &fd.value.str8, elemsize );
+                break;
+
             default:
                 return SEGY_INVALID_FIELD_DATATYPE;
         }
@@ -1507,28 +1585,9 @@ static int bswap_bin( const segy_datasource* ds, char* xs ) {
     const segy_entry_definition* binmap = segy_binheader_map();
     int offset = 0;
     while( offset < SEGY_BINARY_HEADER_SIZE ) {
-        int datatype = segy_entry_type_to_datatype( binmap[offset].entry_type );
-        if( datatype == SEGY_UNDEFINED_FIELD ) {
-            ++offset;
-            continue;
-        }
-        int size = segy_formatsize( datatype );
-        switch( size ) {
-            case 8:
-                bswap64_mem( xs + offset, xs + offset );
-                break;
-            case 4:
-                bswap32_mem( xs + offset, xs + offset );
-                break;
-            case 2:
-                bswap16_mem( xs + offset, xs + offset );
-                break;
-            case 1:
-                break;
-            default:
-                return SEGY_INVALID_FIELD_DATATYPE;
-        }
-        offset += size;
+        int next = bswap_header_field_value( binmap, xs, offset );
+        if( next < 0 ) return SEGY_INVALID_FIELD_DATATYPE;
+        offset = next;
     }
     return SEGY_OK;
 }
@@ -1733,28 +1792,35 @@ static int bswap_th(
 
     int offset = 0;
     while( offset < SEGY_TRACE_HEADER_SIZE ) {
+        int next = bswap_header_field_value( mapping, xs, offset );
+        if( next < 0 ) return SEGY_INVALID_FIELD_DATATYPE;
+        offset = next;
+    }
+    return SEGY_OK;
+}
+
+/* Swaps enocding of the header name in last 8 bytes. Strings are not expected
+ * at any other offsets.
+ */
+static int swap_th_encoding(
+    const segy_datasource* ds,
+    const segy_entry_definition* mapping,
+    const unsigned char* conversion_table,
+    char* xs
+) {
+    if( ds->metadata.encoding != SEGY_EBCDIC ) return SEGY_OK;
+
+    int offset = 232;
+    while( offset < SEGY_TRACE_HEADER_SIZE ) {
         int datatype = segy_entry_type_to_datatype( mapping[offset].entry_type );
         if( datatype == SEGY_UNDEFINED_FIELD ) {
             ++offset;
             continue;
         }
-        int size = segy_formatsize( datatype );
-        switch( size ) {
-            case 8:
-                bswap64_mem( xs + offset, xs + offset );
-                break;
-            case 4:
-                bswap32_mem( xs + offset, xs + offset );
-                break;
-            case 2:
-                bswap16_mem( xs + offset, xs + offset );
-                break;
-            case 1:
-                break;
-            default:
-                return SEGY_INVALID_FIELD_DATATYPE;
+        if( datatype == SEGY_STRING_8_BYTE ) {
+            encode( xs + offset, xs + offset, conversion_table, 8 );
         }
-        offset += size;
+        offset += segy_formatsize( datatype );
     }
     return SEGY_OK;
 }
@@ -1771,6 +1837,7 @@ int segy_read_traceheader( segy_datasource* ds,
     err = ds->read( ds, buf, SEGY_TRACE_HEADER_SIZE );
     if( err != 0 ) return SEGY_DS_READ_ERROR;
 
+    swap_th_encoding( ds, mapping, e2a, buf );
     return bswap_th( ds, mapping, buf );
 }
 
@@ -1796,6 +1863,7 @@ int segy_write_traceheader( segy_datasource* ds,
 
     char swapped[SEGY_TRACE_HEADER_SIZE];
     memcpy( swapped, buf, SEGY_TRACE_HEADER_SIZE );
+    swap_th_encoding( ds, mapping, a2e, swapped );
     bswap_th( ds, mapping, swapped );
 
     err = ds->write( ds, swapped, SEGY_TRACE_HEADER_SIZE );
@@ -1843,6 +1911,93 @@ int segy_traces( segy_datasource* ds,
     assert( size / trace_bsize <= (long long)INT_MAX );
 
     *traces = (int) (size / trace_bsize);
+    return SEGY_OK;
+}
+
+/* Gets scalar value from field data. Allows only int2 and uint2. At the moment
+ * other types on purpose are assumed to be invalid for scalars.
+ */
+static int field_data_to_scalar(
+    const segy_field_data* fd,
+    int* scalar
+) {
+    switch( fd->entry_type ) {
+        case SEGY_ENTRY_TYPE_INT2:
+            *scalar = fd->value.i16;
+            break;
+        case SEGY_ENTRY_TYPE_UINT2:
+            *scalar = fd->value.u16;
+            break;
+        default:
+            return SEGY_INVALID_FIELD_DATATYPE;
+    }
+    return SEGY_OK;
+}
+
+static float apply_scalar(
+    long raw_value,
+    int raw_scalar
+) {
+    float scalar;
+    if( raw_scalar == 0 ) {
+        scalar = 1.0f;
+    } else if( raw_scalar < 0 ) {
+        scalar = -1.0f / raw_scalar;
+    } else {
+        scalar = 1.0f * raw_scalar;
+    }
+    return raw_value * scalar;
+}
+
+int segy_delay_recoding_time( segy_datasource* ds, float* delay ) {
+    char trace_header[SEGY_TRACE_HEADER_SIZE];
+
+    /* we don't need to figure out a trace size, since we're not advancing
+     * beyond the first header */
+    int err = segy_read_standard_traceheader( ds, 0, trace_header );
+    if( err != 0 ) {
+        return err;
+    }
+
+    const segy_entry_definition* standard_map =
+        ds->traceheader_mapping_standard.offset_to_entry_definition;
+    const uint8_t* standard_name_map =
+        ds->traceheader_mapping_standard.name_to_offset;
+
+    const int delay_offset = standard_name_map[SEGY_TR_DELAY_REC_TIME];
+    int delay_raw = 0;
+    segy_field_data delay_fd;
+    err = segy_get_tracefield(
+        trace_header, standard_map, delay_offset, &delay_fd
+    );
+    if( err != SEGY_OK ) return err;
+
+    // until someone complains, we restrict allowed types to these only. For now
+    // they all are treated as if they were TIME2 (decision by domain expert)
+    switch( delay_fd.entry_type ) {
+        case SEGY_ENTRY_TYPE_TIME2:
+        case SEGY_ENTRY_TYPE_INT2:
+            delay_raw = delay_fd.value.i16;
+            break;
+        case SEGY_ENTRY_TYPE_UINT2:
+            delay_raw = delay_fd.value.u16;
+            break;
+        default:
+            return SEGY_INVALID_FIELD_DATATYPE;
+    }
+
+    const int scalar_offset = standard_name_map[SEGY_TR_SCALAR_TRACE_HEADER];
+    int scalar_raw = 0;
+    segy_field_data scalar_fd;
+    err = segy_get_tracefield(
+        trace_header, standard_map, scalar_offset, &scalar_fd
+    );
+    if( err != SEGY_OK ) return err;
+
+    err = field_data_to_scalar( &scalar_fd, &scalar_raw );
+    if( err != SEGY_OK ) return err;
+
+    *delay = apply_scalar( delay_raw, scalar_raw );
     return SEGY_OK;
 }
 
@@ -2163,6 +2318,8 @@ static int segy_line_indices( segy_datasource* ds,
                               int num_indices,
                               void* buf ) {
     return segy_field_forall( ds,
+                              0,
+                              ds->traceheader_mapping_standard.offset_to_entry_definition,
                               field,
                               traceno,                          /* start */
                               traceno + (num_indices * stride), /* stop */
@@ -2972,7 +3129,7 @@ static int scaled_standard_header_cdp(
     int err = segy_get_tracefield( header, map, cdp_offset, &fd );
     if( err != SEGY_OK ) return err;
 
-    float raw_cdp;
+    long raw_cdp;
     switch( fd.entry_type ) {
         case SEGY_ENTRY_TYPE_IBMFP:
         case SEGY_ENTRY_TYPE_IEEE32:
@@ -2981,11 +3138,11 @@ static int scaled_standard_header_cdp(
         case SEGY_ENTRY_TYPE_COOR4:
         // breaks spec on purpose: scalar is applied anyway
         case SEGY_ENTRY_TYPE_INT4:
-            raw_cdp = (float)fd.value.i32;
+            raw_cdp = fd.value.i32;
             break;
         // breaks spec on purpose: scalar is applied anyway
         case SEGY_ENTRY_TYPE_UINT4:
-            raw_cdp = (float)fd.value.u32;
+            raw_cdp = fd.value.u32;
             break;
         default:
             return SEGY_INVALID_FIELD_DATATYPE;
@@ -2995,21 +3152,10 @@ static int scaled_standard_header_cdp(
     if( err != SEGY_OK ) return err;
 
     int scalar;
-    switch( fd.entry_type ) {
-        case SEGY_ENTRY_TYPE_INT2:
-            scalar = fd.value.i16;
-            break;
-        case SEGY_ENTRY_TYPE_UINT2:
-            scalar = fd.value.u16;
-            break;
-        default:
-            return SEGY_INVALID_FIELD_DATATYPE;
-    }
+    err = field_data_to_scalar( &fd, &scalar );
+    if( err != SEGY_OK ) return err;
 
-    float scale = (float)scalar;
-    if( scalar == 0 ) scale = 1.0;
-    if( scalar < 0 ) scale = -1.0f / scale;
-    *cdp = raw_cdp * scale;
+    *cdp = apply_scalar( raw_cdp, scalar );
     return SEGY_OK;
 }
 

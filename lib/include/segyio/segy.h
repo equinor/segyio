@@ -32,6 +32,9 @@ typedef enum {
     SEGY_UNSIGNED_CHAR_1_BYTE = 16,
     SEGY_NOT_IN_USE_1 = 19,
     SEGY_NOT_IN_USE_2 = 20,
+
+    // private formats
+    SEGY_STRING_8_BYTE = 255,
 } SEGY_FORMAT;
 
 typedef enum {
@@ -394,6 +397,7 @@ typedef union {
     int64_t i64;
     float f32;
     double f64;
+    char str8[8];
 } segy_field_value;
 
 typedef struct {
@@ -469,6 +473,11 @@ int segy_samples( const char* binheader );
  * supported.
  */
 int segy_traceheaders( const char* binheader, int* traceheader_count );
+
+/*
+ * calculate delay recording time for the first trace.
+ */
+int segy_delay_recoding_time( segy_datasource* ds, float* delay );
 /*
  * infer the interval between traces. this function tries to read the interval
  * from the binary header and the first trace header, and will fall back to the
@@ -554,6 +563,8 @@ int segy_set_binfield_int( char* header, int field, int val );
 
 
 int segy_field_forall( segy_datasource*,
+                       int traceheader_index,
+                       const segy_entry_definition* offset_map,
                        int field,
                        int start,
                        int stop,
