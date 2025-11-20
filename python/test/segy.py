@@ -2469,6 +2469,22 @@ def test_tracefields():
         str_rep = "linetrc (offset=1, type=linetrc8, use_only_if_non_zero=True)"
         assert str(f.tracefield.SEG00001.linetrc) == str_rep
 
+def test_trace_header_extension1():
+    with segyio.open(testdata / 'trace-header-extension1.sgy', "r") as f:
+        assert f.tracefield.names() == ['SEG00000', 'SEG00001']
+        names = f.tracefield.SEG00001.names()
+        assert len(names) == 26
+        assert 'header_name' in names
+
+        assert f.tracefield.SEG00000.linetrc[0] == 0x11111111
+        assert f.traceheader[0].SEG00001.linetrc == 0x22222222_22222221
+        assert f.tracefield.SEG00001.linetrc[0] == 0x22222222_22222221
+
+        assert np.array_equal(
+            f.tracefield.SEG00001.linetrc[0, 4],
+            [0x22222222_22222221, 0x22222222_22222225]
+        )
+
 
 def test_trace_header_extensions():
     with segyio.open(testdata / 'trace-header-extensions.sgy') as f:

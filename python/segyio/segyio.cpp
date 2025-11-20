@@ -2466,6 +2466,38 @@ static const NameMapEntry standard_name_map[] = {
     { "sm_unit",     SEGY_TR_SOURCE_MEASURE_UNIT     },
 };
 
+/** D8 names to SEGY names. Contains all the known names, not only the ones used
+ * internally in the library. */
+static const NameMapEntry ext1_name_map[] = {
+    { "linetrc",   SEGY_EXT1_SEQ_LINE            },
+    { "reeltrc",   SEGY_EXT1_SEQ_FILE            },
+    { "ffid",      SEGY_EXT1_FIELD_RECORD        },
+    { "cdp",       SEGY_EXT1_ENSEMBLE            },
+    { "relev",     SEGY_EXT1_RECV_GROUP_ELEV     },
+    { "rdepth",    SEGY_EXT1_RECV_GROUP_DEPTH    },
+    { "selev",     SEGY_EXT1_SOURCE_SURF_ELEV    },
+    { "sdepth",    SEGY_EXT1_SOURCE_DEPTH        },
+    { "rdatum",    SEGY_EXT1_RECV_DATUM_ELEV     },
+    { "sdatum",    SEGY_EXT1_SOURCE_DATUM_ELEV   },
+    { "wdepthso",  SEGY_EXT1_SOURCE_WATER_DEPTH  },
+    { "wdepthrc",  SEGY_EXT1_GROUP_WATER_DEPTH   },
+    { "sht_x",     SEGY_EXT1_SOURCE_X            },
+    { "sht_y",     SEGY_EXT1_SOURCE_Y            },
+    { "rec_x",     SEGY_EXT1_GROUP_X             },
+    { "rec_y",     SEGY_EXT1_GROUP_Y             },
+    { "offset",    SEGY_EXT1_OFFSET              },
+    { "nsamps",    SEGY_EXT1_SAMPLE_COUNT        },
+    { "nanosecs",  SEGY_EXT1_NANOSEC_OF_SEC      },
+    { "dt",        SEGY_EXT1_SAMPLE_INTER        },
+    { "cable_num", SEGY_EXT1_RECORDING_DEVICE_NR },
+    { "last_trc",  SEGY_EXT1_LAST_TRACE_FLAG     },
+    { "cdp_x",     SEGY_EXT1_CDP_X               },
+    { "cdp_y",     SEGY_EXT1_CDP_Y               },
+
+    // segyio private
+    { "header_name", SEGY_EXT1_TRACE_HEADER_NAME },
+};
+
 /** D8 entry type names to SEGY entry type names. scale6 type is not fully
  * supported as we have separate types for mantissa and exponent. */
 static const TypeMapEntry entry_type_map[] = {
@@ -2545,8 +2577,6 @@ int initialize_traceheader_mappings(
     segy_datasource* ds = self->ds;
 
     if( layout_stanza_data.empty() ) {
-        segy_header_mapping mapping = ds->traceheader_mapping_standard;
-
         /* Entry names provided by xml are of unknown length, so we must
          * allocate them on heap and delete them afterwards. Default C maps have
          * their names set to NULL. If we provided default names for entries
@@ -2561,15 +2591,33 @@ int initialize_traceheader_mappings(
          * So we allocate names only here, in C++, where we know they always
          * will be freed.
          **/
-        for( const auto& entry : standard_name_map ) {
-            int offset = mapping.name_to_offset[entry.segyio_entry_name];
-            if( offset != 0 ) {
-                char* name = new char[entry.spec_entry_name.size() + 1];
-                std::strcpy( name, entry.spec_entry_name.c_str() );
-                mapping.offset_to_entry_definition[offset - 1].name = name;
+        auto add_names = [](
+            const NameMapEntry* name_map,
+            size_t name_map_size,
+            segy_header_mapping& mapping
+        ) {
+            for (size_t i = 0; i < name_map_size; ++i) {
+                const NameMapEntry& entry = name_map[i];
+                int offset = mapping.name_to_offset[entry.segyio_entry_name];
+                if (offset != 0) {
+                    char* name = new char[entry.spec_entry_name.size() + 1];
+                    std::strcpy(name, entry.spec_entry_name.c_str());
+                    mapping.offset_to_entry_definition[offset - 1].name = name;
+                }
             }
-        }
-        self->traceheader_mappings.insert( self->traceheader_mappings.begin(), mapping );
+        };
+
+        const size_t standard_map_size = sizeof(standard_name_map) / sizeof(standard_name_map[0]);
+        add_names( standard_name_map, standard_map_size, ds->traceheader_mapping_standard );
+        self->traceheader_mappings.insert(
+            self->traceheader_mappings.begin(), ds->traceheader_mapping_standard
+        );
+
+        const size_t ext1_map_size = sizeof(ext1_name_map) / sizeof(ext1_name_map[0]);
+        add_names( ext1_name_map, ext1_map_size, ds->traceheader_mapping_extension1 );
+        self->traceheader_mappings.insert(
+            self->traceheader_mappings.begin() + 1, ds->traceheader_mapping_extension1
+        );
         return SEGY_OK;
     }
 
@@ -2583,23 +2631,37 @@ int initialize_traceheader_mappings(
     );
     if( err != SEGY_OK ) return err;
 
-    // For now assume order of headers in the file corresponds to the order of
-    // mappings in xml. TODO later: read all traceheaders in first trace and
-    // order traceheader mappings accordingly
     self->traceheader_mappings =
         std::vector<segy_header_mapping>( mappings, mappings + mappings_length );
     delete[] mappings;
 
-    bool found_standard = false;
-    for( const auto& mapping : self->traceheader_mappings ) {
+    int standard_index = -1;
+    int extension1_index = -1;
+
+    for( size_t i = 0; i < self->traceheader_mappings.size(); ++i ) {
+        const auto& mapping = self->traceheader_mappings[i];
         if( strncmp( mapping.name, "SEG00000", 8 ) == 0 ) {
-            found_standard = true;
+            standard_index = i;
         }
-        // TODO: same for SEG00001 header. Insert default into second position if not found
+        if( strncmp( mapping.name, "SEG00001", 8 ) == 0 ) {
+            extension1_index = i;
+        }
     }
 
     // standard header definition is obligatory, so it anyway should have failed earlier
-    if( !found_standard ) return SEGY_NOTFOUND;
+    if( standard_index != 0 ) return SEGY_NOTFOUND;
+
+    if( extension1_index != -1 ) {
+        if( extension1_index != 1 ) {
+            auto extension1_mapping = self->traceheader_mappings[extension1_index];
+            self->traceheader_mappings.erase(
+                self->traceheader_mappings.begin() + extension1_index
+            );
+            self->traceheader_mappings.insert(
+                self->traceheader_mappings.begin() + 1, extension1_mapping
+            );
+        }
+    }
 
     return SEGY_OK;
 }
@@ -2636,6 +2698,14 @@ int set_traceheader_mappings(
         &self->traceheader_mappings[0],
         sizeof( ds->traceheader_mapping_standard )
     );
+    if( self->traceheader_mappings.size() >= 2 &&
+        strncmp( self->traceheader_mappings[1].name, "SEG00001", 8 ) == 0 ) {
+        memcpy(
+            &ds->traceheader_mapping_extension1,
+            &self->traceheader_mappings[1],
+            sizeof( ds->traceheader_mapping_extension1 )
+        );
+    }
 
     return SEGY_OK;
 }
@@ -2709,6 +2779,9 @@ int set_mapping_name_to_offset(
     if( strncmp( header_name, "SEG00000", 8 ) == 0 ) {
         entry_name_map = const_cast<NameMapEntry*>( standard_name_map );
         entry_name_map_size = sizeof( standard_name_map ) / sizeof( standard_name_map[0] );
+    } else if( strncmp( header_name, "SEG00001", 8 ) == 0 ) {
+        entry_name_map = const_cast<NameMapEntry*>( ext1_name_map );
+        entry_name_map_size = sizeof( ext1_name_map ) / sizeof( ext1_name_map[0] );
     } else {
         // no name maps for proprietary headers
         entry_name_map = nullptr;
