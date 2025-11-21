@@ -428,12 +428,12 @@ class SegyFile(object):
 
     @header.setter
     def header(self, val):
-        """headers macro assignment
+        """standard headers macro assignment
 
-        A convenient way for operating on all headers of a file is to use the
-        default full-file range.  It will write headers 0, 1, ..., n, but uses
-        the iteration specified by the right-hand side (i.e. can skip headers
-        etc).
+        A convenient way for operating on all standard headers of a file is to
+        use the default full-file range. It will write headers of trace 0, 1,
+        ..., n, but uses the iteration specified by the right-hand side (i.e.
+        can skip headers etc).
 
         If the right-hand-side headers are exhausted before all the destination
         file headers the writing will stop, i.e. not all all headers in the
@@ -464,10 +464,10 @@ class SegyFile(object):
         self.header[:] = val
 
     def attributes(self, field):
-        """File-wide attribute (header word) reading
+        """File-wide attribute (standard header word) reading
 
-        Lazily gather a single header word for every trace in the file. The
-        array can be sliced, supports index lookup, and numpy-style
+        Lazily gather a single standard header word for every trace in the file.
+        The array can be sliced, supports index lookup, and numpy-style
         list-of-indices.
 
         Parameters

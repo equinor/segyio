@@ -629,7 +629,7 @@ class Header(Sequence):
         Read a field in the first 5 headers:
 
         >>> [x[25] for x in header[:5]]
-        [1, 2, 3, 4]
+        [1, 2, 3, 4, 5]
 
         Read a field in every other header:
 
@@ -834,7 +834,8 @@ class Attributes(Sequence):
 
         Examples
         --------
-        Read all unique sweep frequency end:
+        Assuming file with default layout mapping, read all unique sweep
+        frequency end:
 
         >>> end = segyio.TraceField.SweepFrequencyEnd
         >>> sfe = np.unique(f.attributes( end )[:])

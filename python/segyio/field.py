@@ -340,7 +340,7 @@ class Field(MutableMapping):
 
         Returns
         -------
-        value : int or dict_like
+        value : int, float, bytearray or dict_like
 
         Notes
         -----
@@ -390,14 +390,17 @@ class Field(MutableMapping):
         Unlike d[key], this method does not support assigning multiple values
         at once. To set multiple values at once, use the `update` method.
 
+        Attempting to set value of the type not supported by the trace header
+        layout at the `key` offset will result in error.
+
         Parameters
         ----------
         key : int_like
-        val : int_like
+        val : int_like or float_like
 
         Returns
         -------
-        val : int
+        val : int or float
             The value set
 
         Notes
