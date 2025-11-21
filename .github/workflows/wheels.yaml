@@ -53,7 +53,7 @@ jobs:
           CIBW_ENVIRONMENT_WINDOWS: >
             CMAKE_GENERATOR="${{ matrix.cmake_generator }}"
             CMAKE_GENERATOR_PLATFORM="${{ matrix.cmake_generator_platform }}"
-          CIBW_SKIP: cp38-* cp314* *-musllinux_*
+          CIBW_SKIP: cp38-* *-musllinux_*
           CIBW_ARCHS: ${{ matrix.arch }}
         run: |
             python -m cibuildwheel --output-dir wheelhouse python/
