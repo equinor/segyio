@@ -35,6 +35,12 @@ Trace header and attributes
 .. autoclass:: segyio.trace.Attributes()
     :special-members: __getitem__, __setitem__, __len__, __contains__, __iter__
 
+.. autoclass:: segyio.trace.TracesTraceHeaderSequence()
+    :special-members: __getitem__, __setitem__, __len__, __iter__
+
+.. autoclass:: segyio.trace.TraceHeaderSequence()
+    :special-members: __getitem__, __setitem__, __getattr__, __setattr__, __len__, __iter__
+
 Data line
 ---------
 .. autoclass:: segyio.line.Line()
