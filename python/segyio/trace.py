@@ -638,7 +638,7 @@ class Header(Sequence):
         """
         try:
             i = self.wrapindex(i)
-            return Field.trace(traceno = i, segyfile = self.segyfile)
+            return Field.trace(traceno = i, traceheader_index = 0, segyfile = self.segyfile)
 
         except TypeError:
             try:
@@ -654,7 +654,7 @@ class Header(Sequence):
                 # header was untouched. this allows for some fancy control
                 # flow, and more importantly helps debugging because you can
                 # fully inspect and interact with the last good value.
-                x = Field.trace(None, self.segyfile)
+                x = Field.trace(traceno = None, traceheader_index = 0, segyfile = self.segyfile)
                 buf = bytearray(x.buf)
                 for j in range(*indices):
                     # skip re-invoking __getitem__, just update the buffer
