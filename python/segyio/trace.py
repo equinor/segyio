@@ -834,7 +834,8 @@ class Attributes(Sequence):
 
         Examples
         --------
-        Read all unique sweep frequency end:
+        Assuming file with default layout mapping, read all unique sweep
+        frequency end:
 
         >>> end = segyio.TraceField.SweepFrequencyEnd
         >>> sfe = np.unique(f.attributes( end )[:])
