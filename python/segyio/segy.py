@@ -405,6 +405,16 @@ class SegyFile(object):
 
         >>> f.tracefield[0].xline.offset()
 
+        Get values of field for many traces:
+
+        >>> f.tracefield.SEG00001.dt[0, 10, 20]
+
+        Note:
+
+        - this works similar to :meth:`.attributes`
+        - use :meth:`.traceheader` if you need to get many fields from the
+          trace.
+
         Notes
         -----
         .. versionadded:: 2.0
@@ -537,8 +547,7 @@ class SegyFile(object):
         .. versionadded:: 1.1
 
         """
-        traceheader_layout = self._traceheader_layouts["SEG00000"]
-        return Attributes(field, self.segyfd, traceheader_layout, self.tracecount)
+        return Attributes(self, field, 0)
 
     @property
     def trace(self):
