@@ -32,20 +32,12 @@ def main():
             dst.bin = src.bin
             dst.trace = src.trace
 
-            # intention:
-            # dst.traceheader = src.traceheader
-
         # traceheader mapping was copied after open. At the moment of creation
         # of this example file code can't deal with that, so we must reopen the
         # file after bin and ext_headers are copied so that mapping is
         # recognized.
         with segyio.open(dstfile, "r+", endian="little", ignore_geometry=True) as dst:
-            for trace_index in range(src.tracecount):
-                for traceheader_index in range(src.traceheader_count):
-                    traceheader = src.segyfd.getth(
-                        trace_index, traceheader_index, bytearray(240))
-                    dst.segyfd.putth(
-                        trace_index, traceheader_index, traceheader)
+            dst.traceheader = src.traceheader
 
 
 if __name__ == '__main__':

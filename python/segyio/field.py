@@ -28,6 +28,9 @@ class Field(MutableMapping):
 
     .. versionchanged:: 1.6
         more common dict operations (MutableMapping)
+
+    .. versionchanged:: 2.0
+       Support for revision 2.1
     """
     _bin_keys = [x for x in BinField.enums()
                  if  x != BinField.Unassigned1
@@ -180,28 +183,33 @@ class Field(MutableMapping):
         'unas2'    : BinField.Unassigned2,
     }
 
-    def __init__(self, buf, kind, traceno = None, segyfd = None, readonly = True):
-        # do setup of kind/keys first, so that keys() work. if this method
-        # throws, we want repr() to be well-defined for backtrace, and that
-        # requires _keys
+    def __init__(self, segyfile, buf, kind, traceno=None, traceheader_index=None):
+        # segyfile and traceheader_index must be initialized before everything
+        # else because setattr is overridden
+        self.segyfile = segyfile
+        self.traceheader_index = traceheader_index
+
+        self.buf = buf
+        self.traceno = traceno
+        self.segyfd = segyfile.segyfd
+        self.getfield = self.segyfd.getfield
+        self.putfield = self.segyfd.putfield
+
+        self.readonly = segyfile.readonly
+
         if kind == 'binary':
             self._keys = self._bin_keys
             self.kind = BinField
         elif kind == 'trace':
-            self._keys = self._tr_keys
+            traceheader_layout = []
+            if traceheader_index != None:
+                traceheader_layout = segyfile.tracefield[traceheader_index]
+            self._keys = [field.offset() for field in traceheader_layout]
             self.kind = TraceField
         else:
             raise ValueError('Unknown header type {}'.format(kind))
 
-        self.buf = buf
-        self.traceno = traceno
-        self.segyfd = segyfd
-        self.getfield = self.segyfd.getfield
-        self.putfield = self.segyfd.putfield
-
-        self.readonly = readonly
-
-    def fetch(self, buf = None, traceno = None):
+    def fetch(self, buf = None, traceno = None, traceheader_index = None):
         """Fetch the header from disk
 
         This object will read header when it is constructed, which means it
@@ -225,6 +233,7 @@ class Field(MutableMapping):
         buf     : bytearray
             buffer to read into instead of ``self.buf``
         traceno : int
+        traceheader_index: int
 
         Returns
         -------
@@ -243,11 +252,14 @@ class Field(MutableMapping):
 
         if traceno is None:
             traceno = self.traceno
+        if traceheader_index is None:
+            traceheader_index = self.traceheader_index
 
         try:
             if self.kind == TraceField:
                 if traceno is None: return buf
-                return self.segyfd.getth(traceno, 0, buf)
+                if traceheader_index is None: return buf
+                return self.segyfd.getth(traceno, traceheader_index, buf)
             else:
                 return self.segyfd.getbin()
         except IOError:
@@ -317,7 +329,7 @@ class Field(MutableMapping):
         """
 
         if self.kind == TraceField:
-            self.segyfd.putth(self.traceno, 0, self.buf)
+            self.segyfd.putth(self.traceno, self.traceheader_index, self.buf)
 
         elif self.kind == BinField:
             self.segyfd.putbin(self.buf)
@@ -340,7 +352,7 @@ class Field(MutableMapping):
 
         Returns
         -------
-        value : int or dict_like
+        value : number, bytearray or dict_like
 
         Notes
         -----
@@ -374,12 +386,43 @@ class Field(MutableMapping):
         { 37: 5, 189: 2484 }
         """
 
-        traceheader_index = 0
+        traceheader_index = self.traceheader_index
 
         try: return self.getfield(self.buf, traceheader_index, int(key))
         except TypeError: pass
 
         return {self.kind(k): self.getfield(self.buf, traceheader_index, int(k)) for k in key}
+
+    def __getattr__(self, name):
+        """d.name
+
+        Read the associated value of `name`. `name` must be a name defined by
+        the layout on trace header.
+
+        Wrapper around :meth:`.__getitem__`, so refer to it for more
+        information.
+
+        Parameters
+        ----------
+        name : str
+
+        Returns
+        -------
+        value : number of bytearray
+
+        Notes
+        -----
+        .. versionadded:: 2.0
+
+        Examples
+        --------
+        Read a single value:
+
+        >>> d.linetrc
+        1005
+        """
+
+        return self[self.segyfile.tracefield[self.traceheader_index].__getattr__(name).offset()]
 
     def __setitem__(self, key, val):
         """d[key] = val
@@ -390,14 +433,17 @@ class Field(MutableMapping):
         Unlike d[key], this method does not support assigning multiple values
         at once. To set multiple values at once, use the `update` method.
 
+        Attempting to set value of the type not supported by the trace header
+        layout at the `key` offset will result in error.
+
         Parameters
         ----------
         key : int_like
-        val : int_like
+        val : number_like
 
         Returns
         -------
-        val : int
+        val : number_like
             The value set
 
         Notes
@@ -428,12 +474,50 @@ class Field(MutableMapping):
         5
         """
 
-        traceheader_index = 0
-
-        self.putfield(self.buf, traceheader_index, key, val)
+        self.putfield(self.buf, self.traceheader_index, key, val)
         self.flush()
 
         return val
+
+    def __setattr__(self, name, value):
+        """d.name = value
+
+        Set d.name to value. `name` must be a name defined by
+        the layout on trace header.
+
+        Wrapper around :meth:`.__setitem__`, so refer to it for more
+        information.
+
+        Parameters
+        ----------
+        name : str
+        value : number_like
+
+        Returns
+        -------
+        val : number_like
+            The value set
+
+        Notes
+        -----
+        .. versionadded:: 2.0
+
+        Examples
+        --------
+        Set a value:
+        >>> header.linetrc = 1006
+        """
+        if name == "segyfile" or name == "traceheader_index":
+            super().__setattr__(name, value)
+            return
+
+        if  self.traceheader_index != None:
+            layout = self.segyfile.tracefield[self.traceheader_index]
+            if name in layout.names():
+                self[layout.__getattr__(name).offset()] = value
+                return
+
+        super().__setattr__(name, value)
 
     def __delitem__(self, key):
         """del d[key]
@@ -517,7 +601,7 @@ class Field(MutableMapping):
 
         buf = bytearray(self.buf)
 
-        traceheader_index = 0
+        traceheader_index = self.traceheader_index
 
         # Implementation largely borrowed from Mapping
         # If E present and has a .keys() method: for k in E: D[k] = E[k]
@@ -544,19 +628,14 @@ class Field(MutableMapping):
     @classmethod
     def binary(cls, segyfile):
         buf = bytearray(segyio._segyio.binsize())
-        return Field(buf, kind='binary',
-                          segyfd=segyfile.segyfd,
-                          readonly=segyfile.readonly,
-                    ).reload()
+        return Field(segyfile, buf, kind='binary').reload()
 
     @classmethod
-    def trace(cls, traceno, segyfile):
+    def trace(cls, traceno, traceheader_index, segyfile):
         buf = bytearray(segyio._segyio.thsize())
-        return Field(buf, kind='trace',
-                          traceno=traceno,
-                          segyfd=segyfile.segyfd,
-                          readonly=segyfile.readonly,
-                    ).reload()
+        return Field(
+            segyfile, buf, kind='trace', traceno=traceno, traceheader_index=traceheader_index,
+        ).reload()
 
     def __repr__(self):
         return repr(self[self.keys()])
