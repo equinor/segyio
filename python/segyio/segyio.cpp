@@ -650,21 +650,25 @@ PyObject* segyopen( segyfd* self, PyObject* args, PyObject* kwargs ) {
     int encoding = -1;
     PyObject *py_iline = Py_None;
     PyObject *py_xline = Py_None;
+    PyObject* py_layout_xml = Py_None;
+
     static const char* keywords[] = {
         "endianness",
         "encoding",
         "iline",
         "xline",
+        "layout_xml",
         NULL
     };
 
     if( !PyArg_ParseTupleAndKeywords(
-            args, kwargs, "|iiOO",
+            args, kwargs, "|iiOOO",
             const_cast<char**>( keywords ),
             &endianness,
             &encoding,
             &py_iline,
-            &py_xline
+            &py_xline,
+            &py_layout_xml
         ) ) {
         return NULL;
     }
@@ -680,8 +684,18 @@ PyObject* segyopen( segyfd* self, PyObject* args, PyObject* kwargs ) {
     if( err ) return Error( err );
 
     std::vector<char> layout_stanza_data;
-    err = extract_layout_stanza( self, layout_stanza_data );
-    if( err ) return Error( err );
+    if( py_layout_xml != Py_None ) {
+        buffer_guard layout_xml( py_layout_xml, PyBUF_CONTIG );
+        layout_stanza_data.resize( layout_xml.len() );
+        std::memcpy(
+            layout_stanza_data.data(),
+            layout_xml.buf<char>(),
+            layout_xml.len()
+        );
+    } else {
+        err = extract_layout_stanza( self, layout_stanza_data );
+        if( err ) return Error( err );
+    }
 
     err = set_traceheader_mappings( self, layout_stanza_data, py_iline, py_xline );
     if( err ) return NULL;

@@ -2639,4 +2639,43 @@ def test_revision_2_1_file_creation(tmpdir):
             dst.trace = src.trace
             dst.traceheader = src.traceheader
 
+        with segyio.open(fresh, "r+", ignore_geometry=True) as dst:
+            pass
+
     assert filecmp.cmp(orig, fresh)
+
+
+def test_custom_layout_xml(tmpdir):
+    small = str(testdata / 'small.sgy')
+    orig = str(testdata / 'trace-header-extensions.sgy')
+    fresh = tmpdir / '2.1-headers-not-copied.sgy'
+    with segyio.open(orig) as src:
+        spec = segyio.spec()
+        spec.format = int(src.format)
+        spec.sorting = int(src.sorting)
+        spec.samples = src.samples
+        spec.ilines = src.ilines
+        spec.xlines = src.xlines
+        spec.ext_headers = 0
+        spec.traceheader_count = src.traceheader_count
+        spec.tracecount = src.tracecount
+
+        layout = src.stanza[0]
+
+        with segyio.open(small, "r") as f:
+            assert len(f.tracefield[0].names()) == 92
+        with segyio.open(small, "r", layout_xml=layout) as f:
+            assert len(f.tracefield[0].names()) == 8
+
+        with segyio.create(fresh, spec, layout_xml=layout) as dst:
+            dst.bin = src.bin
+            dst.bin[BinField.ExtendedHeaders] = 0
+            dst.trace = src.trace
+            dst.traceheader = src.traceheader
+
+        with pytest.raises(KeyError, match="traceheader mapping for 'PRIVATE1' not found"):
+            segyio.open(fresh, "r", ignore_geometry=True)
+
+        with segyio.open(fresh, "r", ignore_geometry=True, layout_xml=layout) as f:
+            assert f.tracefield.names() == ['SEG00000', 'SEG00001', 'PRIVATE1']
+            assert f.tracefield.SEG00001.names() == ['linetrc', 'header_name']
