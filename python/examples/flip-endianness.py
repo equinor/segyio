@@ -25,18 +25,18 @@ def main():
         spec.tracecount = src.tracecount
         spec.endian = 'little'
 
-        with segyio.create(dstfile, spec) as dst:
+        layout_index = -1
+        for i, stanza_name in enumerate(src.stanza.names()):
+            if stanza_name.lower().startswith('seg:layout'):
+                layout_index = i
+        layout = src.stanza[layout_index]
+
+        with segyio.create(dstfile, spec, layout_xml=layout) as dst:
             for i in range(1 + src.ext_headers):
                 dst.text[i] = src.text[i]
 
             dst.bin = src.bin
             dst.trace = src.trace
-
-        # traceheader mapping was copied after open. At the moment of creation
-        # of this example file code can't deal with that, so we must reopen the
-        # file after bin and ext_headers are copied so that mapping is
-        # recognized.
-        with segyio.open(dstfile, "r+", endian="little", ignore_geometry=True) as dst:
             dst.traceheader = src.traceheader
 
 

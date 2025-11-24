@@ -729,6 +729,7 @@ PyObject* segycreate( segyfd* self, PyObject* args, PyObject* kwargs ) {
     int ext_headers = 0;
     int traceheader_count = 1;
     int format = SEGY_IBM_FLOAT_4_BYTE;
+    PyObject* py_layout_xml = Py_None;
 
     // https://mail.python.org/pipermail/python-dev/2006-February/060689.html
     // python3 fixes the non-constness of the kwlist arg in
@@ -744,11 +745,12 @@ PyObject* segycreate( segyfd* self, PyObject* args, PyObject* kwargs ) {
         "traceheader_count",
         "format",
         "ext_headers",
+        "layout_xml",
         NULL,
     };
 
     if( !PyArg_ParseTupleAndKeywords( args, kwargs,
-                "ii|iiiii",
+                "ii|iiiiiO",
                 const_cast< char** >(kwlist),
                 &samples,
                 &tracecount,
@@ -756,7 +758,8 @@ PyObject* segycreate( segyfd* self, PyObject* args, PyObject* kwargs ) {
                 &encoding,
                 &traceheader_count,
                 &format,
-                &ext_headers
+                &ext_headers,
+                &py_layout_xml
              ) )
         return NULL;
 
@@ -772,6 +775,17 @@ PyObject* segycreate( segyfd* self, PyObject* args, PyObject* kwargs ) {
     ds->metadata.encoding = encoding;
 
     std::vector<char> layout_stanza_data;
+
+    if( py_layout_xml != Py_None ) {
+        buffer_guard layout_xml( py_layout_xml, PyBUF_CONTIG );
+        layout_stanza_data.resize( layout_xml.len() );
+        std::memcpy(
+            layout_stanza_data.data(),
+            layout_xml.buf<char>(),
+            layout_xml.len()
+        );
+    }
+
     int err = set_traceheader_mappings(
         self, layout_stanza_data, Py_None, Py_None
     );
