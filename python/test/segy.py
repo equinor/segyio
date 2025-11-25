@@ -1079,6 +1079,19 @@ def test_traces_traceheaders(small):
             assert f.traceheader[2][i] == f.traceheader[f.tracecount - 3][i]
 
 
+def test_traceheader_attributes(small):
+    with segyio.open(small, "r") as f:
+        attrs = f.attributes(f.tracefield.SEG00000.xline.offset())
+        assert len(attrs) == f.tracecount
+        assert np.array_equal(list(attrs), [20, 21, 22, 23, 24] * 5)
+
+        assert np.array_equal(f.tracefield.SEG00000.xline[:], attrs)
+        assert np.array_equal(f.tracefield.SEG00000.xline[0:5], attrs[0:5])
+        assert np.array_equal(f.tracefield.SEG00000.xline[0, 5, 11, 12], attrs[0, 5, 11, 12])
+
+        assert f.tracefield.SEG00000.xline[0] == 20
+
+
 def test_depricated_fields(small):
     with segyio.open(small, "r") as f:
         assert f.bin[BinField.EnsembleTraces] == 25
@@ -2487,7 +2500,7 @@ def test_read_write_all_custom_mapping_types(tmpdir, endianness, filename):
         opened: numbers.Real
         changed: numbers.Real
 
-    trace0_ext_header1_cases = [
+    trace0_proprietary_cases = [
         HeaderTest("int2", 1, -101),
         HeaderTest("int4", 2, -102),
         HeaderTest("int8", 3, -103),
@@ -2512,7 +2525,7 @@ def test_read_write_all_custom_mapping_types(tmpdir, endianness, filename):
         HeaderTest("header_name", b"TYPES\x00\x00\x00", b"TYPES   "),
     ]
 
-    trace1_ext_header1_cases = [
+    trace1_proprietary_cases = [
         HeaderTest("int2", -1001, 10001),
         HeaderTest("int4", -1002, 2000002),
         HeaderTest("int8", -1003, 3000000003),
@@ -2537,65 +2550,35 @@ def test_read_write_all_custom_mapping_types(tmpdir, endianness, filename):
     ]
 
     headers = {
-        0: trace0_ext_header1_cases,
-        1: trace1_ext_header1_cases,
+        0: trace0_proprietary_cases,
+        1: trace1_proprietary_cases,
     }
 
     traceheader_index = 1
 
-    # all internal calls are temporary!
-    # they would be exchanged with proper ones once python interface is in place
     with segyio.open(tmpdir / filename, mode='r+', endian=endianness) as f:
-        def mkempty():
-            return bytearray(240)
-
-        types_layout = f._traceheader_layouts["TYPES"]
+        types = f.tracefield[traceheader_index]
         for trace_index, header_cases in headers.items():
             for case in header_cases:
-                offset = types_layout.entry_by_name(case.name).byte
+                offset = types.__getattr__(case.name).offset()
 
-                # assert f.traceheader[trace_index][traceheader_index][offset] == case.opened
-                traceheader = f.segyfd.getth(
-                    trace_index, traceheader_index, mkempty())
-                assert f.segyfd.getfield(
-                    traceheader, traceheader_index, offset) == case.opened
-
-                # f.traceheader[trace_index][traceheader_index][offset] = case.changed
-                f.segyfd.putfield(
-                    traceheader, traceheader_index, offset, case.changed)
-                f.segyfd.putth(trace_index, traceheader_index, traceheader)
-
-                # assert f.traceheader[trace_index][traceheader_index][offset] == case.changed
-                traceheader = f.segyfd.getth(
-                    trace_index, traceheader_index, mkempty())
-                assert f.segyfd.getfield(
-                    traceheader, traceheader_index, offset) == case.changed
+                assert f.traceheader[trace_index][traceheader_index][offset] == case.opened
+                f.traceheader[trace_index][traceheader_index][offset] = case.changed
+                assert f.traceheader[trace_index][traceheader_index][offset] == case.changed
 
         with pytest.raises(ValueError, match=r"Value out of range*"):
-            offset = types_layout.entry_by_name("int2").byte
+            offset = types.int2.offset()
+            f.traceheader[trace_index][traceheader_index][offset] = 50000
 
-            # f.traceheader[trace_index][traceheader_index][offset] = 50000
-            f.segyfd.putfield(traceheader, traceheader_index, offset, 50000)
-
-        from segyio.trace import Attributes
-        for i, case in enumerate(trace0_ext_header1_cases):
+        for i, case in enumerate(trace0_proprietary_cases):
             if (case.name == "scale6_mant") or (case.name == "scale6_exp"):
                 # scale6 is not properly supported yet
                 continue
 
-            if case.name == "header_name":
-                type = "string8"
-            else:
-                type = case.name
-
-            offset = types_layout.entry_by_name(case.name).byte
             expected = np.array(
-                [trace0_ext_header1_cases[i].changed, trace1_ext_header1_cases[i].changed])
+                [trace0_proprietary_cases[i].changed, trace1_proprietary_cases[i].changed])
 
-            # attrs = f.attributes(offset, traceheader_index)
-            attrs = np.empty(2, dtype=Attributes.ENTRY_TYPE_TO_NUMPY[type])
-            f.segyfd.field_forall(attrs, traceheader_index, 0, 2, 1, offset)
-
+            attrs = types.__getattr__(case.name)[:]
             np.testing.assert_array_equal(attrs, expected)
 
 

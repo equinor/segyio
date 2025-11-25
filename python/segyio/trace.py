@@ -1057,12 +1057,14 @@ class Attributes(Sequence):
         "string8":  np.dtype('S8'),
     }
 
-    def __init__(self, field, segyfd, traceheader_layout, tracecount):
-        super(Attributes, self).__init__(tracecount)
+    def __init__(self, segyfile, field, traceheader_index):
+        super(Attributes, self).__init__(segyfile.tracecount)
         self.field = field
-        self.segyfd = segyfd
-        self.tracecount = tracecount
+        self.traceheader_index = traceheader_index
+        self.segyfd = segyfile.segyfd
+        self.tracecount = segyfile.tracecount
 
+        traceheader_layout = list(segyfile._traceheader_layouts.values())[traceheader_index]
         entry = traceheader_layout.entry_by_byte(field)
         self.dtype = Attributes.ENTRY_TYPE_TO_NUMPY[entry.type]
 
@@ -1109,7 +1111,7 @@ class Attributes(Sequence):
             xs = np.asarray(i, dtype=np.int32)
             xs = xs.astype(dtype=np.int32, order='C', copy=False)
             attrs = np.empty(len(xs), dtype = self.dtype)
-            return self.segyfd.field_foreach(attrs, 0, xs, self.field)
+            return self.segyfd.field_foreach(attrs, self.traceheader_index, xs, self.field)
 
         except TypeError:
             try:
@@ -1124,7 +1126,7 @@ class Attributes(Sequence):
             start, stop, step = i.indices(traces)
             indices = range(start, stop, step)
             attrs = np.empty(len(indices), dtype = self.dtype)
-            return segyfd.field_forall(attrs, 0, start, stop, step, field)
+            return segyfd.field_forall(attrs, self.traceheader_index, start, stop, step, field)
 
 class Text(Sequence):
     """Interact with segy in text mode
@@ -1596,3 +1598,27 @@ class FieldLayoutEntry():
         type = self.type()
         non_zero = self.use_only_if_non_zero()
         return f"{name} (offset={offset}, type={type}, use_only_if_non_zero={non_zero})"
+
+    def __getitem__(self, key):
+        """ tracefield[key]
+
+        Returns values of traces provided in 'key'.
+        Wrapper around :class:`.Attributes`, so refer to it for more
+        information.
+
+        Parameters
+        ----------
+        key : int or slice
+            Index or slice.
+
+        Returns
+        -------
+        array of int, float or bytearray
+
+        Examples
+        --------
+        Get the cdp_x attribute from trace header extension 1 for first 10 traces:
+
+        >>> f.tracefield.SEG00001.cdp_x[0:10]
+        """
+        return Attributes(self.segyfile, self.entry.byte, self.traceheader_index)[key]

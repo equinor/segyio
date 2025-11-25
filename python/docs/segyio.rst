@@ -96,6 +96,7 @@ Trace and binary header
     :exclude-members: count
 
 .. autoclass:: segyio.trace.FieldLayoutEntry()
+    :special-members: __getitem__
 
 Tools
 =====
