@@ -9,7 +9,7 @@ import numpy as np
 from .gather import Gather, Groups
 from .line import Line
 from .trace import Trace, Header, Attributes, Text, Stanza
-from .trace import RowLayoutEntries
+from .trace import RowLayoutEntries, FileFieldAccessor
 from .field import Field
 
 from .tracesortingformat import TraceSortingFormat
@@ -93,6 +93,7 @@ class SegyFile(object):
                             self.readonly,
                            )
         self._header = Header(self)
+        self._traceheader = FileFieldAccessor(self)
         self._iline = None
         self._xline = None
         self._gather = None
@@ -422,7 +423,7 @@ class SegyFile(object):
     @property
     def header(self):
         """
-        Interact with segy in header mode
+        Interact with segy in standard header mode
 
         Returns
         -------
@@ -470,6 +471,55 @@ class SegyFile(object):
         True
         """
         self.header[:] = val
+
+    @property
+    def traceheader(self):
+        """
+        Interact with segy in traceheader mode.
+
+        Works similar to :meth:`.header` but is applicable for all trace
+        headers, not just standard ones.
+
+        Examples
+        --------
+        Read field values from trace header extension 1 at trace 5:
+
+        >>> traceheader = f.traceheader[5][1]
+        >>> traceheader.rec_x
+        ... 100.5
+        >>> traceheader.rec_y
+        ... 150.75
+
+        Notes
+        -----
+        .. versionadded:: 2.0
+        """
+        return self._traceheader
+
+    @traceheader.setter
+    def traceheader(self, val):
+        """headers macro assignment
+
+        Operating on all headers of a file.
+
+        If the right-hand-side headers are exhausted before all the destination
+        file headers the behavior is undefined and may change in the future.
+
+        Examples
+        --------
+        Copy all headers from file g to file f:
+
+        >>> f.traceheader = g.traceheader
+
+        Copy all headers from trace 3 to trace 5:
+
+        >>> f.traceheader[5] = f.traceheader[3]
+
+        Copy standard header from trace 2 to trace 4:
+
+        >>> f.traceheader[4][0] = f.traceheader[2][0]
+        """
+        self.traceheader[:] = val
 
     def attributes(self, field):
         """File-wide attribute (standard header word) reading

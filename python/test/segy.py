@@ -980,6 +980,105 @@ def test_write_header(small):
         # i.e. don't access buf of treat it as a list
         # assertEqual(list(f.header[2].buf), list(f.header[1].buf))
 
+
+def test_field_via_traceheader(small):
+    with segyio.open(small, "r+") as f:
+        assert isinstance(f.traceheader[0][0], Field)
+
+        assert 1 == f.traceheader[0][0][189]
+        assert 5 == f.traceheader[-1][0][189]
+
+        with pytest.raises(KeyError):
+            f.traceheader[0][0][700]
+
+        with pytest.raises(KeyError):
+            f.traceheader[0][0][700] = 1
+
+        assert f.traceheader[0][0][193] == f.traceheader[0].SEG00000.xline
+
+        dict = {
+            f.tracefield.SEG00000.iline.offset(): 42,
+            f.tracefield.SEG00000.xline.offset(): 88,
+        }
+        f.traceheader[0].SEG00000.update(dict)
+        f.traceheader[1].SEG00000.xline = 12
+        f.flush()
+
+        cached_traceheader = f.traceheader[0].SEG00000
+        assert cached_traceheader[189] == 42
+        assert cached_traceheader[193] == 88
+
+        assert f.traceheader[1][0][189] == 1
+        assert f.traceheader[1][0][193] == 12
+
+        with pytest.raises(ValueError, match=r"Value out of range for *"):
+            f.traceheader[0][0][189] = 36.6
+
+        with pytest.raises(TypeError):
+            # makes no sense, we do not iterate over field this way
+            f.traceheader[0][0][:]
+
+
+def test_traceheaders(small):
+    with segyio.open(small, "r+") as f:
+        assert isinstance(f.traceheader[0], segyio.trace.RowFieldAccessor)
+        assert len(f.traceheader[0]) == f.traceheader_count
+        assert len(list(f.traceheader[0][:])) == f.traceheader_count
+
+        for traceheader in f.traceheader[0]:  # same as f.traceheader[0][:]
+            assert isinstance(traceheader, Field)
+            # there is only standard traceheader, so iline is always valid
+            assert traceheader.iline == 1
+
+        with pytest.raises(IndexError):
+            _ = f.traceheader[0][30]
+
+        with pytest.raises(TypeError):
+            f.traceheader[1][0] = {189: 43}
+
+        with pytest.raises(TypeError):
+            # not supported
+            f.traceheader[0][:][189] = 42
+
+        f.traceheader[1][0] = f.traceheader[0][0]
+        f.flush()
+
+        assert f.traceheader[1][0] == f.traceheader[0][0]
+        assert f.traceheader[1].SEG00000 == f.traceheader[0].SEG00000
+
+        f.traceheader[3][0:1] = f.traceheader[2][0:1]
+        assert list(f.traceheader[3][0:1]) == list(f.traceheader[2][0:1])
+
+
+def test_traces_traceheaders(small):
+    with segyio.open(small, "r+") as f:
+        assert isinstance(
+            f.traceheader, segyio.trace.FileFieldAccessor)
+        assert len(f.traceheader) == f.tracecount
+        assert len(list(f.traceheader[:])) == f.tracecount
+
+        for traceheader_row in f.traceheader:  # same as f.traceheader[:]
+            assert len(traceheader_row) == 1
+
+        with pytest.raises(IndexError):
+            _ = f.traceheader[30]
+
+        with pytest.raises(TypeError):
+            f.traceheader[1] = {TraceField.INLINE_3D: 43}
+
+        f.traceheader[2] = f.traceheader[1]
+        f.flush()
+
+        for i in range(f.traceheader_count):
+            assert f.traceheader[1][i] == f.traceheader[2][i]
+
+        f.traceheader[:5] = f.traceheader[-5:]
+        f.flush()
+
+        for i in range(f.traceheader_count):
+            assert f.traceheader[2][i] == f.traceheader[f.tracecount - 3][i]
+
+
 def test_depricated_fields(small):
     with segyio.open(small, "r") as f:
         assert f.bin[BinField.EnsembleTraces] == 25
@@ -2498,3 +2597,34 @@ def test_read_write_all_custom_mapping_types(tmpdir, endianness, filename):
             f.segyfd.field_forall(attrs, traceheader_index, 0, 2, 1, offset)
 
             np.testing.assert_array_equal(attrs, expected)
+
+
+def test_revision_2_1_file_creation(tmpdir):
+    orig = str(testdata / 'trace-header-extensions.sgy')
+    fresh = tmpdir / '2.1-copied.sgy'
+    with segyio.open(orig) as src:
+        spec = segyio.spec()
+        spec.format = int(src.format)
+        spec.sorting = int(src.sorting)
+        spec.samples = src.samples
+        spec.ilines = src.ilines
+        spec.xlines = src.xlines
+        spec.ext_headers = src.ext_headers
+        spec.traceheader_count = src.traceheader_count
+        spec.tracecount = src.tracecount
+
+        with segyio.create(fresh, spec) as dst:
+            for i in range(1 + src.ext_headers):
+                dst.text[i] = src.text[i]
+            dst.bin = src.bin
+
+            dst.trace = src.trace
+
+        # traceheader mapping was copied after open. At the moment of creation
+        # of this example file code can't deal with that, so we must reopen the
+        # file after bin and ext_headers are copied so that mapping is
+        # recognized.
+        with segyio.open(fresh, "r+", ignore_geometry=True) as dst:
+            dst.traceheader = src.traceheader
+
+    assert filecmp.cmp(orig, fresh)
