@@ -552,3 +552,106 @@ class Field(MutableMapping):
 
     def __repr__(self):
         return repr(self[self.keys()])
+
+
+class HeaderFieldAccessor(Field):
+    """
+    Same as :class:`Field`, only to be used with
+    :meth:`segyio.SegyFile.traceheader` interface.
+
+    Notes
+    -----
+    .. versionadded:: 2.0
+    """
+
+    def __init__(self, segyfile, buf, keys, traceno=None, traceheader_index=None):
+        self.segyfile = segyfile
+        self.traceheader_index = traceheader_index
+        super().__init__(segyfile, buf, TraceField, keys, traceno, traceheader_index)
+
+    def __getattr__(self, name):
+        """d.name
+
+        Read the associated value of `name`. `name` must be a name defined by
+        the layout on trace header.
+
+        Wrapper around :meth:`.__getitem__`, so refer to it for more
+        information.
+
+        Parameters
+        ----------
+        name : str
+
+        Returns
+        -------
+        value : int, float of bytearray
+
+        Notes
+        -----
+        .. versionadded:: 2.0
+
+        Examples
+        --------
+        Read a single value:
+
+        >>> d.linetrc
+        1005
+        """
+        layout = self.segyfile._traceheader_entries[self.traceheader_index]
+        entry = layout.entry_by_name(name)
+        return self[entry.byte]
+
+    def __setattr__(self, name, value):
+        """d.name = value
+
+        Set d.name to value. `name` must be a name defined by
+        the layout on trace header.
+
+        Wrapper around :meth:`.__setitem__`, so refer to it for more
+        information.
+
+        Parameters
+        ----------
+        name : str
+        value : int_like or float_like
+
+        Returns
+        -------
+        val : int or float
+            The value set
+
+        Notes
+        -----
+        .. versionadded:: 2.0
+
+        Examples
+        --------
+        Set a value:
+
+        >>> header.linetrc = 1006
+        """
+        # note: adding this function directly to Field slowed down original
+        # interface. so a new subclass was created to set new performance
+        # baselines
+        if name == "segyfile" or name == "traceheader_index":
+            super().__setattr__(name, value)
+            return
+        if self.traceheader_index != None:
+            layout = self.segyfile._traceheader_entries[self.traceheader_index]
+            entry = layout.entry_by_name(name)
+            if entry != None:
+                self[entry.byte] = value
+                return
+
+        super().__setattr__(name, value)
+
+    @classmethod
+    def trace(cls, traceno, traceheader_index, segyfile):
+        buf = bytearray(segyio._segyio.thsize())
+        keys = []
+        if traceheader_index != None:
+            layout = segyfile._traceheader_entries[traceheader_index]
+            keys = layout._by_byte.keys()
+        return HeaderFieldAccessor(
+            segyfile, buf, keys, traceno=traceno, traceheader_index=traceheader_index,
+        ).reload()

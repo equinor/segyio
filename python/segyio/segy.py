@@ -38,6 +38,14 @@ class SegyFile(object):
         self._il = standard_header_layout.entry_by_name("iline").byte
         self._xl = standard_header_layout.entry_by_name("xline").byte
 
+        self._traceheader_entries = []
+        for traceheader_layout in self._traceheader_layouts.values():
+            self._traceheader_entries.append(traceheader_layout)
+
+        self._traceheader_names = []
+        for traceheader_name in self._traceheader_layouts.keys():
+            self._traceheader_names.append(traceheader_name)
+
         # property value holders
         self._ilines = None
         self._xlines = None
