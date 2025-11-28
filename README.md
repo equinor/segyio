@@ -357,10 +357,10 @@ discriminate between the revisions, but instead tries to use information
 available in the file. For an *actual* standard's reference, please see the
 publications by SEG:
 
-- [SEG-Y 0 (1975)](https://library.seg.org/pb-assets/technical-standards/seg_y_rev0-1686080980707.pdf)
-- [SEG-Y 1 (2002)](https://library.seg.org/pb-assets/technical-standards/seg_y_rev1-1686080991247.pdf)
-- [SEG-Y 2 (2017)](https://library.seg.org/pb-assets/technical-standards/seg_y_rev2_0-mar2017-1686080998003.pdf)
-- [SEG-Y 2.1 (2023)](https://library.seg.org/pb-assets/technical-standards/seg_y_rev2_1-oct2023-1701361639333.pdf)
+- [SEG-Y 0 (1975)](https://seg.org/wp-content/uploads/2025/11/seg_y_rev0.pdf)
+- [SEG-Y 1 (2002)](https://seg.org/wp-content/uploads/2025/11/seg_y_rev1.pdf)
+- [SEG-Y 2 (2017)](https://seg.org/wp-content/uploads/2025/11/seg_y_rev2_0_mar2017.pdf)
+- [SEG-Y 2.1 (2023)](https://seg.org/wp-content/uploads/2025/11/seg_y_rev2_1-oct2023.pdf)
 
 ## Contributing ##
 
