@@ -62,10 +62,10 @@ add_module_names = False
 #
 # ref http://luc.lino-framework.org/blog/2018/0821.html
 
-from distutils.version import LooseVersion
+from packaging.version import Version
 import sphinx
 
-if LooseVersion(sphinx.__version__) < LooseVersion("1.8"):
+if Version(sphinx.__version__) < Version("1.8"):
     autodoc_default_flags = ['members', 'inherited-members']
 else:
     autodoc_default_options = {
@@ -109,7 +109,7 @@ release = version
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = 'en'
 
 # There are two options for replacing |today|: either, you set today to some
 # non-false value, then it is used:
@@ -166,7 +166,7 @@ sphinx_gallery_conf = {
     'examples_dirs': ['../tutorials',],
     # path where to save gallery generated examples
     'gallery_dirs': ['tutorials'],
-    'filename_pattern': '\.py',
+    'filename_pattern': r'\.py',
     # Remove the "Download all examples" button from the top level gallery
     'download_all_examples': False,
     # Sort gallery example by file name instead of number of lines (default)

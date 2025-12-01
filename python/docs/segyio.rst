@@ -35,6 +35,12 @@ Trace header and attributes
 .. autoclass:: segyio.trace.Attributes()
     :special-members: __getitem__, __setitem__, __len__, __contains__, __iter__
 
+.. autoclass:: segyio.trace.FileFieldAccessor()
+    :special-members: __getitem__, __setitem__, __len__, __iter__
+
+.. autoclass:: segyio.trace.RowFieldAccessor()
+    :special-members: __getitem__, __setitem__, __getattr__, __setattr__, __len__, __iter__
+
 Data line
 ---------
 .. autoclass:: segyio.line.Line()
@@ -67,10 +73,30 @@ Text
 .. autoclass:: segyio.trace.Text()
     :special-members: __getitem__, __setitem__, __len__, __contains__, __iter__
 
+Stanza
+------
+.. autoclass:: segyio.trace.Stanza()
+    :special-members: __getitem__, __len__, __iter__
+    :exclude-members: count, index
+
 Trace and binary header
 =======================
 .. autoclass:: segyio.field.Field()
     :special-members: __getitem__, __setitem__, __delitem__, __len__, __contains__, __iter__
+
+.. autoclass:: segyio.field.HeaderFieldAccessor()
+    :special-members: __getattr__, __setattr__, __getitem__, __setitem__, __delitem__, __len__, __iter__
+
+.. autoclass:: segyio.trace.RowLayoutEntries()
+    :special-members: __getitem__, __getattr__, __len__, __iter__
+    :exclude-members: count, index
+
+.. autoclass:: segyio.trace.HeaderLayoutEntries()
+    :special-members: __getitem__, __getattr__, __len__, __iter__
+    :exclude-members: count
+
+.. autoclass:: segyio.trace.FieldLayoutEntry()
+    :special-members: __getitem__
 
 Tools
 =====

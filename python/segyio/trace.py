@@ -13,7 +13,7 @@ except ImportError: pass
 import numpy as np
 
 from .line import HeaderLine
-from .field import Field
+from .field import Field, HeaderFieldAccessor
 from .utils import castarray
 
 class Sequence(Sequence):
@@ -629,7 +629,7 @@ class Header(Sequence):
         Read a field in the first 5 headers:
 
         >>> [x[25] for x in header[:5]]
-        [1, 2, 3, 4]
+        [1, 2, 3, 4, 5]
 
         Read a field in every other header:
 
@@ -638,7 +638,7 @@ class Header(Sequence):
         """
         try:
             i = self.wrapindex(i)
-            return Field.trace(traceno = i, segyfile = self.segyfile)
+            return Field.trace(traceno = i, traceheader_index = 0, segyfile = self.segyfile)
 
         except TypeError:
             try:
@@ -654,7 +654,7 @@ class Header(Sequence):
                 # header was untouched. this allows for some fancy control
                 # flow, and more importantly helps debugging because you can
                 # fully inspect and interact with the last good value.
-                x = Field.trace(None, self.segyfile)
+                x = Field.trace(traceno = None, traceheader_index = 0, segyfile = self.segyfile)
                 buf = bytearray(x.buf)
                 for j in range(*indices):
                     # skip re-invoking __getitem__, just update the buffer
@@ -773,6 +773,256 @@ class Header(Sequence):
         for i, src in zip(self.segyfile.xlines, value):
             self.xline[i] = src
 
+
+class FileFieldAccessor(Sequence):
+    """
+    Sequence of rows of trace headers in a SEG-Y file.
+
+    Provides access to all trace headers defined in the SEG-Y file.
+
+    Notes
+    -----
+    .. versionadded:: 2.0
+
+    """
+
+    def __init__(self, segyfile):
+        self.segyfile = segyfile
+        super().__init__(segyfile.tracecount)
+
+    def __getitem__(self, i):
+        """traceheader[i]
+
+        All headers belonging to ith trace, starting at 0.
+
+        Parameters
+        ----------
+        i : int or slice
+
+        Returns
+        -------
+        traceheaders : RowFieldAccessor
+
+        Examples
+        --------
+        Accessing headers in trace 10 (11th in the file):
+
+        >>> traceheader[10]
+        """
+        try:
+            trace_index = self.wrapindex(i)
+            return RowFieldAccessor(segyfile=self.segyfile, trace_index=trace_index)
+
+        except TypeError:
+            try:
+                trace_indices = i.indices(len(self))
+            except AttributeError:
+                msg = 'trace indices must be integers or slices, not {}'
+                raise TypeError(msg.format(type(i).__name__))
+
+            def gen():
+                for trace_index in range(*trace_indices):
+                    yield RowFieldAccessor(segyfile=self.segyfile, trace_index=trace_index)
+
+            return gen()
+
+    def __setitem__(self, i, val):
+        """traceheader[i] = val
+
+        Write the ith header of the file, starting at 0.
+
+        Parameters
+        ----------
+        i   : int or slice
+        val : another FileFieldAccessor or array like
+
+        Examples
+        --------
+        Copy all trace's headers to a different trace:
+
+        >>> traceheader[28] = traceheader[29]
+        """
+        if not isinstance(i, slice):
+            trace_index = self.wrapindex(i)
+            if not isinstance(val, RowFieldAccessor):
+                raise TypeError(
+                    "Unassignable type. f.traceheader[i] can only be assigned f.traceheader[j]")
+            self[trace_index][:] = val
+            return
+
+        trace_indices = range(*i.indices(len(self)))
+        for trace_index, value in zip(trace_indices, val):
+            self[trace_index] = value
+
+
+class RowFieldAccessor(Sequence):
+    """
+    Sequence of trace headers in a single trace (row).
+
+    Provides access to all trace headers defined in the trace.
+
+    Notes
+    -----
+    .. versionadded:: 2.0
+
+    """
+
+    def __init__(self, segyfile, trace_index):
+        self.segyfile = segyfile
+        self.trace_index = trace_index
+        super().__init__(segyfile.traceheader_count)
+
+    def __getitem__(self, i):
+        """traceheader[i]
+
+        ith header of the trace, starting at 0.
+
+        Note that this function loads trace header into memory, so if you wish
+        to access multiple fields, caching the result of this function is more
+        efficient than calling it anew with each of the fields.
+
+        Parameters
+        ----------
+        i : int or slice
+
+        Returns
+        -------
+        field : Field
+            dict_like header
+
+        Examples
+        --------
+        Reading a header:
+
+        >>> traceheader[10]
+
+        Read a field in the first 5 headers:
+
+        >>> [x[25] for x in traceheader[:5]]
+        [1, 2, 3, 4, 5]
+        """
+        try:
+            return HeaderFieldAccessor.trace(
+                traceno=self.trace_index, traceheader_index=self.wrapindex(i), segyfile=self.segyfile
+            )
+
+        except TypeError:
+            try:
+                traceheader_indices = i.indices(len(self))
+            except AttributeError:
+                msg = 'trace header indices must be integers or slices, not {}'
+                raise TypeError(msg.format(type(i).__name__))
+
+            def gen():
+                # see Header.__getitem__ for logic explanation
+                x = HeaderFieldAccessor.trace(
+                    traceno=self.trace_index, traceheader_index=None, segyfile=self.segyfile
+                )
+                buf = bytearray(x.buf)
+                for traceheader_index in range(*traceheader_indices):
+                    buf = x.fetch(buf, self.trace_index, traceheader_index)
+                    x.buf[:] = buf
+                    x.traceheader_index = traceheader_index
+                    traceheader_layout = x.segyfile.tracefield[traceheader_index]
+                    x._keys = [field.offset() for field in traceheader_layout]
+                    yield x
+
+            return gen()
+
+    def __getattr__(self, name):
+        """traceheaders.name
+
+        Header of the trace by name `name`. `name` must be a name defined by
+        the file layouts.
+
+        Wrapper around :meth:`.__getitem__`, so refer to it for more
+        information.
+
+        Parameters
+        ----------
+        name : str
+
+        Returns
+        -------
+        field : Field
+            dict_like header
+
+        Examples
+        --------
+        Reading a header:
+
+        >>> traceheaders.SEG00001
+        """
+        index = self.segyfile._traceheader_names.index(name)
+        return self[index]
+
+    def __setitem__(self, i, val):
+        """traceheader[i] = val
+
+        Write the ith header of the trace, starting at 0.
+
+        Parameters
+        ----------
+        i   : int or slice
+        val : Field or array_like of dict_like
+
+        Examples
+        --------
+        Copy standard header to a different trace:
+
+        >>> f.traceheader[0][0] = f.traceheader[1][0]
+
+        Writing fields via `traceheader[trace_index][traceheader_index] =
+        {(offset: value)}` is not supported. Use :class:`segyio.field.Field`
+        interface instead:
+
+        >>> f.traceheader[0][0].update({ 37: 5, 1: 2484 })
+
+        """
+        if not isinstance(i, slice):
+            traceheader_index = self.wrapindex(i)
+            field_sequence = self[traceheader_index]
+            if isinstance(val, Field):
+                field_sequence.update(val)
+                return
+            raise TypeError(
+                "Unassignable type. f.traceheader[i][j] can only be assigned another Field.")
+
+        traceheader_indices = range(*i.indices(len(self)))
+
+        for traceheader_index, value in zip(traceheader_indices, val):
+            self[traceheader_index] = value
+
+    def __setattr__(self, name, value):
+        """traceheaders.name = value
+
+        Write header of the trace by name `name`. `name` must be a name defined by
+        the file layouts.
+
+        Wrapper around :meth:`.__setitem__`, so refer to it for more
+        information.
+
+        Parameters
+        ----------
+        name : str
+
+        Examples
+        --------
+        Copying a header:
+
+        >>> f.traceheader[0].SEG00001 = f.traceheader[1].SEG00001
+        """
+        if name == "segyfile":
+            super().__setattr__(name, value)
+            return
+
+        try:
+           index = self.segyfile._traceheader_names.index(name)
+           self[index] = value
+        except ValueError:
+            super().__setattr__(name, value)
+
+
 class Attributes(Sequence):
     """File-wide attribute (header word) reading
 
@@ -807,12 +1057,14 @@ class Attributes(Sequence):
         "string8":  np.dtype('S8'),
     }
 
-    def __init__(self, field, segyfd, traceheader_layout, tracecount):
-        super(Attributes, self).__init__(tracecount)
+    def __init__(self, segyfile, field, traceheader_index):
+        super(Attributes, self).__init__(segyfile.tracecount)
         self.field = field
-        self.segyfd = segyfd
-        self.tracecount = tracecount
+        self.traceheader_index = traceheader_index
+        self.segyfd = segyfile.segyfd
+        self.tracecount = segyfile.tracecount
 
+        traceheader_layout = list(segyfile._traceheader_layouts.values())[traceheader_index]
         entry = traceheader_layout.entry_by_byte(field)
         self.dtype = Attributes.ENTRY_TYPE_TO_NUMPY[entry.type]
 
@@ -834,7 +1086,8 @@ class Attributes(Sequence):
 
         Examples
         --------
-        Read all unique sweep frequency end:
+        Assuming file with default layout mapping, read all unique sweep
+        frequency end:
 
         >>> end = segyio.TraceField.SweepFrequencyEnd
         >>> sfe = np.unique(f.attributes( end )[:])
@@ -858,7 +1111,7 @@ class Attributes(Sequence):
             xs = np.asarray(i, dtype=np.int32)
             xs = xs.astype(dtype=np.int32, order='C', copy=False)
             attrs = np.empty(len(xs), dtype = self.dtype)
-            return self.segyfd.field_foreach(attrs, 0, xs, self.field)
+            return self.segyfd.field_foreach(attrs, self.traceheader_index, xs, self.field)
 
         except TypeError:
             try:
@@ -873,7 +1126,7 @@ class Attributes(Sequence):
             start, stop, step = i.indices(traces)
             indices = range(start, stop, step)
             attrs = np.empty(len(indices), dtype = self.dtype)
-            return segyfd.field_forall(attrs, 0, start, stop, step, field)
+            return segyfd.field_forall(attrs, self.traceheader_index, start, stop, step, field)
 
 class Text(Sequence):
     """Interact with segy in text mode
@@ -992,3 +1245,380 @@ class Text(Sequence):
                 if isinstance(text, Text):
                     text = text[0]
                 self.segyfd.puttext(i, text)
+
+
+class Stanza(Sequence):
+    """Access stanza data from extended textual headers.
+
+    Reading stanzas is done with []. Keys are stanza indices, values are raw
+    stanza data as bytes. Stanza name (stanza header) is not included in the
+    return bytes.
+
+    Writing stanzas is not supported.
+
+    Notes
+    -----
+    .. versionadded:: 2.0
+
+    Examples
+    --------
+    Get all stanza names:
+
+    >>> names = f.stanza.names()
+    ... ['OGP:P1/11:text/csv', 'SEG:catalog', 'TROIKA:IMAGEPNG:image/png:51929']
+
+    Access stanza data:
+
+    >>> data = f.stanza[2]
+    """
+
+    def __init__(self, segyfd):
+        self.segyfd = segyfd
+        self._names = self.segyfd.stanza_names()
+        super(Stanza, self).__init__(len(self._names))
+
+    def names(self):
+        """Get all stanza names. Names are the same as they appear in the file.
+
+        Returns
+        -------
+        names : list of str
+            List of all stanza names in the file in order of appearance
+        """
+        return self._names
+
+    def __getitem__(self, key):
+        """Get stanza data by index.
+
+        Parameters
+        ----------
+        key : int or slice
+            Stanza index or indices
+
+        Returns
+        -------
+        data : bytes
+            Stanza data for single stanza, or generator for slice
+
+        Examples
+        --------
+        Access by index:
+
+        >>> data = f.stanza[0]
+
+        Find stanza that fits name pattern:
+
+        >>> for i, name in enumerate(f.stanza.names()):
+        >>>     if name.upper().startswith("SEG:LAYOUT"):
+        >>>         layout_stanza_index = i
+        >>> data = f.stanza[layout_stanza_index]
+        """
+        try:
+            index = self.wrapindex(key)
+            return self.segyfd.getstanza(index)
+        except TypeError:
+            try:
+                indices = key.indices(len(self))
+            except AttributeError:
+                msg = 'stanza indices must be integers, strings, or slices, not {}'
+                raise TypeError(msg.format(type(key).__name__))
+
+            def gen():
+                for j in range(*indices):
+                    yield self.segyfd.getstanza(j)
+            return gen()
+
+
+class RowLayoutEntries(Sequence):
+    """
+    Sequence of trace header layouts in one trace (row).
+
+    Provides access to all trace header layouts defined in the SEG-Y file.
+
+    Notes
+    -----
+    .. versionadded:: 2.0
+    """
+
+    def __init__(self, segyfile):
+        self.segyfile = segyfile
+        self._layouts = segyfile._traceheader_layouts
+        self._layout_names = list(self._layouts.keys())
+
+        super().__init__(segyfile.traceheader_count)
+
+    def __getitem__(self, key):
+        """
+        Get a trace header fields layout by index or slice.
+
+        Parameters
+        ----------
+        key : int or slice
+            Index or range.
+
+        Returns
+        -------
+        HeaderLayoutEntries or generator of HeaderLayoutEntries
+
+        Examples
+        --------
+        Get the layout via [] notation:
+
+        >>> layout = traceheader_layouts[0]
+        """
+        try:
+            traceheader_index = self.wrapindex(key)
+            name = self._layout_names[traceheader_index]
+            layout = self._layouts[name]
+            return HeaderLayoutEntries(self.segyfile, traceheader_index, layout)
+        except TypeError:
+            indices = key.indices(len(self))
+
+            def gen():
+                for traceheader_index in range(*indices):
+                    name = self._layout_names[traceheader_index]
+                    layout = self._layouts[name]
+                    yield HeaderLayoutEntries(self.segyfile, traceheader_index, layout)
+            return gen()
+
+    def __getattr__(self, name):
+        """
+        Get trace header fields layout as an attribute.
+
+        Parameters
+        ----------
+        name : str
+            Name of the layout. Name is case-sensitive.
+
+        Returns
+        -------
+        HeaderLayoutEntries
+
+        Examples
+        --------
+        Get the field layout via . notation:
+
+        >>> layout = traceheader_layouts.SEG00000
+
+        Raises
+        ------
+        AttributeError
+            If the layout does not exist.
+        """
+        if name in self._layouts:
+            traceheader_index = self._layout_names.index(name)
+            return HeaderLayoutEntries(self.segyfile, traceheader_index, self._layouts[name])
+        raise AttributeError(f"No header with name: {name}")
+
+    def names(self):
+        """
+        List all trace header names.
+
+        Returns
+        -------
+        list of str
+            Names of all traceheaders.
+        """
+        return self._layout_names
+
+    def __repr__(self):
+        return f"RowLayoutEntries({self._layout_names})"
+
+
+class HeaderLayoutEntries(Sequence):
+    """
+    Sequence of field layout entries in a trace header.
+
+    Provides access to the individual fields (entries) within a trace header
+    layout.
+
+    Notes
+    -----
+    .. versionadded:: 2.0
+    """
+
+    def __init__(self, segyfile, traceheader_index, layout):
+        self.segyfile = segyfile
+        self._layout = layout
+        self.traceheader_index = traceheader_index
+
+        super().__init__(len(layout))
+
+    def __getitem__(self, key):
+        """
+        Get field entries by index or slice.
+
+        Parameters
+        ----------
+        key : int or slice
+            Index or range.
+
+        Returns
+        -------
+        FieldLayoutEntry or generator of FieldLayoutEntry
+
+        Examples
+        --------
+        Get the entry via [] notation:
+
+        >>> entry = layout[3]
+        """
+        try:
+            entry_index = self.wrapindex(key)
+            entry = self._layout.entries[entry_index]
+            return FieldLayoutEntry(self.segyfile, entry, self.traceheader_index)
+
+        except TypeError:
+            indices = key.indices(len(self))
+
+            def gen():
+                for entry_index in range(*indices):
+                    entry = self._layout.entries[entry_index]
+                    yield FieldLayoutEntry(self.segyfile, entry, self.traceheader_index)
+            return gen()
+
+    def __getattr__(self, name):
+        """
+        Get field entry as an attribute.
+
+        Parameters
+        ----------
+        name : str
+            Name of the field. Name is case-sensitive.
+
+        Returns
+        -------
+        FieldLayoutEntry
+
+        Examples
+        --------
+        Get the entry via . notation:
+
+        >>> entry = layout.iline
+
+        Raises
+        ------
+        AttributeError
+            If the field by that name does not exist.
+        """
+        entry = self._layout.entry_by_name(name)
+        if entry is None:
+            raise AttributeError(f"No field with name: {name}")
+        return FieldLayoutEntry(self.segyfile, entry, self.traceheader_index)
+
+    def names(self):
+        """
+        List all field names in this traceheader layout.
+
+        Returns
+        -------
+        list of str
+            Names of all fields.
+        """
+        return [entry.name for entry in self._layout]
+
+    def index(self):
+        """
+        Get traceheader index of this layout.
+
+        Returns
+        -------
+        int
+            Layout index.
+        """
+        return self.traceheader_index
+
+    def __repr__(self):
+        return f"HeaderLayoutEntries({self.names()})"
+
+
+class FieldLayoutEntry():
+    """
+    Represents a single field entry in a trace header layout.
+
+    Notes
+    -----
+    .. versionadded:: 2.0
+    """
+
+    def __init__(self, segyfile, entry, traceheader_index):
+        self.segyfile = segyfile
+        self.entry = entry
+        self.traceheader_index = traceheader_index
+
+    def name(self):
+        """
+        Get the name of the field as is defined in the layout.
+
+        Returns
+        -------
+        str
+            Name of the field.
+        """
+        return self.entry.name
+
+    def offset(self):
+        """
+        Get the byte offset of this field in the trace header.
+
+        Returns
+        -------
+        int
+            Byte offset of the field.
+        """
+        return self.entry.byte
+
+    def type(self):
+        """
+        Get the data type of the field as defined in the layout.
+
+        Returns
+        -------
+        str
+            Data type of the field.
+        """
+        return self.entry.type
+
+
+    def use_only_if_non_zero(self):
+        """
+        Returns the field property 'if-non-zero' stating if this field could be
+        used only when its value does not equal 0.
+
+        Returns
+        -------
+        bool
+            True if requires non-zero value, False otherwise.
+        """
+        return self.entry.requires_nonzero_value
+
+    def __str__(self):
+        name = self.name()
+        offset = self.offset()
+        type = self.type()
+        non_zero = self.use_only_if_non_zero()
+        return f"{name} (offset={offset}, type={type}, use_only_if_non_zero={non_zero})"
+
+    def __getitem__(self, key):
+        """ tracefield[key]
+
+        Returns values of traces provided in 'key'.
+        Wrapper around :class:`.Attributes`, so refer to it for more
+        information.
+
+        Parameters
+        ----------
+        key : int or slice
+            Index or slice.
+
+        Returns
+        -------
+        array of int, float or bytearray
+
+        Examples
+        --------
+        Get the cdp_x attribute from trace header extension 1 for first 10 traces:
+
+        >>> f.tracefield.SEG00001.cdp_x[0:10]
+        """
+        return Attributes(self.segyfile, self.entry.byte, self.traceheader_index)[key]

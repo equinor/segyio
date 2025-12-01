@@ -8,7 +8,8 @@ import numpy as np
 
 from .gather import Gather, Groups
 from .line import Line
-from .trace import Trace, Header, Attributes, Text
+from .trace import Trace, Header, Attributes, Text, Stanza
+from .trace import RowLayoutEntries, FileFieldAccessor
 from .field import Field
 
 from .tracesortingformat import TraceSortingFormat
@@ -36,6 +37,14 @@ class SegyFile(object):
         standard_header_layout = self._traceheader_layouts["SEG00000"]
         self._il = standard_header_layout.entry_by_name("iline").byte
         self._xl = standard_header_layout.entry_by_name("xline").byte
+
+        self._traceheader_entries = []
+        for traceheader_layout in self._traceheader_layouts.values():
+            self._traceheader_entries.append(traceheader_layout)
+
+        self._traceheader_names = []
+        for traceheader_name in self._traceheader_layouts.keys():
+            self._traceheader_names.append(traceheader_name)
 
         # property value holders
         self._ilines = None
@@ -84,6 +93,7 @@ class SegyFile(object):
                             self.readonly,
                            )
         self._header = Header(self)
+        self._traceheader = FileFieldAccessor(self)
         self._iline = None
         self._xline = None
         self._gather = None
@@ -376,9 +386,54 @@ class SegyFile(object):
         return self.ilines is None
 
     @property
+    def tracefield(self):
+        """
+        Access the trace header layouts for this SEG-Y file.
+
+        Returns
+        -------
+        tracefield : RowLayoutEntries
+
+        Examples
+        --------
+        List all trace header layout names:
+
+        >>> f.tracefield.names()
+        ['SEG00000', 'SEG00001']
+
+        Access a specific layout by name:
+
+        >>> layout = f.tracefield.SEG00000
+
+        List all field names in a specific layout:
+
+        >>> f.tracefield.SEG00000.names()
+
+        Find offset of a specific field:
+
+        >>> f.tracefield.SEG00000.iline.offset()
+        >>> f.tracefield[0].xline.offset()
+
+        Get values of field for many traces:
+
+        >>> f.tracefield.SEG00001.dt[0, 10, 20]
+
+        Note:
+
+        - this works similar to :meth:`.attributes`
+        - use :meth:`.traceheader` if you need to get many fields from a single
+          trace.
+
+        Notes
+        -----
+        .. versionadded:: 2.0
+        """
+        return RowLayoutEntries(self)
+
+    @property
     def header(self):
         """
-        Interact with segy in header mode
+        Interact with segy in standard header mode
 
         Returns
         -------
@@ -392,12 +447,12 @@ class SegyFile(object):
 
     @header.setter
     def header(self, val):
-        """headers macro assignment
+        """standard headers macro assignment
 
-        A convenient way for operating on all headers of a file is to use the
-        default full-file range.  It will write headers 0, 1, ..., n, but uses
-        the iteration specified by the right-hand side (i.e. can skip headers
-        etc).
+        A convenient way for operating on all standard headers of a file is to
+        use the default full-file range. It will write headers of trace 0, 1,
+        ..., n, but uses the iteration specified by the right-hand side (i.e.
+        can skip headers etc).
 
         If the right-hand-side headers are exhausted before all the destination
         file headers the writing will stop, i.e. not all all headers in the
@@ -427,11 +482,60 @@ class SegyFile(object):
         """
         self.header[:] = val
 
-    def attributes(self, field):
-        """File-wide attribute (header word) reading
+    @property
+    def traceheader(self):
+        """
+        Interact with segy in traceheader mode.
 
-        Lazily gather a single header word for every trace in the file. The
-        array can be sliced, supports index lookup, and numpy-style
+        Works similar to :meth:`.header` but is applicable for all trace
+        headers, not just standard ones.
+
+        Examples
+        --------
+        Read field values from trace header extension 1 at trace 5:
+
+        >>> traceheader = f.traceheader[5][1]
+        >>> traceheader.rec_x
+        ... 100.5
+        >>> traceheader.rec_y
+        ... 150.75
+
+        Notes
+        -----
+        .. versionadded:: 2.0
+        """
+        return self._traceheader
+
+    @traceheader.setter
+    def traceheader(self, val):
+        """headers macro assignment
+
+        Operating on all headers of a file.
+
+        If the right-hand-side headers are exhausted before all the destination
+        file headers the behavior is undefined and may change in the future.
+
+        Examples
+        --------
+        Copy all headers from file g to file f:
+
+        >>> f.traceheader = g.traceheader
+
+        Copy all headers from trace 3 to trace 5:
+
+        >>> f.traceheader[5] = f.traceheader[3]
+
+        Copy standard header from trace 2 to trace 4:
+
+        >>> f.traceheader[4][0] = f.traceheader[2][0]
+        """
+        self.traceheader[:] = val
+
+    def attributes(self, field):
+        """File-wide attribute (standard header word) reading
+
+        Lazily gather a single standard header word for every trace in the file.
+        The array can be sliced, supports index lookup, and numpy-style
         list-of-indices.
 
         Parameters
@@ -452,8 +556,7 @@ class SegyFile(object):
         .. versionadded:: 1.1
 
         """
-        traceheader_layout = self._traceheader_layouts["SEG00000"]
-        return Attributes(field, self.segyfd, traceheader_layout, self.tracecount)
+        return Attributes(self, field, 0)
 
     @property
     def trace(self):
@@ -807,6 +910,22 @@ class SegyFile(object):
         .. versionadded:: 1.1
         """
         return Text(self.segyfd, self._ext_textheaders_count + 1)
+
+    @property
+    def stanza(self):
+        """Interact with segy in stanza mode
+
+        Allows reading stanzas present in the file.
+
+        Returns
+        -------
+        stanza : Stanza
+
+        Notes
+        -----
+        .. versionadded:: 2.0
+        """
+        return Stanza(self.segyfd)
 
     @property
     def bin(self):
