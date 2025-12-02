@@ -7,8 +7,20 @@
 #include <vector>
 #include <array>
 
+// disable conversion from 'const _Elem' to '_Objty' MSC warnings.
+// warnings reason is unknown, should be caused by Catch2 though, thus ignored
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4244)
+#endif
+
 #include <catch/catch.hpp>
 #include "matchers.hpp"
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+
 
 #include <segyio/segy.h>
 #include <segyio/util.h>
@@ -251,6 +263,9 @@ int arbitrary_int() {
      */
     return -1;
 }
+float arbitrary_float() {
+    return -1.0f;
+}
 
 }
 
@@ -262,7 +277,7 @@ TEST_CASE_METHOD( smallbin,
     segy_get_bfield( bin, SEGY_BIN_INTERVAL, &hdt );
     REQUIRE( hdt == 4000 );
 
-    float dt = arbitrary_int();
+    float dt = arbitrary_float();
     const Err err = segy_sample_interval( fp, 100.0, &dt );
 
     CHECK( err == Err::ok() );
@@ -278,7 +293,7 @@ TEST_CASE( "use fallback interval when both trace and bin is negative",
 
     const float fallback = 100.0;
 
-    float dt = arbitrary_int();
+    float dt = arbitrary_float();
     const Err err = segy_sample_interval( fp, fallback, &dt );
 
     CHECK( err == Err::ok() );
@@ -295,7 +310,7 @@ TEST_CASE( "use trace interval when bin is negative",
     const float fallback = 100.0;
     const float expected = 4000.0;
 
-    float dt = arbitrary_int();
+    float dt = arbitrary_float();
     const Err err = segy_sample_interval( fp, fallback, &dt );
 
     CHECK( err == Err::ok() );
@@ -312,7 +327,7 @@ TEST_CASE( "use bin interval when trace is negative",
     const float fallback = 100.0;
     const float expected = 2000.0;
 
-    float dt = arbitrary_int();
+    float dt = arbitrary_float();
     const Err err = segy_sample_interval( fp, fallback, &dt );
 
     CHECK( err == Err::ok() );
@@ -767,7 +782,7 @@ TEST_CASE_METHOD( smallcube,
                                 stride,
                                 offsets,
                                 inlines.data(),
-                                inlines.size(),
+                                (int) inlines.size(),
                                 &line_trace0 );
     CHECK( success( err ) );
     CHECK( line_trace0 == 15 );
@@ -783,7 +798,7 @@ TEST_CASE_METHOD( smallcube,
                                 stride,
                                 offsets,
                                 inlines.data(),
-                                inlines.size(),
+                                (int) inlines.size(),
                                 &line_trace0 );
     CHECK( err == SEGY_MISSING_LINE_INDEX );
 }
@@ -817,7 +832,7 @@ TEST_CASE_METHOD( smallcube,
                                 stride,
                                 offsets,
                                 crosslines.data(),
-                                crosslines.size(),
+                                (int) crosslines.size(),
                                 &line_trace0 );
     CHECK( success( err ) );
     CHECK( line_trace0 == 2 );
@@ -834,7 +849,7 @@ TEST_CASE_METHOD( smallcube,
                                 stride,
                                 offsets,
                                 inlines.data(),
-                                inlines.size(),
+                                (int) inlines.size(),
                                 &line_trace0 );
     CHECK( err == SEGY_MISSING_LINE_INDEX );
 }
@@ -974,7 +989,7 @@ TEST_CASE_METHOD( smallcube,
     std::vector< float > line( expected.size() );
     Err err = segy_read_line( fp,
                               line_trace0,
-                              crosslines.size(),
+                              (int) crosslines.size(),
                               stride,
                               offsets,
                               line.data(),
@@ -1011,7 +1026,7 @@ TEST_CASE_METHOD( smallcube,
     std::vector< float > line( expected.size() );
     Err err = segy_read_line( fp,
                               line_trace0,
-                              inlines.size(),
+                              (int) inlines.size(),
                               stride,
                               offsets,
                               line.data(),
@@ -1508,77 +1523,74 @@ TEST_CASE("open file with >32k traces", "[c.segy]") {
     CHECK(samples == 60000);
 }
 
-SCENARIO( "reading a large file", "[c.segy]" ) {
-    GIVEN( "a large file" ) {
-        const char* file = "4G-file.sgy";
-
-        unique_segy ufp( segy_open( file, "w+b" ) );
-        auto fp = ufp.get();
-
-        const int trace = 5000000;
-        const int trace_bsize = 1000;
-        const long long tracesize = trace_bsize + SEGY_TRACE_HEADER_SIZE;
-        const long trace0 = 0;
-
-        const Err err = segy_seek( fp, trace, trace0, trace_bsize );
-        CHECK( err == Err::ok() );
-        WHEN( "reading past 4GB (pos >32bit)" ) {
-            THEN( "there is no overflow" ) {
-                const long long pos = segy_ftell( fp );
-                CHECK( pos > std::numeric_limits< int >::max() );
-                CHECK( pos != -1 );
-                CHECK( pos == trace * tracesize );
-            }
-        }
-    }
-}
+#ifdef HOST_BIG_ENDIAN
+    #define HOST_LSB 0
+    #define HOST_MSB 1
+#else
+    #define HOST_LSB 1
+    #define HOST_MSB 0
+#endif
 
 /*
  * There is no native 3-byte integral type in C++, so hack a minimal one
  * together. We don't need arithmetic, only conversion to int32 and from int16
  * (which is what the source file is in).
  *
- * It's quite incomplete in the sense that it's really unaware of signed
- * integers, but what's important is its size and its individual bytes, and how
- * it is created from int16. The test file was created by just adding a single,
- * zero byte at the most-significant byte position, and otherwise memcpy'd.
+ * Type is incomplete, but important parts of implementation are type's size,
+ * its individual bytes, and how it is created from int16. The test files were
+ * created by just adding a single, 0x00 byte or 0xFF byte at the
+ * most-significant byte position, and otherwise memcpy'd.
  */
-struct int24 {
-    char bytes[3];
+struct int24_base {
+    unsigned char bytes[3];
 
-    int24() = default;
+    int24_base() = default;
     // cppcheck-suppress noExplicitConstructor
-    int24(const int16_t& x) {
+    int24_base(const int16_t& x) {
+        /* Sign is allowed to be negative even if type represents unsigned int,
+         * which is done to keep behavior consistent with that of other formats
+         */
+        char sign = x < 0 ? -1 : 0;
+#if HOST_LSB
         this->bytes[0] = ((const char*)&x)[0];
         this->bytes[1] = ((const char*)&x)[1];
-        this->bytes[2] = 0;
+        this->bytes[2] = sign;
+#else
+        this->bytes[0] = sign;
+        this->bytes[1] = ((const char*)&x)[0];
+        this->bytes[2] = ((const char*)&x)[1];
+#endif
     }
 
     operator std::int32_t () const noexcept (true) {
-        return (this->bytes[0] << 0)
-             | (this->bytes[1] << 8)
-             | (this->bytes[2] << 16)
-        ;
-    }
+#if HOST_LSB
+        return (static_cast<std::int32_t>(this->bytes[0]) << 0)
+             | (static_cast<std::int32_t>(this->bytes[1]) << 8)
+             | (static_cast<std::int32_t>(this->bytes[2]) << 16)
+             | (static_cast<std::int32_t>(this->bytes[2]) << 24);
+#else
+        return (static_cast<std::int32_t>(this->bytes[0]) << 24)
+             | (static_cast<std::int32_t>(this->bytes[0]) << 16)
+             | (static_cast<std::int32_t>(this->bytes[1]) << 8)
+             | (static_cast<std::int32_t>(this->bytes[2]) << 0);
 
-    bool operator == (int24 rhs) const noexcept (true) {
-        return std::int32_t(*this) == std::int32_t(rhs);
-    }
-
-    bool operator != (int24 rhs) const noexcept (true) {
-        return !(*this == rhs);
+#endif
     }
 };
 
 static_assert(
-    sizeof(int24) == 3,
+    sizeof(int24_base) == 3,
     "int24 type is padded, but is expected to be 3 bytes"
 );
 
 static_assert(
-    std::is_standard_layout< int24 >::value,
+    std::is_standard_layout< int24_base >::value,
     "int24 must be standard layout"
 );
+
+using int24 = int24_base;
+using uint24 = int24_base;
+
 
 /*
  * open a copy of f3, but pre-converted to a different format, to check that
@@ -1665,6 +1677,10 @@ TEST_CASE("can open 1-byte signed char", "[c.segy][format]") {
 }
 
 TEST_CASE("can open 3-byte signed char", "[c.segy][format][uniq]") {
+    // int24 implementation sanity check
+    REQUIRE(static_cast<std::int32_t>(int24(int16_t(500))) == 500);
+    REQUIRE(static_cast<std::int32_t>(int24(int16_t(-500))) == -500);
+
     f3_in_format< int24 >(SEGY_SIGNED_CHAR_3_BYTE);
 }
 
@@ -1685,7 +1701,10 @@ TEST_CASE("can open 8-byte unsigned integer", "[c.segy][format]") {
 }
 
 TEST_CASE("can open 3-byte unsigned integer", "[c.segy][format]") {
-    f3_in_format< int24 >(SEGY_UNSIGNED_INTEGER_3_BYTE);
+    // uint24 implementation sanity check
+    REQUIRE(static_cast<std::int32_t>(uint24(int16_t(500))) == 500);
+
+    f3_in_format< uint24 >(SEGY_UNSIGNED_INTEGER_3_BYTE);
 }
 
 TEST_CASE("can open 1-byte unsigned char", "[c.segy][format]") {

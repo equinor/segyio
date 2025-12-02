@@ -200,7 +200,7 @@ def collect(itr):
 
     >>> with segyio.open('post-stack.sgy') as f:
     >>>     x = segyio.tools.collect(f.trace[:])
-    >>>     x = x.reshape((len(f.ilines), len(f.xlines), f.samples))
+    >>>     x = x.reshape((len(f.ilines), len(f.xlines), len(f.samples)))
     >>>     numpy.all(x == segyio.tools.cube(f))
 
     """
@@ -260,7 +260,7 @@ def rotation(f, line = 'fast'):
     Parameters
     ----------
 
-    f : SegyFile
+    f : segyio.SegyFile
     line : { 'fast', 'slow', 'iline', 'xline' }
 
     Returns
@@ -380,7 +380,7 @@ def resample(f, rate = None, delay = None, micro = False,
     Parameters
     ----------
 
-    f : SegyFile
+    f : segyio.SegyFile
     rate : int
     delay : int
     micro : bool

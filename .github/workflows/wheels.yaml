@@ -1,12 +1,13 @@
 name: Wheels
+permissions: {}
 
 on:
   push:
-    branches: [master]
+    branches: [segyio-1.x]
     tags:
       - '*'
   pull_request:
-    branches: [master]
+    branches: [segyio-1.x]
   workflow_dispatch:
 
 jobs:
@@ -17,23 +18,23 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: windows-2019
-            cmake_generator: "Visual Studio 16 2019"
+          - os: windows-2022
+            cmake_generator: "Visual Studio 17 2022"
             cmake_generator_platform: "x64"
             arch: AMD64
-          - os: windows-2019
-            cmake_generator: "Visual Studio 16 2019"
+          - os: windows-2022
+            cmake_generator: "Visual Studio 17 2022"
             cmake_generator_platform: "Win32"
             arch: x86
-          - os: ubuntu-20.04
+          - os: ubuntu-latest
             arch: x86_64
           - os: ubuntu-24.04-arm
             arch: aarch64
-          - os: ubuntu-20.04
+          - os: ubuntu-latest
             arch: i686
           # macos-latest runs on arm64 architecture and cibuildwheel cross
           # compiling for x86_64 fails
-          - os: macos-13
+          - os: macos-15-intel
             arch: x86_64
           - os: macos-latest
             arch: arm64
@@ -54,7 +55,7 @@ jobs:
           CIBW_ENVIRONMENT_WINDOWS: >
             CMAKE_GENERATOR="${{ matrix.cmake_generator }}"
             CMAKE_GENERATOR_PLATFORM="${{ matrix.cmake_generator_platform }}"
-          CIBW_SKIP: pp* *-musllinux_* cp36-* cp37-* cp38-*
+          CIBW_SKIP: cp38-* cp39-* *-musllinux_*
           CIBW_ARCHS: ${{ matrix.arch }}
         run: |
             python -m cibuildwheel --output-dir wheelhouse python/
@@ -69,6 +70,13 @@ jobs:
     name: Publish wheels to PyPI
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+
+    environment:
+      name: pypi
+
+    permissions:
+      id-token: write
+
     steps:
       - uses: actions/checkout@v4
 
@@ -79,9 +87,6 @@ jobs:
           path: ./wheelhouse/
 
       - name: Publish wheels to PyPI
-
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          user: __token__
-          password: ${{ secrets.PYPI_API_TOKEN }}
           packages-dir: ./wheelhouse/

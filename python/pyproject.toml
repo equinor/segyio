@@ -1,10 +1,92 @@
 [build-system]
 requires = [
-    "setuptools >= 40",
-    "scikit-build",
-    "wheel",
-    "pybind11",
+    "scikit-build-core",
 ]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "segyio"
+version = "1.9.13"
+description = "Simple & fast IO for SEG-Y files"
+authors = [
+    { name = "Equinor ASA" },
+]
+urls.homepage = "https://github.com/equinor/segyio"
+license = "LGPL-3.0-or-later"
+requires-python = ">=3.10"
+dependencies = ["numpy >= 1.10"]
+readme = { text = """
+=======
+SEGY IO
+=======
+
+https://segyio.readthedocs.io
+
+Introduction
+------------
+
+Segyio is a small LGPL licensed C library for easy interaction with SEG Y
+formatted seismic data, with language bindings for Python and Matlab. Segyio is
+an attempt to create an easy-to-use, embeddable, community-oriented library for
+seismic applications. Features are added as they are needed; suggestions and
+contributions of all kinds are very welcome.
+
+Feature summary
+---------------
+ * A low-level C interface with few assumptions; easy to bind to other
+   languages.
+ * Read and write binary and textual headers.
+ * Read and write traces, trace headers.
+ * Easy to use and native-feeling python interface with numpy integration.
+
+Project goals
+-------------
+
+Segyio does necessarily attempt to be the end-all of SEG-Y interactions;
+rather, we aim to lower the barrier to interacting with SEG-Y files for
+embedding, new applications or free-standing programs.
+
+Additionally, the aim is not to support the full standard or all exotic (but
+correctly) formatted files out there. Some assumptions are made, such as:
+
+ * All traces in a file are assumed to be of the same sample size.
+ * It is assumed all lines have the same number of traces.
+
+The writing functionality in Segyio is largely meant to *modify* or adapt
+files. A file created from scratch is not necessarily a to-spec SEG-Y file, as
+we only necessarily write the header fields segyio needs to make sense of the
+geometry. It is still highly recommended that SEG-Y files are maintained and
+written according to specification, but segyio does not mandate this.
+""", content-type = "text/markdown" }
+
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Other Environment",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Natural Language :: English",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Utilities",
+]
+
+
+[tool.pytest.ini_options]
+python_files = "test/*.py"
+addopts = "--ignore=test/benchmarks.py --ignore=test/large.py --ignore=test/stream.py"
+
+[tool.scikit-build]
+# We can safely pass OSX_DEPLOYMENT_TARGET as it's ignored on
+# everything not OS X. We depend on C++11, which makes our minimum
+# supported OS X release 10.9
+cmake.args = [ "-DCMAKE_OSX_DEPLOYMENT_TARGET=10.9" ]
 
 [tool.cibuildwheel]
 before-build = [
@@ -27,34 +109,13 @@ before-build = [
 
 test-requires = "pytest"
 
-# Copy out test folder to make sure that tests are runned against the wheel and
-# not the source. Test assumes a relative path to the test-data directory, so
+# Copy out test folder to make sure that tests are run against the wheel and
+# not the source. The tests assume a relative path to the test-data directory, so
 # copy that too. segyio's python test-suite doesn't follow common naming
-# convensions for filenames. Hence pytest doesn't pick them up by default.
+# conventions for filenames. Hence pytest doesn't pick them up by default.
 # If not for powershell on windows we could simply run 'pytest test/*.py'.
-# Instead we copy setup.cfg which embeds the same pattern but doesn't rely on
-# the shell.
-test-command = [
-    """python {project}/.github/utils.py copy -r \
-        --src {package}/test                     \
-        --dst tmptest/python/test                \
-    """,
-    """python {project}/.github/utils.py copy -r \
-        --src {project}/test-data                \
-        --dst tmptest/test-data                  \
-    """,
-    """python {project}/.github/utils.py copy \
-        --src {package}/setup.cfg             \
-        --dst tmptest/python/setup.cfg        \
-    """,
-    """cd tmptest/python""",
-    """pytest test""",
-    """cd ../../""",
-    """python {project}/.github/utils.py remove --paths tmptest""",
-]
-
-[tool.cibuildwheel.linux]
-manylinux-x86_64-image = "manylinux2014"
+test-command = [ "cd python", "pytest test" ]
+test-sources = [ "python/test", "python/pyproject.toml", "test-data" ]
 
 [tool.cibuildwheel.macos]
 before-build = [
@@ -66,6 +127,7 @@ before-build = [
         -DBUILD_TESTING=OFF \
         -DBUILD_PYTHON=OFF \
         -DBUILD_BIN=OFF \
+        -DCMAKE_OSX_DEPLOYMENT_TARGET=10.9 \
     """,
     """sudo cmake \
         --build build \
@@ -74,4 +136,3 @@ before-build = [
         --config Release \
     """,
 ]
-environment = { CXXFLAGS="-L/usr/local/lib" }

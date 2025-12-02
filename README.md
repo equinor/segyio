@@ -1,9 +1,14 @@
 # segyio #
 
-[![Travis](https://img.shields.io/travis/equinor/segyio/master.svg?label=travis)](https://travis-ci.org/equinor/segyio)
-[![Appveyor](https://ci.appveyor.com/api/projects/status/2i5cr8ui2t9qbxk9?svg=true)](https://ci.appveyor.com/project/statoil-travis/segyio)
-[![PyPI Updates](https://pyup.io/repos/github/equinor/segyio/shield.svg)](https://pyup.io/repos/github/equinor/segyio/)
-[![Python 3](https://pyup.io/repos/github/equinor/segyio/python-3-shield.svg)](https://pyup.io/repos/github/equinor/segyio/)
+[![PyPI - Version](https://img.shields.io/pypi/v/segyio)](https://pypi.org/project/segyio/)
+[![Read the Docs](https://img.shields.io/readthedocs/segyio)](https://segyio.readthedocs.io/)
+
+> [!NOTE]
+> 🚧 *segyio 2.0* is under construction in the `main` branch. 🚧
+>
+> New major release is intended to have better support for SEG-Y 2.1 revision.
+>
+> ⚠️ Users should be prepared for possible breaking changes.
 
 ## Documentation ##
 
@@ -90,11 +95,9 @@ A copy of segyio is available both as pre-built binaries and source code:
 To build segyio you need:
  * A C99 compatible C compiler (tested mostly on gcc and clang)
  * A C++ compiler for the Python extension, and C++11 for the tests
- * [CMake](https://cmake.org/) version 2.8.12 or greater
- * [Python](https://www.python.org/) 3.9 or greater
+ * [CMake](https://cmake.org/) version 3.18 or greater
+ * [Python](https://www.python.org/) 3.10 or greater
  * [numpy](http://www.numpy.org/) version 1.10 or greater
- * [setuptools](https://pypi.python.org/pypi/setuptools) version 28 or greater
- * [setuptools-scm](https://pypi.python.org/pypi/setuptools_scm)
  * [pytest](https://pypi.org/project/pytest)
 
  To build the documentation, you also need
@@ -119,7 +122,7 @@ LD_LIBRARY_PATH and PATH).
 
 If you have multiple Python installations, or want to use some alternative
 interpreter, you can help cmake find the right one by passing
-`-DPYTHON_EXECUTABLE=/opt/python/binary` along with install prefix and build
+`-DPython_ROOT_DIR=/opt/python/binary` along with install prefix and build
 type.
 
 To build the matlab bindings, invoke CMake with the option `-DBUILD_MEX=ON`. In
@@ -196,8 +199,7 @@ The segy file object has several public attributes describing this structure:
 * `f.ext_headers`
     The number of extended textual headers
 
-If the file is opened *unstructured*, all the line properties will will be
-`None`.
+If the file is opened *unstructured*, all the line properties will be `None`.
 
 ### Modes ###
 
@@ -355,9 +357,10 @@ discriminate between the revisions, but instead tries to use information
 available in the file. For an *actual* standard's reference, please see the
 publications by SEG:
 
-- [SEG-Y 0 (1975)](https://seg.org/Portals/0/SEG/News%20and%20Resources/Technical%20Standards/seg_y_rev0.pdf)
-- [SEG-Y 1 (2002)](https://seg.org/Portals/0/SEG/News%20and%20Resources/Technical%20Standards/seg_y_rev1.pdf)
-- [SEG-Y 2 (2017)](https://seg.org/Portals/0/SEG/News%20and%20Resources/Technical%20Standards/seg_y_rev2_0-mar2017.pdf)
+- [SEG-Y 0 (1975)](https://seg.org/wp-content/uploads/2025/11/seg_y_rev0.pdf)
+- [SEG-Y 1 (2002)](https://seg.org/wp-content/uploads/2025/11/seg_y_rev1.pdf)
+- [SEG-Y 2 (2017)](https://seg.org/wp-content/uploads/2025/11/seg_y_rev2_0_mar2017.pdf)
+- [SEG-Y 2.1 (2023)](https://seg.org/wp-content/uploads/2025/11/seg_y_rev2_1-oct2023.pdf)
 
 ## Contributing ##
 
@@ -373,8 +376,8 @@ demos in this
 ## Reproducing the test data ##
 
 Small SEG-Y formatted files are included in the repository for test purposes.
-The data is non-sensical and made to be predictable, and it is reproducible by
-using segyio. The tests file are located in the test-data directory. To
+The data is nonsensical and made to be predictable, and it is reproducible by
+using segyio. The test files are located in the test-data directory. To
 reproduce the data file, build segyio and run the test program `make-file.py`,
 `make-ps-file.py`, and `make-rotated-copies.py` as such:
 
@@ -398,8 +401,8 @@ segyread tape=small.sgy ns=50 remap=tracr,cdp byte=189l,193l conv=1 format=1 \
 suswapbytes < small.su > small-lsb.su
 ```
 
-If you have have small data files with a free license, feel free to submit it
-to the project!
+If you have small data files with a free license, feel free to submit it to the
+project!
 
 ## Examples ##
 
@@ -509,7 +512,7 @@ with segyio.open(output_file, "r+") as src:
         src.iline[i] = 2 * src.iline[i]
 ```
 
-[Make segy file from sctrach](python/examples/make-file.py)
+[Make segy file from scratch](python/examples/make-file.py)
 
 ### MATLAB ###
 

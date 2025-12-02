@@ -1,113 +1,78 @@
+cmake_minimum_required(VERSION 3.18)
+project(segyio-python LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 11)
+
+find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
+# If we execute CMake via a scikit-build-core, i.e., `python -m build`, `pip
+# install` etc., we expect that the segyio library is available on the system.
 if (SKBUILD)
-    # invoked as a part of scikit-build, so this is just a proxy for the python
-    # extension cmake. this works around the fundamental limitation in cmake
-    # that it looks only for directories with a CMakeLists.txt in it, not for a
-    # named file
-    include(setup-CMakeLists.txt)
-    return ()
-endif ()
-
-cmake_minimum_required(VERSION 3.5)
-project(segyio-python)
-
-if (REQUIRE_PYTHON)
-    set(BUILD_PYTHON ON)
+    find_package(segyio REQUIRED)
 endif()
 
-if (NOT BUILD_PYTHON)
-    return()
-endif()
+python_add_library(_segyio MODULE WITH_SOABI segyio/segyio.cpp)
+target_link_libraries(_segyio PRIVATE segyio::segyio)
 
-find_package(PythonInterp REQUIRED)
-
-if (NOT PYTHON_EXECUTABLE AND REQUIRE_PYTHON)
-    message(SEND_ERROR "Could not find python executable")
-    return()
-endif()
-
-if (NOT PYTHON_EXECUTABLE)
-    message(WARNING "Could not find python - skipping python bindings. "
-                    "Select specific python distribution with "
-                    "-DPYTHON_EXECUTABLE=bin/python")
-    return()
-endif()
-
-if (PYTHON_INSTALL_LAYOUT)
-    set(setup-install-layout --install-layout ${PYTHON_INSTALL_LAYOUT})
-endif()
-
-set(setup.py ${CMAKE_CURRENT_SOURCE_DIR}/setup.py)
-if (CMAKE_BUILD_TYPE)
-    # use the cmake_build_type of the source project, unless it has been
-    # specifically overriden
-    set(SEGYIO_PYTHON_BUILD_TYPE
-        --build-type=${CMAKE_BUILD_TYPE}
-        CACHE STRING "override CMAKE_BUILD_TYPE in python extension"
+if (MSVC)
+    target_compile_options(_segyio
+        BEFORE
+        PRIVATE
+            /EHsc
     )
 endif ()
 
-add_custom_target(
-    segyio-python ALL
-    COMMENT "Building python library with setup.py"
-    SOURCES ${setup.py}
-    DEPENDS ${setup.py}
-    VERBATIM
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-
-    # if DESTDIR is used, either for build and install, and make (or similar)
-    # is the generator, the scikit-build's internal install command will
-    # respect it and install the build-dir shared object there. The cmake
-    # driven install already respects DESTDIR by translating into --root, so
-    # simply remove it from then environment when doing python commands
+if (SKBUILD)
+    set(SEGYIO_PYTHON_INSTALL_DIR segyio)
+else()
+    # CMake defines Python_SITELIB that points to the system path for Python
+    # libraries, but we cannot use it here. In case of a non-empty installation
+    # prefix, CMake would merge the installation path into something like
+    # ${CMAKE_INSTALL_PREFIX}/${Python_SITELIB} which would lead to the wrong
+    # full path. For example, it could look like this:
     #
-    # This is probably something that should be addressed upstream
-    COMMAND ${CMAKE_COMMAND} -E env --unset=DESTDIR
-            ${PYTHON_EXECUTABLE} ${setup.py}
-        # build the extension inplace (really, once its built, copy it to the
-        # source tree) so that post-build, the directory can be used to run
-        # tests against
-        build_ext --inplace
-        build # setup.py build args
-            --cmake-executable ${CMAKE_COMMAND}
-            --generator ${CMAKE_GENERATOR}
-            ${SEGYIO_PYTHON_BUILD_TYPE}
-        -- # cmake to the extension
-            -Dsegyio_DIR=${SEGYIO_LIB_BINARY_DIR}
-            # "install" to the python/dlisio dir with rpath, so there's no need
-            # to fiddle with environment in ctest to load the core library from
-            # the build tree
-            -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=ON
-            -DCMAKE_INSTALL_RPATH=$<TARGET_FILE_DIR:segyio>
-            -DCMAKE_INSTALL_NAME_DIR=$<TARGET_FILE_DIR:segyio>
-)
+    # /usr/local/usr/lib/python3.12/site-packages
+    #   PREFIX  |          SITELIB
+    #
+    # This is not a path one would expect the Python library to be in.
+    set(SEGYIO_PYTHON_INSTALL_DIR lib/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages/segyio)
+endif()
 
-add_dependencies(segyio-python segyio)
+install(TARGETS _segyio LIBRARY DESTINATION ${SEGYIO_PYTHON_INSTALL_DIR})
 
-install(CODE "
-    if (DEFINED ENV{DESTDIR})
-        get_filename_component(abs-destdir \"\$ENV{DESTDIR}\" ABSOLUTE)
-        set(root_destdir --root \${abs-destdir})
-    endif()
+# Emulate in-place build behavior of invoking `python setup.py build_ext -i`.
+# This places the binding library into the `python/segyio/` directory. Doing so
+# allows the usage of `ctest` to test the core library, but also the Python
+# package.
+if (MSVC)
+    # On Windows, setting the target properties does not work. Whatever is
+    # built on Windows does not fullfil CMake's definition of "library",
+    # "archive" or other outputs that for which we could set the output
+    # directory as target property. Therefore, we copy the library into the
+    # correct location.
+    add_custom_command(TARGET _segyio POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:_segyio> ${CMAKE_CURRENT_SOURCE_DIR}/segyio
+    )
+else()
+    set_target_properties(_segyio PROPERTIES
+        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/segyio
+    )
+endif()
 
-    if (CMAKE_INSTALL_PREFIX)
-        set(prefix --prefix \"${CMAKE_INSTALL_PREFIX}\")
-    endif ()
+# If CMake is run via a scikit-build-core, we have set up everything needed and
+# we can return from this file. The installation and collection of relevant
+# files is handled by scikit-build-core. Other options, like building the
+# documentation, are not available via scikit-build-core.
+if (SKBUILD)
+    return()
+endif()
 
-    execute_process(
-        COMMAND ${CMAKE_COMMAND} -E env --unset=DESTDIR
-                ${PYTHON_EXECUTABLE} ${setup.py}
-            install
-                \${root_destdir}
-                --single-version-externally-managed
-                --record record.txt
-                --cmake-executable \"${CMAKE_COMMAND}\"
-                --generator \"${CMAKE_GENERATOR}\"
-                \${prefix}
-                ${SEGYIO_PYTHON_BUILD_TYPE}
-            --
-                -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    )"
+# Explicitly install Python files to avoid copying files that are not required,
+# e.g., segyio.cpp or folder like __pycache__ that exist if the tests were run
+# via ctest.
+install(
+    DIRECTORY segyio/
+    DESTINATION ${SEGYIO_PYTHON_INSTALL_DIR}
+    FILES_MATCHING PATTERN "*.py"
 )
 
 option(BUILD_PYDOC "Build python documentation" OFF)
@@ -121,7 +86,7 @@ if(BUILD_PYDOC)
             # run sphinx as the same python version that was just built
             # otherwise, the it will search for the wrong segyio extension and
             # fail
-        COMMAND ${PYTHON_EXECUTABLE} -m sphinx
+        COMMAND ${Python_EXECUTABLE} -m sphinx
             # use the -d argument to avoid putting cache dir in docs/, because
             # that directory will be install'd
             -d ${CMAKE_CURRENT_BINARY_DIR}/.doctrees
@@ -149,7 +114,7 @@ endif()
 
 add_test(
     NAME python.unit
-    COMMAND ${PYTHON_EXECUTABLE} -m pytest test/
+    COMMAND ${Python_EXECUTABLE} -m pytest test/
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
@@ -157,49 +122,49 @@ configure_file(../test-data/small.sgy write.sgy COPYONLY)
 
 add_test(
     NAME python.example.about
-    COMMAND ${PYTHON_EXECUTABLE} -m examples.about
+    COMMAND ${Python_EXECUTABLE} -m examples.about
                 ../test-data/small.sgy INLINE_3D CROSSLINE_3D
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 add_test(
     NAME python.example.write
-    COMMAND ${PYTHON_EXECUTABLE} -m examples.write
+    COMMAND ${Python_EXECUTABLE} -m examples.write
                 ${CMAKE_CURRENT_BINARY_DIR}/write.sgy
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 add_test(
     NAME python.example.makefile
-    COMMAND ${PYTHON_EXECUTABLE} -m examples.make-file
+    COMMAND ${Python_EXECUTABLE} -m examples.make-file
                 ../test-data/large-file.sgy 20 1 20 1 20
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 add_test(
     NAME python.example.makepsfile
-    COMMAND ${PYTHON_EXECUTABLE} -m examples.make-ps-file
+    COMMAND ${Python_EXECUTABLE} -m examples.make-ps-file
                 ../test-data/small-prestack.sgy 10 1 5 1 4 1 3
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 add_test(
     NAME python.example.subcube
-    COMMAND ${PYTHON_EXECUTABLE} -m examples.copy-sub-cube
+    COMMAND ${Python_EXECUTABLE} -m examples.copy-sub-cube
                 ../test-data/small.sgy ${CMAKE_CURRENT_BINARY_DIR}/copy.sgy
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 add_test(
     NAME python.example.rotate
-    COMMAND ${PYTHON_EXECUTABLE} -m examples.make-rotated-copies
+    COMMAND ${Python_EXECUTABLE} -m examples.make-rotated-copies
                 ../test-data/small.sgy ex-rotate.sgy ${CMAKE_CURRENT_BINARY_DIR}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 add_test(
     NAME python.example.scan_min_max
-    COMMAND ${PYTHON_EXECUTABLE} -m examples.scan_min_max
+    COMMAND ${Python_EXECUTABLE} -m examples.scan_min_max
                 ../test-data/small.sgy
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 add_test(
     NAME python.example.multi-text
-    COMMAND ${PYTHON_EXECUTABLE} -m examples.make-multiple-text
-                _skbuild/multi-text.sgy
+    COMMAND ${Python_EXECUTABLE} -m examples.make-multiple-text
+                ${CMAKE_CURRENT_BINARY_DIR}/multi-text.sgy
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )

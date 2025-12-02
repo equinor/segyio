@@ -588,4 +588,3 @@ def test_fread_trace0_for_depth():
 
     with pytest.raises(KeyError):
         _segyio.fread_trace0(25, 1, 1, 1, indices, "depth")
-

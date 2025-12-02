@@ -1,36 +1,75 @@
 name: Build and Test
+permissions: {}
 
 on:
   push:
-    branches: [master]
+    branches: [segyio-1.x]
   pull_request:
-    branches: [master]
+    branches: [segyio-1.x]
   workflow_dispatch:
 
 jobs:
   test:
     runs-on: ${{ matrix.os }}
-    name: Build and test on ${{ matrix.os }} ${{ matrix.compiler }}
+    name: Build and test ${{ matrix.build_type }} on ${{ matrix.os }} ${{ matrix.compiler }} ${{ matrix.cmake_generator }} BUILD_PYTHON=${{ matrix.build_python }}
     strategy:
+      fail-fast: false
       matrix:
         include:
-          - os: windows-2019
-            cmake_generator: "-G \"Visual Studio 16 2019\" -A x64"
-          - os: windows-2019
-            cmake_generator: "-G \"Visual Studio 16 2019\" -A Win32"
-          - os: macos-latest
+          - os: windows-2022
+            cmake_generator: "-G \"Visual Studio 17 2022\" -A x64"
+            build_type: "Release"
+            compiler_flags: "-D_CRT_SECURE_NO_WARNINGS /EHsc"
+            build_python: "OFF"
+          - os: windows-2022
+            cmake_generator: "-G \"Visual Studio 17 2022\" -A x64"
+            build_type: "Debug"
+            compiler_flags: "-D_CRT_SECURE_NO_WARNINGS /EHsc"
+            build_python: "OFF"
+          - os: windows-2022
+            cmake_generator: "-G \"Visual Studio 17 2022\" -A Win32"
+            build_type: "Release"
+            compiler_flags: "-D_CRT_SECURE_NO_WARNINGS /EHsc"
+            build_python: "OFF"
+          - os: ubuntu-latest
             privledges: "sudo"
-          - os: ubuntu-20.04
+            build_type: "Release"
+            build_python: "OFF"
+          - os: ubuntu-latest
             privledges: "sudo"
-          - os: ubuntu-20.04
+            build_type: "Debug"
+            compiler_flags: "-Wextra -Wall -pedantic"
+            build_python: "OFF"
+          - os: ubuntu-latest
+            privledges: "sudo"
+            build_type: "Debug"
+            compiler_flags: "-Wextra -Wall -pedantic"
+            build_python: "ON"
+          - os: ubuntu-latest
             privledges: "sudo"
             compiler: "clang"
-            analyzers: "cppcheck"
-            scan: "scan-build --status-bugs"
             mkdoc: "-DBUILD_DOC=ON -DSPHINX_ARGS=-WT"
+            build_type: "Release"
+            build_python: "OFF"
+          - os: ubuntu-latest
+            privledges: "sudo"
+            compiler: "clang"
+            build_type: "Debug"
+            compiler_flags: "-Wextra -Wall -pedantic"
+            build_python: "OFF"
+          - os: macos-15-intel
+            privledges: "sudo"
+            build_type: "Release"
+            build_python: "OFF"
           - os: macos-latest
             privledges: "sudo"
-            arch: arm64
+            build_type: "Release"
+            build_python: "OFF"
+          - os: macos-latest
+            privledges: "sudo"
+            build_type: "Debug"
+            compiler_flags: "-Wextra -Wall -pedantic"
+            build_python: "ON"
 
     steps:
       - uses: actions/checkout@v4
@@ -43,28 +82,30 @@ jobs:
             echo "CC=/usr/bin/clang"    >> $GITHUB_ENV
             echo "CXX=/usr/bin/clang++" >> $GITHUB_ENV
 
-      - name: Run cppcheck
-        shell: bash
-        if: ${{ matrix.analyzer == 'cppcheck' }}
+      # Required to be able to install Python packages on MacOS
+      - uses: actions/setup-python@v6
+        if: ${{ matrix.build_python == 'ON' }}
+        with:
+          python-version: '3.13'
+
+      - name: Install build/test for Python dependencies
+        working-directory: python
+        if: ${{ matrix.build_python == 'ON' }}
         run: |
-          cppcheck
-            --enable=style,portability,performance,warning
-            --library=posix
-            --library=cppcheck/segyio.cfg
-            --suppressions-list=cppcheck/suppressions.txt
-            --inline-suppr
-            --project=compile_commands.json
-            --error-exitcode=1
+          python3 -m pip install -r requirements-dev.txt
 
       - name: Configure
         shell: bash
         run: |
-          ${{ matrix.scan }} cmake -S . -B build \
+          cmake -S . -B build \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-            -DBUILD_PYTHON=OFF \
+            -DBUILD_PYTHON=${{ matrix.build_python }} \
             -DBUILD_SHARED_LIBS=ON \
-            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DCMAKE_COMPILE_WARNING_AS_ERROR=ON \
             -DCMAKE_INSTALL_NAME_DIR=/usr/local/lib \
+            -DCMAKE_C_FLAGS="${{ matrix.compiler_flags }}" \
+            -DCMAKE_CXX_FLAGS="${{ matrix.compiler_flags }}" \
             ${{ matrix.mkdoc }} \
             ${{ matrix.cmake_generator }} \
 
@@ -73,11 +114,55 @@ jobs:
         run: |
             ${{ matrix.privledges }} cmake \
               --build build \
-              --config Release \
+              --config ${{ matrix.build_type }} \
               --target install \
 
       - name: Test
         shell: bash
         run: |
             cd build
-            ctest -C Release --output-on-failure
+            ctest -C ${{ matrix.build_type }} --output-on-failure -V
+
+
+  matlab:
+    runs-on: ubuntu-latest
+    name: Build and test matlab code
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up MATLAB
+        uses: matlab-actions/setup-matlab@v2
+
+      - name: Configure
+        shell: bash
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DBUILD_PYTHON=OFF \
+            -DBUILD_MEX=ON \
+            -DBUILD_BIN=OFF \
+            -DBUILD_SHARED_LIBS=ON \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_NAME_DIR=/usr/local/lib \
+
+      - name: Build and Install
+        shell: bash
+        run: |
+            sudo cmake \
+              --build build \
+              --config Release \
+              --target install \
+
+      - name: Set LD_LIBRARY_PATH
+        run: echo "LD_LIBRARY_PATH=/usr/local/lib" >> $GITHUB_ENV
+
+      - name: Run 'segy.m' test script
+        uses: matlab-actions/run-command@v2
+        with:
+          command: addpath('build/mex'), try, run('build/mex/test/segy.m'), exit(0), catch ME, disp(getReport(ME, 'extended')), exit(-1), end;
+
+      - name: Run 'segyspec.m' test script
+        uses: matlab-actions/run-command@v2
+        with:
+          command: addpath('build/mex'), try, run('build/mex/test/segyspec.m'), exit(0), catch ME, disp(getReport(ME, 'extended')), exit(-1), end;

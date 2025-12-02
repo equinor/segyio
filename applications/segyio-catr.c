@@ -395,7 +395,7 @@ static const char* desc[91] = {
     "Unassigned 2"
 };
 
-static int help() {
+static int help(void) {
     puts(
 "Usage: segyio-catr [OPTION]... FILE\n"
 "Print specific trace headers from FILE\n"
@@ -550,6 +550,11 @@ static struct options parse_options( int argc, char** argv ){
                ret = sscanf(optarg," %d %d %d", &r->start,
                                                 &r->stop,
                                                 &r->step );
+               if ( ret == EOF ) {
+                   opts.errmsg = "input error while parsing range parameters";
+                   return opts;
+               }
+
                if( ret && ( r->start < 0 || r->stop < 0 || r->step < 0 ) ) {
                     opts.errmsg = "range parameters must be positive";
                     return opts;
@@ -725,4 +730,3 @@ int main( int argc, char** argv ) {
 
     return 0;
 }
-

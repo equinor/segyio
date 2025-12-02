@@ -1,6 +1,7 @@
+disp('segyspec.m test suite: start');
 % test segyspec
 
-% preconditions 
+% preconditions
 filename = 'test-data/small.sgy';
 assert(exist(filename,'file')==2);
 t0 = 1111.0;
@@ -86,3 +87,5 @@ assert(length(spec.inline_indexes)==5)
 for il = spec.inline_indexes'
     assert(il >= 1 && il <= 5);
 end
+
+disp('segyspec.m test suite: over');

@@ -168,9 +168,9 @@ void ascii2ebcdic( const char* ascii, char* ebcdic ) {
 #define IEMINIB 0x21200000
 
 static inline void ibm_native( void* buf ) {
-    static int it[8] = { 0x21800000, 0x21400000, 0x21000000, 0x21000000,
-                         0x20c00000, 0x20c00000, 0x20c00000, 0x20c00000 };
-    static int mt[8] = { 8, 4, 2, 2, 1, 1, 1, 1 };
+    static const int it[8] = { 0x21800000, 0x21400000, 0x21000000, 0x21000000,
+                               0x20c00000, 0x20c00000, 0x20c00000, 0x20c00000 };
+    static const int mt[8] = { 8, 4, 2, 2, 1, 1, 1, 1 };
     unsigned int manthi, iexp, inabs;
     int ix;
     uint32_t u;
@@ -189,8 +189,8 @@ static inline void ibm_native( void* buf ) {
 }
 
 static inline void native_ibm( void* buf ) {
-    static int it[4] = { 0x21200000, 0x21400000, 0x21800000, 0x22100000 };
-    static int mt[4] = { 2, 4, 8, 1 };
+    static const int it[4] = { 0x21200000, 0x21400000, 0x21800000, 0x22100000 };
+    static const int mt[4] = { 2, 4, 8, 1 };
     unsigned int manthi, iexp, ix;
     uint32_t u;
 
@@ -223,7 +223,7 @@ void ieee2ibm( void* to, const void* from ) {
 }
 
 /* Lookup table for field sizes. All values not explicitly set are 0 */
-static int field_size[] = {
+static int field_size[SEGY_TRACE_HEADER_SIZE] = {
     [SEGY_TR_CDP_X                  ] = 4,
     [SEGY_TR_CDP_Y                  ] = 4,
     [SEGY_TR_CROSSLINE              ] = 4,
@@ -389,7 +389,7 @@ static int file_size( FILE* fp, long long* size ) {
     // this means we're on windows where fstat is unreliable for filesizes >2G
     // because long is only 4 bytes
     struct _stati64 st;
-    const int err = _fstati64( fileno( fp ), &st );
+    const int err = _fstati64( _fileno( fp ), &st );
 #else
     struct stat st;
     const int err = fstat( fileno( fp ), &st );
@@ -899,7 +899,7 @@ int segy_binheader( segy_file* fp, char* buf ) {
 
 #ifdef HAVE_MMAP
     if( fp->addr ) {
-        char* src = (char*)fp->addr + SEGY_TEXT_HEADER_SIZE;
+        const char* src = (char*)fp->addr + SEGY_TEXT_HEADER_SIZE;
         const int len = SEGY_BINARY_HEADER_SIZE;
         const int err = memread( buf, fp, src, len );
         if( err ) return err;
@@ -1279,7 +1279,7 @@ int segy_traces( segy_file* fp,
 
     assert( size / trace_bsize <= (long long)INT_MAX );
 
-    *traces = size / trace_bsize;
+    *traces = (int) (size / trace_bsize);
     return SEGY_OK;
 }
 
@@ -1308,8 +1308,8 @@ int segy_sample_interval( segy_file* fp, float fallback, float* dt ) {
     segy_get_bfield( bin_header, SEGY_BIN_INTERVAL, &bindt );
     segy_get_field( trace_header, SEGY_TR_SAMPLE_INTER, &trdt );
 
-    float binary_header_dt = bindt;
-    float trace_header_dt = trdt;
+    float binary_header_dt = (float) bindt;
+    float trace_header_dt = (float) trdt;
 
     /*
      * 3 cases:
@@ -1776,7 +1776,7 @@ int segy_readtrace( segy_file* fp,
 
 static int bswap64vec( void* vec, long long len ) {
     char* begin = (char*) vec;
-    char* end = (char*) begin + len * sizeof(int64_t);
+    const char* end = (char*) begin + len * sizeof(int64_t);
 
     for (char* xs = begin; xs != end; xs += sizeof(int64_t)) {
         uint64_t v;
@@ -1790,7 +1790,7 @@ static int bswap64vec( void* vec, long long len ) {
 
 static int bswap32vec( void* vec, long long len ) {
     char* begin = (char*) vec;
-    char* end = (char*) begin + len * sizeof(int32_t);
+    const char* end = (char*) begin + len * sizeof(int32_t);
 
     for( char* xs = begin; xs != end; xs += sizeof(int32_t) ) {
         uint32_t v;
@@ -1804,7 +1804,7 @@ static int bswap32vec( void* vec, long long len ) {
 
 static int bswap24vec( void* vec, long long len ) {
     char* begin = (char*) vec;
-    char* end = (char*) begin + len * 3;
+    const char* end = (char*) begin + len * 3;
 
     for (char* xs = begin; xs != end; xs += 3) {
         uint8_t bits[3];
@@ -1821,7 +1821,7 @@ static int bswap24vec( void* vec, long long len ) {
 
 static int bswap16vec( void* vec, long long len ) {
     char* begin = (char*) vec;
-    char* end = (char*) begin + len * sizeof(int16_t);
+    const char* end = (char*) begin + len * sizeof(int16_t);
 
     for( char* xs = begin; xs != end; xs += sizeof(int16_t) ) {
         uint16_t v;
@@ -1856,7 +1856,7 @@ int segy_readsubtr( segy_file* fp,
             err = memread( buf, fp, fp->cur, elemsize * elems );
             if( err != SEGY_OK ) return err;
         } else {
-            const int readc = fread( buf, elemsize, elems, fp->fp );
+            const int readc = (int) fread( buf, elemsize, elems, fp->fp );
             if( readc != elems ) return SEGY_FREAD_ERROR;
         }
 
@@ -1907,7 +1907,7 @@ int segy_readsubtr( segy_file* fp,
      */
     void* tracebuf = rangebuf ? rangebuf : malloc( elems * elemsize );
 
-    const int readc = fread( tracebuf, elemsize, elems, fp->fp );
+    const int readc = (int) fread( tracebuf, elemsize, elems, fp->fp );
     if( readc != elems ) {
         if( !rangebuf ) free( tracebuf );
         return SEGY_FREAD_ERROR;
@@ -2010,7 +2010,7 @@ int segy_writesubtr( segy_file* fp,
             err = memwrite( fp, fp->cur, buf, elemsize * elems );
             if( err ) return err;
         } else {
-            const int writec = fwrite( buf, elemsize, elems, fp->fp );
+            const int writec = (int) fwrite( buf, elemsize, elems, fp->fp );
             if( writec != elems ) return SEGY_FWRITE_ERROR;
         }
 
@@ -2036,7 +2036,7 @@ int segy_writesubtr( segy_file* fp,
          * only handle fstream path - the mmap is handled comfortably by the
          * stride-aware code path
          */
-        const int writec = fwrite( tracebuf, elemsize, elems, fp->fp );
+        const int writec = (int) fwrite( tracebuf, elemsize, elems, fp->fp );
         if( !rangebuf ) free( tracebuf );
         if( writec != elems ) return SEGY_FWRITE_ERROR;
         return SEGY_OK;
@@ -2071,7 +2071,7 @@ int segy_writesubtr( segy_file* fp,
     void* tracebuf = rangebuf ? rangebuf : malloc( elems * elemsize );
 
     // like in readsubtr, read a larger chunk and then step through that
-    const int readc = fread( tracebuf, elemsize, elems, fp->fp );
+    const int readc = (int) fread( tracebuf, elemsize, elems, fp->fp );
     if( readc != elems ) { free( tracebuf ); return SEGY_FREAD_ERROR; }
     /* rewind, because fread advances the file pointer */
     err = fseek( fp->fp, -(elems * elemsize), SEEK_CUR );
@@ -2093,7 +2093,7 @@ int segy_writesubtr( segy_file* fp,
         bswap16vec_strided( cur, src, step, slicelen );
     }
 
-    const int writec = fwrite( tracebuf, elemsize, elems, fp->fp );
+    const int writec = (int) fwrite( tracebuf, elemsize, elems, fp->fp );
     if( !rangebuf ) free( tracebuf );
 
     if( writec != elems ) return SEGY_FWRITE_ERROR;
@@ -2345,8 +2345,7 @@ int segy_write_textheader( segy_file* fp, int pos, const char* buf ) {
 
     if( pos < 0 ) return SEGY_INVALID_ARGS;
 
-    err = encode( mbuf, buf, a2e, SEGY_TEXT_HEADER_SIZE );
-    if( err != 0 ) return err;
+    encode( mbuf, buf, a2e, SEGY_TEXT_HEADER_SIZE );
 
     const long offset = pos == 0
                       ? 0
@@ -2399,9 +2398,9 @@ static int scaled_cdp( segy_file* fp,
     err = segy_get_field( trheader, SEGY_TR_SOURCE_GROUP_SCALAR, &scalar );
     if( err != 0 ) return err;
 
-    float scale = scalar;
+    float scale = (float) scalar;
     if( scalar == 0 ) scale = 1.0;
-    if( scalar < 0 )  scale = -1.0 / scale;
+    if( scalar < 0 )  scale = -1.0f / scale;
 
     *cdpx = x * scale;
     *cdpy = y * scale;
@@ -2441,9 +2440,9 @@ int segy_rotation_cw( segy_file* fp,
 
     float x = nw.x - sw.x;
     float y = nw.y - sw.y;
-    float radians = x || y ? atan2( x, y ) : 0;
+    double radians = x || y ? atan2( x, y ) : 0;
     if( radians < 0 ) radians += 2 * acos(-1);
 
-    *rotation = radians;
+    *rotation = (float) radians;
     return SEGY_OK;
 }

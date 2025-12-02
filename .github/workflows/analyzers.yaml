@@ -1,0 +1,99 @@
+name: Run analyzers
+permissions: {}
+
+on:
+  push:
+    branches: [segyio-1.x]
+  pull_request:
+    branches: [segyio-1.x]
+  workflow_dispatch:
+
+jobs:
+  cppcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get -y install cppcheck
+
+      - name: Configure
+        run: |
+          cmake -S . -B build                     \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON    \
+            -DBUILD_PYTHON=OFF                    \
+            -DBUILD_TESTING=OFF
+
+      - name: Run cppcheck
+        run: |
+          cppcheck                                          \
+            --enable=style,portability,performance,warning  \
+            --library=posix                                 \
+            --library=cppcheck/segyio.cfg                   \
+            --suppressions-list=cppcheck/suppressions.txt   \
+            --inline-suppr                                  \
+            --project=build/compile_commands.json           \
+            --error-exitcode=1
+
+  scan_build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get -y install clang clang-tools libfindbin-libs-perl
+
+      - name: Configure segyio
+        run: |
+          scan-build --status-bugs   \
+            cmake                    \
+            -S .                     \
+            -B build                 \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DBUILD_PYTHON=OFF       \
+            -DBUILD_TESTING=OFF
+
+      - name: Run scan-build
+        run: |
+          scan-build --status-bugs \
+            cmake                  \
+            --build build
+
+  valgrind:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get -y install valgrind
+
+      - name: Build segyio
+        run: |
+            cmake -S . -B build           \
+            -DCMAKE_BUILD_TYPE=Debug      \
+            -DCMAKE_C_FLAGS_DEBUG="-O0"   \
+            -DCMAKE_CXX_FLAGS_DEBUG="-O0" \
+            -DBUILD_SHARED_LIBS=ON        \
+            -DBUILD_PYTHON=OFF
+            cmake --build build
+
+      - name: Run valgrind on C tests, file
+        working-directory: build/lib
+        run: |
+          valgrind --leak-check=full --show-leak-kinds=all --error-exitcode=1 ./c.segy "[c.segy]"
+
+      - name: Run valgrind on C tests, mmap
+        working-directory: build/lib
+        run: |
+          valgrind --leak-check=full --show-leak-kinds=all --error-exitcode=1 ./c.segy "[c.segy]" "--test-mmap"
+
+      - name: Run valgrind on C++ tests
+        working-directory: build/lib
+        run: |
+          valgrind --leak-check=full --show-leak-kinds=all --error-exitcode=1 ./c.segy "[c++]"
