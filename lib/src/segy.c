@@ -2170,17 +2170,18 @@ int segy_sample_interval( segy_datasource* ds, float fallback, float* dt ) {
     err = segy_get_tracefield(
         trace_header, standard_map, sample_inter_offset, &fd
     );
-    if( err != SEGY_OK ) return err;
 
-    switch( fd.entry_type ) {
-        case SEGY_ENTRY_TYPE_INT2:
-            trdt = fd.value.i16;
-            break;
-        case SEGY_ENTRY_TYPE_UINT2:
-            trdt = fd.value.u16;
-            break;
-        default:
-            return SEGY_INVALID_FIELD_DATATYPE;
+    if( err == SEGY_OK ) {
+        switch( fd.entry_type ) {
+            case SEGY_ENTRY_TYPE_INT2:
+                trdt = fd.value.i16;
+                break;
+            case SEGY_ENTRY_TYPE_UINT2:
+                trdt = fd.value.u16;
+                break;
+            default:
+                break;
+        }
     }
 
     float binary_header_dt = (float) bindt;

@@ -1,3 +1,19 @@
+# 2.0.0-alpha.1
+* Improve support for SEG-Y revision 2.1:
+  * support for int64, uint64 and floating-point types in trace headers.
+  * support for trace header extension 1 and proprietary trace headers via
+  `f.traceheader`.
+  * support for XML-defined trace header layouts (see Sec. D8 in SEG-Y standard)
+    via `f.tracefield`.
+* Added support to accessing files from various sources, e.g. in-memory files
+  and custom datasources like cloud storages, via self-defined Python streams.
+* Added automatic discovery of encoding (EBCDIC/ASCII) and endianness
+  (big-endian file or little-endian).
+* Added `f.stanza` interface to read extended text headers as stanzas.
+* Distribution of wheels for Python 3.14.
+* Support for python 3.9 has been dropped, as it is EOL.
+* Support for Intel macOS has been dropped as EOL is approaching.
+
 # 1.9.13
 * Distribute wheels for Python 3.13
 * Support for python 3.6, 3.7, 3.8 has been dropped, as it is end-of-life
