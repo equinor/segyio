@@ -43,7 +43,9 @@ def open(filename, mode="r", iline = None,
                              strict = True,
                              ignore_geometry = False,
                              endian = None,
-                             encoding = None):
+                             encoding = None,
+                             layout_xml = None
+                             ):
     """Open a segy file.
 
     Opens a segy file and tries to figure out its sorting, inline numbers,
@@ -110,6 +112,10 @@ def open(filename, mode="r", iline = None,
         into latin-1 encoding as per SEG-Y specification. For ascii encoding
         data would be returned as is.
 
+    layout_xml: bytearray
+        SEG-Y revision 2.1 D8 xml layout. Takes precedence over layout
+        definition xml inside the file.
+
     Returns
     -------
 
@@ -129,6 +135,9 @@ def open(filename, mode="r", iline = None,
 
     .. versionchanged:: 1.8
         endian argument
+
+    .. versionchanged:: 2.0
+       Support for SEG-Y revision 2.1
 
     When a file is opened non-strict, only raw traces access is allowed, and
     using modes such as ``iline`` raise an error.
@@ -168,7 +177,7 @@ def open(filename, mode="r", iline = None,
 
     return _open(
         FileDatasourceDescriptor(filename, mode),
-        iline, xline, strict, ignore_geometry, endian, encoding
+        iline, xline, strict, ignore_geometry, endian, encoding, layout_xml
     )
 
 
@@ -179,7 +188,8 @@ def open_with(stream,
               ignore_geometry=False,
               endian=None,
               encoding=None,
-              minimize_requests_number=True
+              minimize_requests_number=True,
+              layout_xml = None
               ):
     """
     Opens a segy file from a stream.
@@ -209,7 +219,7 @@ def open_with(stream,
             stream,
             minimize_requests_number
         ),
-        iline, xline, strict, ignore_geometry, endian, encoding
+        iline, xline, strict, ignore_geometry, endian, encoding, layout_xml
     )
 
 
@@ -220,6 +230,7 @@ def open_from_memory(memory_buffer,
                    ignore_geometry=False,
                    endian=None,
                    encoding=None,
+                   layout_xml = None
                    ):
     """
     Opens a segy file from memory.
@@ -241,7 +252,7 @@ def open_from_memory(memory_buffer,
         MemoryBufferDatasourceDescriptor(
             memory_buffer
         ),
-        iline, xline, strict, ignore_geometry, endian, encoding
+        iline, xline, strict, ignore_geometry, endian, encoding, layout_xml
     )
 
 
@@ -252,6 +263,7 @@ def _open(datasource_descriptor,
           ignore_geometry=False,
           endian=None,
           encoding=None,
+          layout_xml = None
           ):
 
     fd = datasource_descriptor.make_segyfile_descriptor()
@@ -265,7 +277,8 @@ def _open(datasource_descriptor,
         endianness=to_c_endianness(endian),
         encoding=to_c_encoding(encoding),
         iline=iline,
-        xline=xline
+        xline=xline,
+        layout_xml=layout_xml
     )
     metrics = fd.metrics()
 

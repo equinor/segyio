@@ -9,6 +9,7 @@ segy_binheader_size
 segy_binheader
 segy_write_binheader
 segy_samples
+segy_traceheader_names
 segy_delay_recoding_time
 segy_sample_interval
 segy_format
@@ -18,6 +19,8 @@ segy_entry_type_to_datatype
 segy_binheader_map
 segy_traceheader_default_map
 segy_traceheader_default_name_map
+segy_ext1_traceheader_default_map
+segy_ext1_traceheader_default_name_map
 segy_get_tracefield
 segy_set_tracefield
 segy_get_binfield

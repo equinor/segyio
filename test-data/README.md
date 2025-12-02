@@ -33,6 +33,7 @@ Due to changes in the scripts after the files were originally created, reproduci
 | text-embed-null.sgy            | small.sgy but with one byte in text header exchanged with 00                |                                                       |                                            |
 | text.sgy                       | File with unique textual file header.                                       |                                                       | no traces                                  |
 | tiny.sgy                       | Inline-sorted file with 4 samples, 3 inlines, 2 xlines.                     | make-file.py small.sgy 4 1 4 20 22                    |                                            |
+| trace-header-extension1.sgy    | File has trace header extension 1, but no explicit layout mapping.          |                                                       |                                            |
 | trace-header-extensions.sgy    | Each trace contains 3 trace headers: standard, extension 1 and proprietary. |                                                       |                                            |
 | 小文件.sgy                      | small.sgy but with utf-8 characters in the filename                         | rename small.sgy                                      | bug test for Windows OS                    |
 
@@ -56,6 +57,12 @@ To recreate:
 | left-small.sgy      | 270°                                                                  |
 | inv-acute-small.sgy | 315°                                                                  |
 
+File below is used to test revision 2 features and is created with:
+`python python/examples/make-rotated-rev2.py test-data/small.sgy test-data/rotated-small-rev2.sgy`
+
+| File                   | Purpose                                                                    |
+|------------------------|--------------------------------------------------------------------------- |
+| rotated-small-rev2.sgy | Revision 2 file with different values on standard and extension 1 headers. |
 
 ## Dimensions sorting test files
 
@@ -100,11 +107,15 @@ Files are created manually.
 | mapping-all-types-lsb.sgy      | `flip-endianness.py mapping-all-types.sgy out.sgy`            |
 | mapping-default.sgy            | XML corresponds exactly to the default SEG-Y rev 2.1 mapping. |
 | mapping-empty.sgy              | Root does not have minimal number of required fields.         |
+| mapping-encoding-ext1.sgy      | SEG00001 name encoding does not match text header encoding.   |
+| mapping-encoding-private.sgy   | Proprietary header name encoding != text header encoding.     |
 | mapping-invalid-attribute.sgy  | Last entry does not have 'byte' attribute.                    |
 | mapping-invalid-root.sgy       | Root does not define standard header layout.                  |
 | mapping-invalid-value.sgy      | Last standard header entry byte is out of range.              |
 | mapping-minimal.sgy            | File with minimal number of defined fields segyio can open.   |
+| mapping-mixed-order.sgy        | XML layouts are in different order than headers in file.      |
 | mapping-multiple-stanzas.sgy   | Other stanzas are present before and after layout stanza.     |
+| mapping-no-extension1.sgy      | Only standard and proprietary trace headers are present.      |
 | mapping-shifted.sgy            | Default mapping with all offsets shifted by 1 byte.           |
 | mapping-unparsable.sgy         | XML is unparsable.                                            |
 | mapping-unsupported-type.sgy   | One axis value is of type segyio doesn't allow in that field. |

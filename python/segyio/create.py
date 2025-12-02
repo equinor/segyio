@@ -41,7 +41,7 @@ def structured(spec):
 
     return True
 
-def create(filename, spec):
+def create(filename, spec, layout_xml = None):
     """Create a new segy file.
 
     Create a new segy file with the geometry and properties given by `spec`.
@@ -74,6 +74,9 @@ def create(filename, spec):
         Path to file to create
     spec : segyio.spec
         Structure of the segy file
+    layout_xml: bytearray
+        SEG-Y revision 2.1 D8 xml layout. Note that this layout is used only
+        during file creation and is not stored in the file.
 
     Returns
     -------
@@ -95,6 +98,9 @@ def create(filename, spec):
 
     .. versionchanged:: 1.8
        Support for creating lsb files
+
+    .. versionchanged:: 2.0
+       Support for SEG-Y revision 2.1
 
     The ``spec`` is any object that has the following attributes
 
@@ -185,10 +191,10 @@ def create(filename, spec):
     ...         dst.header = src.header
     ...         dst.trace = src.trace
     """
-    return _create(FileDatasourceDescriptor(filename, "w+"), spec)
+    return _create(FileDatasourceDescriptor(filename, "w+"), spec, layout_xml)
 
 
-def create_with(stream, spec, minimize_requests_number=True):
+def create_with(stream, spec, minimize_requests_number=True, layout_xml = None):
     """
     Creates a segy file on stream.
 
@@ -210,17 +216,21 @@ def create_with(stream, spec, minimize_requests_number=True):
         Configuration for some internal algorithms. True to minimize number of
         requests to the stream at the cost of higher memory usage. False to
         minimize memory usage at the cost of more requests to the stream.
+    layout_xml: bytearray
+        SEG-Y revision 2.1 D8 xml layout. Note that this layout is used only
+        during file creation and is not stored in the file.
     """
     return _create(
         StreamDatasourceDescriptor(
             stream,
             minimize_requests_number
         ),
-        spec
+        spec,
+        layout_xml
     )
 
 
-def _create(datasource_descriptor, spec):
+def _create(datasource_descriptor, spec, layout_xml):
     if not structured(spec):
         tracecount = spec.tracecount
     else:
@@ -248,6 +258,7 @@ def _create(datasource_descriptor, spec):
         format = int(spec.format),
         ext_headers = int(ext_headers),
         traceheader_count = traceheader_count,
+        layout_xml = layout_xml
     )
 
     # note: even if iline/xline are overridden, file is already created with

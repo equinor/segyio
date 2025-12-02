@@ -158,6 +158,35 @@ typedef enum {
 } SEGY_FIELD;
 
 typedef enum {
+    SEGY_EXT1_SEQ_LINE              = 1,
+    SEGY_EXT1_SEQ_FILE              = 9,
+    SEGY_EXT1_FIELD_RECORD          = 17,
+    SEGY_EXT1_ENSEMBLE              = 25,
+    SEGY_EXT1_RECV_GROUP_ELEV       = 33,
+    SEGY_EXT1_RECV_GROUP_DEPTH      = 41,
+    SEGY_EXT1_SOURCE_SURF_ELEV      = 49,
+    SEGY_EXT1_SOURCE_DEPTH          = 57,
+    SEGY_EXT1_RECV_DATUM_ELEV       = 65,
+    SEGY_EXT1_SOURCE_DATUM_ELEV     = 73,
+    SEGY_EXT1_SOURCE_WATER_DEPTH    = 81,
+    SEGY_EXT1_GROUP_WATER_DEPTH     = 89,
+    SEGY_EXT1_SOURCE_X              = 97,
+    SEGY_EXT1_SOURCE_Y              = 105,
+    SEGY_EXT1_GROUP_X               = 113,
+    SEGY_EXT1_GROUP_Y               = 121,
+    SEGY_EXT1_OFFSET                = 129,
+    SEGY_EXT1_SAMPLE_COUNT          = 137,
+    SEGY_EXT1_NANOSEC_OF_SEC        = 141,
+    SEGY_EXT1_SAMPLE_INTER          = 145,
+    SEGY_EXT1_RECORDING_DEVICE_NR   = 153,
+    SEGY_EXT1_ADDITIONAL_TR_HEADERS = 157,
+    SEGY_EXT1_LAST_TRACE_FLAG       = 159,
+    SEGY_EXT1_CDP_X                 = 161,
+    SEGY_EXT1_CDP_Y                 = 169,
+    SEGY_EXT1_TRACE_HEADER_NAME     = 233
+} SEGY_EXTENSION1_FIELD;
+
+typedef enum {
     SEGY_BIN_JOB_ID                     = 3201,
     SEGY_BIN_LINE_NUMBER                = 3205,
     SEGY_BIN_REEL_NUMBER                = 3209,
@@ -377,7 +406,7 @@ struct segy_datasource {
     /* Standard traceheader mapping. */
     segy_header_mapping traceheader_mapping_standard;
     /* Traceheader extension 1 mapping. */
-    //segy_header_mapping traceheader_mapping_extension1;
+    segy_header_mapping traceheader_mapping_extension1;
 
     segy_metadata metadata;
 };
@@ -474,6 +503,9 @@ int segy_samples( const char* binheader );
  */
 int segy_traceheaders( const char* binheader, int* traceheader_count );
 
+/* Reads into allocated memory traceheader names from first trace. */
+int segy_traceheader_names( segy_datasource* ds, char (*names)[8] );
+
 /*
  * calculate delay recording time for the first trace.
  */
@@ -507,13 +539,18 @@ int segy_encoding( segy_datasource*, int* encoding );
 
 /* Converts entry type to actual datatype and returns it (not an error code). */
 int segy_entry_type_to_datatype( uint8_t entry_type );
-/* Binary header layout map. Indicies (offsets) are 0-based. */
+/* Binary header layout map. Indices (offsets) are 0-based. */
 const segy_entry_definition* segy_binheader_map( void );
-/* Default trace header layout map. Indicies (offsets) are 0-based. */
+/* Default trace header layout map. Indices (offsets) are 0-based. */
 const segy_entry_definition* segy_traceheader_default_map( void );
-/* Default trace header name to 1-based offset map. ndicies (names) correspond
+/* Default trace header extension 1 layout map. Indices (offsets) are 0-based. */
+const segy_entry_definition* segy_ext1_traceheader_default_map( void );
+/* Default trace header name to 1-based offset map. Indices (names) correspond
  * to SEGY_FIELD enum. */
 const uint8_t* segy_traceheader_default_name_map( void );
+/* Default trace header extension 1 name to 1-based offset map. Indices (names)
+ * correspond to SEGY_EXTENSION1_FIELD enum. */
+const uint8_t* segy_ext1_traceheader_default_name_map( void );
 
 /* Reads one trace field data from given 0-based header. 0-based
  * offset-to-entry-definition mapping should correspond to provided header.

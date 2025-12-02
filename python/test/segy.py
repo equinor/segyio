@@ -2430,6 +2430,18 @@ def test_open_with_custom_mapping():
     with pytest.raises(ValueError, match=r"invalid field datatype*"):
         segyio.open(testdata / 'mapping-unsupported-type.sgy')
 
+    with segyio.open(testdata / 'mapping-mixed-order.sgy') as f:
+        assert f.tracefield.names() == ["SEG00000", "SEG00001", "PRIVATE1", "PRIVATE2"]
+
+    with segyio.open(testdata / 'mapping-no-extension1.sgy') as f:
+        assert f.tracefield.names() == ["SEG00000", "PRIVATE1"]
+
+    with segyio.open(testdata / 'mapping-encoding-ext1.sgy') as f:
+        assert f.tracefield.names() == ["SEG00000", "SEG00001"]
+
+    with pytest.raises(KeyError, match=r"traceheader mapping for .* not found"):
+        segyio.open(testdata / 'mapping-encoding-private.sgy')
+
 
 def test_tracefields():
     with segyio.open(testdata / 'trace-header-extensions.sgy') as f:
@@ -2468,6 +2480,22 @@ def test_tracefields():
 
         str_rep = "linetrc (offset=1, type=linetrc8, use_only_if_non_zero=True)"
         assert str(f.tracefield.SEG00001.linetrc) == str_rep
+
+def test_trace_header_extension1():
+    with segyio.open(testdata / 'trace-header-extension1.sgy', "r") as f:
+        assert f.tracefield.names() == ['SEG00000', 'SEG00001']
+        names = f.tracefield.SEG00001.names()
+        assert len(names) == 26
+        assert 'header_name' in names
+
+        assert f.tracefield.SEG00000.linetrc[0] == 0x11111111
+        assert f.traceheader[0].SEG00001.linetrc == 0x22222222_22222221
+        assert f.tracefield.SEG00001.linetrc[0] == 0x22222222_22222221
+
+        assert np.array_equal(
+            f.tracefield.SEG00001.linetrc[0, 4],
+            [0x22222222_22222221, 0x22222222_22222225]
+        )
 
 
 def test_trace_header_extensions():
@@ -2596,18 +2624,58 @@ def test_revision_2_1_file_creation(tmpdir):
         spec.traceheader_count = src.traceheader_count
         spec.tracecount = src.tracecount
 
-        with segyio.create(fresh, spec) as dst:
+        # find index of stanza name from src.stanza.names() that starts with SEG:Layout, case insensitive
+        layout_index = -1
+        for i, stanza_name in enumerate (src.stanza.names()):
+            if stanza_name.lower().startswith('seg:layout'):
+                layout_index = i
+        layout = src.stanza[layout_index]
+
+        with segyio.create(fresh, spec, layout_xml=layout) as dst:
             for i in range(1 + src.ext_headers):
                 dst.text[i] = src.text[i]
+
             dst.bin = src.bin
-
             dst.trace = src.trace
-
-        # traceheader mapping was copied after open. At the moment of creation
-        # of this example file code can't deal with that, so we must reopen the
-        # file after bin and ext_headers are copied so that mapping is
-        # recognized.
-        with segyio.open(fresh, "r+", ignore_geometry=True) as dst:
             dst.traceheader = src.traceheader
 
+        with segyio.open(fresh, "r+", ignore_geometry=True) as dst:
+            pass
+
     assert filecmp.cmp(orig, fresh)
+
+
+def test_custom_layout_xml(tmpdir):
+    small = str(testdata / 'small.sgy')
+    orig = str(testdata / 'trace-header-extensions.sgy')
+    fresh = tmpdir / '2.1-headers-not-copied.sgy'
+    with segyio.open(orig) as src:
+        spec = segyio.spec()
+        spec.format = int(src.format)
+        spec.sorting = int(src.sorting)
+        spec.samples = src.samples
+        spec.ilines = src.ilines
+        spec.xlines = src.xlines
+        spec.ext_headers = 0
+        spec.traceheader_count = src.traceheader_count
+        spec.tracecount = src.tracecount
+
+        layout = src.stanza[0]
+
+        with segyio.open(small, "r") as f:
+            assert len(f.tracefield[0].names()) == 92
+        with segyio.open(small, "r", layout_xml=layout) as f:
+            assert len(f.tracefield[0].names()) == 8
+
+        with segyio.create(fresh, spec, layout_xml=layout) as dst:
+            dst.bin = src.bin
+            dst.bin[BinField.ExtendedHeaders] = 0
+            dst.trace = src.trace
+            dst.traceheader = src.traceheader
+
+        with pytest.raises(KeyError, match="traceheader mapping for 'PRIVATE1' not found"):
+            segyio.open(fresh, "r", ignore_geometry=True)
+
+        with segyio.open(fresh, "r", ignore_geometry=True, layout_xml=layout) as f:
+            assert f.tracefield.names() == ['SEG00000', 'SEG00001', 'PRIVATE1']
+            assert f.tracefield.SEG00001.names() == ['linetrc', 'header_name']

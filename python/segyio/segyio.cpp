@@ -13,6 +13,7 @@
 #include <segyio/segy.h>
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <cstring>
 #include <memory>
@@ -291,6 +292,25 @@ int py_set_writable( segy_datasource* self ) {
     return SEGY_OK;
 }
 
+static void init_traceheader_mapping(
+    segy_header_mapping* dst_mapping,
+    const uint8_t* src_name_map,
+    const segy_entry_definition* src_entry_definition_map,
+    const char* name
+) {
+    memcpy( dst_mapping->name, name, 8 );
+    memcpy(
+        dst_mapping->name_to_offset,
+        src_name_map,
+        sizeof( dst_mapping->name_to_offset )
+    );
+    memcpy(
+        dst_mapping->offset_to_entry_definition,
+        src_entry_definition_map,
+        sizeof( dst_mapping->offset_to_entry_definition )
+    );
+}
+
 segy_datasource* create_py_stream_datasource(
     PyObject* py_stream, bool minimize_requests_number
 ) {
@@ -329,17 +349,18 @@ segy_datasource* create_py_stream_datasource(
     ds->metadata.traceheader_count = 1;
     ds->metadata.tracecount = -1;
 
-    segy_header_mapping* mapping = &ds->traceheader_mapping_standard;
-    memcpy(mapping->name, "SEG00000", 8);
-    memcpy(
-        mapping->name_to_offset,
+    init_traceheader_mapping(
+        &ds->traceheader_mapping_standard,
         segy_traceheader_default_name_map(),
-        sizeof(mapping->name_to_offset)
-    );
-    memcpy(
-        mapping->offset_to_entry_definition,
         segy_traceheader_default_map(),
-        sizeof(mapping->offset_to_entry_definition)
+        "SEG00000"
+    );
+
+    init_traceheader_mapping(
+        &ds->traceheader_mapping_extension1,
+        segy_ext1_traceheader_default_name_map(),
+        segy_ext1_traceheader_default_map(),
+        "SEG00001"
     );
 
     /* keep additional reference to assure object does not get deleted before
@@ -629,21 +650,25 @@ PyObject* segyopen( segyfd* self, PyObject* args, PyObject* kwargs ) {
     int encoding = -1;
     PyObject *py_iline = Py_None;
     PyObject *py_xline = Py_None;
+    PyObject* py_layout_xml = Py_None;
+
     static const char* keywords[] = {
         "endianness",
         "encoding",
         "iline",
         "xline",
+        "layout_xml",
         NULL
     };
 
     if( !PyArg_ParseTupleAndKeywords(
-            args, kwargs, "|iiOO",
+            args, kwargs, "|iiOOO",
             const_cast<char**>( keywords ),
             &endianness,
             &encoding,
             &py_iline,
-            &py_xline
+            &py_xline,
+            &py_layout_xml
         ) ) {
         return NULL;
     }
@@ -659,8 +684,18 @@ PyObject* segyopen( segyfd* self, PyObject* args, PyObject* kwargs ) {
     if( err ) return Error( err );
 
     std::vector<char> layout_stanza_data;
-    err = extract_layout_stanza( self, layout_stanza_data );
-    if( err ) return Error( err );
+    if( py_layout_xml != Py_None ) {
+        buffer_guard layout_xml( py_layout_xml, PyBUF_CONTIG );
+        layout_stanza_data.resize( layout_xml.len() );
+        std::memcpy(
+            layout_stanza_data.data(),
+            layout_xml.buf<char>(),
+            layout_xml.len()
+        );
+    } else {
+        err = extract_layout_stanza( self, layout_stanza_data );
+        if( err ) return Error( err );
+    }
 
     err = set_traceheader_mappings( self, layout_stanza_data, py_iline, py_xline );
     if( err ) return NULL;
@@ -669,33 +704,54 @@ PyObject* segyopen( segyfd* self, PyObject* args, PyObject* kwargs ) {
         self->stanzas.empty() ? 0 : self->stanzas.back().end_index();
 
     err = segy_collect_metadata( ds, endianness, encoding, ext_textheader_count );
-    if( err == SEGY_OK ) {
-        self->format = ds->metadata.format;
-        self->elemsize = ds->metadata.elemsize;
-        self->trace0 = ds->metadata.trace0;
-        self->samplecount = ds->metadata.samplecount;
-        self->trace_bsize = ds->metadata.trace_bsize;
-        self->traceheader_count = ds->metadata.traceheader_count;
-        self->tracecount = ds->metadata.tracecount;
-
-        Py_INCREF( self );
-        return (PyObject*)self;
+    if( err != SEGY_OK ) {
+        std::ostringstream msg;
+        msg << "unable to gather basic metadata from the file, error " << segy_errstr( err )
+            << ". Intermediate state:\n"
+            << "  endianness=" << ds->metadata.endianness << "\n"
+            << "  encoding=" << ds->metadata.encoding << "\n"
+            << "  format=" << ds->metadata.format << "\n"
+            << "  elemsize=" << ds->metadata.elemsize << "\n"
+            << "  ext_textheader_count=" << ds->metadata.ext_textheader_count << "\n"
+            << "  trace0=" << ds->metadata.trace0 << "\n"
+            << "  samplecount=" << ds->metadata.samplecount << "\n"
+            << "  trace_bsize=" << ds->metadata.trace_bsize << "\n"
+            << "  traceheader_count=" << ds->metadata.traceheader_count << "\n"
+            << "  tracecount=" << ds->metadata.tracecount;
+        return RuntimeError( msg.str().c_str() );
     }
 
-    std::ostringstream msg;
-    msg << "unable to gather basic metadata from the file, error " << segy_errstr( err )
-        << ". Intermediate state:\n"
-        << "  endianness=" << ds->metadata.endianness << "\n"
-        << "  encoding=" << ds->metadata.encoding << "\n"
-        << "  format=" << ds->metadata.format << "\n"
-        << "  elemsize=" << ds->metadata.elemsize << "\n"
-        << "  ext_textheader_count=" << ds->metadata.ext_textheader_count << "\n"
-        << "  trace0=" << ds->metadata.trace0 << "\n"
-        << "  samplecount=" << ds->metadata.samplecount << "\n"
-        << "  trace_bsize=" << ds->metadata.trace_bsize << "\n"
-        << "  traceheader_count=" << ds->metadata.traceheader_count << "\n"
-        << "  tracecount=" << ds->metadata.tracecount;
-    return RuntimeError( msg.str().c_str() );
+    self->format = ds->metadata.format;
+    self->elemsize = ds->metadata.elemsize;
+    self->trace0 = ds->metadata.trace0;
+    self->samplecount = ds->metadata.samplecount;
+    self->trace_bsize = ds->metadata.trace_bsize;
+    self->traceheader_count = ds->metadata.traceheader_count;
+    self->tracecount = ds->metadata.tracecount;
+
+
+    std::vector<std::array<char, 8>> traceheader_names(self->traceheader_count);
+    err = segy_traceheader_names(ds, reinterpret_cast<char(*)[8]>(traceheader_names.data()));
+    if( err ) return Error( err );
+
+    std::vector<segy_header_mapping> ordered_mappings;
+    for (const auto& header_name : traceheader_names) {
+        bool found = false;
+        for (const auto& mapping : self->traceheader_mappings) {
+            if (std::strncmp(mapping.name, header_name.data(), 8) == 0) {
+                ordered_mappings.push_back(mapping);
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            return KeyError("traceheader mapping for '%8.8s' not found", header_name.data());
+        }
+    }
+    self->traceheader_mappings = std::move(ordered_mappings);
+
+    Py_INCREF( self );
+    return (PyObject*)self;
 }
 
 PyObject* segycreate( segyfd* self, PyObject* args, PyObject* kwargs ) {
@@ -709,6 +765,7 @@ PyObject* segycreate( segyfd* self, PyObject* args, PyObject* kwargs ) {
     int ext_headers = 0;
     int traceheader_count = 1;
     int format = SEGY_IBM_FLOAT_4_BYTE;
+    PyObject* py_layout_xml = Py_None;
 
     // https://mail.python.org/pipermail/python-dev/2006-February/060689.html
     // python3 fixes the non-constness of the kwlist arg in
@@ -724,11 +781,12 @@ PyObject* segycreate( segyfd* self, PyObject* args, PyObject* kwargs ) {
         "traceheader_count",
         "format",
         "ext_headers",
+        "layout_xml",
         NULL,
     };
 
     if( !PyArg_ParseTupleAndKeywords( args, kwargs,
-                "ii|iiiii",
+                "ii|iiiiiO",
                 const_cast< char** >(kwlist),
                 &samples,
                 &tracecount,
@@ -736,7 +794,8 @@ PyObject* segycreate( segyfd* self, PyObject* args, PyObject* kwargs ) {
                 &encoding,
                 &traceheader_count,
                 &format,
-                &ext_headers
+                &ext_headers,
+                &py_layout_xml
              ) )
         return NULL;
 
@@ -752,6 +811,17 @@ PyObject* segycreate( segyfd* self, PyObject* args, PyObject* kwargs ) {
     ds->metadata.encoding = encoding;
 
     std::vector<char> layout_stanza_data;
+
+    if( py_layout_xml != Py_None ) {
+        buffer_guard layout_xml( py_layout_xml, PyBUF_CONTIG );
+        layout_stanza_data.resize( layout_xml.len() );
+        std::memcpy(
+            layout_stanza_data.data(),
+            layout_xml.buf<char>(),
+            layout_xml.len()
+        );
+    }
+
     int err = set_traceheader_mappings(
         self, layout_stanza_data, Py_None, Py_None
     );
@@ -2446,6 +2516,38 @@ static const NameMapEntry standard_name_map[] = {
     { "sm_unit",     SEGY_TR_SOURCE_MEASURE_UNIT     },
 };
 
+/** D8 names to SEGY names. Contains all the known names, not only the ones used
+ * internally in the library. */
+static const NameMapEntry ext1_name_map[] = {
+    { "linetrc",   SEGY_EXT1_SEQ_LINE            },
+    { "reeltrc",   SEGY_EXT1_SEQ_FILE            },
+    { "ffid",      SEGY_EXT1_FIELD_RECORD        },
+    { "cdp",       SEGY_EXT1_ENSEMBLE            },
+    { "relev",     SEGY_EXT1_RECV_GROUP_ELEV     },
+    { "rdepth",    SEGY_EXT1_RECV_GROUP_DEPTH    },
+    { "selev",     SEGY_EXT1_SOURCE_SURF_ELEV    },
+    { "sdepth",    SEGY_EXT1_SOURCE_DEPTH        },
+    { "rdatum",    SEGY_EXT1_RECV_DATUM_ELEV     },
+    { "sdatum",    SEGY_EXT1_SOURCE_DATUM_ELEV   },
+    { "wdepthso",  SEGY_EXT1_SOURCE_WATER_DEPTH  },
+    { "wdepthrc",  SEGY_EXT1_GROUP_WATER_DEPTH   },
+    { "sht_x",     SEGY_EXT1_SOURCE_X            },
+    { "sht_y",     SEGY_EXT1_SOURCE_Y            },
+    { "rec_x",     SEGY_EXT1_GROUP_X             },
+    { "rec_y",     SEGY_EXT1_GROUP_Y             },
+    { "offset",    SEGY_EXT1_OFFSET              },
+    { "nsamps",    SEGY_EXT1_SAMPLE_COUNT        },
+    { "nanosecs",  SEGY_EXT1_NANOSEC_OF_SEC      },
+    { "dt",        SEGY_EXT1_SAMPLE_INTER        },
+    { "cable_num", SEGY_EXT1_RECORDING_DEVICE_NR },
+    { "last_trc",  SEGY_EXT1_LAST_TRACE_FLAG     },
+    { "cdp_x",     SEGY_EXT1_CDP_X               },
+    { "cdp_y",     SEGY_EXT1_CDP_Y               },
+
+    // segyio private
+    { "header_name", SEGY_EXT1_TRACE_HEADER_NAME },
+};
+
 /** D8 entry type names to SEGY entry type names. scale6 type is not fully
  * supported as we have separate types for mantissa and exponent. */
 static const TypeMapEntry entry_type_map[] = {
@@ -2525,8 +2627,6 @@ int initialize_traceheader_mappings(
     segy_datasource* ds = self->ds;
 
     if( layout_stanza_data.empty() ) {
-        segy_header_mapping mapping = ds->traceheader_mapping_standard;
-
         /* Entry names provided by xml are of unknown length, so we must
          * allocate them on heap and delete them afterwards. Default C maps have
          * their names set to NULL. If we provided default names for entries
@@ -2541,15 +2641,33 @@ int initialize_traceheader_mappings(
          * So we allocate names only here, in C++, where we know they always
          * will be freed.
          **/
-        for( const auto& entry : standard_name_map ) {
-            int offset = mapping.name_to_offset[entry.segyio_entry_name];
-            if( offset != 0 ) {
-                char* name = new char[entry.spec_entry_name.size() + 1];
-                std::strcpy( name, entry.spec_entry_name.c_str() );
-                mapping.offset_to_entry_definition[offset - 1].name = name;
+        auto add_names = [](
+            const NameMapEntry* name_map,
+            size_t name_map_size,
+            segy_header_mapping& mapping
+        ) {
+            for (size_t i = 0; i < name_map_size; ++i) {
+                const NameMapEntry& entry = name_map[i];
+                int offset = mapping.name_to_offset[entry.segyio_entry_name];
+                if (offset != 0) {
+                    char* name = new char[entry.spec_entry_name.size() + 1];
+                    std::strcpy(name, entry.spec_entry_name.c_str());
+                    mapping.offset_to_entry_definition[offset - 1].name = name;
+                }
             }
-        }
-        self->traceheader_mappings.insert( self->traceheader_mappings.begin(), mapping );
+        };
+
+        const size_t standard_map_size = sizeof(standard_name_map) / sizeof(standard_name_map[0]);
+        add_names( standard_name_map, standard_map_size, ds->traceheader_mapping_standard );
+        self->traceheader_mappings.insert(
+            self->traceheader_mappings.begin(), ds->traceheader_mapping_standard
+        );
+
+        const size_t ext1_map_size = sizeof(ext1_name_map) / sizeof(ext1_name_map[0]);
+        add_names( ext1_name_map, ext1_map_size, ds->traceheader_mapping_extension1 );
+        self->traceheader_mappings.insert(
+            self->traceheader_mappings.begin() + 1, ds->traceheader_mapping_extension1
+        );
         return SEGY_OK;
     }
 
@@ -2563,23 +2681,37 @@ int initialize_traceheader_mappings(
     );
     if( err != SEGY_OK ) return err;
 
-    // For now assume order of headers in the file corresponds to the order of
-    // mappings in xml. TODO later: read all traceheaders in first trace and
-    // order traceheader mappings accordingly
     self->traceheader_mappings =
         std::vector<segy_header_mapping>( mappings, mappings + mappings_length );
     delete[] mappings;
 
-    bool found_standard = false;
-    for( const auto& mapping : self->traceheader_mappings ) {
+    int standard_index = -1;
+    int extension1_index = -1;
+
+    for( size_t i = 0; i < self->traceheader_mappings.size(); ++i ) {
+        const auto& mapping = self->traceheader_mappings[i];
         if( strncmp( mapping.name, "SEG00000", 8 ) == 0 ) {
-            found_standard = true;
+            standard_index = i;
         }
-        // TODO: same for SEG00001 header. Insert default into second position if not found
+        if( strncmp( mapping.name, "SEG00001", 8 ) == 0 ) {
+            extension1_index = i;
+        }
     }
 
     // standard header definition is obligatory, so it anyway should have failed earlier
-    if( !found_standard ) return SEGY_NOTFOUND;
+    if( standard_index != 0 ) return SEGY_NOTFOUND;
+
+    if( extension1_index != -1 ) {
+        if( extension1_index != 1 ) {
+            auto extension1_mapping = self->traceheader_mappings[extension1_index];
+            self->traceheader_mappings.erase(
+                self->traceheader_mappings.begin() + extension1_index
+            );
+            self->traceheader_mappings.insert(
+                self->traceheader_mappings.begin() + 1, extension1_mapping
+            );
+        }
+    }
 
     return SEGY_OK;
 }
@@ -2616,6 +2748,14 @@ int set_traceheader_mappings(
         &self->traceheader_mappings[0],
         sizeof( ds->traceheader_mapping_standard )
     );
+    if( self->traceheader_mappings.size() >= 2 &&
+        strncmp( self->traceheader_mappings[1].name, "SEG00001", 8 ) == 0 ) {
+        memcpy(
+            &ds->traceheader_mapping_extension1,
+            &self->traceheader_mappings[1],
+            sizeof( ds->traceheader_mapping_extension1 )
+        );
+    }
 
     return SEGY_OK;
 }
@@ -2689,6 +2829,9 @@ int set_mapping_name_to_offset(
     if( strncmp( header_name, "SEG00000", 8 ) == 0 ) {
         entry_name_map = const_cast<NameMapEntry*>( standard_name_map );
         entry_name_map_size = sizeof( standard_name_map ) / sizeof( standard_name_map[0] );
+    } else if( strncmp( header_name, "SEG00001", 8 ) == 0 ) {
+        entry_name_map = const_cast<NameMapEntry*>( ext1_name_map );
+        entry_name_map_size = sizeof( ext1_name_map ) / sizeof( ext1_name_map[0] );
     } else {
         // no name maps for proprietary headers
         entry_name_map = nullptr;
