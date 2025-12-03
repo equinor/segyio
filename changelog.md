@@ -14,6 +14,10 @@
 * Support for python 3.9 has been dropped, as it is EOL.
 * Support for Intel macOS has been dropped as EOL is approaching.
 
+# 1.9.14
+* Distribute wheels for Python 3.14
+* Support for Python 3.9 has been dropped, as it is end-of-life
+
 # 1.9.13
 * Distribute wheels for Python 3.13
 * Support for python 3.6, 3.7, 3.8 has been dropped, as it is end-of-life
