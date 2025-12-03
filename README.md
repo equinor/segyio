@@ -3,12 +3,13 @@
 [![PyPI - Version](https://img.shields.io/pypi/v/segyio)](https://pypi.org/project/segyio/)
 [![Read the Docs](https://img.shields.io/readthedocs/segyio)](https://segyio.readthedocs.io/)
 
-> [!NOTE]
-> 🚧 *segyio 2.0* is under construction in the `main` branch. 🚧
->
-> New major release is intended to have better support for SEG-Y 2.1 revision.
->
-> ⚠️ Users should be prepared for possible breaking changes.
+
+Development of segyio 2.0 (which improves support for SEG-Y 2.1 revision)
+happens in the `main` branch. `2.0.0-alpha.1` pre-release is published, but
+further development and support are, for the moment, put on hold.
+
+Support for segyio 1.0 releases happens in `segyio-1.x` branch, mostly via
+backporting of relevant commits from `main`.
 
 ## Documentation ##
 
@@ -365,6 +366,11 @@ publications by SEG:
 ## Contributing ##
 
 We welcome all kinds of contributions; please see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+### Maintainers ###
+
+Pointers about segyio future are kept in the Readme of Github Projects - `segyio
+version 2.0`.
 
 ## `xarray` integration ##
 
