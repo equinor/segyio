@@ -12,7 +12,7 @@ except ImportError: pass
 
 import segyio.tools as tools
 
-from .line import sanitize_slice
+from .line import label_range
 
 
 class Gather(object):
@@ -114,12 +114,12 @@ class Gather(object):
             return self.trace[i]
 
         if isslice(off):
-            offs = sanitize_slice(off, self.offsets)
+            offs = off
         else:
             offs = slice(off, off + 1, 1)
 
         xs = list(filter(self.offsets.__contains__,
-                    range(*offs.indices(self.offsets[-1]+1))))
+                    label_range(offs, self.offsets)))
 
         empty = np.empty(0, dtype = self.trace.dtype)
         # gather[int,int,:]
@@ -138,26 +138,11 @@ class Gather(object):
             # buffered, and traces can be read from the iline. This is the
             # least efficient when there are very few traces read per inline,
             # but huge savings with larger subcubes
-            last_il = self.iline.keys()[-1] + 1
-            last_xl = self.xline.keys()[-1] + 1
-
             il_slice = il if isslice(il) else slice(il, il+1)
             xl_slice = xl if isslice(xl) else slice(xl, xl+1)
 
-            # the slice could still be defaulted (:), in which case this starts
-            # at zero. the lookups are guarded by try-excepts so it won't fail,
-            # but it's unnecessary to chck all keys up until the first xline
-            # because that will never be a hit anyway
-            if il_slice.start is None:
-                start = self.iline.keys()[0]
-                il_slice = slice(start, il_slice.stop, il_slice.step)
-
-            if xl_slice.start is None:
-                start = self.xline.keys()[0]
-                xl_slice = slice(start, xl_slice.stop, xl_slice.step)
-
-            il_range = range(*il_slice.indices(last_il))
-            xl_range = range(*xl_slice.indices(last_xl))
+            il_range = label_range(il_slice, self.iline.keys())
+            xl_range = label_range(xl_slice, self.xline.keys())
 
             # the try-except-else is essentially a filter on in/xl keys, but
             # delegates the work (and decision) to the iline and xline modes
