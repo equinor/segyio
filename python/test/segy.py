@@ -643,6 +643,100 @@ def test_gather_mode():
             assert np.array_equal(empty, g)
 
 
+def test_label_range():
+    from segyio.line import label_range
+    labels = [-100, 0, 100, 200]
+
+    def select(s):
+        # label_range yields candidates, callers keep the ones that are labels
+        return [x for x in label_range(s, labels) if x in labels]
+
+    assert [-100, 0, 100, 200] == select(slice(None))
+    assert [-100, 0] == select(slice(None, 100))
+    assert [100, 200] == select(slice(100, None))
+    assert [-100, 100] == select(slice(None, None, 200))
+    assert [200, 100, 0, -100] == select(slice(None, None, -1))
+    assert [200, 0] == select(slice(None, None, -200))
+    # values outside the labels are clamped away, keeping the phase of the step
+    assert [-100, 100] == select(slice(-300, 1000, 200))
+    assert [0, 200] == select(slice(-400, 1000, 200))
+    assert [200, 0] == select(slice(600, -1000, -200))
+    assert [100, -100] == select(slice(500, -1000, -200))
+    assert [] == select(slice(300, 400))
+    # candidates never extend beyond the labels, however wide the slice
+    assert -100 <= min(label_range(slice(-10**9, 10**9), labels))
+    assert 200 >= max(label_range(slice(-10**9, 10**9), labels))
+    # positive labels, as with line numbers: 0::2 over 1..5 selects 2 and 4
+    assert [2, 4] == list(label_range(slice(0, None, 2), [1, 2, 3, 4, 5]))
+
+
+@pytest.fixture
+def negative_offsets(tmpdir):
+    """small-ps.sgy relabelled with offsets [-100, 100] instead of [1, 2]"""
+    fname = str(tmpdir / 'small-ps-negative-offsets.sgy')
+    with segyio.open(testdata / 'small-ps.sgy') as src:
+        spec = segyio.tools.metadata(src)
+        spec.offsets = [-100, 100]
+        with segyio.create(fname, spec) as dst:
+            dst.text[0] = src.text[0]
+            dst.bin = src.bin
+            dst.header = src.header
+            dst.trace = src.trace
+            for i, offset in enumerate(src.attributes(segyio.TraceField.offset)):
+                dst.header[i] = { segyio.TraceField.offset: -100 if offset == 1 else 100 }
+    return fname
+
+
+def test_gather_negative_offsets(negative_offsets):
+    """gather slices over offsets must select by label, not position
+
+    Offsets are labels which are commonly negative, and slice.indices() wraps
+    negative numbers and clamps to a positional range, so using it to expand an
+    offset slice silently dropped all negative offsets.
+    """
+    with segyio.open(negative_offsets) as f:
+        assert list(f.offsets) == [-100, 100]
+        traces = segyio.tools.collect(f.trace[10:12])
+
+        assert np.array_equal(traces[0], f.gather[2, 3, -100])
+        assert np.array_equal(traces[1], f.gather[2, 3, 100])
+        assert np.array_equal(traces, f.gather[2, 3])
+        assert np.array_equal(traces, f.gather[2, 3, :])
+        assert np.array_equal(traces, f.gather[2, 3, -100:101])
+        assert np.array_equal(traces[:1], f.gather[2, 3, -100:0])
+        assert np.array_equal(traces[:1], f.gather[2, 3, :0])
+        assert np.array_equal(traces[1:], f.gather[2, 3, 0:])
+        assert np.array_equal(traces[::-1], f.gather[2, 3, ::-1])
+        assert np.array_equal(traces[1:], f.gather[2, 3, 100:])
+
+        for g, line in zip(f.gather[1:3, 3, :], f.iline[1:3]):
+            assert (2, 10) == g.shape
+            assert np.array_equal(line[2], g[0])
+
+        for g, line in zip(f.gather[1, :, -100], f.xline[:]):
+            assert (10,) == g.shape
+            assert np.array_equal(line[0], g)
+
+
+def test_line_negative_offsets(negative_offsets):
+    with segyio.open(negative_offsets) as f:
+        first = f.iline[2, -100]
+        second = f.iline[2, 100]
+        assert np.array_equal(first, f.iline[2])
+        assert not np.array_equal(first, second)
+
+        lines = list(f.iline[2, :])
+        assert 2 == len(lines)
+        assert np.array_equal(first, lines[0])
+        assert np.array_equal(second, lines[1])
+
+        assert 1 == len(list(f.iline[2, -100:0]))
+        assert 1 == len(list(f.iline[2, 0:]))
+        assert 2 == len(list(f.iline[2:4, 100]))
+        assert 4 == len(list(f.iline[2:4, :]))
+        assert 2 == len(list(f.xline[1, ::-1]))
+
+
 def test_line_generators():
     with segyio.open(testdata / 'small.sgy') as f:
         for _ in f.iline:
