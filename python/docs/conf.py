@@ -22,11 +22,11 @@
 import os
 import sys
 
-# when building for readthedocs, don't rely on the freshly-cloned repo
-# readthedocs won't build the C++ code, so instead pip-install the latest
-# segyio and just assume it's in path
-if not os.environ.get('READTHEDOCS'):
-    sys.path.insert(0, os.path.abspath('..'))
+# Use the source package for local documentation builds. On Read the Docs,
+# CMake installs the repository's compiled Python extension into the RTD
+# virtual environment, so import that installed copy instead.
+if not os.environ.get("READTHEDOCS"):
+    sys.path.insert(0, os.path.abspath(".."))
 
 import segyio
 
