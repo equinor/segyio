@@ -2,8 +2,11 @@ Open and create
 ===============
 
 .. autofunction:: segyio.open
+.. autofunction:: segyio.open_with
+.. autofunction:: segyio.open_from_memory
 .. autofunction:: segyio.su.open
 .. autofunction:: segyio.create
+.. autofunction:: segyio.create_with
 
 File handle
 ===========
