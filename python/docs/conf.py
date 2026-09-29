@@ -22,11 +22,10 @@
 import os
 import sys
 
-# when building for readthedocs, don't rely on the freshly-cloned repo
-# readthedocs won't build the C++ code, so instead pip-install the latest
-# segyio and just assume it's in path
-if not os.environ.get('READTHEDOCS'):
-    sys.path.insert(0, os.path.abspath('..'))
+# Use the source for local documentation builds. Let readthedocs choose its own
+# version
+if not os.environ.get("READTHEDOCS"):
+    sys.path.insert(0, os.path.abspath(".."))
 
 import segyio
 
