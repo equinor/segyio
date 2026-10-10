@@ -10,6 +10,7 @@ from segyio import BinField
 from segyio import TraceField
 from segyio import TraceSortingFormat
 from segyio import SegySampleFormat
+from segyio.create import default_text_header
 
 
 @tmpfiles(testdata / 'small.sgy')
@@ -60,6 +61,15 @@ def test_empty_text_header_creation():
     for line_no in range(0, 40):
         line = text_header[line_no * 80: (line_no + 1) * 80]
         assert line == "C{0:>2} {1:76}".format(line_no + 1, "")
+
+
+def test_default_text_header_is_ascii_without_fixed_assumptions():
+    text_header = default_text_header(189, 193, 37)
+    decoded_header = text_header.decode("ascii")
+
+    assert len(text_header) == 3200
+    assert "AN INCREASE IN AMPLITUDE" not in decoded_header
+    assert text_header[-1:] == b" "
 
 
 def test_wrap():
