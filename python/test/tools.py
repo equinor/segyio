@@ -63,12 +63,14 @@ def test_empty_text_header_creation():
         assert line == "C{0:>2} {1:76}".format(line_no + 1, "")
 
 
-def test_default_text_header_is_ascii_without_fixed_assumptions():
+def test_default_text_header_is_ascii_without_unsupported_claims():
     text_header = default_text_header(189, 193, 37)
     decoded_header = text_header.decode("ascii")
 
     assert len(text_header) == 3200
     assert "AN INCREASE IN AMPLITUDE" not in decoded_header
+    assert "Written by libsegyio (python)" in decoded_header
+    assert "INLINE BYTES 189-193    | OFFSET BYTES 037-041" in decoded_header
     assert text_header[-1:] == b" "
 
 
