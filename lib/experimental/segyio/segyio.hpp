@@ -164,23 +164,23 @@ public:
 
 namespace literals {
 
-inline path operator"" _path( const char* name, std::size_t ) {
+inline path operator""_path( const char* name, std::size_t ) {
     return path{ name };
 }
 
-inline mode operator"" _mode( const char* name, std::size_t ) {
+inline mode operator""_mode( const char* name, std::size_t ) {
     return mode{ name };
 }
 
-inline ilbyte operator"" _il( unsigned long long x ) {
+inline ilbyte operator""_il( unsigned long long x ) {
     return ilbyte{ int( x ) };
 }
 
-inline xlbyte operator"" _xl( unsigned long long x ) {
+inline xlbyte operator""_xl( unsigned long long x ) {
     return xlbyte{ int( x ) };
 }
 
-inline fmt operator"" _fmt( unsigned long long x ) {
+inline fmt operator""_fmt( unsigned long long x ) {
     return fmt{ int( x ) };
 }
 
