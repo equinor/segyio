@@ -15,14 +15,14 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
 
       - name: Set up Docker Buildx
         id: buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
         with:
           # driver must be docker, likely related to https://github.com/moby/buildkit/issues/2343
           driver: docker
@@ -39,7 +39,7 @@ jobs:
         run: mkdir -p ${{ env.S390X_CACHE_DIR }}
 
       - name: Check for s390x cache
-        uses: actions/cache@v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         id: s390x-cache
         with:
           path: ${{ env.S390X_CACHE_DIR }}
@@ -47,7 +47,7 @@ jobs:
 
       - if: steps.s390x-cache.outputs.cache-hit != 'true'
         name: Build s390x image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: .
@@ -71,7 +71,7 @@ jobs:
           docker load -i ${{ env.S390X_CACHE_DIR }}/${{ env.S390X_CACHE_FILE }}
 
       - name: Build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           builder: ${{ steps.buildx.outputs.name }}
           build-args: |
