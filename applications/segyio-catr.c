@@ -453,7 +453,8 @@ static struct options parse_options( int argc, char** argv ){
     int rallocsize = 32;
 
     struct options opts;
-    opts.rsize = 0; opts.r = calloc( sizeof( range ), rallocsize );
+    opts.rsize = 0;
+    opts.r = calloc( rallocsize, sizeof( range ) );
     opts.format = 0;
     opts.verbosity = 0;
     opts.nonzero = 0;
