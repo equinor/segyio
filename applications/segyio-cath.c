@@ -63,7 +63,7 @@ int main( int argc, char** argv ) {
     };
 
     int num_alloc_sz = 32;
-    int* num   = calloc( sizeof( int ), num_alloc_sz );
+    int* num = calloc( num_alloc_sz, sizeof( int ) );
     int num_sz = 0;
 
     while( true ) {
