@@ -611,7 +611,7 @@ int main( int argc, char** argv ) {
     }
 
     /* verify all ranges are sane */
-    for( range* r = opts.r; r < opts.r + opts.rsize; ++r ) {
+    for( const range* r = opts.r; r < opts.r + opts.rsize; ++r ) {
         if( r->stop == 0 && r->step == 0 ) continue;
         if( r->start > r->stop && strict )
             exit( errmsg( -3, "Range is empty" ) );
@@ -641,7 +641,7 @@ int main( int argc, char** argv ) {
         if( r->step == 0 ) r->step = 1;
     }
 
-    for( range* r = opts.r; r < opts.r + opts.rsize; ++r ) {
+    for( const range* r = opts.r; r < opts.r + opts.rsize; ++r ) {
         for( int i = r->start; i <= r->stop; i += r->step ) {
             if( i > numtrh && strict )
               exit( errmsg2( errno, "Unable to read traceheader",
