@@ -29,6 +29,31 @@ def sanitize_slice(s, source):
 
     return slice(start, stop, step)
 
+
+def label_range(s, source):
+    """range of the labels selected by the slice s, over the labels in source
+
+    Line numbers and offsets are *labels*, not positions, so slice.indices()
+    must not be used to expand them: it wraps negative values and clamps to
+    [0, n), which silently drops labels such as negative offsets. Instead the
+    slice is defaulted to the extent of the labels and clamped to it without
+    wrapping, advancing start by whole steps so the phase of the slice is
+    preserved. The result may contain values that are not labels in the file;
+    callers filter those out.
+    """
+    s = sanitize_slice(s, source)
+    start, stop, step = s.start, s.stop, 1 if s.step is None else s.step
+    lo, hi = min(source), max(source)
+    if step > 0:
+        if start < lo:
+            start += ((lo - start + step - 1) // step) * step
+        stop = min(stop, hi + 1)
+    else:
+        if start > hi:
+            start -= ((start - hi - step - 1) // -step) * -step
+        stop = max(stop, lo - 1)
+    return range(start, stop, step)
+
 class Line(Mapping):
     """
     The Line implements the dict interface, with a fixed set of int_like keys,
@@ -91,10 +116,8 @@ class Line(Mapping):
         if not isinstance(offset, slice):
             offset = slice(offset, offset + 1)
 
-        index  = sanitize_slice(index, self.heads.keys())
-        offset = sanitize_slice(offset, self.offsets.keys())
-        irange = range(*index.indices(max(self.heads.keys()) + 1))
-        orange = range(*offset.indices(max(self.offsets.keys()) + 1))
+        irange = label_range(index, self.heads.keys())
+        orange = label_range(offset, self.offsets.keys())
         irange = filter(self.heads.__contains__, irange)
         orange = filter(self.offsets.__contains__, orange)
         # offset-range is used in inner loops, so make it a list for
