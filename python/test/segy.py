@@ -663,6 +663,11 @@ def test_label_range():
     assert [200, 0] == select(slice(600, -1000, -200))
     assert [100, -100] == select(slice(500, -1000, -200))
     assert [] == select(slice(300, 400))
+    # clamping keeps the phase even when that lands between labels: nothing is selected
+    assert [99] == list(label_range(slice(-301, 1000, 200), labels))
+    assert [] == select(slice(-301, 1000, 200))
+    assert [1] == list(label_range(slice(601, -1000, -200), labels))
+    assert [] == select(slice(601, -1000, -200))
     # candidates never extend beyond the labels, however wide the slice
     assert -100 <= min(label_range(slice(-10**9, 10**9), labels))
     assert 200 >= max(label_range(slice(-10**9, 10**9), labels))
@@ -725,7 +730,8 @@ def test_line_negative_offsets(negative_offsets):
         assert np.array_equal(first, f.iline[2])
         assert not np.array_equal(first, second)
 
-        lines = list(f.iline[2, :])
+        # the generator reuses one buffer, so copy each line out
+        lines = [np.copy(x) for x in f.iline[2, :]]
         assert 2 == len(lines)
         assert np.array_equal(first, lines[0])
         assert np.array_equal(second, lines[1])
