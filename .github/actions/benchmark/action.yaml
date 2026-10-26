@@ -27,7 +27,9 @@ runs:
       env:
         CIBW_BUILD_VERBOSITY: 1
       run: |
-        python -m cibuildwheel --only cp312-manylinux_x86_64 --output-dir ./wheelhouse python/
+        PY_VERSION=$(python -c "import sys; print(f'cp{sys.version_info.major}{sys.version_info.minor}')")
+        BUILD_TAG="${PY_VERSION}-manylinux_x86_64"
+        python -m cibuildwheel --only "$BUILD_TAG" --output-dir ./wheelhouse python/
 
     - name: Install local wheel
       shell: bash
