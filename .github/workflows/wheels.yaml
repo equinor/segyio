@@ -30,7 +30,8 @@ jobs:
             arch: x86_64
           - os: ubuntu-24.04-arm
             arch: aarch64
-          - os: ubuntu-latest
+          # i686 os is pinned due to https://github.com/actions/runner-images/issues/14790
+          - os: ubuntu-24.04
             arch: i686
           # macos-latest runs on arm64 architecture and cibuildwheel cross
           # compiling for x86_64 fails
