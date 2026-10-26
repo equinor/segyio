@@ -1184,6 +1184,11 @@ static int get_field( const char* header,
     fd->entry_type = mapping[offset].entry_type;
     uint8_t datatype = entry_type_to_datatype_map[fd->entry_type];
     int vsize = segy_formatsize( datatype );
+    if( vsize <= 0 ) return SEGY_INVALID_FIELD;
+
+    if (offset + vsize > mapsize ) {
+        return SEGY_INVALID_FIELD;
+    }
 
     switch ( datatype ) {
 
@@ -1317,6 +1322,11 @@ static int set_field( char* header,
     segy_field_value fv = fd.value;
     uint8_t datatype = entry_type_to_datatype_map[entry_type];
     int vsize = segy_formatsize( datatype );
+    if( vsize <= 0 ) return SEGY_INVALID_FIELD;
+
+    if (offset + vsize > mapsize ) {
+        return SEGY_INVALID_FIELD;
+    }
 
     switch( datatype ) {
 

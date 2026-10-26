@@ -2145,6 +2145,151 @@ TEST_CASE( "segy_set_field write values correctly", "[c.segy]" ) {
     }
 }
 
+namespace {
+
+// keep it up-to-date with SEGY_ENTRY_TYPE enum
+constexpr std::array<SEGY_ENTRY_TYPE, 22> ENTRY_TYPES = {{
+    SEGY_ENTRY_TYPE_UNDEFINED,
+    SEGY_ENTRY_TYPE_INT2,
+    SEGY_ENTRY_TYPE_INT4,
+    SEGY_ENTRY_TYPE_INT8,
+    SEGY_ENTRY_TYPE_UINT1,
+    SEGY_ENTRY_TYPE_UINT2,
+    SEGY_ENTRY_TYPE_UINT4,
+    SEGY_ENTRY_TYPE_UINT8,
+    SEGY_ENTRY_TYPE_IBMFP,
+    SEGY_ENTRY_TYPE_IEEE32,
+    SEGY_ENTRY_TYPE_IEEE64,
+    SEGY_ENTRY_TYPE_LINETRC,
+    SEGY_ENTRY_TYPE_REELTRC,
+    SEGY_ENTRY_TYPE_LINETRC8,
+    SEGY_ENTRY_TYPE_REELTRC8,
+    SEGY_ENTRY_TYPE_COOR4,
+    SEGY_ENTRY_TYPE_ELEV4,
+    SEGY_ENTRY_TYPE_TIME2,
+    SEGY_ENTRY_TYPE_SPNUM4,
+    SEGY_ENTRY_TYPE_SCALE6_MANT,
+    SEGY_ENTRY_TYPE_SCALE6_EXP,
+    SEGY_ENTRY_TYPE_STRING8,
+}};
+
+/**
+ * Set the value of a SEGY field as a double. For strings, sets predefined test
+ * value. If type is not supported, does nothing.
+ */
+void set_field_value( segy_field_data& fd, double value ) {
+    uint8_t datatype = segy_entry_type_to_datatype( fd.entry_type );
+
+    switch( datatype ) {
+        case SEGY_SIGNED_INTEGER_8_BYTE:
+            fd.value.i64 = static_cast<int64_t>( value );
+            break;
+        case SEGY_SIGNED_INTEGER_4_BYTE:
+            fd.value.i32 = static_cast<int32_t>( value );
+            break;
+        case SEGY_SIGNED_SHORT_2_BYTE:
+            fd.value.i16 = static_cast<int16_t>( value );
+            break;
+        case SEGY_SIGNED_CHAR_1_BYTE:
+            fd.value.i8 = static_cast<int8_t>( value );
+            break;
+        case SEGY_UNSIGNED_INTEGER_8_BYTE:
+            fd.value.u64 = static_cast<uint64_t>( value );
+            break;
+        case SEGY_UNSIGNED_INTEGER_4_BYTE:
+            fd.value.u32 = static_cast<uint32_t>( value );
+            break;
+        case SEGY_UNSIGNED_SHORT_2_BYTE:
+            fd.value.u16 = static_cast<uint16_t>( value );
+            break;
+        case SEGY_UNSIGNED_CHAR_1_BYTE:
+            fd.value.u8 = static_cast<uint8_t>( value );
+            break;
+        case SEGY_IEEE_FLOAT_8_BYTE:
+            fd.value.f64 = value;
+            break;
+        case SEGY_IEEE_FLOAT_4_BYTE:
+        case SEGY_IBM_FLOAT_4_BYTE:
+            fd.value.f32 = static_cast<float>( value );
+            break;
+        case SEGY_STRING_8_BYTE:
+            memcpy( fd.value.str8, "TEST    ", 8 );
+            break;
+        default:
+            break;
+    }
+}
+
+} // namespace
+
+TEST_CASE( "segy_get/set_tracefield for types", "[c.segy]" ) {
+
+    char header[SEGY_TRACE_HEADER_SIZE] = { 0 };
+    segy_field_data fd = {};
+    const double test_value = arbitrary_float();
+
+    const segy_entry_definition* default_map = segy_traceheader_default_map();
+    segy_entry_definition offset_map[SEGY_TRACE_HEADER_SIZE];
+    memcpy( offset_map, default_map, sizeof( offset_map ) );
+
+    SEGY_ENTRY_TYPE entry_type = GENERATE( from_range( ENTRY_TYPES ) );
+    INFO( "Testing entry type: " << entry_type );
+
+    SECTION( "test tracefield roundtrip when traceheader map in bounds" ) {
+        segy_entry_definition custom_def = {
+            entry_type, false, NULL
+        };
+        int custom_offset = 233;
+        offset_map[custom_offset - 1] = custom_def;
+
+        fd.entry_type = entry_type;
+        set_field_value( fd, test_value );
+        Err err = segy_set_tracefield(
+            header, offset_map, custom_offset, fd
+        );
+        if( entry_type == SEGY_ENTRY_TYPE_UNDEFINED )
+            CHECK( err == Err::field() );
+        else
+            CHECK( err == Err::ok() );
+
+        segy_field_data fd_read = {};
+        err = segy_get_tracefield(
+            header, offset_map, custom_offset, &fd_read
+        );
+        if( entry_type == SEGY_ENTRY_TYPE_UNDEFINED ) {
+            CHECK( err == Err::field() );
+        } else {
+            CHECK( err == Err::ok() );
+            CHECK( memcmp( &fd.value, &fd_read.value, sizeof( segy_field_value ) ) == 0 );
+        }
+    }
+
+    SECTION( "test traceheader map out of bounds" ) {
+        segy_entry_definition custom_def = {
+            entry_type, false, NULL
+        };
+        int custom_offset = 240;
+        offset_map[custom_offset - 1] = custom_def;
+
+        if( entry_type == SEGY_ENTRY_TYPE_UINT1 ) {
+            // for 1-byte types test for offset out of bounds instead
+            custom_offset = 241;
+        }
+
+        Err err = segy_get_tracefield(
+            header, offset_map, custom_offset, &fd
+        );
+        CHECK( err == Err::field() );
+
+        fd.entry_type = entry_type;
+        set_field_value( fd, test_value );
+        err = segy_set_tracefield(
+            header, offset_map, custom_offset, fd
+        );
+        CHECK( err == Err::field() );
+    }
+}
+
 TEST_CASE( "segy_get/set_bin/tracefield errors", "[c.segy]" ) {
 
     char header[SEGY_TRACE_HEADER_SIZE] = { 0 };
