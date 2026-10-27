@@ -2779,7 +2779,10 @@ int parse_extended_text_headers( segyfd* self ) {
         err = segy_read_stanza_header(
             ds, i, &c_stanza_name, &stanza_name_length
         );
-        if( err != SEGY_OK ) return err;
+        if( err != SEGY_OK ) {
+            if( c_stanza_name ) free( c_stanza_name );
+            return err;
+        }
 
         if( stanza_name_length != 0 || self->stanzas.empty() ) {
             self->stanzas.emplace_back(
@@ -3003,7 +3006,10 @@ int parse_py_traceheader_layout_dict(
         strncpy( mapping.name, header_name, 8 );
 
         int err = parse_py_TraceHeaderLayoutEntry_list( py_header_entities, &mapping );
-        if( err != SEGY_OK ) return err;
+        if( err != SEGY_OK ) {
+            free_header_mappings_names( &mapping, 1 );
+            return err;
+        }
 
         mappings[pos - 1] = mapping;
     }
