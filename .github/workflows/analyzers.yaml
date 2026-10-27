@@ -64,6 +64,37 @@ jobs:
             cmake                  \
             --build build
 
+  asan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Build segyio with ASAN
+        run: |
+          cmake -S . -B build           \
+          -DCMAKE_BUILD_TYPE=Debug      \
+          -DCMAKE_C_FLAGS_DEBUG="-g -O1 -fsanitize=address -fno-omit-frame-pointer"   \
+          -DCMAKE_CXX_FLAGS_DEBUG="-g -O1 -fsanitize=address -fno-omit-frame-pointer" \
+          -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address" \
+          -DBUILD_SHARED_LIBS=ON        \
+          -DBUILD_PYTHON=OFF
+          cmake --build build
+
+      - name: Run ASAN on C tests, file
+        working-directory: build/lib
+        run: |
+          ./c.segy "[c.segy]"
+
+      - name: Run ASAN on C tests, mmap
+        working-directory: build/lib
+        run: |
+          ./c.segy "[c.segy]" "--test-mmap"
+
+      - name: Run ASAN on C++ tests
+        working-directory: build/lib
+        run: |
+          ./c.segy "[c++]"
+
   valgrind:
     runs-on: ubuntu-latest
     steps:
