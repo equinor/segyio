@@ -7,7 +7,6 @@ from . import TraceSortingFormat
 def default_text_header(iline, xline, offset):
     lines = {
         1: "DATE %s" % datetime.date.today().isoformat(),
-        2: "AN INCREASE IN AMPLITUDE EQUALS AN INCREASE IN ACOUSTIC IMPEDANCE",
         3: "Written by libsegyio (python)",
         11: "TRACE HEADER POSITION:",
         12: "  INLINE BYTES %03d-%03d    | OFFSET BYTES %03d-%03d" % (iline, iline + 4, int(offset), int(offset) + 4),
@@ -15,9 +14,7 @@ def default_text_header(iline, xline, offset):
         15: "END EBCDIC HEADER",
     }
     rows = segyio.create_text_header(lines)
-    rows = bytearray(rows, 'ascii')  # mutable array of bytes
-    rows[-1] = 128  # \x80 -- Unsure if this is really required...
-    return bytes(rows)  # immutable array of bytes that is compatible with strings
+    return rows.encode('ascii')
 
 
 def structured(spec):
