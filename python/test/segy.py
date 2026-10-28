@@ -2507,8 +2507,20 @@ def test_open_with_custom_mapping():
     with pytest.raises(ValueError, match=parse_error):
         segyio.open(testdata / 'mapping-invalid-value.sgy')
 
+    with pytest.raises(ValueError, match=parse_error):
+        segyio.open(testdata / 'mapping-invalid-value-size.sgy')
+
+    with pytest.raises(ValueError, match=parse_error):
+        segyio.open(testdata / 'mapping-invalid-value-size-scale6.sgy')
+
     with pytest.raises(RuntimeError, match=r"unable to gather basic metadata*"):
         segyio.open(testdata / 'mapping-empty.sgy')
+
+    with pytest.raises(ValueError, match=r"offset 239, size 4\) out of range"):
+        segyio.open(testdata / 'mapping-default.sgy', iline=239)
+
+    with pytest.raises(ValueError, match=r"offset 240, size 4\) out of range"):
+        segyio.open(testdata / 'mapping-default.sgy', xline=240)
 
     ilines = list(range(1, 4))
     xlines = list(range(20, 22))

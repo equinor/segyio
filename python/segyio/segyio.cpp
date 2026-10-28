@@ -2601,10 +2601,19 @@ int overwrite_field_offset(
 
     unsigned long long raw_entry_byte = PyLong_AsUnsignedLongLong( py_entry_byte );
     if( PyErr_Occurred() || raw_entry_byte < 1 || raw_entry_byte > SEGY_TRACE_HEADER_SIZE ) {
-        ValueError( "Custom field offset %llu out of range: ", raw_entry_byte );
+        ValueError( "Custom field offset %llu out of range.", raw_entry_byte );
         return SEGY_INVALID_ARGS;
     }
     uint8_t entry_byte = static_cast<uint8_t>( raw_entry_byte );
+    int field_size = segy_formatsize( segy_entry_type_to_datatype( entry_type ));
+    if( field_size <= 0 ) {
+        ValueError( "Invalid field size for entry type: %d", entry_type );
+        return SEGY_INVALID_ARGS;
+    }
+    if( entry_byte - 1 + field_size > SEGY_TRACE_HEADER_SIZE ) {
+        ValueError( "Custom field (offset %d, size %d) out of range.", entry_byte, field_size );
+        return SEGY_INVALID_ARGS;
+    }
     mapping.name_to_offset[segyio_field_name] = entry_byte;
 
     segy_entry_definition& def = mapping.offset_to_entry_definition[entry_byte - 1];
@@ -2874,10 +2883,25 @@ int set_mapping_offset_to_entry_defintion(
     }
     if( entry_type == SEGY_ENTRY_TYPE_UNDEFINED ) return SEGY_INVALID_ARGS;
 
+    int field_size = segy_formatsize( segy_entry_type_to_datatype( entry_type ));
+    if (byte - 1 + field_size > SEGY_TRACE_HEADER_SIZE) return SEGY_INVALID_ARGS;
+
     if( entry_type == SEGY_ENTRY_TYPE_SCALE6_MANT ) {
+        int mant_field_size = segy_formatsize(
+            segy_entry_type_to_datatype( SEGY_ENTRY_TYPE_SCALE6_MANT )
+        );
+        int exp_field_size = segy_formatsize(
+            segy_entry_type_to_datatype( SEGY_ENTRY_TYPE_SCALE6_EXP)
+        );
+        if( mant_field_size <= 0 || exp_field_size <= 0 ) return SEGY_INVALID_ARGS;
+
         const int byte_mant = byte;
-        const int byte_exp = byte + 4;
-        if( byte_exp < 1 || byte_exp > SEGY_TRACE_HEADER_SIZE ) {
+        const int byte_exp = byte + mant_field_size;
+
+        if( byte_mant < 1 || byte_mant - 1 + mant_field_size > SEGY_TRACE_HEADER_SIZE ) {
+            return SEGY_INVALID_ARGS;
+        }
+        if( byte_exp < 1 || byte_exp - 1 + exp_field_size > SEGY_TRACE_HEADER_SIZE ) {
             return SEGY_INVALID_ARGS;
         }
 

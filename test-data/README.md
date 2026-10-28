@@ -103,20 +103,22 @@ Files are created manually.
 
 | File                           | Purpose                                                       |
 |--------------------------------|---------------------------------------------------------------|
-| mapping-all-types.sgy          | Entries are given all types possible.                         |
-| mapping-all-types-lsb.sgy      | `flip-endianness.py mapping-all-types.sgy out.sgy`            |
-| mapping-default.sgy            | XML corresponds exactly to the default SEG-Y rev 2.1 mapping. |
-| mapping-empty.sgy              | Root does not have minimal number of required fields.         |
-| mapping-encoding-ext1.sgy      | SEG00001 name encoding does not match text header encoding.   |
-| mapping-encoding-private.sgy   | Proprietary header name encoding != text header encoding.     |
-| mapping-invalid-attribute.sgy  | Last entry does not have 'byte' attribute.                    |
-| mapping-invalid-root.sgy       | Root does not define standard header layout.                  |
-| mapping-invalid-value.sgy      | Last standard header entry byte is out of range.              |
-| mapping-minimal.sgy            | File with minimal number of defined fields segyio can open.   |
-| mapping-mixed-order.sgy        | XML layouts are in different order than headers in file.      |
-| mapping-multiple-stanzas.sgy   | Other stanzas are present before and after layout stanza.     |
-| mapping-no-extension1.sgy      | Only standard and proprietary trace headers are present.      |
-| mapping-shifted.sgy            | Default mapping with all offsets shifted by 1 byte.           |
-| mapping-unparsable.sgy         | XML is unparsable.                                            |
-| mapping-unsupported-type.sgy   | One axis value is of type segyio doesn't allow in that field. |
+| mapping-all-types.sgy                 | Entries are given all types possible.                         |
+| mapping-all-types-lsb.sgy             | `flip-endianness.py mapping-all-types.sgy out.sgy`            |
+| mapping-default.sgy                   | XML corresponds exactly to the default SEG-Y rev 2.1 mapping. |
+| mapping-empty.sgy                     | Root does not have minimal number of required fields.         |
+| mapping-encoding-ext1.sgy             | SEG00001 name encoding does not match text header encoding.   |
+| mapping-encoding-private.sgy          | Proprietary header name encoding != text header encoding.     |
+| mapping-invalid-attribute.sgy         | Last entry does not have 'byte' attribute.                    |
+| mapping-invalid-root.sgy              | Root does not define standard header layout.                  |
+| mapping-invalid-value.sgy             | Last standard header entry byte is out of range.              |
+| mapping-invalid-value-size.sgy        | Last entry offset + size is over traceheader length (240).    |
+| mapping-invalid-value-size-scale6.sgy | scale6-exp offset + size is over traceheader length (240).    |
+| mapping-minimal.sgy                   | File with minimal number of defined fields segyio can open.   |
+| mapping-mixed-order.sgy               | XML layouts are in different order than headers in file.      |
+| mapping-multiple-stanzas.sgy          | Other stanzas are present before and after layout stanza.     |
+| mapping-no-extension1.sgy             | Only standard and proprietary trace headers are present.      |
+| mapping-shifted.sgy                   | Default mapping with all offsets shifted by 1 byte.           |
+| mapping-unparsable.sgy                | XML is unparsable.                                            |
+| mapping-unsupported-type.sgy          | One axis value is of type segyio doesn't allow in that field. |
 
