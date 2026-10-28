@@ -1853,6 +1853,13 @@ def test_create_from_naught(endian, tmpdir):
 
         assert f.sorting == TraceSortingFormat.CROSSLINE_SORTING
 
+        text_header = f.text[0]
+        decoded_header = text_header.decode("ascii")
+        assert len(text_header) == 3200
+        assert "Written by libsegyio (python)" in decoded_header
+        assert "INLINE BYTES 189-193    | OFFSET BYTES 037-041" in decoded_header
+        assert text_header[-1:] == b" "
+
 
 @pytest.mark.parametrize('endian', ['lsb', 'msb'])
 def test_create_from_naught_prestack(endian, tmpdir):
