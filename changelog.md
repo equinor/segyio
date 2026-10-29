@@ -1,3 +1,10 @@
+# 1.9.15
+* Distribution of wheels for Python 3.15.
+* Support for python 3.10 has been dropped, as it is EOL.
+* Fix gather and line slices dropping negative offsets (#666)
+* Use ASCII-safe defaults for created text headers (#667)
+* Remove confusing line from default created text header (#667)
+
 # 2.0.0-alpha.1
 * Improve support for SEG-Y revision 2.1:
   * support for int64, uint64 and floating-point types in trace headers.
