@@ -5,7 +5,7 @@
 
 
 Development of segyio 2.0 (which improves support for SEG-Y 2.1 revision)
-happens in the `main` branch. `2.0.0-alpha.1` pre-release is published, but
+happens in the `main` branch. `2.0.0-alpha` pre-release is published, but
 further development and support are, for the moment, put on hold.
 
 Support for segyio 1.0 releases happens in `segyio-1.x` branch, mostly via

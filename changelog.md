@@ -1,3 +1,11 @@
+# 2.0.0-alpha.2
+* Distribution of wheels for Python 3.15.
+* Support for python 3.10 has been dropped, as it is EOL.
+* Fix gather and line slices dropping negative offsets (#666)
+* Use ASCII-safe defaults for created text headers (#667)
+* Remove confusing line from default created text header (#667)
+* Better guard against malformed custom layouts
+
 # 1.9.15
 * Distribution of wheels for Python 3.15.
 * Support for python 3.10 has been dropped, as it is EOL.
