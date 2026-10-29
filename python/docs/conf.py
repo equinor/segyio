@@ -98,7 +98,7 @@ author = u'Equinor'
 # built documents.
 #
 # The short X.Y version.
-version = "1.9.14"
+version = "1.9.15"
 
 # The full version, including alpha/beta/rc tags.
 release = version
