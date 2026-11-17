@@ -1,3 +1,9 @@
+# Unreleased
+* Ship a PyInstaller hook so that frozen applications bundle the DLLs from
+  `segyio.libs/`. Since 1.9.15 the Windows wheels are repaired with delvewheel,
+  which otherwise causes `DLL load failed while importing _segyio` in
+  PyInstaller executables.
+
 # 1.9.15
 * Distribution of wheels for Python 3.15.
 * Support for python 3.10 has been dropped, as it is EOL.
