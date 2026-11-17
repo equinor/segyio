@@ -77,6 +77,11 @@ classifiers = [
     "Topic :: Utilities",
 ]
 
+# Let PyInstaller discover the hook in segyio/_pyinstaller/ so that frozen
+# applications pick up the delvewheel-bundled DLLs from segyio.libs/.
+[project.entry-points.pyinstaller40]
+hook-dirs = "segyio._pyinstaller:get_hook_dirs"
+
 
 [tool.pytest.ini_options]
 python_files = "test/*.py"
